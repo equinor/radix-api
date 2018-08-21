@@ -1,0 +1,21 @@
+version: "3.5"
+
+services:
+  radix-api:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    image: radix-api-dev
+    container_name: radix-api-dev_container
+    networks:
+      - radix-api-dev
+    volumes:
+      - type: bind
+        source: ./app/
+        target: /go/src/github.com/user/aProject/app
+    ports:
+      - "8080:8080"
+
+networks:
+  radix-api-dev:
+    name: radix-api-dev
