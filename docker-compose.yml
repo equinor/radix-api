@@ -7,6 +7,8 @@ services:
       dockerfile: dev.Dockerfile
     image: radix-api-dev
     container_name: radix-api-dev_container
+    security_opt:
+      - "seccomp:unconfined"
     networks:
       - radix-api-dev
     volumes:
@@ -14,7 +16,9 @@ services:
         source: ./app/
         target: /go/src/github.com/user/aProject/app
     ports:
-      - "8080:8080"
+      - "3000:3000"
+      - "3001:3001"
+      - "2345:2345"
 
 networks:
   radix-api-dev:

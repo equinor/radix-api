@@ -6,8 +6,13 @@ WORKDIR /go/src/github.com/user/aProject/app
 RUN go get ./
 RUN go build
 
-CMD go get github.com/pilu/fresh && \
-	fresh; \
-	fi
-	
-EXPOSE 8080
+#RUN go get -u -v github.com/derekparker/delve/cmd/dlv
+#EXPOSE 2345
+
+#RUN go get github.com/pilu/fresh
+RUN go get github.com/codegangsta/gin
+
+EXPOSE 3000
+EXPOSE 3001
+# CMD	dlv debug --headless --listen=:2345 --log && fresh
+CMD gin run app.go

@@ -10,7 +10,7 @@ import (
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprintf(w, "This is the RESTful api")
+	fmt.Fprintf(w, "This is the RESTful api!!!")
 }
 
 func main() {
@@ -25,5 +25,5 @@ func main() {
 		log.Println("Running api server in dev mode")
 	}
 
-	http.ListenAndServe(":8080", router)
+	http.ListenAndServe(":3001", router)
 }
