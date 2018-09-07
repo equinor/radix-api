@@ -23,7 +23,7 @@ func CreateApplication(radixclient radixclient.Interface, registration types.App
 		return nil, err
 	}
 
-	radixRegistration, err := buildRRFromAppRegistration(registration, deployKey)
+	radixRegistration, err := rrFromAppRegistration(registration, deployKey)
 	if err != nil {
 		return nil, err
 	}
@@ -37,12 +37,37 @@ func CreateApplication(radixclient radixclient.Interface, registration types.App
 	return &registration, nil
 }
 
+// swagger:route GET /application/{appName}
+//
+// Get application by name
+//
+// This will return the registration details if application exist
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//
+//     Responses:
+//       default: genericError
+//       200: someResponse
+//       422: validationError
+func GetApplication(radixclient radixclient.Interface, appName string) (*types.ApplicationRegistration, error) {
+	radixRegistation, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return appRegistrationFromRR(radixRegistation), nil
+}
+
 func DeleteApplication(appName string) error {
 	logrus.Infof("Deleting app with name %s", appName)
 	return nil
 }
 
-func buildRRFromAppRegistration(registration types.ApplicationRegistration, deployKey *utils.DeployKey) (*v1.RadixRegistration, error) {
+func rrFromAppRegistration(registration types.ApplicationRegistration, deployKey *utils.DeployKey) (*v1.RadixRegistration, error) {
 	projectName, err := getProjectNameFromRepo(registration.Repository)
 	if err != nil {
 		return nil, err
@@ -70,6 +95,15 @@ func buildRRFromAppRegistration(registration types.ApplicationRegistration, depl
 		},
 	}
 	return radixRegistration, nil
+}
+
+func appRegistrationFromRR(radixRegistration *v1.RadixRegistration) *types.ApplicationRegistration {
+	return &types.ApplicationRegistration{
+		Repository:   radixRegistration.Spec.Repository,
+		SharedSecret: radixRegistration.Spec.SharedSecret,
+		AdGroups:     radixRegistration.Spec.AdGroups,
+		PublicKey:    "",
+	}
 }
 
 func getProjectNameFromRepo(repo string) (string, error) {

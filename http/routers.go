@@ -45,6 +45,7 @@ func NewAPIRouter(kubeclient kubernetes.Interface, radixclient radixclient.Inter
 	}
 
 	apiRouter.Post("/api/v1/application", apiRouter.CreateApplication)
+	apiRouter.Get("/api/v1/application/{appName}", apiRouter.GetApplication)
 	apiRouter.Delete("/api/v1/application/{appName}", apiRouter.DeleteApplication)
 
 	return apiRouter
@@ -76,6 +77,18 @@ func (apiRouter *APIRouter) CreateApplication(w http.ResponseWriter, r *http.Req
 	}
 
 	appRegistration, err := controllers.CreateApplication(apiRouter.radixclient, registration)
+	if err != nil {
+		utils.WriteError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &appRegistration)
+}
+
+func (apiRouter *APIRouter) GetApplication(w http.ResponseWriter, r *http.Request) {
+	appName := mux.Vars(r)["appName"]
+	appRegistration, err := controllers.GetApplication(apiRouter.radixclient, appName)
+
 	if err != nil {
 		utils.WriteError(w, r, http.StatusBadRequest, err)
 		return
