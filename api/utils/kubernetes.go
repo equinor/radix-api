@@ -3,6 +3,8 @@ package utils
 import (
 	"os"
 
+	"github.com/Sirupsen/logrus"
+
 	logger "github.com/Sirupsen/logrus"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
@@ -13,6 +15,7 @@ import (
 
 // GetKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func GetKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
+	logrus.Info("Get kubernetes client")
 	config := getOutClusterClientConfig(token)
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -28,6 +31,7 @@ func GetKubernetesClient(token string) (kubernetes.Interface, radixclient.Interf
 }
 
 func getOutClusterClientConfig(token string) *restclient.Config {
+	logrus.Info("Using out of cluster config")
 	kubeConfig := &restclient.Config{
 		Host:        "https://kubernetes.default.svc",
 		BearerToken: token,
@@ -40,6 +44,7 @@ func getOutClusterClientConfig(token string) *restclient.Config {
 }
 
 func getInClusterClientConfig() *restclient.Config {
+	logrus.Info("Using in cluster config")
 	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {

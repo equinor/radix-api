@@ -24,6 +24,7 @@ func NewRadixMiddleware(next models.RadixHandlerFunc) *RadixMiddleware {
 
 // Handle Wraps radix handler methods
 func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
+	logrus.Info("Handle request")
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
 		WriteError(w, r, http.StatusBadRequest, err)
