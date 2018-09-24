@@ -1,6 +1,6 @@
 FROM golang:alpine3.7 as builder
 RUN apk update && apk add git && apk add -y ca-certificates curl
-COPY rootfs/radix-api-go /usr/local/bin/radix-api-go
+COPY ./rootfs/radix-api-go /usr/local/bin/radix-api-go
 RUN adduser -D -g '' radix-operator
 
 FROM scratch
