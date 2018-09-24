@@ -6,7 +6,7 @@ spec:
   environments:
   - name: prod
   components:
-  - name: "radix-api"
+  - name: "radix-api-go"
     src: "."
     dockerfileName: "Dockerfile"
     ports:

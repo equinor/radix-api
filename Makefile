@@ -1,7 +1,7 @@
 DOCKER_REGISTRY	?= radixdev.azurecr.io
 
-BINS	= radix-api
-IMAGES	= radix-api
+BINS	= radix-api-go
+IMAGES	= radix-api-go
 
 GIT_TAG		= $(shell git describe --tags --always 2>/dev/null)
 VERSION		?= ${GIT_TAG}
