@@ -46,7 +46,7 @@ func GetSubscriptions() models.Subscriptions {
 
 // GetPodStream Lists new pods
 func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
-	watchList := cache.NewFilteredListWatchFromClient(client.CoreV1().RESTClient(), "pods", "",
+	watchList := cache.NewFilteredListWatchFromClient(client.CoreV1().RESTClient(), "pods", corev1.NamespaceAll,
 		func(options *metav1.ListOptions) {
 		})
 	_, controller := cache.NewInformer(
