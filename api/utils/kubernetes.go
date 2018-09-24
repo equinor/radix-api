@@ -13,7 +13,7 @@ import (
 
 // GetKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func GetKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	config := getInClusterClientConfig()
+	config := getOutClusterClientConfig(token)
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		logger.Fatalf("getClusterConfig k8s client: %v", err)
