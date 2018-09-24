@@ -1,0 +1,15 @@
+apiVersion: radix.equinor.com/v1
+kind: RadixApplication
+metadata:
+  name: radix-api
+spec:
+  environments:
+  - name: prod
+  components:
+  - name: "radix-api"
+    src: "."
+    dockerfileName: "Dockerfile"
+    ports:
+    - name: http
+      port: 3002
+    public: true
