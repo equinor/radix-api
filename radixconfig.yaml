@@ -1,7 +1,7 @@
 apiVersion: radix.equinor.com/v1
 kind: RadixApplication
 metadata:
-  name: radix-api
+  name: radix-api-go
 spec:
   environments:
   - name: prod
