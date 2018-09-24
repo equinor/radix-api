@@ -1,0 +1,3 @@
+[[constraint]]
+  name = "github.com/statoil/radix-operator"
+  branch = "master"
