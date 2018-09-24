@@ -49,7 +49,7 @@ func main() {
 	parseFlagsFromArgs(fs)
 	apiRouter := routers.NewServer()
 
-	logrus.Infof("IKNU !!!! Api is serving on port %s", *port)
+	logrus.Infof("Api is serving on port %s", *port)
 	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), getHandler(apiRouter))
 	if err != nil {
 		logrus.Fatalf("Unable to start serving: %v", err)
