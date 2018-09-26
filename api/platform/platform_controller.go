@@ -49,7 +49,7 @@ func GetRoutes() models.Routes {
 			HandlerFunc: DeleteRegistation,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}/pipeline",
+			Path:        rootPath + "/registrations/{appName}/pipeline/{branch}",
 			Method:      "POST",
 			HandlerFunc: CreateApplicationPipelineJob,
 		},
@@ -271,7 +271,8 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 // CreateApplicationPipelineJob creates a pipeline job for the application
 func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	appName := mux.Vars(r)["appName"]
-	err := HandleCreateApplicationPipelineJob(client, radixclient, appName)
+	branch := mux.Vars(r)["branch"]
+	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
 
 	if err != nil {
 		utils.WriteError(w, r, http.StatusBadRequest, err)

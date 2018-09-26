@@ -15,7 +15,7 @@ const rootPath = "/job"
 func GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/pipeline",
+			Path:        rootPath + "/pipelines",
 			Method:      "GET",
 			HandlerFunc: GetPipelineJobs,
 		},

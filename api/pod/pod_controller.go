@@ -23,7 +23,7 @@ const rootPath = "/container"
 func GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/pod",
+			Path:        rootPath + "/pods",
 			Method:      "GET",
 			HandlerFunc: GetPods,
 			WatcherFunc: GetPodStream,
