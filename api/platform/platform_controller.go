@@ -3,20 +3,20 @@ package platform
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"regexp"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/graphql-go/graphql"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
+
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 var repoPattern = regexp.MustCompile("https://github.com/(.*?)")
@@ -28,27 +28,28 @@ const rootPath = "/platform"
 func GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/registration",
+			Path:        rootPath + "/registrations",
 			Method:      "POST",
 			HandlerFunc: CreateRegistation,
 		},
 		models.Route{
-			Path:        rootPath + "/registration",
+			Path:        rootPath + "/registrations",
 			Method:      "GET",
 			HandlerFunc: GetRegistations,
+			WatcherFunc: GetRegistrationStream,
 		},
 		models.Route{
-			Path:        rootPath + "/registration/{appName}",
+			Path:        rootPath + "/registrations/{appName}",
 			Method:      "GET",
 			HandlerFunc: GetRegistation,
 		},
 		models.Route{
-			Path:        rootPath + "/registration/{appName}",
+			Path:        rootPath + "/registrations/{appName}",
 			Method:      "DELETE",
 			HandlerFunc: DeleteRegistation,
 		},
 		models.Route{
-			Path:        rootPath + "/registration/{appName}/pipeline",
+			Path:        rootPath + "/registrations/{appName}/pipeline",
 			Method:      "POST",
 			HandlerFunc: CreateApplicationPipelineJob,
 		},
@@ -73,44 +74,112 @@ func GetSubscriptions() models.Subscriptions {
 
 // GetRegistrationStream Gets stream of registrations
 func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+	if arg == "" {
+		arg = `{
+			name
+			repository
+			description
+		}`
+	}
+
+	factory := informers.NewSharedInformerFactory(radixclient, 0)
+	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()
+	raInformer := factory.Radix().V1().RadixApplications().Informer()
+	rdInformer := factory.Radix().V1().RadixDeployments().Informer()
+
+	//	now := time.Now()
+
+	rrInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			rr := obj.(*v1.RadixRegistration)
+			//if rr.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")
+			data <- body
+			//}
+		},
+		UpdateFunc: func(old interface{}, new interface{}) {
+			rr := new.(*v1.RadixRegistration)
+			//if rr.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR updated")
+			data <- body
+			//}
+		},
+		DeleteFunc: func(obj interface{}) {
+			rr := obj.(*v1.RadixRegistration)
+			//if rr.GetDeletionTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR Deleted from Store")
+			data <- body
+			//}
+		},
+	})
+
+	raInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			ra := obj.(*v1.RadixApplication)
+			//if ra.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA Added to Store")
+			data <- body
+			//}
+		},
+		UpdateFunc: func(old interface{}, new interface{}) {
+			ra := new.(*v1.RadixApplication)
+			//if ra.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA updated")
+			data <- body
+			//}
+		},
+		DeleteFunc: func(obj interface{}) {
+			ra := obj.(*v1.RadixApplication)
+			//if ra.GetDeletionTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA deleted")
+			data <- body
+			//}
+		},
+	})
+
+	rdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			rd := obj.(*v1.RadixDeployment)
+			//if rd.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "New RD Added to Store")
+			data <- body
+			//}
+		},
+		UpdateFunc: func(old interface{}, new interface{}) {
+			rd := new.(*v1.RadixDeployment)
+			//if rd.GetCreationTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "RD updated")
+			data <- body
+			//}
+		},
+		DeleteFunc: func(obj interface{}) {
+			rd := obj.(*v1.RadixDeployment)
+			//if rd.GetDeletionTimestamp().After(now) {
+			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "RD deleted")
+			data <- body
+			//}
+		},
+	})
+
+	stop := make(chan struct{})
+	go rrInformer.Run(stop)
+	go raInformer.Run(stop)
+	go rdInformer.Run(stop)
+
 	for {
 		select {
 		case <-unsubscribe:
+			close(stop)
 			return
 		default:
-			radixRegistration := &v1.RadixRegistration{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "radix.equinor.com/v1",
-					Kind:       "RadixRegistration",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("Test%d", rand.Intn(100)),
-				},
-				Spec: v1.RadixRegistrationSpec{
-					Repository:   "Some Repo",
-					CloneURL:     "Some clone URL",
-					SharedSecret: "Some Shared Secret",
-					DeployKey:    "Some Public Key",
-					AdGroups:     nil,
-				},
-			}
-
-			queryData, err := getDataFromQuery(arg, radixRegistration)
-			if err != nil {
-				return
-			}
-
-			body, _ := json.Marshal(queryData)
-			data <- body
-
-			time.Sleep(5 * time.Second)
+			// Do nothing
 		}
 	}
 }
 
 // GetRegistations Lists registrations
 func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registration registrations
+	// swagger:operation GET /platform/registrations registrations
 	// ---
 	// summary: Lists the application registrations
 	// responses:
@@ -130,7 +199,7 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 
 // GetRegistation Gets registration by application name
 func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registration/{appName} registration
+	// swagger:operation GET /platform/registrations/{appName} registration
 	// ---
 	// summary: Gets the application registration by name
 	// parameters:
@@ -174,7 +243,7 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // DeleteRegistation Deletes registration for application
 func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /platform/registration/{appName} application
+	// swagger:operation DELETE /platform/registrations/{appName} application
 	// ---
 	// summary: Delete registration
 	// parameters:
@@ -212,19 +281,41 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	utils.JSONResponse(w, r, "ok")
 }
 
-func getDataFromQuery(arg string, radixRegistration *v1.RadixRegistration) (*graphql.Result, error) {
+func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
+	radixApplication := &Application{
+		Name:        name,
+		Repository:  repo,
+		Description: description,
+	}
+
+	queryData, err := getDataFromQuery(arg, radixApplication)
+	if err != nil {
+		return nil, err
+	}
+
+	body, _ := json.Marshal(queryData)
+	return body, nil
+}
+
+func getDataFromQuery(arg string, radixApplication *Application) (*graphql.Result, error) {
 	// Schema
 	fields := graphql.Fields{
 		"name": &graphql.Field{
 			Type: graphql.String,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return radixRegistration.Name, nil
+				return radixApplication.Name, nil
 			},
 		},
 		"repository": &graphql.Field{
 			Type: graphql.String,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return radixRegistration.Spec.Repository, nil
+				return radixApplication.Repository, nil
+			},
+		},
+		"description": &graphql.Field{
+			Type: graphql.String,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return radixApplication.Description, nil
 			},
 		},
 	}

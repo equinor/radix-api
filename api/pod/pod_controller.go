@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +26,7 @@ func GetRoutes() models.Routes {
 			Path:        rootPath + "/pod",
 			Method:      "GET",
 			HandlerFunc: GetPods,
+			WatcherFunc: GetPodStream,
 		},
 	}
 
@@ -68,6 +71,7 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 	for {
 		select {
 		case <-unsubscribe:
+			logrus.Info("Unsubscribe to pod data")
 			close(stop)
 			return
 		default:
@@ -86,6 +90,7 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	//     "$ref": "#/responses/podResp"
 	//   "404":
 	//     "$ref": "#/responses/notFound"
+
 	pods, err := HandleGetPods(client)
 
 	if err != nil {
