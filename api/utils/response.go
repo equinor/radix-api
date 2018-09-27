@@ -126,7 +126,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, err error) {
 	logrus.Error(err.Error())
 }
 
-// JSONResponse Marshals response
+// JSONResponse Marshals response with header
 func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	body, err := json.Marshal(result)
 	if err != nil {

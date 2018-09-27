@@ -71,7 +71,7 @@ func HandleDeleteRegistation(radixclient radixclient.Interface, appName string) 
 }
 
 // HandleCreateApplicationPipelineJob handler for CreateApplicationPipelineJob
-func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName string) error {
+func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) error {
 	logrus.Infof("Creating pipeline job for %s", appName)
 	registration, err := HandleGetRegistation(radixclient, appName)
 	if err != nil {
@@ -86,7 +86,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 
 	pipelineJobSpec := &job.PipelineJob{
 		AppName: radixRegistration.GetName(),
-		Branch:  "master",
+		Branch:  branch,
 		SSHRepo: radixRegistration.Spec.CloneURL,
 	}
 
