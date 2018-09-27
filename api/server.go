@@ -73,6 +73,7 @@ func initializeSocketServer(router *mux.Router) {
 		disconnect := make(chan struct{})
 		addSubscriptions(so, disconnect, client, radixclient, platform.GetSubscriptions())
 		addSubscriptions(so, disconnect, client, radixclient, pod.GetSubscriptions())
+		addSubscriptions(so, disconnect, client, radixclient, job.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			close(disconnect)

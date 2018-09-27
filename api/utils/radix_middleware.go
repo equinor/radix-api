@@ -46,14 +46,9 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		data := make(chan []byte)
 		subscription := make(chan struct{})
 
-		broker := &Broker{
-			Notifier:     data,
-			Subscription: subscription,
-		}
-
 		// Set it running - listening and broadcasting events
 		go handler.watch(client, radixclient, "", data, subscription)
-		broker.ServeSSE(w, r)
+		serveSSE(w, r, data, subscription)
 
 	} else {
 		handler.next(client, radixclient, w, r)
@@ -70,4 +65,43 @@ func BearerTokenVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next 
 	}
 
 	next(w, r)
+}
+
+// ServeSSE Serves server side events
+func serveSSE(w http.ResponseWriter, r *http.Request, data chan []byte, subscription chan struct{}) {
+	flusher, ok := w.(http.Flusher)
+
+	if !ok {
+		WriteError(w, r, http.StatusBadRequest, errors.New("Streaming unsupported"))
+		return
+	}
+
+	// Set the headers related to event streaming.
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Listen to connection close and un-register messageChan
+	notify := w.(http.CloseNotifier).CloseNotify()
+
+	go func() {
+		<-notify
+		close(subscription)
+	}()
+
+	for {
+		select {
+		case <-subscription:
+			return
+		default:
+			// Write to the ResponseWriter
+			// Server Sent Events compatible
+			w.Write(<-data)
+
+			// Flush the data immediatly instead of buffering it for later.
+			flusher.Flush()
+		}
+	}
+
 }

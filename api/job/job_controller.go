@@ -1,12 +1,20 @@
 package job
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
+
+	"github.com/Sirupsen/logrus"
 
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 const rootPath = "/job"
@@ -18,6 +26,7 @@ func GetRoutes() models.Routes {
 			Path:        rootPath + "/pipelines",
 			Method:      "GET",
 			HandlerFunc: GetPipelineJobs,
+			WatcherFunc: GetPipelineJobStream,
 		},
 	}
 
@@ -26,7 +35,49 @@ func GetRoutes() models.Routes {
 
 // GetSubscriptions Lists subscriptions this handler offers
 func GetSubscriptions() models.Subscriptions {
-	return models.Subscriptions{}
+	subscriptions := models.Subscriptions{
+		models.Subscription{
+			SubcribeCommand:    "job_subscribe",
+			UnsubscribeCommand: "job_unsubscribe",
+			DataType:           "job",
+			HandlerFunc:        GetPipelineJobStream,
+		},
+	}
+
+	return subscriptions
+}
+
+// GetPipelineJobStream Lists new pods
+func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+	watchList := cache.NewFilteredListWatchFromClient(client.BatchV1().RESTClient(), "jobs", corev1.NamespaceAll,
+		func(options *metav1.ListOptions) {
+		})
+	_, controller := cache.NewInformer(
+		watchList,
+		&batchv1.Job{},
+		time.Second*30,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				job := obj.(*batchv1.Job)
+				body, _ := json.Marshal(PipelineJob{Name: job.Name})
+				data <- body
+			},
+		},
+	)
+
+	stop := make(chan struct{})
+	go controller.Run(stop)
+
+	for {
+		select {
+		case <-unsubscribe:
+			logrus.Info("Unsubscribe to pod data")
+			close(stop)
+			return
+		default:
+		}
+	}
+
 }
 
 // GetPipelineJobs gets pipeline jobs
