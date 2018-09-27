@@ -18,8 +18,8 @@ type ApplicationRegistration struct {
 	// required: true
 	AdGroups []string `json:"adGroups"`
 
-	// AdGroups the public part of the deploy key
+	// PublicKey the public part of the deploy key
 	//
-	// required: true
+	// required: false
 	PublicKey string `json:"publicKey,omitempty"`
 }

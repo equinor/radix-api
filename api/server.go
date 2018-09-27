@@ -6,11 +6,11 @@ import (
 	"github.com/Sirupsen/logrus"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
-	"github.com/statoil/radix-api-go/models"
 	"github.com/statoil/radix-api-go/api/job"
 	"github.com/statoil/radix-api-go/api/platform"
 	"github.com/statoil/radix-api-go/api/pod"
 	"github.com/statoil/radix-api-go/api/utils"
+	"github.com/statoil/radix-api-go/models"
 	"github.com/urfave/negroni"
 
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -52,7 +52,7 @@ func NewServer() *Server {
 
 func addHandlerRoutes(router *mux.Router, routes models.Routes) {
 	for _, route := range routes {
-		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(route.HandlerFunc).Handle).Methods(route.Method)
+		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(route.HandlerFunc, route.WatcherFunc).Handle).Methods(route.Method)
 	}
 }
 
@@ -73,9 +73,13 @@ func initializeSocketServer(router *mux.Router) {
 		disconnect := make(chan struct{})
 		addSubscriptions(so, disconnect, client, radixclient, platform.GetSubscriptions())
 		addSubscriptions(so, disconnect, client, radixclient, pod.GetSubscriptions())
+		addSubscriptions(so, disconnect, client, radixclient, job.GetSubscriptions())
 
 		so.On("disconnection", func() {
-			close(disconnect)
+			if disconnect != nil {
+				close(disconnect)
+				disconnect = nil
+			}
 		})
 	})
 

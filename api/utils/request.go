@@ -3,50 +3,9 @@ package utils
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
-
-	"github.com/Sirupsen/logrus"
-	"github.com/statoil/radix-api-go/models"
 )
-
-// RadixMiddleware The middleware beween router and radix handler functions
-type RadixMiddleware struct {
-	next models.RadixHandlerFunc
-}
-
-// NewRadixMiddleware Constructor for radix middleware
-func NewRadixMiddleware(next models.RadixHandlerFunc) *RadixMiddleware {
-	handler := &RadixMiddleware{
-		next,
-	}
-
-	return handler
-}
-
-// Handle Wraps radix handler methods
-func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
-	logrus.Info("Handle request")
-	token, err := getBearerTokenFromHeader(r)
-	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	client, radixclient := GetKubernetesClient(token)
-	handler.next(client, radixclient, w, r)
-}
-
-// BearerTokenVerifyerMiddleware Will verify that the request has a bearer token
-func BearerTokenVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	_, err := getBearerTokenFromHeader(r)
-
-	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	next(w, r)
-}
 
 // GetBearerToken Gets bearer token from request header
 func getBearerTokenFromHeader(r *http.Request) (string, error) {
@@ -71,4 +30,21 @@ func getBearerTokenFromHeader(r *http.Request) (string, error) {
 // GetTokenFromQuery Gets token from query of the request
 func GetTokenFromQuery(request *http.Request) string {
 	return request.URL.Query().Get("token")
+}
+
+// IsWatch Indicates if request is asking for watch
+func isWatch(request *http.Request) (bool, error) {
+	watchArg := request.FormValue("watch")
+	var watch bool
+	if watchArg != "" {
+		parsedWatchArg, err := strconv.ParseBool(watchArg)
+
+		if err != nil {
+			return false, err
+		}
+
+		watch = parsedWatchArg
+	}
+
+	return watch, nil
 }

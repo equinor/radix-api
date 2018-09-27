@@ -10,6 +10,9 @@ import (
 // RadixHandlerFunc Pattern for handler functions
 type RadixHandlerFunc func(kubernetes.Interface, radixclient.Interface, http.ResponseWriter, *http.Request)
 
+// RadixWatcherFunc Pattern for watcher functions
+type RadixWatcherFunc func(kubernetes.Interface, radixclient.Interface, string, chan []byte, chan struct{})
+
 // Handler Pattern of an rest/stream handler
 type Handler interface {
 	GetRoutes() Routes
@@ -24,11 +27,8 @@ type Route struct {
 	Path        string
 	Method      string
 	HandlerFunc RadixHandlerFunc
+	WatcherFunc RadixWatcherFunc
 }
-
-// StreamHandlerFunc Is an adapter to allow the use of
-// ordinary stream functions as handlers
-type StreamHandlerFunc func(kubernetes.Interface, radixclient.Interface, string, chan []byte, chan struct{})
 
 // Subscriptions Holder of all subscriptions
 type Subscriptions []Subscription
@@ -38,5 +38,5 @@ type Subscription struct {
 	SubcribeCommand    string
 	UnsubscribeCommand string
 	DataType           string
-	HandlerFunc        StreamHandlerFunc
+	HandlerFunc        RadixWatcherFunc
 }
