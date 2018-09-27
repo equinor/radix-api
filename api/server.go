@@ -76,7 +76,10 @@ func initializeSocketServer(router *mux.Router) {
 		addSubscriptions(so, disconnect, client, radixclient, job.GetSubscriptions())
 
 		so.On("disconnection", func() {
-			close(disconnect)
+			if disconnect != nil {
+				close(disconnect)
+				disconnect = nil
+			}
 		})
 	})
 
