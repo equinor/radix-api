@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
@@ -162,19 +164,15 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	})
 
 	stop := make(chan struct{})
+	go func() {
+		<-unsubscribe
+		logrus.Info("Unsubscribe to application data")
+		close(stop)
+	}()
+
 	go rrInformer.Run(stop)
 	go raInformer.Run(stop)
 	go rdInformer.Run(stop)
-
-	for {
-		select {
-		case <-unsubscribe:
-			close(stop)
-			return
-		default:
-			// Do nothing
-		}
-	}
 }
 
 // GetRegistations Lists registrations

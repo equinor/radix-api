@@ -66,17 +66,13 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 	)
 
 	stop := make(chan struct{})
-	go controller.Run(stop)
+	go func() {
+		<-unsubscribe
+		logrus.Info("Unsubscribe to pod data")
+		close(stop)
+	}()
 
-	for {
-		select {
-		case <-unsubscribe:
-			logrus.Info("Unsubscribe to pod data")
-			close(stop)
-			return
-		default:
-		}
-	}
+	go controller.Run(stop)
 
 }
 

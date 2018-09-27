@@ -66,18 +66,13 @@ func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.I
 	)
 
 	stop := make(chan struct{})
+	go func() {
+		<-unsubscribe
+		logrus.Info("Unsubscribe to job data")
+		close(stop)
+	}()
+
 	go controller.Run(stop)
-
-	for {
-		select {
-		case <-unsubscribe:
-			logrus.Info("Unsubscribe to pod data")
-			close(stop)
-			return
-		default:
-		}
-	}
-
 }
 
 // GetPipelineJobs gets pipeline jobs
