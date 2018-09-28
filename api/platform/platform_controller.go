@@ -94,6 +94,8 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	rrInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
+			logrus.Infof("Added RR to store for %s", rr.Name)
+
 			//if rr.GetCreationTimestamp().After(now) {
 			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")
 			data <- body
@@ -166,7 +168,6 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	stop := make(chan struct{})
 	go func() {
 		<-unsubscribe
-		logrus.Info("Unsubscribe to application data")
 		close(stop)
 	}()
 
