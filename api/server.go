@@ -73,14 +73,25 @@ func initializeSocketServer(router *mux.Router) {
 		}
 
 		disconnect := make(chan struct{})
-		addSubscriptions(so, disconnect, client, radixclient, platform.GetSubscriptions())
-		addSubscriptions(so, disconnect, client, radixclient, pod.GetSubscriptions())
-		addSubscriptions(so, disconnect, client, radixclient, job.GetSubscriptions())
+		allSubscriptions := make(map[string]chan struct{})
+
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, platform.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pod.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, job.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
 				close(disconnect)
 				disconnect = nil
+
+				// close all open subscriptions
+				for datatype, subscription := range allSubscriptions {
+					close(subscription)
+					subscription = nil
+					delete(allSubscriptions, datatype)
+
+					logrus.Infof("Unsubscribed from %s", datatype)
+				}
 			}
 		})
 	})
@@ -88,7 +99,7 @@ func initializeSocketServer(router *mux.Router) {
 	router.Handle("/socket.io/", socketServer)
 }
 
-func addSubscriptions(so socketio.Socket, disconnect chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface, subscriptions models.Subscriptions) {
+func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscriptions map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface, subscriptions models.Subscriptions) {
 	for _, sub := range subscriptions {
 		var subscription chan struct{}
 
@@ -101,6 +112,8 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, client kuber
 			}
 
 			subscription = make(chan struct{})
+			allSubscriptions[sub.DataType] = subscription
+
 			data := make(chan []byte)
 			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
 			go writeEventToSocket(so, sub.DataType, disconnect, data)
@@ -113,6 +126,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, client kuber
 			if subscription != nil {
 				close(subscription)
 				subscription = nil
+				delete(allSubscriptions, sub.DataType)
 
 				logrus.Infof("Unsubscribed from %s", sub.DataType)
 			}

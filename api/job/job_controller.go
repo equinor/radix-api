@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -68,7 +66,6 @@ func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.I
 	stop := make(chan struct{})
 	go func() {
 		<-unsubscribe
-		logrus.Info("Unsubscribe to job data")
 		close(stop)
 	}()
 

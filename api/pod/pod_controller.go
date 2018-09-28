@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/statoil/radix-api-go/api/utils"
 	"github.com/statoil/radix-api-go/models"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +66,6 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 	stop := make(chan struct{})
 	go func() {
 		<-unsubscribe
-		logrus.Info("Unsubscribe to pod data")
 		close(stop)
 	}()
 
