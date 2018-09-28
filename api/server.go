@@ -72,16 +72,12 @@ func initializeSocketServer(router *mux.Router) {
 			so.Disconnect()
 		}
 
-		// For now use the token as a room identifyer
-		room := token
-		so.Join(room)
-
 		disconnect := make(chan struct{})
 		allSubscriptions := make(map[string]chan struct{})
 
-		addSubscriptions(room, so, disconnect, allSubscriptions, client, radixclient, platform.GetSubscriptions())
-		addSubscriptions(room, so, disconnect, allSubscriptions, client, radixclient, pod.GetSubscriptions())
-		addSubscriptions(room, so, disconnect, allSubscriptions, client, radixclient, job.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, platform.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pod.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, job.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
@@ -103,7 +99,7 @@ func initializeSocketServer(router *mux.Router) {
 	router.Handle("/socket.io/", socketServer)
 }
 
-func addSubscriptions(room string, so socketio.Socket, disconnect chan struct{}, allSubscriptions map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface, subscriptions models.Subscriptions) {
+func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscriptions map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface, subscriptions models.Subscriptions) {
 	for _, sub := range subscriptions {
 		var subscription chan struct{}
 
@@ -120,7 +116,7 @@ func addSubscriptions(room string, so socketio.Socket, disconnect chan struct{},
 
 			data := make(chan []byte)
 			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
-			go writeEventToSocket(room, so, sub.DataType, disconnect, data)
+			go writeEventToSocket(so, sub.DataType, disconnect, data)
 
 			logrus.Infof("Subscribing to %s", sub.DataType)
 		})
@@ -138,7 +134,7 @@ func addSubscriptions(room string, so socketio.Socket, disconnect chan struct{},
 	}
 }
 
-func writeEventToSocket(room string, so socketio.Socket, event string, disconnect chan struct{}, data chan []byte) {
+func writeEventToSocket(so socketio.Socket, event string, disconnect chan struct{}, data chan []byte) {
 	for {
 		select {
 		case <-disconnect:
@@ -146,7 +142,6 @@ func writeEventToSocket(room string, so socketio.Socket, event string, disconnec
 		case <-data:
 			for dataElement := range data {
 				so.Emit(event, string(dataElement))
-				so.BroadcastTo(room, event, string(dataElement))
 				logrus.Infof("Emitted data for %s", event)
 			}
 		}
