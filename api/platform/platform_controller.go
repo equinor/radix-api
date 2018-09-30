@@ -296,9 +296,9 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // CreateApplicationPipelineJob creates a pipeline job for the application
 func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/registrations/{appName}/branch/{branchName} registrations createApplicationPipelineJob
+	// swagger:operation POST /platform/registrations/{appName}/pipeline/{branchName} registrations createApplicationPipelineJob
 	// ---
-	// summary: Create an application registration
+	// summary: Create an application pipeline for a given application and branch
 	// parameters:
 	// - name: appName
 	//   in: path
