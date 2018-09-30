@@ -89,10 +89,14 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 	//        type: "array"
 	//        items:
 	//           "$ref": "#/definitions/PipelineJob"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
 	pipelines, err := HandleGetPipelineJobs(client)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
@@ -116,15 +120,17 @@ func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Inte
 	//     "$ref": "#/definitions/PipelineJob"
 	//   "400":
 	//     description: "Invalid job"
+	//   "401":
+	//     description: "Unauthorized"
 	var pipelineJob PipelineJob
 	if err := json.NewDecoder(r.Body).Decode(&pipelineJob); err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
 	err := HandleCreatePipelineJob(client, &pipelineJob)
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
