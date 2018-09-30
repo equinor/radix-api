@@ -29,13 +29,13 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	logrus.Info("Handle request")
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err)
+		WriteError(w, r, err)
 		return
 	}
 
 	watch, _ := isWatch(r)
 	if watch && handler.watch == nil {
-		WriteError(w, r, http.StatusBadRequest, errors.New("Watch is not supported for this type"))
+		WriteError(w, r, errors.New("Watch is not supported for this type"))
 		return
 	}
 
@@ -60,7 +60,7 @@ func BearerTokenVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next 
 	_, err := getBearerTokenFromHeader(r)
 
 	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err)
+		WriteError(w, r, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func serveSSE(w http.ResponseWriter, r *http.Request, data chan []byte, subscrip
 	flusher, ok := w.(http.Flusher)
 
 	if !ok {
-		WriteError(w, r, http.StatusBadRequest, errors.New("Streaming unsupported"))
+		WriteError(w, r, errors.New("Streaming unsupported"))
 		return
 	}
 

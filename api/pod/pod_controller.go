@@ -85,10 +85,14 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	//        type: "array"
 	//        items:
 	//           "$ref": "#/definitions/Pod"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
 	pods, err := HandleGetPods(client)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 

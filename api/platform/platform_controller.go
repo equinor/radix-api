@@ -188,10 +188,14 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	//        type: "array"
 	//        items:
 	//           "$ref": "#/definitions/ApplicationRegistration"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
 	appRegistrations, err := HandleGetRegistations(radixclient)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
@@ -212,13 +216,15 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	// responses:
 	//   "200":
 	//     "$ref": "#/definitions/ApplicationRegistration"
+	//   "401":
+	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	appRegistration, err := HandleGetRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
@@ -242,15 +248,17 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//     "$ref": "#/definitions/ApplicationRegistration"
 	//   "400":
 	//     description: "Invalid registration"
+	//   "401":
+	//     description: "Unauthorized"
 	var registration ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
 	appRegistration, err := HandleCreateRegistation(radixclient, registration)
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
@@ -271,13 +279,15 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	// responses:
 	//   "200":
 	//     description: "Registration deleted ok"
+	//   "401":
+	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	err := HandleDeleteRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
@@ -310,7 +320,7 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
 
 	if err != nil {
-		utils.WriteError(w, r, http.StatusBadRequest, err)
+		utils.WriteError(w, r, err)
 		return
 	}
 
