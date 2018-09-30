@@ -1,6 +1,6 @@
 // Radix Api Server.
 // This is the API Server for the Radix platform.
-// Schemes: https
+// Schemes: http, https
 // BasePath: /api/v1
 // Version: 0.0.1
 // Contact: Inge Knudsen <iknu@equinor.com>
