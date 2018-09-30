@@ -16,13 +16,13 @@ import (
 )
 
 // HandleGetRegistations handler for GetRegistations
-func HandleGetRegistations(radixclient radixclient.Interface) ([]*ApplicationRegistration, error) {
+func HandleGetRegistations(radixclient radixclient.Interface) ([]ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]*ApplicationRegistration, len(radixRegistationList.Items))
+	radixRegistations := make([]ApplicationRegistration, len(radixRegistationList.Items))
 	for i, rr := range radixRegistationList.Items {
 		builder := NewBuilder()
 		radixRegistations[i] = builder.withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration()
@@ -32,10 +32,10 @@ func HandleGetRegistations(radixclient radixclient.Interface) ([]*ApplicationReg
 }
 
 // HandleGetRegistation handler for GetRegistation
-func HandleGetRegistation(radixclient radixclient.Interface, appName string) (*ApplicationRegistration, error) {
+func HandleGetRegistation(radixclient radixclient.Interface, appName string) (ApplicationRegistration, error) {
 	radixRegistation, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return ApplicationRegistration{}, err
 	}
 
 	builder := NewBuilder()
@@ -103,7 +103,7 @@ type RegistrationBuilder interface {
 	withPublicKey(string) RegistrationBuilder
 	withPrivateKey(string) RegistrationBuilder
 	BuildRR() (*v1.RadixRegistration, error)
-	BuildRegistration() *ApplicationRegistration
+	BuildRegistration() ApplicationRegistration
 }
 
 type registrationBuilder struct {
@@ -169,8 +169,8 @@ func (rb *registrationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 	return radixRegistration, nil
 }
 
-func (rb *registrationBuilder) BuildRegistration() *ApplicationRegistration {
-	return &ApplicationRegistration{
+func (rb *registrationBuilder) BuildRegistration() ApplicationRegistration {
+	return ApplicationRegistration{
 		Repository:   rb.repository,
 		SharedSecret: rb.sharedSecret,
 		AdGroups:     rb.adGroups,

@@ -87,7 +87,11 @@ func defaultPort() string {
 
 func getHandler(apiRouter *routers.Server) http.Handler {
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:3001"},
+		AllowedOrigins: []string{
+			"http://localhost:3000", // For socket.io testing
+			"http://localhost:3001", // For socket.io testing
+			"http://localhost:8086", // For swagger testing
+		},
 		AllowCredentials: true,
 	})
 

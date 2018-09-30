@@ -178,27 +178,29 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 
 // GetRegistations Lists registrations
 func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations registrations
+	// swagger:operation GET /platform/registrations registrations getRegistations
 	// ---
 	// summary: Lists the application registrations
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/applicationRegistration"
-	//   "404":
-	//     "$ref": "#/responses/notFound"
-	appRegistration, err := HandleGetRegistations(radixclient)
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ApplicationRegistration"
+	appRegistrations, err := HandleGetRegistations(radixclient)
 
 	if err != nil {
 		utils.WriteError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	utils.JSONResponse(w, r, appRegistrations)
 }
 
 // GetRegistation Gets registration by application name
 func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName} registration
+	// swagger:operation GET /platform/registrations/{appName} registrations getRegistation
 	// ---
 	// summary: Gets the application registration by name
 	// parameters:
@@ -209,9 +211,9 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   required: true
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/appRegResp"
+	//     "$ref": "#/definitions/ApplicationRegistration"
 	//   "404":
-	//     "$ref": "#/responses/notFound"
+	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	appRegistration, err := HandleGetRegistation(radixclient, appName)
 
@@ -225,6 +227,21 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 
 // CreateRegistation Creates new registration for application
 func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /platform/registrations registrations createRegistation
+	// ---
+	// summary: Create an application registration
+	// parameters:
+	// - name: applicationRegistration
+	//   in: body
+	//   description: Application to register
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ApplicationRegistration"
+	// responses:
+	//   "200":
+	//     "$ref": "#/definitions/ApplicationRegistration"
+	//   "400":
+	//     description: "Invalid registration"
 	var registration ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
 		utils.WriteError(w, r, http.StatusBadRequest, err)
@@ -242,7 +259,7 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // DeleteRegistation Deletes registration for application
 func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /platform/registrations/{appName} application
+	// swagger:operation DELETE /platform/registrations/{appName} registrations deleteRegistation
 	// ---
 	// summary: Delete registration
 	// parameters:
@@ -253,9 +270,9 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//   required: true
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: "Registration deleted ok"
 	//   "404":
-	//     "$ref": "#/responses/notFound"
+	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	err := HandleDeleteRegistation(radixclient, appName)
 
@@ -269,6 +286,25 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // CreateApplicationPipelineJob creates a pipeline job for the application
 func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /platform/registrations/{appName}/branch/{branchName} registrations createApplicationPipelineJob
+	// ---
+	// summary: Create an application registration
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: branchName
+	//   in: path
+	//   description: Name of branch
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Pipeline job started ok"
+	//   "404":
+	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	branch := mux.Vars(r)["branch"]
 	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)

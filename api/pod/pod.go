@@ -1,7 +1,7 @@
 package pod
 
 // Pod hold info about pod
-// swagger:model pod
+// swagger:model Pod
 type Pod struct {
 	// Name of the pod
 	//

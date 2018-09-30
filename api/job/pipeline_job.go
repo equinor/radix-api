@@ -1,31 +1,25 @@
 package job
 
 // PipelineJob hold info about pipeline job
-// swagger:model pipelineJob
+// swagger:model PipelineJob
 type PipelineJob struct {
 	// Name of the job
 	//
-	// required: false
+	// required: true
 	Name string `json:"name"`
 
 	// Name of the application
 	//
-	// required: false
+	// required: true
 	AppName string `json:"appName"`
 
 	// Name of the branch
 	//
-	// required: false
+	// required: true
 	Branch string `json:"branch"`
 
 	// Name of the branch
 	//
-	// required: false
+	// required: true
 	SSHRepo string `json:"sshRepo"`
-}
-
-// PipelineJobsResponse hold info about pipeline job
-// swagger:response pipelineJobsResp
-type PipelineJobsResponse struct {
-	Jobs []PipelineJob
 }
