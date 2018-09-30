@@ -49,6 +49,7 @@ HAS_GOMETALINTER := $(shell command -v gometalinter;)
 HAS_DEP          := $(shell command -v dep;)
 HAS_GIT          := $(shell command -v git;)
 HAS_SWAGGER      := $(shell command -v swagger;)
+HAS_STATIK 		 := $(shell command -v statik;)
 
 vendor:
 ifndef HAS_GIT
@@ -65,6 +66,10 @@ endif
 ifndef HAS_SWAGGER
 	go get -u github.com/go-swagger/go-swagger/cmd/swagger
 endif
+
+ifndef HAS_STATIK
+	go get github.com/rakyll/statik
+endif 
 
 .PHONY: bootstrap
 bootstrap: vendor
