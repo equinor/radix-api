@@ -26,6 +26,11 @@ func GetRoutes() models.Routes {
 			HandlerFunc: GetPipelineJobs,
 			WatcherFunc: GetPipelineJobStream,
 		},
+		models.Route{
+			Path:        rootPath + "/pipelines",
+			Method:      "POST",
+			HandlerFunc: CreatePipelineJob,
+		},
 	}
 
 	return routes
@@ -74,14 +79,16 @@ func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.I
 
 // GetPipelineJobs gets pipeline jobs
 func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /job/pipeline getPipelineJobs
+	// swagger:operation GET /job/pipelines pipelines getPipelineJobs
 	// ---
 	// summary: Gets the pipeline jobs
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/pipelineJobsResp"
-	//   "404":
-	//     "$ref": "#/responses/notFound"
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/PipelineJob"
 	pipelines, err := HandleGetPipelineJobs(client)
 
 	if err != nil {
@@ -89,5 +96,37 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 		return
 	}
 
-	utils.JSONResponse(w, r, &pipelines)
+	utils.JSONResponse(w, r, pipelines)
+}
+
+// CreatePipelineJob gets pipeline jobs
+func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /job/pipelines pipelines createPipelineJob
+	// ---
+	// summary: Create a pipeline job
+	// parameters:
+	// - name: pipelineJob
+	//   in: body
+	//   description: Pipeline job to start
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/PipelineJob"
+	// responses:
+	//   "200":
+	//     "$ref": "#/definitions/PipelineJob"
+	//   "400":
+	//     description: "Invalid job"
+	var pipelineJob PipelineJob
+	if err := json.NewDecoder(r.Body).Decode(&pipelineJob); err != nil {
+		utils.WriteError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	err := HandleCreatePipelineJob(client, &pipelineJob)
+	if err != nil {
+		utils.WriteError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, pipelineJob)
 }

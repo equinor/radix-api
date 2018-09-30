@@ -75,15 +75,16 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 
 // GetPods list pods
 func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /pod pods
+	// swagger:operation GET /container/pods pods getPods
 	// ---
 	// summary: Gets a list of all pods
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/podResp"
-	//   "404":
-	//     "$ref": "#/responses/notFound"
-
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/Pod"
 	pods, err := HandleGetPods(client)
 
 	if err != nil {

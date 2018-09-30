@@ -1,7 +1,6 @@
 package platform
 
 // Application describe an application
-// swagger:model application
 type Application struct {
 	// Repository the github repository
 	//

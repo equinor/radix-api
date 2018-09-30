@@ -18,7 +18,7 @@ const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
 // HandleGetPipelineJobs Handler for GetPipelineJobs
-func HandleGetPipelineJobs(client kubernetes.Interface) (*PipelineJobsResponse, error) {
+func HandleGetPipelineJobs(client kubernetes.Interface) ([]PipelineJob, error) {
 	jobList, err := client.BatchV1().Jobs(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func HandleGetPipelineJobs(client kubernetes.Interface) (*PipelineJobsResponse, 
 		jobs[i] = PipelineJob{Name: job.Name}
 	}
 
-	return &PipelineJobsResponse{Jobs: jobs}, nil
+	return jobs, nil
 }
 
 // HandleCreatePipelineJob Handles the creation of a pipeline job for an application
