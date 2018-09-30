@@ -18,6 +18,12 @@ build: $(BINS)
 test:
 	go test -cover `go list ./...
 
+.PHONY: swagger
+swagger:
+	swagger generate spec -o ./swagger.json --scan-models
+	mv swagger.json ./swaggerui_src/swagger.json
+	statik -src=./swaggerui_src/ -p swaggerui
+
 .PHONY: $(BINS)
 $(BINS): vendor
 	go build -ldflags '$(LDFLAGS)' -o bin/$@ .
@@ -42,6 +48,7 @@ docker-push: $(addsuffix -push,$(IMAGES))
 HAS_GOMETALINTER := $(shell command -v gometalinter;)
 HAS_DEP          := $(shell command -v dep;)
 HAS_GIT          := $(shell command -v git;)
+HAS_SWAGGER      := $(shell command -v swagger;)
 
 vendor:
 ifndef HAS_GIT
@@ -55,6 +62,9 @@ ifndef HAS_GOMETALINTER
 	gometalinter --install
 endif
 	dep ensure
+ifndef HAS_SWAGGER
+	go get -u github.com/go-swagger/go-swagger/cmd/swagger
+endif
 
 .PHONY: bootstrap
 bootstrap: vendor
