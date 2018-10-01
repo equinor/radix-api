@@ -250,6 +250,8 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Invalid registration"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "409":
+	//     description: "Conflict"
 	var registration ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
 		utils.WriteError(w, r, err)
