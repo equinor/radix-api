@@ -13,3 +13,5 @@
 
 vendor/
 debug
+swaggerui/statik.go
+swaggerui_src/swagger.json
