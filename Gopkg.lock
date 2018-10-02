@@ -295,6 +295,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:2ba054ffd0e1bd13f2e6fa0b2203df5d9f04ff354f71bbb08168926c6b74b756"
+  name = "github.com/rakyll/statik"
+  packages = ["fs"]
+  pruneopts = ""
+  revision = "1355192d24db2566a83c3914e187e2a7e7679832"
+  version = "v0.1.5"
+
+[[projects]]
   digest = "1:78c9cf43ddeacd0e472f412082227a0fac2ae107ee60e9112156f9371f9912cf"
   name = "github.com/rs/cors"
   packages = ["."]
@@ -312,6 +320,22 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:74e211f2f1bdb77ea15105f2d7351842c667d9ea830414e1efeeb4578bb1555b"
+  name = "github.com/statoil/radix-api"
+  packages = [
+    "api",
+    "api/job",
+    "api/platform",
+    "api/pod",
+    "api/utils",
+    "models",
+    "swaggerui",
+  ]
+  pruneopts = ""
+  revision = "64ec85d074ccfd6e14dbd60f72df75f29ae1a8e2"
+
+[[projects]]
+  branch = "master"
   digest = "1:a64c6f7afa742143142e1ddd3048c7662b8671377534386d150bd7a9c881f382"
   name = "github.com/statoil/radix-operator"
   packages = [
@@ -320,6 +344,11 @@
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/radix/v1",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/radix",
+    "pkg/client/informers/externalversions/radix/v1",
+    "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
   revision = "583d87288759e1e22e6a1789086505d6c3620411"
@@ -629,15 +658,25 @@
     "github.com/gorilla/mux",
     "github.com/graphql-go/graphql",
     "github.com/pkg/errors",
+    "github.com/rakyll/statik/fs",
     "github.com/rs/cors",
     "github.com/spf13/pflag",
+    "github.com/statoil/radix-api/api",
+    "github.com/statoil/radix-api/api/job",
+    "github.com/statoil/radix-api/api/platform",
+    "github.com/statoil/radix-api/api/pod",
+    "github.com/statoil/radix-api/api/utils",
+    "github.com/statoil/radix-api/models",
+    "github.com/statoil/radix-api/swaggerui",
     "github.com/statoil/radix-operator/pkg/apis/radix/v1",
     "github.com/statoil/radix-operator/pkg/client/clientset/versioned",
+    "github.com/statoil/radix-operator/pkg/client/informers/externalversions",
     "github.com/stretchr/testify/assert",
     "github.com/urfave/negroni",
     "golang.org/x/crypto/ssh",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/plugin/pkg/client/auth",

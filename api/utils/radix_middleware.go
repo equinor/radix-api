@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/statoil/radix-api-go/models"
+	"github.com/statoil/radix-api/models"
 )
 
 // RadixMiddleware The middleware beween router and radix handler functions

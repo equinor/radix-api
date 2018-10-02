@@ -7,12 +7,12 @@ import (
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
-	"github.com/statoil/radix-api-go/api/job"
-	"github.com/statoil/radix-api-go/api/platform"
-	"github.com/statoil/radix-api-go/api/pod"
-	"github.com/statoil/radix-api-go/api/utils"
-	"github.com/statoil/radix-api-go/models"
-	_ "github.com/statoil/radix-api-go/swaggerui" // statik files
+	"github.com/statoil/radix-api/api/job"
+	"github.com/statoil/radix-api/api/platform"
+	"github.com/statoil/radix-api/api/pod"
+	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-api/models"
+	_ "github.com/statoil/radix-api/swaggerui" // statik files
 	"github.com/urfave/negroni"
 
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
