@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/statoil/radix-api-go/api/utils"
-	"github.com/statoil/radix-api-go/models"
+	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-api/models"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"

@@ -29,7 +29,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/rs/cors"
 	"github.com/spf13/pflag"
-	routers "github.com/statoil/radix-api-go/api"
+	routers "github.com/statoil/radix-api/api"
 
 	// Force loading of needed authentication library
 

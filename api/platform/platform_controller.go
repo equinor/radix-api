@@ -9,8 +9,8 @@ import (
 	"github.com/Sirupsen/logrus"
 
 	"github.com/gorilla/mux"
-	"github.com/statoil/radix-api-go/api/utils"
-	"github.com/statoil/radix-api-go/models"
+	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-api/models"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 
 	"github.com/graphql-go/graphql"
