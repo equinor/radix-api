@@ -45,14 +45,25 @@ func NewServer() *Server {
 	addHandlerRoutes(router, job.GetRoutes())
 	addHandlerRoutes(router, pod.GetRoutes())
 
-	withBearerTokenVerifyer := http.NewServeMux()
-	withBearerTokenVerifyer.Handle("/", negroni.New(
-		negroni.HandlerFunc(utils.BearerTokenVerifyerMiddleware),
+	serveMux := http.NewServeMux()
+	serveMux.Handle("/api/", negroni.New(
+		negroni.HandlerFunc(utils.BearerTokenHeaderVerifyerMiddleware),
+		negroni.Wrap(router),
+	))
+
+	serveMux.Handle("/socket.io/", negroni.New(
+		negroni.HandlerFunc(utils.BearerTokenQueryVerifyerMiddleware),
+		negroni.Wrap(router),
+	))
+
+	// TODO: We should maybe have oauth to stop any non-radix user from beeing
+	// able to see the API
+	serveMux.Handle("/swaggerui/", negroni.New(
 		negroni.Wrap(router),
 	))
 
 	n := negroni.Classic()
-	n.UseHandler(withBearerTokenVerifyer)
+	n.UseHandler(serveMux)
 
 	server := &Server{
 		n,
