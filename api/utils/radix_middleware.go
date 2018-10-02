@@ -55,12 +55,24 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// BearerTokenVerifyerMiddleware Will verify that the request has a bearer token
-func BearerTokenVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+// BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header
+func BearerTokenHeaderVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	_, err := getBearerTokenFromHeader(r)
 
 	if err != nil {
 		WriteError(w, r, err)
+		return
+	}
+
+	next(w, r)
+}
+
+// BearerTokenQueryVerifyerMiddleware Will verify that the request has a bearer token as query variable
+func BearerTokenQueryVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	// For socket connections it should be in the query
+	jwtToken := GetTokenFromQuery(r)
+	if jwtToken == "" {
+		WriteError(w, r, errors.New("Authentication token is required"))
 		return
 	}
 

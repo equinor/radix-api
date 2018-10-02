@@ -14,12 +14,7 @@ func getBearerTokenFromHeader(r *http.Request) (string, error) {
 	var jwtToken string
 
 	if len(authArr) != 2 {
-		// For socket connections it should be in the query
-		jwtToken = GetTokenFromQuery(r)
-		if jwtToken == "" {
-			return "", errors.New("Authentication header is invalid: " + authorizationHeader)
-		}
-
+		return "", errors.New("Authentication header is invalid: " + authorizationHeader)
 	} else {
 		jwtToken = authArr[1]
 	}
