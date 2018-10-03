@@ -1,0 +1,4 @@
+privateRegistry: radixdev.azurecr.io
+pipeline-image:
+  repository: radix-pipeline
+  tag: "latest"
