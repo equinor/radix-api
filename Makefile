@@ -24,6 +24,24 @@ swagger:
 	mv swagger.json ./swaggerui_src/swagger.json
 	statik -src=./swaggerui_src/ -p swaggerui
 
+.PHONY: deploy
+deploy:
+	# Download deploy key + webhook shared secret
+	az keyvault secret download -f ./charts/api-server/values.yaml -n radix-api-registration --vault-name radix-boot-dev-vault
+	# Install RR referring to the downloaded secrets
+	helm install -n radix-api-server ./charts/api-server/
+	# Delete secret file to avvoid being checked in
+	rm ./charts/api-server/values.yaml
+	# Allow operator to pick up RR. TODO should be handled with waiting for app namespace
+	sleep 5
+	# Create pipeline job
+	helm install -n radix-init-deploy ./charts/init-deploy/		
+
+.PHONY: undeploy
+undeploy:
+	helm delete --purge radix-init-deploy
+	helm delete --purge radix-api-server
+
 .PHONY: $(BINS)
 $(BINS): vendor
 	go build -ldflags '$(LDFLAGS)' -o bin/$@ .
