@@ -181,6 +181,12 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	// swagger:operation GET /platform/registrations registrations getRegistations
 	// ---
 	// summary: Lists the application registrations
+	// parameters:
+	// - name: sshRepo
+	//   in: query
+	//   description: ssh repo to identify Radix application if exists
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -192,7 +198,9 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	appRegistrations, err := HandleGetRegistations(radixclient)
+	sshRepo := r.FormValue("sshRepo")
+
+	appRegistrations, err := HandleGetRegistations(radixclient, sshRepo)
 
 	if err != nil {
 		utils.WriteError(w, r, err)

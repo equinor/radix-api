@@ -19,3 +19,16 @@ func TestGetCloneURLRepo(t *testing.T) {
 
 	assert.Equal(t, actual, expected, "getCloneURLFromRepo - not equal")
 }
+
+func TestFilterOnSshRepo(t *testing.T) {
+	builder := NewBuilder()
+	rr, _ := builder.withRepository("https://github.com/Equinor/my-app").BuildRR()
+
+	expected := false
+	actual := filterOnSshRepo(rr, "git@github.com:Equinor/my-app.git")
+	assert.Equal(t, actual, expected, "filterOnSshRepo - expected to not be filtered")
+
+	expected = true
+	actual = filterOnSshRepo(rr, "git@github.com:Equinor/my-app2.git")
+	assert.Equal(t, actual, expected, "filterOnSshRepo - expected to be filtered")
+}

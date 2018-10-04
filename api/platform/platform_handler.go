@@ -16,16 +16,20 @@ import (
 )
 
 // HandleGetRegistations handler for GetRegistations
-func HandleGetRegistations(radixclient radixclient.Interface) ([]ApplicationRegistration, error) {
+func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([]ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]ApplicationRegistration, len(radixRegistationList.Items))
-	for i, rr := range radixRegistationList.Items {
+	radixRegistations := make([]ApplicationRegistration, 0)
+	for _, rr := range radixRegistationList.Items {
+		if filterOnSshRepo(&rr, sshRepo) {
+			continue
+		}
+
 		builder := NewBuilder()
-		radixRegistations[i] = builder.withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration()
+		radixRegistations = append(radixRegistations, builder.withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration())
 	}
 
 	return radixRegistations, nil
@@ -181,6 +185,16 @@ func (rb *registrationBuilder) BuildRegistration() ApplicationRegistration {
 // NewBuilder Constructor for registration builder
 func NewBuilder() RegistrationBuilder {
 	return &registrationBuilder{}
+}
+
+func filterOnSshRepo(rr *v1.RadixRegistration, sshURL string) bool {
+	filter := true
+
+	if strings.EqualFold(rr.Spec.CloneURL, sshURL) {
+		filter = false
+	}
+
+	return filter
 }
 
 func getProjectNameFromRepo(repo string) (string, error) {
