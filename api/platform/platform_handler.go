@@ -36,7 +36,7 @@ func HandleGetRegistation(radixclient radixclient.Interface, appName string) (Ap
 	}
 
 	builder := NewBuilder()
-	return builder.withRepository(radixRegistation.Spec.Repository).withSharedSecret(radixRegistation.Spec.SharedSecret).withAdGroups(radixRegistation.Spec.AdGroups).BuildRegistration(), nil
+	return builder.withName(radixRegistation.Name).withRepository(radixRegistation.Spec.Repository).withSharedSecret(radixRegistation.Spec.SharedSecret).withAdGroups(radixRegistation.Spec.AdGroups).BuildRegistration(), nil
 }
 
 // HandleCreateRegistation handler for CreateRegistation
@@ -81,7 +81,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 	}
 
 	builder := NewBuilder()
-	radixRegistration, err := builder.withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
+	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 	if err != nil {
 		return err
 	}
