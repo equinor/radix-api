@@ -96,7 +96,7 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 	pipelines, err := HandleGetPipelineJobs(client)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -124,13 +124,13 @@ func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Unauthorized"
 	var pipelineJob PipelineJob
 	if err := json.NewDecoder(r.Body).Decode(&pipelineJob); err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	err := HandleCreatePipelineJob(client, &pipelineJob)
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 

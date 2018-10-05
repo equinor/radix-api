@@ -92,7 +92,7 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	pods, err := HandleGetPods(client)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 

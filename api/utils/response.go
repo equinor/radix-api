@@ -20,7 +20,7 @@ import (
 type Error struct {
 	Type Type
 	// a message that can be printed out for the user
-	Help string `json:"help"`
+	Message string `json:"message"`
 	// the underlying error that can be e.g., logged for developers to look at
 	Err error
 }
@@ -50,13 +50,13 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 		errMsg = e.Err.Error()
 	}
 	jsonable := &struct {
-		Type string `json:"type"`
-		Help string `json:"help"`
-		Err  string `json:"error,omitempty"`
+		Type    string `json:"type"`
+		Message string `json:"message"`
+		Err     string `json:"error,omitempty"`
 	}{
-		Type: string(e.Type),
-		Help: e.Help,
-		Err:  errMsg,
+		Type:    string(e.Type),
+		Message: e.Message,
+		Err:     errMsg,
 	}
 	return json.Marshal(jsonable)
 }
@@ -64,19 +64,28 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON Parses json
 func (e *Error) UnmarshalJSON(data []byte) error {
 	jsonable := &struct {
-		Type string `json:"type"`
-		Help string `json:"help"`
-		Err  string `json:"error,omitempty"`
+		Type    string `json:"type"`
+		Message string `json:"message"`
+		Err     string `json:"error,omitempty"`
 	}{}
 	if err := json.Unmarshal(data, &jsonable); err != nil {
 		return err
 	}
 	e.Type = Type(jsonable.Type)
-	e.Help = jsonable.Help
+	e.Message = jsonable.Message
 	if jsonable.Err != "" {
 		e.Err = errors.New(jsonable.Err)
 	}
 	return nil
+}
+
+// ValidationError Used for indication of validation errors
+func ValidationError(kind, message string) error {
+	return &Error{
+		Type:    User,
+		Err:     fmt.Errorf("%s failed validation", kind),
+		Message: message,
+	}
 }
 
 // CoverAllError Cover all other errors
@@ -84,7 +93,7 @@ func CoverAllError(err error) *Error {
 	return &Error{
 		Type: User,
 		Err:  err,
-		Help: `Error: ` + err.Error() + `
+		Message: `Error: ` + err.Error() + `
 	We don't have a specific help message for the error above.
 `,
 	}
@@ -124,7 +133,7 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err er
 			w.WriteHeader(code)
 			switch err := err.(type) {
 			case *Error:
-				fmt.Fprint(w, err.Help)
+				fmt.Fprint(w, err.Message)
 			default:
 				fmt.Fprint(w, err.Error())
 			}
