@@ -28,7 +28,7 @@ import (
 
 	"github.com/rs/cors"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
 	routers "github.com/statoil/radix-api/api"
 
@@ -50,10 +50,10 @@ func main() {
 	parseFlagsFromArgs(fs)
 	apiRouter := routers.NewServer()
 
-	logrus.Infof("Api is serving on port %s", *port)
+	log.Infof("Api is serving on port %s", *port)
 	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), getHandler(apiRouter))
 	if err != nil {
-		logrus.Fatalf("Unable to start serving: %v", err)
+		log.Fatalf("Unable to start serving: %v", err)
 	}
 }
 

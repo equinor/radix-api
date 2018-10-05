@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -88,7 +88,7 @@ func initializeSocketServer(router *mux.Router) {
 		// Make an extra check that the user has the correct access
 		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
 		if err != nil {
-			logrus.Errorf("Socket connection refused, due to %v", err)
+			log.Errorf("Socket connection refused, due to %v", err)
 
 			// Refuse connection
 			so.Disconnect()
@@ -112,7 +112,7 @@ func initializeSocketServer(router *mux.Router) {
 					subscription = nil
 					delete(allSubscriptions, datatype)
 
-					logrus.Infof("Unsubscribed from %s", datatype)
+					log.Infof("Unsubscribed from %s", datatype)
 				}
 			}
 		})
@@ -140,7 +140,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscript
 			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
 			go writeEventToSocket(so, sub.DataType, disconnect, data)
 
-			logrus.Infof("Subscribing to %s", sub.DataType)
+			log.Infof("Subscribing to %s", sub.DataType)
 		})
 
 		so.On(sub.UnsubscribeCommand, func() {
@@ -150,7 +150,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscript
 				subscription = nil
 				delete(allSubscriptions, sub.DataType)
 
-				logrus.Infof("Unsubscribed from %s", sub.DataType)
+				log.Infof("Unsubscribed from %s", sub.DataType)
 			}
 		})
 	}
@@ -164,7 +164,7 @@ func writeEventToSocket(so socketio.Socket, event string, disconnect chan struct
 		case <-data:
 			for dataElement := range data {
 				so.Emit(event, string(dataElement))
-				logrus.Infof("Emitted data for %s", event)
+				log.Infof("Emitted data for %s", event)
 			}
 		}
 	}

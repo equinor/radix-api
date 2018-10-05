@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/models"
 )
 
@@ -26,7 +26,7 @@ func NewRadixMiddleware(next models.RadixHandlerFunc, watch models.RadixWatcherF
 
 // Handle Wraps radix handler methods
 func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
-	logrus.Info("Handle request")
+	log.Info("Handle request")
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
 		WriteError(w, r, err)
