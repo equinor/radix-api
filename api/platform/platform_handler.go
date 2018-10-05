@@ -24,7 +24,7 @@ func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([
 
 	radixRegistations := make([]ApplicationRegistration, 0)
 	for _, rr := range radixRegistationList.Items {
-		if filterOnSshRepo(&rr, sshRepo) {
+		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
 		}
 
@@ -187,7 +187,7 @@ func NewBuilder() RegistrationBuilder {
 	return &registrationBuilder{}
 }
 
-func filterOnSshRepo(rr *v1.RadixRegistration, sshURL string) bool {
+func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
 	filter := true
 
 	if strings.EqualFold(rr.Spec.CloneURL, sshURL) {
