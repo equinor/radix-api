@@ -1,6 +1,8 @@
 package platform
 
 import (
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/utils"
@@ -26,7 +28,7 @@ func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([
 		}
 
 		builder := NewBuilder()
-		radixRegistations = append(radixRegistations, builder.withName(rr.Name).builder.withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration())
+		radixRegistations = append(radixRegistations, builder.withName(rr.Name).withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration())
 	}
 
 	return radixRegistations, nil
