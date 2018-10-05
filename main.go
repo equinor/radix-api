@@ -83,7 +83,7 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 }
 
 func defaultPort() string {
-	return "3003"
+	return "3002"
 }
 
 func getHandler(apiRouter *routers.Server) http.Handler {
