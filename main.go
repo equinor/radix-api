@@ -2,8 +2,8 @@
 // This is the API Server for the Radix platform.
 // Schemes: http, https
 // BasePath: /api/v1
-// Version: 0.0.2
-// Contact: Inge Knudsen <iknu@equinor.com>
+// Version: 0.0.3
+// Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
 // - application/json
@@ -83,7 +83,7 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 }
 
 func defaultPort() string {
-	return "3002"
+	return "3003"
 }
 
 func getHandler(apiRouter *routers.Server) http.Handler {

@@ -3,6 +3,12 @@ package platform
 // ApplicationRegistration describe an application
 // swagger:model ApplicationRegistration
 type ApplicationRegistration struct {
+	// Name the unique name of the Radix application
+	//
+	// required: true
+	// example: radix-canary-golang
+	Name string `json:"name"`
+
 	// Repository the github repository
 	//
 	// required: true

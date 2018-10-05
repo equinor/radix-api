@@ -195,7 +195,7 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	appRegistrations, err := HandleGetRegistations(radixclient)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -224,7 +224,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	appRegistration, err := HandleGetRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -254,13 +254,13 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Conflict"
 	var registration ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	appRegistration, err := HandleCreateRegistation(radixclient, registration)
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -289,7 +289,7 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	err := HandleDeleteRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -322,7 +322,7 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
