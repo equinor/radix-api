@@ -198,14 +198,11 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	log.Info("Enter GetRegistations")
 	sshRepo := r.FormValue("sshRepo")
-	log.Infof("SSH repo: %s", sshRepo)
 
 	appRegistrations, err := HandleGetRegistations(radixclient, sshRepo)
 
 	if err != nil {
-		log.Errorf("Error: %s", err)
 		utils.ErrorResponse(w, r, err)
 		return
 	}

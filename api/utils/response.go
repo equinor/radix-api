@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sort"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/golang/gddo/httputil/header"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -99,17 +99,6 @@ func CoverAllError(err error) *Error {
 	}
 }
 
-// WriteError Ensure error is correctly serialized
-func WriteError(w http.ResponseWriter, r *http.Request, err error) {
-	switch err.(type) {
-	default:
-		writeErrorWithCode(w, r, http.StatusBadRequest, err)
-	case *apierrors.StatusError:
-		se := err.(*apierrors.StatusError)
-		writeErrorWithCode(w, r, int(se.ErrStatus.Code), err)
-	}
-}
-
 func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err error) {
 	// An Accept header with "application/json" is sent by clients
 	// understanding how to decode JSON errors. Older clients don't
@@ -143,7 +132,7 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err er
 	w.Header().Set(http.CanonicalHeaderKey("Content-Type"), "text/plain; charset=utf-8")
 	w.WriteHeader(code)
 	fmt.Fprint(w, err.Error())
-	log.Error(err.Error())
+	logrus.Error(err.Error())
 }
 
 // JSONResponse Marshals response with header
@@ -165,21 +154,29 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 	var code int
 	var ok bool
 
-	err := errors.Cause(apiError)
-	if outErr, ok = err.(*Error); !ok {
-		outErr = CoverAllError(apiError)
-	}
-	switch outErr.Type {
-	case Missing:
-		code = http.StatusNotFound
-	case User:
-		code = http.StatusUnprocessableEntity
-	case Server:
-		code = http.StatusInternalServerError
+	switch apiError.(type) {
+	case *apierrors.StatusError:
+		// Reflect any underlying error from Kubernetes API
+		se := apiError.(*apierrors.StatusError)
+		writeErrorWithCode(w, r, int(se.ErrStatus.Code), apiError)
 	default:
-		code = http.StatusInternalServerError
+		err := errors.Cause(apiError)
+		if outErr, ok = err.(*Error); !ok {
+			outErr = CoverAllError(apiError)
+		}
+		switch outErr.Type {
+		case Missing:
+			code = http.StatusNotFound
+		case User:
+			code = http.StatusUnprocessableEntity
+		case Server:
+			code = http.StatusInternalServerError
+		default:
+			code = http.StatusInternalServerError
+		}
+		writeErrorWithCode(w, r, code, outErr)
+
 	}
-	writeErrorWithCode(w, r, code, outErr)
 }
 
 // negotiateContentType picks a content type based on the Accept

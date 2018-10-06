@@ -28,13 +28,13 @@ func NewRadixMiddleware(next models.RadixHandlerFunc, watch models.RadixWatcherF
 func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
-		WriteError(w, r, err)
+		ErrorResponse(w, r, err)
 		return
 	}
 
 	watch, _ := isWatch(r)
 	if watch && handler.watch == nil {
-		WriteError(w, r, errors.New("Watch is not supported for this type"))
+		ErrorResponse(w, r, errors.New("Watch is not supported for this type"))
 		return
 	}
 
@@ -50,7 +50,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		serveSSE(w, r, data, subscription)
 
 	} else {
-		log.Infof("Passing request to %v", r)
+		log.Infof("Passing request to %v", handler.next)
 		handler.next(client, radixclient, w, r)
 	}
 }
@@ -60,7 +60,7 @@ func BearerTokenHeaderVerifyerMiddleware(w http.ResponseWriter, r *http.Request,
 	_, err := getBearerTokenFromHeader(r)
 
 	if err != nil {
-		WriteError(w, r, err)
+		ErrorResponse(w, r, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func BearerTokenQueryVerifyerMiddleware(w http.ResponseWriter, r *http.Request, 
 	// For socket connections it should be in the query
 	jwtToken := GetTokenFromQuery(r)
 	if jwtToken == "" {
-		WriteError(w, r, errors.New("Authentication token is required"))
+		ErrorResponse(w, r, errors.New("Authentication token is required"))
 		return
 	}
 
@@ -84,7 +84,7 @@ func serveSSE(w http.ResponseWriter, r *http.Request, data chan []byte, subscrip
 	flusher, ok := w.(http.Flusher)
 
 	if !ok {
-		WriteError(w, r, errors.New("Streaming unsupported"))
+		ErrorResponse(w, r, errors.New("Streaming unsupported"))
 		return
 	}
 
