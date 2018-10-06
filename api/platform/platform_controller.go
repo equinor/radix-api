@@ -205,6 +205,7 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	appRegistrations, err := HandleGetRegistations(radixclient, sshRepo)
 
 	if err != nil {
+		log.Errorf("Error: %s", err)
 		utils.ErrorResponse(w, r, err)
 		return
 	}

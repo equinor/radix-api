@@ -26,7 +26,6 @@ func NewRadixMiddleware(next models.RadixHandlerFunc, watch models.RadixWatcherF
 
 // Handle Wraps radix handler methods
 func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
-	log.Info("Handle request")
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
 		WriteError(w, r, err)
@@ -51,6 +50,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		serveSSE(w, r, data, subscription)
 
 	} else {
+		log.Infof("Passing request to %v", r)
 		handler.next(client, radixclient, w, r)
 	}
 }
