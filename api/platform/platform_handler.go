@@ -79,17 +79,17 @@ func HandleDeleteRegistation(radixclient radixclient.Interface, appName string) 
 }
 
 // HandleCreateApplicationPipelineJob handler for CreateApplicationPipelineJob
-func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) error {
+func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) (*job.PipelineJob, error) {
 	log.Infof("Creating pipeline job for %s", appName)
 	registration, err := HandleGetRegistation(radixclient, appName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	builder := NewBuilder()
 	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pipelineJobSpec := &job.PipelineJob{
@@ -99,8 +99,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 	}
 
 	job.HandleCreatePipelineJob(client, pipelineJobSpec)
-
-	return nil
+	return pipelineJobSpec, nil
 }
 
 func validate(registration ApplicationRegistration) error {

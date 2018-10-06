@@ -13,7 +13,7 @@ func TestGetCloneURLRepo(t *testing.T) {
 	assert.Equal(t, actual, expected, "getCloneURLFromRepo - not equal")
 }
 
-func TestfilterOnSSHRepo(t *testing.T) {
+func TestFilterOnSSHRepo(t *testing.T) {
 	builder := NewBuilder()
 	rr, _ := builder.withRepository("https://github.com/Equinor/my-app").BuildRR()
 

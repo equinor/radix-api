@@ -327,14 +327,14 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	branch := mux.Vars(r)["branch"]
-	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
+	jobSpec, err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "ok")
+	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s started", jobSpec.Name, jobSpec.AppName, jobSpec.Branch))
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
