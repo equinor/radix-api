@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/golang/gddo/httputil/header"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -132,7 +134,6 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err er
 	w.Header().Set(http.CanonicalHeaderKey("Content-Type"), "text/plain; charset=utf-8")
 	w.WriteHeader(code)
 	fmt.Fprint(w, err.Error())
-	logrus.Error(err.Error())
 }
 
 // JSONResponse Marshals response with header
@@ -154,11 +155,18 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 	var code int
 	var ok bool
 
+	log.Error(apiError.Error())
+
 	switch apiError.(type) {
+	case *url.Error:
+		// Reflect any underlying network error
+		writeErrorWithCode(w, r, http.StatusInternalServerError, apiError)
+
 	case *apierrors.StatusError:
 		// Reflect any underlying error from Kubernetes API
 		se := apiError.(*apierrors.StatusError)
 		writeErrorWithCode(w, r, int(se.ErrStatus.Code), apiError)
+
 	default:
 		err := errors.Cause(apiError)
 		if outErr, ok = err.(*Error); !ok {

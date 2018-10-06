@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/models"
 )
 
@@ -50,7 +49,6 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		serveSSE(w, r, data, subscription)
 
 	} else {
-		log.Infof("Passing request to %v", handler.next)
 		handler.next(client, radixclient, w, r)
 	}
 }
