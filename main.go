@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.10
+// Version: 0.0.11
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -92,12 +92,15 @@ func getHandler(apiRouter *routers.Server) http.Handler {
 			"http://localhost:3000", // For socket.io testing
 			"http://localhost:3001", // For socket.io testing
 			"http://localhost:8086", // For swaggerui testing
-			"http://web.radix-web-console-dev/",
+			// TODO: We should consider:
+			// 1. "https://*.radix.equinor.com"
+			// 2. Keep cors rules in ingresses
 			"https://web-radix-web-console-dev.playground-v1-6-0.dev.radix.equinor.com",
 			"https://web-radix-web-console-prod.playground-v1-6-0.dev.radix.equinor.com",
 		},
-		AllowedHeaders: []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
-		AllowedMethods: []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
+		AllowCredentials: true, // Needed for sockets
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
 	})
 	return c.Handler(apiRouter.Middleware)
 }

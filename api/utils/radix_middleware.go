@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/models"
 )
 

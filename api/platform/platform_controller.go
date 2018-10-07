@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
