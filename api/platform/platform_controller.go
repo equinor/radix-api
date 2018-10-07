@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/Sirupsen/logrus"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
@@ -94,7 +93,7 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	rrInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
-			logrus.Infof("Added RR to store for %s", rr.Name)
+			log.Infof("Added RR to store for %s", rr.Name)
 
 			//if rr.GetCreationTimestamp().After(now) {
 			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")

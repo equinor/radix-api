@@ -1,7 +1,7 @@
 package platform
 
 import (
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -68,13 +68,13 @@ func HandleCreateRegistation(radixclient radixclient.Interface, registration App
 
 // HandleDeleteRegistation handler for DeleteRegistation
 func HandleDeleteRegistation(radixclient radixclient.Interface, appName string) error {
-	logrus.Infof("Deleting app with name %s", appName)
+	log.Infof("Deleting app with name %s", appName)
 	return nil
 }
 
 // HandleCreateApplicationPipelineJob handler for CreateApplicationPipelineJob
 func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) error {
-	logrus.Infof("Creating pipeline job for %s", appName)
+	log.Infof("Creating pipeline job for %s", appName)
 	registration, err := HandleGetRegistation(radixclient, appName)
 	if err != nil {
 		return err

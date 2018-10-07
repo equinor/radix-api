@@ -35,11 +35,11 @@ deploy:
 	# Allow operator to pick up RR. TODO should be handled with waiting for app namespace
 	sleep 5
 	# Create pipeline job
-	helm install -n radix-init-deploy ./charts/init-deploy/		
+	helm install -n radix-api-init-deploy ./charts/init-deploy/		
 
 .PHONY: undeploy
 undeploy:
-	helm delete --purge radix-init-deploy
+	helm delete --purge radix-api-init-deploy
 	helm delete --purge radix-api-server
 
 .PHONY: $(BINS)
