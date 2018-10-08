@@ -1,12 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
+	"github.com/rs/cors"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/platform"
 	"github.com/statoil/radix-api/api/pod"
@@ -28,7 +30,7 @@ type Server struct {
 }
 
 // NewServer Constructor function
-func NewServer() *Server {
+func NewServer() http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	statikFS, err := fs.New()
@@ -69,7 +71,43 @@ func NewServer() *Server {
 		n,
 	}
 
-	return server
+	return getCORSHandler(server)
+}
+
+func getCORSHandler(apiRouter *Server) http.Handler {
+	clusterName := getClusterName()
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:3000", // For socket.io testing
+			"http://localhost:3001", // For socket.io testing
+			"http://localhost:8086", // For swaggerui testing
+			// TODO: We should consider:
+			// 1. "https://*.radix.equinor.com"
+			// 2. Keep cors rules in ingresses
+			getHostName("web", "radix-web-console-dev", clusterName),
+			getHostName("web", "radix-web-console-prod", clusterName),
+		},
+		AllowCredentials: true, // Needed for sockets
+		MaxAge:           600,
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
+	})
+	return c.Handler(apiRouter.Middleware)
+}
+
+func getClusterName() string {
+	client, _ := utils.GetInClusterKubernetesClient()
+	radixconfigmap, err := client.CoreV1().ConfigMaps("default").Get("radix-config", metav1.GetOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	clustername := radixconfigmap.Data["clustername"]
+	return clustername
+}
+
+func getHostName(componentName, namespace, clustername string) string {
+	return fmt.Sprintf("https://%s-%s.%s.dev.radix.equinor.com", componentName, namespace, clustername)
 }
 
 func addHandlerRoutes(router *mux.Router, routes models.Routes) {
@@ -83,12 +121,12 @@ func initializeSocketServer(router *mux.Router) {
 
 	socketServer.On("connection", func(so socketio.Socket) {
 		token := utils.GetTokenFromQuery(so.Request())
-		client, radixclient := utils.GetKubernetesClient(token)
+		client, radixclient := utils.GetOutClusterKubernetesClient(token)
 
 		// Make an extra check that the user has the correct access
 		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
 		if err != nil {
-			logrus.Errorf("Socket connection refused, due to %v", err)
+			log.Errorf("Socket connection refused, due to %v", err)
 
 			// Refuse connection
 			so.Disconnect()
@@ -112,7 +150,7 @@ func initializeSocketServer(router *mux.Router) {
 					subscription = nil
 					delete(allSubscriptions, datatype)
 
-					logrus.Infof("Unsubscribed from %s", datatype)
+					log.Infof("Unsubscribed from %s", datatype)
 				}
 			}
 		})
@@ -140,7 +178,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscript
 			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
 			go writeEventToSocket(so, sub.DataType, disconnect, data)
 
-			logrus.Infof("Subscribing to %s", sub.DataType)
+			log.Infof("Subscribing to %s", sub.DataType)
 		})
 
 		so.On(sub.UnsubscribeCommand, func() {
@@ -150,7 +188,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscript
 				subscription = nil
 				delete(allSubscriptions, sub.DataType)
 
-				logrus.Infof("Unsubscribed from %s", sub.DataType)
+				log.Infof("Unsubscribed from %s", sub.DataType)
 			}
 		})
 	}
@@ -164,7 +202,7 @@ func writeEventToSocket(so socketio.Socket, event string, disconnect chan struct
 		case <-data:
 			for dataElement := range data {
 				so.Emit(event, string(dataElement))
-				logrus.Infof("Emitted data for %s", event)
+				log.Infof("Emitted data for %s", event)
 			}
 		}
 	}
