@@ -161,6 +161,7 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 	case *url.Error:
 		// Reflect any underlying network error
 		writeErrorWithCode(w, r, http.StatusInternalServerError, apiError)
+
 	case *apierrors.StatusError:
 		// Reflect any underlying error from Kubernetes API
 		se := apiError.(*apierrors.StatusError)
@@ -182,6 +183,7 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 			code = http.StatusInternalServerError
 		}
 		writeErrorWithCode(w, r, code, outErr)
+
 	}
 }
 

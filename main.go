@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.11
+// Version: 0.0.12
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -26,8 +26,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/cors"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
 	routers "github.com/statoil/radix-api/api"
@@ -48,10 +46,9 @@ func main() {
 	)
 
 	parseFlagsFromArgs(fs)
-	apiRouter := routers.NewServer()
 
 	log.Infof("Api is serving on port %s", *port)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), getHandler(apiRouter))
+	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer())
 	if err != nil {
 		log.Fatalf("Unable to start serving: %v", err)
 	}
@@ -84,23 +81,4 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 
 func defaultPort() string {
 	return "3002"
-}
-
-func getHandler(apiRouter *routers.Server) http.Handler {
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{
-			"http://localhost:3000", // For socket.io testing
-			"http://localhost:3001", // For socket.io testing
-			"http://localhost:8086", // For swaggerui testing
-			// TODO: We should consider:
-			// 1. "https://*.radix.equinor.com"
-			// 2. Keep cors rules in ingresses
-			"https://web-radix-web-console-dev.playground-v1-6-0.dev.radix.equinor.com",
-			"https://web-radix-web-console-prod.playground-v1-6-0.dev.radix.equinor.com",
-		},
-		AllowCredentials: true, // Needed for sockets
-		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
-		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
-	})
-	return c.Handler(apiRouter.Middleware)
 }

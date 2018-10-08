@@ -45,6 +45,7 @@ func HandleCreatePipelineJob(client kubernetes.Interface, jobSpec *PipelineJob) 
 	}
 
 	log.Infof("Started pipeline: %s, %s", jobName, workerImage)
+	jobSpec.Name = jobName
 	return nil
 }
 

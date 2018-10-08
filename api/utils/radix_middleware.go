@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/models"
 )
 
@@ -26,7 +25,6 @@ func NewRadixMiddleware(next models.RadixHandlerFunc, watch models.RadixWatcherF
 
 // Handle Wraps radix handler methods
 func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
-	log.Info("Handle request")
 	token, err := getBearerTokenFromHeader(r)
 	if err != nil {
 		ErrorResponse(w, r, err)
@@ -39,7 +37,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, radixclient := GetKubernetesClient(token)
+	client, radixclient := GetOutClusterKubernetesClient(token)
 
 	if watch {
 		// Sending data as server side events

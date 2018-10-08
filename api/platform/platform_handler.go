@@ -1,6 +1,8 @@
 package platform
 
 import (
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/utils"
@@ -13,16 +15,20 @@ import (
 )
 
 // HandleGetRegistations handler for GetRegistations
-func HandleGetRegistations(radixclient radixclient.Interface) ([]ApplicationRegistration, error) {
+func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([]ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]ApplicationRegistration, len(radixRegistationList.Items))
-	for i, rr := range radixRegistationList.Items {
+	radixRegistations := make([]ApplicationRegistration, 0)
+	for _, rr := range radixRegistationList.Items {
+		if filterOnSSHRepo(&rr, sshRepo) {
+			continue
+		}
+
 		builder := NewBuilder()
-		radixRegistations[i] = builder.withName(rr.Name).withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration()
+		radixRegistations = append(radixRegistations, builder.withName(rr.Name).withRepository(rr.Spec.Repository).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration())
 	}
 
 	return radixRegistations, nil
@@ -73,17 +79,17 @@ func HandleDeleteRegistation(radixclient radixclient.Interface, appName string) 
 }
 
 // HandleCreateApplicationPipelineJob handler for CreateApplicationPipelineJob
-func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) error {
+func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) (*job.PipelineJob, error) {
 	log.Infof("Creating pipeline job for %s", appName)
 	registration, err := HandleGetRegistation(radixclient, appName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	builder := NewBuilder()
 	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pipelineJobSpec := &job.PipelineJob{
@@ -93,8 +99,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 	}
 
 	job.HandleCreatePipelineJob(client, pipelineJobSpec)
-
-	return nil
+	return pipelineJobSpec, nil
 }
 
 func validate(registration ApplicationRegistration) error {
@@ -203,6 +208,17 @@ func (rb *registrationBuilder) BuildRegistration() ApplicationRegistration {
 // NewBuilder Constructor for registration builder
 func NewBuilder() RegistrationBuilder {
 	return &registrationBuilder{}
+}
+
+func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
+	filter := true
+
+	if strings.TrimSpace(sshURL) == "" ||
+		strings.EqualFold(rr.Spec.CloneURL, sshURL) {
+		filter = false
+	}
+
+	return filter
 }
 
 func getCloneURLFromRepo(repo string) (string, error) {
