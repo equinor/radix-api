@@ -1,9 +1,9 @@
 // Radix Api Server.
 // This is the API Server for the Radix platform.
-// Schemes: http, https
+// Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.1
-// Contact: Inge Knudsen <iknu@equinor.com>
+// Version: 0.0.12
+// Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
 // - application/json
@@ -26,8 +26,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/rs/cors"
+	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
 	routers "github.com/statoil/radix-api/api"
 
@@ -47,12 +46,11 @@ func main() {
 	)
 
 	parseFlagsFromArgs(fs)
-	apiRouter := routers.NewServer()
 
-	logrus.Infof("Api is serving on port %s", *port)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), getHandler(apiRouter))
+	log.Infof("Api is serving on port %s", *port)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer())
 	if err != nil {
-		logrus.Fatalf("Unable to start serving: %v", err)
+		log.Fatalf("Unable to start serving: %v", err)
 	}
 }
 
@@ -83,17 +81,4 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 
 func defaultPort() string {
 	return "3002"
-}
-
-func getHandler(apiRouter *routers.Server) http.Handler {
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{
-			"http://localhost:3000", // For socket.io testing
-			"http://localhost:3001", // For socket.io testing
-			"http://localhost:8086", // For swagger testing
-		},
-		AllowCredentials: true,
-	})
-
-	return c.Handler(apiRouter.Middleware)
 }

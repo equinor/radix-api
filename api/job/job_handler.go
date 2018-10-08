@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 const workerImage = "radix-pipeline"
@@ -37,21 +37,22 @@ func HandleCreatePipelineJob(client kubernetes.Interface, jobSpec *PipelineJob) 
 	jobName, randomNr := getUniqueJobName(workerImage)
 	job := createPipelineJob(jobName, randomNr, jobSpec.SSHRepo, jobSpec.Branch)
 
-	logrus.Infof("Starting pipeline: %s, %s", jobName, workerImage)
+	log.Infof("Starting pipeline: %s, %s", jobName, workerImage)
 	appNamespace := fmt.Sprintf("%s-app", jobSpec.AppName)
 	job, err := client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
 		return err
 	}
 
-	logrus.Infof("Started pipeline: %s, %s", jobName, workerImage)
+	log.Infof("Started pipeline: %s, %s", jobName, workerImage)
+	jobSpec.Name = jobName
 	return nil
 }
 
 func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.Job {
 	gitCloneCommand := fmt.Sprintf("git clone %s -b %s .", sshURL, "master")
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, "latest")
-	logrus.Infof("Using image: %s", imageTag)
+	log.Infof("Using image: %s", imageTag)
 
 	backOffLimit := int32(4)
 	defaultMode := int32(256)

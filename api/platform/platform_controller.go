@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/Sirupsen/logrus"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
@@ -94,7 +93,7 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	rrInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
-			logrus.Infof("Added RR to store for %s", rr.Name)
+			log.Infof("Added RR to store for %s", rr.Name)
 
 			//if rr.GetCreationTimestamp().After(now) {
 			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")
@@ -181,6 +180,12 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	// swagger:operation GET /platform/registrations registrations getRegistations
 	// ---
 	// summary: Lists the application registrations
+	// parameters:
+	// - name: sshRepo
+	//   in: query
+	//   description: ssh repo to identify Radix application if exists
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -192,10 +197,12 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	appRegistrations, err := HandleGetRegistations(radixclient)
+	sshRepo := r.FormValue("sshRepo")
+
+	appRegistrations, err := HandleGetRegistations(radixclient, sshRepo)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -224,7 +231,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	appRegistration, err := HandleGetRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -254,13 +261,13 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Conflict"
 	var registration ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	appRegistration, err := HandleCreateRegistation(radixclient, registration)
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -289,7 +296,7 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	err := HandleDeleteRegistation(radixclient, appName)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -319,14 +326,14 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	branch := mux.Vars(r)["branch"]
-	err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
+	jobSpec, err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
 
 	if err != nil {
-		utils.WriteError(w, r, err)
+		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "ok")
+	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s started", jobSpec.Name, jobSpec.AppName, jobSpec.Branch))
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
