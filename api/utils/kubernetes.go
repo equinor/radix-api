@@ -11,21 +11,16 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// GetKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func GetKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	log.Info("Get kubernetes client")
+// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
+func GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
 	config := getOutClusterClientConfig(token)
-	client, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("getClusterConfig k8s client: %v", err)
-	}
+	return getKubernetesClientFromConfig(config)
+}
 
-	radixClient, err := radixclient.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("getClusterConfig radix client: %v", err)
-	}
-
-	return client, radixClient
+// GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
+func GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
+	config := getInClusterClientConfig()
+	return getKubernetesClientFromConfig(config)
 }
 
 func getOutClusterClientConfig(token string) *restclient.Config {
@@ -53,4 +48,18 @@ func getInClusterClientConfig() *restclient.Config {
 	}
 
 	return config
+}
+
+func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface) {
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("getClusterConfig k8s client: %v", err)
+	}
+
+	radixClient, err := radixclient.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("getClusterConfig radix client: %v", err)
+	}
+
+	return client, radixClient
 }

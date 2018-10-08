@@ -213,7 +213,8 @@ func NewBuilder() RegistrationBuilder {
 func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
 	filter := true
 
-	if strings.EqualFold(rr.Spec.CloneURL, sshURL) {
+	if strings.TrimSpace(sshURL) == "" ||
+		strings.EqualFold(rr.Spec.CloneURL, sshURL) {
 		filter = false
 	}
 

@@ -37,7 +37,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, radixclient := GetKubernetesClient(token)
+	client, radixclient := GetOutClusterKubernetesClient(token)
 
 	if watch {
 		// Sending data as server side events

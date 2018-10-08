@@ -1,12 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
+	"github.com/rs/cors"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/platform"
 	"github.com/statoil/radix-api/api/pod"
@@ -28,7 +30,7 @@ type Server struct {
 }
 
 // NewServer Constructor function
-func NewServer() *Server {
+func NewServer() http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	statikFS, err := fs.New()
@@ -69,7 +71,43 @@ func NewServer() *Server {
 		n,
 	}
 
-	return server
+	return getCORSHandler(server)
+}
+
+func getCORSHandler(apiRouter *Server) http.Handler {
+	clusterName := getClusterName()
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:3000", // For socket.io testing
+			"http://localhost:3001", // For socket.io testing
+			"http://localhost:8086", // For swaggerui testing
+			// TODO: We should consider:
+			// 1. "https://*.radix.equinor.com"
+			// 2. Keep cors rules in ingresses
+			getHostName("web", "radix-web-console-dev", clusterName),
+			getHostName("web", "radix-web-console-prod", clusterName),
+		},
+		AllowCredentials: true, // Needed for sockets
+		MaxAge:           600,
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
+	})
+	return c.Handler(apiRouter.Middleware)
+}
+
+func getClusterName() string {
+	client, _ := utils.GetInClusterKubernetesClient()
+	radixconfigmap, err := client.CoreV1().ConfigMaps("default").Get("radix-config", metav1.GetOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	clustername := radixconfigmap.Data["clustername"]
+	return clustername
+}
+
+func getHostName(componentName, namespace, clustername string) string {
+	return fmt.Sprintf("https://%s-%s.%s.dev.radix.equinor.com", componentName, namespace, clustername)
 }
 
 func addHandlerRoutes(router *mux.Router, routes models.Routes) {
@@ -83,7 +121,7 @@ func initializeSocketServer(router *mux.Router) {
 
 	socketServer.On("connection", func(so socketio.Socket) {
 		token := utils.GetTokenFromQuery(so.Request())
-		client, radixclient := utils.GetKubernetesClient(token)
+		client, radixclient := utils.GetOutClusterKubernetesClient(token)
 
 		// Make an extra check that the user has the correct access
 		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})

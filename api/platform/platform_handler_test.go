@@ -24,4 +24,8 @@ func TestFilterOnSSHRepo(t *testing.T) {
 	expected = true
 	actual = filterOnSSHRepo(rr, "git@github.com:Equinor/my-app2.git")
 	assert.Equal(t, actual, expected, "filterOnSSHRepo - expected to be filtered")
+
+	expected = false
+	actual = filterOnSSHRepo(rr, " ")
+	assert.Equal(t, actual, expected, "filterOnSSHRepo - expected to not be filtered as filter is not provided")
 }
