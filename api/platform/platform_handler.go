@@ -118,7 +118,11 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 		SSHRepo: radixRegistration.Spec.CloneURL,
 	}
 
-	job.HandleCreatePipelineJob(client, pipelineJobSpec)
+	err = job.HandleCreatePipelineJob(client, pipelineJobSpec)
+	if err != nil {
+		return nil, err
+	}
+
 	return pipelineJobSpec, nil
 }
 
