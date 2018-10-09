@@ -14,27 +14,30 @@ func TestGetCloneURLRepo_ValidRepo_CreatesValidClone(t *testing.T) {
 	assert.Equal(t, actual, expected, "getCloneURLFromRepo - not equal")
 }
 
-func TestFilterOnSSHRepo_WhenSet_Filter(t *testing.T) {
-	builder := NewBuilder()
-	rr, _ := builder.withRepository("https://github.com/Equinor/my-app").BuildRR()
+func TestGetRegistations_WithFilterOnSSHRepo_Filter(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	anyApp := NewBuilder().withName("my-app").withRepository("https://github.com/Equinor/my-app").BuildRegistration()
+	HandleCreateRegistation(radixclient, *anyApp)
 
-	expected := false
-	actual := filterOnSSHRepo(rr, "git@github.com:Equinor/my-app.git")
-	assert.Equal(t, actual, expected, "filterOnSSHRepo - expected to not be filtered")
+	registrations, _ := HandleGetRegistations(radixclient, "git@github.com:Equinor/my-app.git")
+	expected := 1
+	actual := len(registrations)
+	assert.Equal(t, actual, expected, "GetRegistations - expected to be listed")
 
-	expected = true
-	actual = filterOnSSHRepo(rr, "git@github.com:Equinor/my-app2.git")
-	assert.Equal(t, actual, expected, "filterOnSSHRepo - expected to be filtered")
+	registrations, _ = HandleGetRegistations(radixclient, "git@github.com:Equinor/my-app2.git")
+	expected = 0
+	actual = len(registrations)
+	assert.Equal(t, actual, expected, "GetRegistations - expected not to be listed")
 
-	expected = false
-	actual = filterOnSSHRepo(rr, " ")
-	assert.Equal(t, actual, expected, "filterOnSSHRepo - expected to not be filtered as filter is not provided")
+	registrations, _ = HandleGetRegistations(radixclient, " ")
+	expected = 1
+	actual = len(registrations)
+	assert.Equal(t, actual, expected, "GetRegistations - expected to be listed when no filter is provided")
 }
 
 func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder()
-	builder.withName("Some Name")
+	builder := NewBuilder().withName("Any Name")
 	registration, _ := HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
 	expected := ""
@@ -43,19 +46,42 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder()
-	builder.withName("Some Name").withRepository("Some repo string")
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo string")
 	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
 	assert.NotEmpty(t, registration.PublicKey, "HandleCreateRegistation - when repo is provided, and deploy key is not, generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder()
-	builder.withName("Some Name").withRepository("Some repo string").withPublicKey("Some public key")
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo string").withPublicKey("Any public key")
 	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
-	expected = "Some public key"
+	expected = "Any public key"
 	actual = registration.PublicKey
 	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is provided, as well as deploy key, do not generate deploy key")
+}
+
+func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("Any Name")
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo string")
+	registration, _ := HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
+	expected := "Any repo string"
+	actual := registration.Repository
+	assert.Equal(t, actual, expected, "HandleUpdateRegistation - repository should be updatable")
+
+	builder = NewBuilder().withName("Any Name").withSharedSecret("Any shared secret")
+	registration, _ = HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
+	expected = "Any shared secret"
+	actual = registration.SharedSecret
+	assert.Equal(t, actual, expected, "HandleUpdateRegistation - shared secret should be updatable")
+
+	builder = NewBuilder().withName("Any Name").withPublicKey("Any public key")
+	registration, _ = HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
+	expected = "Any public key"
+	actual = registration.PublicKey
+	assert.Equal(t, actual, expected, "HandleUpdateRegistation - public key should be updatable")
+
 }
