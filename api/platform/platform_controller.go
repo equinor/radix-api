@@ -34,11 +34,6 @@ func GetRoutes() models.Routes {
 			HandlerFunc: CreateRegistation,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}",
-			Method:      "PUT",
-			HandlerFunc: UpdateRegistation,
-		},
-		models.Route{
 			Path:        rootPath + "/registrations",
 			Method:      "GET",
 			HandlerFunc: GetRegistations,
@@ -271,51 +266,6 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	}
 
 	appRegistration, err := HandleCreateRegistation(radixclient, registration)
-	if err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
-	utils.JSONResponse(w, r, &appRegistration)
-}
-
-// UpdateRegistation Updates registration for application
-func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /platform/registrations/{appName} registrations updateRegistation
-	// ---
-	// summary: Update application registration
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of application
-	//   type: string
-	//   required: true
-	// - name: applicationRegistration
-	//   in: body
-	//   description: Application to register
-	//   required: true
-	//   schema:
-	//       "$ref": "#/definitions/ApplicationRegistration"
-	// responses:
-	//   "200":
-	//     "$ref": "#/definitions/ApplicationRegistration"
-	//   "400":
-	//     description: "Invalid registration"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "404":
-	//     description: "Not found"
-	//   "409":
-	//     description: "Conflict"
-	appName := mux.Vars(r)["appName"]
-
-	var registration ApplicationRegistration
-	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
-	appRegistration, err := HandleUpdateRegistation(radixclient, appName, registration)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
