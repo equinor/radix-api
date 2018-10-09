@@ -15,10 +15,9 @@ func getBearerTokenFromHeader(r *http.Request) (string, error) {
 
 	if len(authArr) != 2 {
 		return "", errors.New("Authentication header is invalid: " + authorizationHeader)
-	} else {
-		jwtToken = authArr[1]
 	}
 
+	jwtToken = authArr[1]
 	return jwtToken, nil
 }
 
