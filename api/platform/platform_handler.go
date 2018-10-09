@@ -48,7 +48,7 @@ func HandleGetRegistation(radixclient radixclient.Interface, appName string) (*A
 
 // HandleCreateRegistation handler for CreateRegistation
 func HandleCreateRegistation(radixclient radixclient.Interface, registration ApplicationRegistration) (*ApplicationRegistration, error) {
-	radixRegistration, err := buildRadixRegistration(registration)
+	radixRegistration, err := buildRadixRegistration(&registration)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func HandleUpdateRegistation(radixclient radixclient.Interface, appName string, 
 		return nil, err
 	}
 
-	radixRegistration, err := buildRadixRegistration(registration)
+	radixRegistration, err := buildRadixRegistration(&registration)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 	return pipelineJobSpec, nil
 }
 
-func buildRadixRegistration(registration ApplicationRegistration) (*v1.RadixRegistration, error) {
+func buildRadixRegistration(registration *ApplicationRegistration) (*v1.RadixRegistration, error) {
 	builder := NewBuilder()
 
 	// Only if repository is provided and deploykey is not set by user

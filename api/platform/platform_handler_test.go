@@ -32,31 +32,30 @@ func TestFilterOnSSHRepo_WhenSet_Filter(t *testing.T) {
 }
 
 func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
 	builder := NewBuilder()
 	builder.withName("Some Name")
+	registration, _ := HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
-	radixclient := fake.NewSimpleClientset()
-	registration, _ := HandleCreateRegistation(radixclient, builder.BuildRegistration())
-
-	// Restart
-	radixclient = fake.NewSimpleClientset()
 	expected := ""
 	actual := registration.PublicKey
 	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is missing, do not generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder.withRepository("Some repo string")
-	registration, _ = HandleCreateRegistation(radixclient, builder.BuildRegistration())
+	builder = NewBuilder()
+	builder.withName("Some Name").withRepository("Some repo string")
+	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
 	assert.NotEmpty(t, registration.PublicKey, "HandleCreateRegistation - when repo is provided, and deploy key is not, generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder.withPublicKey("Some public key")
-	registration, _ = HandleCreateRegistation(radixclient, builder.BuildRegistration())
+	builder = NewBuilder()
+	builder.withName("Some Name").withRepository("Some repo string").withPublicKey("Some public key")
+	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
 	expected = "Some public key"
 	actual = registration.PublicKey
-
 	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is provided, as well as deploy key, do not generate deploy key")
 }
