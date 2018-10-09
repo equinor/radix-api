@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"fmt"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -15,13 +16,13 @@ import (
 )
 
 // HandleGetRegistations handler for GetRegistations
-func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([]ApplicationRegistration, error) {
+func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([]*ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]ApplicationRegistration, 0)
+	radixRegistations := make([]*ApplicationRegistration, 0)
 	for _, rr := range radixRegistationList.Items {
 		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
@@ -35,10 +36,10 @@ func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([
 }
 
 // HandleGetRegistation handler for GetRegistation
-func HandleGetRegistation(radixclient radixclient.Interface, appName string) (ApplicationRegistration, error) {
+func HandleGetRegistation(radixclient radixclient.Interface, appName string) (*ApplicationRegistration, error) {
 	radixRegistation, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return ApplicationRegistration{}, err
+		return nil, err
 	}
 
 	builder := NewBuilder()
@@ -47,18 +48,7 @@ func HandleGetRegistation(radixclient radixclient.Interface, appName string) (Ap
 
 // HandleCreateRegistation handler for CreateRegistation
 func HandleCreateRegistation(radixclient radixclient.Interface, registration ApplicationRegistration) (*ApplicationRegistration, error) {
-	err := validate(registration)
-	if err != nil {
-		return nil, err
-	}
-
-	deployKey, err := utils.GenerateDeployKey()
-	if err != nil {
-		return nil, err
-	}
-
-	builder := NewBuilder()
-	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).withPrivateKey(deployKey.PrivateKey).BuildRR()
+	radixRegistration, err := buildRadixRegistration(registration)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +58,37 @@ func HandleCreateRegistation(radixclient radixclient.Interface, registration App
 		return nil, err
 	}
 
-	registration.PublicKey = deployKey.PublicKey
+	return &registration, nil
+}
+
+// HandleUpdateRegistation handler for UpdateRegistation
+func HandleUpdateRegistation(radixclient radixclient.Interface, appName string, registration ApplicationRegistration) (*ApplicationRegistration, error) {
+	if appName != registration.Name {
+		return nil, utils.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with registration name %s", appName, registration.Name))
+	}
+
+	// Make check that this is an existing registration
+	existingRegistration, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	radixRegistration, err := buildRadixRegistration(registration)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only these fields can change over time
+	existingRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
+	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
+	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
+	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+
+	_, err = radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Update(existingRegistration)
+	if err != nil {
+		return nil, err
+	}
+
 	return &registration, nil
 }
 
@@ -102,21 +122,28 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 	return pipelineJobSpec, nil
 }
 
-func validate(registration ApplicationRegistration) error {
-	if registration.Name == "" {
-		return utils.ValidationError("Radix Registration", "Name is required")
+func buildRadixRegistration(registration ApplicationRegistration) (*v1.RadixRegistration, error) {
+	builder := NewBuilder()
+
+	// Only if repository is provided and deploykey is not set by user
+	// generate the key
+	if strings.TrimSpace(registration.Repository) != "" &&
+		strings.TrimSpace(registration.PublicKey) == "" {
+		deployKey, err := utils.GenerateDeployKey()
+		if err != nil {
+			return nil, err
+		}
+
+		registration.PublicKey = deployKey.PublicKey
+		builder.withPrivateKey(deployKey.PrivateKey)
 	}
 
-	if registration.Repository == "" {
-		return utils.ValidationError("Radix Registration", "Repository is required")
+	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
+	if err != nil {
+		return nil, err
 	}
 
-	b := repoPattern.MatchString(registration.Repository)
-	if !b {
-		return utils.ValidationError("Radix Registration", "Repo string does not match the expected pattern")
-	}
-
-	return nil
+	return radixRegistration, nil
 }
 
 // RegistrationBuilder Handles construction of RR or applicationRegistation
@@ -128,7 +155,7 @@ type RegistrationBuilder interface {
 	withPublicKey(string) RegistrationBuilder
 	withPrivateKey(string) RegistrationBuilder
 	BuildRR() (*v1.RadixRegistration, error)
-	BuildRegistration() ApplicationRegistration
+	BuildRegistration() *ApplicationRegistration
 }
 
 type registrationBuilder struct {
@@ -195,13 +222,13 @@ func (rb *registrationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 	return radixRegistration, nil
 }
 
-func (rb *registrationBuilder) BuildRegistration() ApplicationRegistration {
-	return ApplicationRegistration{
+func (rb *registrationBuilder) BuildRegistration() *ApplicationRegistration {
+	return &ApplicationRegistration{
 		Name:         rb.name,
 		Repository:   rb.repository,
 		SharedSecret: rb.sharedSecret,
 		AdGroups:     rb.adGroups,
-		PublicKey:    "",
+		PublicKey:    rb.publicKey,
 	}
 }
 
