@@ -1,12 +1,6 @@
-FROM alpine:3.7 as builder
-RUN apk update && apk add git && apk add -y ca-certificates curl
-RUN adduser -D -g '' radix-api
-COPY ./rootfs/radix-api /usr/local/bin/radix-api
+FROM alpine:3.7
 
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/
+RUN adduser -D radix-api
 USER radix-api
-EXPOSE 3002
+COPY ./rootfs/radix-api /usr/local/bin/radix-api
 ENTRYPOINT ["/usr/local/bin/radix-api"]
