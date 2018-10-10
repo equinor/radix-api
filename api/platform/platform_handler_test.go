@@ -5,11 +5,12 @@ import (
 
 	"github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	kubernetes "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestGetCloneURLRepo_ValidRepo_CreatesValidClone(t *testing.T) {
 	expected := "git@github.com:Equinor/my-app.git"
-	actual, _ := getCloneURLFromRepo("https://github.com/Equinor/my-app")
+	actual := getCloneURLFromRepo("https://github.com/Equinor/my-app")
 
 	assert.Equal(t, actual, expected, "getCloneURLFromRepo - not equal")
 }
@@ -33,6 +34,13 @@ func TestGetRegistations_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	expected = 1
 	actual = len(registrations)
 	assert.Equal(t, actual, expected, "GetRegistations - expected to be listed when no filter is provided")
+}
+
+func TestCreateApplication_NoName_ValidationError(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("")
+	_, err := HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+	assert.Error(t, err, "HandleCreateRegistation - Cannot create application without name")
 }
 
 func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testing.T) {
@@ -84,6 +92,21 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	assert.Error(t, err, "HandleUpdateRegistation - Should not be able to update application with the same repo")
 }
 
+func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("Any Name")
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
+	builder = NewBuilder().withName("Any Name")
+	_, err := HandleUpdateRegistation(radixclient, "Another Name", *builder.BuildRegistration())
+	assert.Error(t, err, "HandleUpdateRegistation - Should not be able to call update application with different name in parameter and body")
+
+	builder = NewBuilder().withName("Another Name")
+	_, err = HandleUpdateRegistation(radixclient, "Another Name", *builder.BuildRegistration())
+	assert.Error(t, err, "HandleUpdateRegistation - Should not be able to call update application on a non existing application")
+
+}
+
 func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
 	builder := NewBuilder().withName("Any Name")
@@ -107,4 +130,40 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	actual = registration.PublicKey
 	assert.Equal(t, actual, expected, "HandleUpdateRegistation - public key should be updatable")
 
+}
+
+func TestGetApplication_AllFieldsAreSet(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("Any Name").withRepository("Any repo").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+	registration, _ := HandleGetRegistation(radixclient, "Any Name")
+	assert.Equal(t, registration.Repository, "Any repo", "HandleGetRegistation - Repository is not the same")
+	assert.Equal(t, registration.SharedSecret, "Any secret", "HandleGetRegistation - Shared secret is not the same")
+	assert.Equal(t, registration.AdGroups, []string{"Some ad group"}, "HandleGetRegistation - Ad groups is not the same")
+
+}
+
+func TestHandleCreateApplicationPipelineJob_ExistingAndNonExistingRegistration_JobIsCreatedForExisting(t *testing.T) {
+	kubeclient := kubernetes.NewSimpleClientset()
+	radixclient := fake.NewSimpleClientset()
+
+	_, err := HandleCreateApplicationPipelineJob(kubeclient, radixclient, "", "master")
+	assert.Error(t, err, "HandleCreateApplicationPipelineJob - Cannot run pipeline on non defined application")
+
+	_, err = HandleCreateApplicationPipelineJob(kubeclient, radixclient, "Any app", "")
+	assert.Error(t, err, "HandleCreateApplicationPipelineJob - Cannot run pipeline on non defined branch")
+
+	_, err = HandleCreateApplicationPipelineJob(kubeclient, radixclient, "Any app", "master")
+	assert.Error(t, err, "HandleCreateApplicationPipelineJob - Cannot run pipeline on non existing app")
+
+	builder := NewBuilder().withName("Any Name").withRepository("Any repo").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+	job, err := HandleCreateApplicationPipelineJob(kubeclient, radixclient, "Any Name", "master")
+
+	assert.NoError(t, err, "HandleCreateApplicationPipelineJob - Should be able to create job on existing app")
+	assert.Equal(t, job.AppName, "Any Name", "HandleCreateApplicationPipelineJob - Name of app was unexpected")
+	assert.Equal(t, job.Branch, "master", "HandleCreateApplicationPipelineJob - Branch was unexpected")
+	assert.NotEmpty(t, job.Name, "HandleCreateApplicationPipelineJob - Expected a jobname")
+	assert.NotEmpty(t, job.SSHRepo, "HandleCreateApplicationPipelineJob - Expected a repo")
 }

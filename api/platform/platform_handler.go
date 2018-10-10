@@ -110,17 +110,17 @@ func HandleDeleteRegistation(radixclient radixclient.Interface, appName string) 
 
 // HandleCreateApplicationPipelineJob handler for CreateApplicationPipelineJob
 func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) (*job.PipelineJob, error) {
+	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
+		return nil, utils.ValidationError("Radix Registration Pipeline", "App name and branch is required")
+	}
+
 	log.Infof("Creating pipeline job for %s", appName)
 	registration, err := HandleGetRegistation(radixclient, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	builder := NewBuilder()
-	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
-	if err != nil {
-		return nil, err
-	}
+	radixRegistration := NewBuilder().withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 
 	pipelineJobSpec := &job.PipelineJob{
 		AppName: radixRegistration.GetName(),
@@ -152,11 +152,7 @@ func buildRadixRegistration(registration *ApplicationRegistration) (*v1.RadixReg
 		builder.withPrivateKey(deployKey.PrivateKey)
 	}
 
-	radixRegistration, err := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
-	if err != nil {
-		return nil, err
-	}
-
+	radixRegistration := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 	return radixRegistration, nil
 }
 
@@ -186,7 +182,7 @@ type RegistrationBuilder interface {
 	withAdGroups([]string) RegistrationBuilder
 	withPublicKey(string) RegistrationBuilder
 	withPrivateKey(string) RegistrationBuilder
-	BuildRR() (*v1.RadixRegistration, error)
+	BuildRR() *v1.RadixRegistration
 	BuildRegistration() *ApplicationRegistration
 }
 
@@ -229,11 +225,8 @@ func (rb *registrationBuilder) withPrivateKey(privateKey string) RegistrationBui
 	return rb
 }
 
-func (rb *registrationBuilder) BuildRR() (*v1.RadixRegistration, error) {
-	cloneURL, err := getCloneURLFromRepo(rb.repository)
-	if err != nil {
-		return nil, err
-	}
+func (rb *registrationBuilder) BuildRR() *v1.RadixRegistration {
+	cloneURL := getCloneURLFromRepo(rb.repository)
 
 	radixRegistration := &v1.RadixRegistration{
 		TypeMeta: metav1.TypeMeta{
@@ -251,7 +244,7 @@ func (rb *registrationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 			AdGroups:     rb.adGroups,
 		},
 	}
-	return radixRegistration, nil
+	return radixRegistration
 }
 
 func (rb *registrationBuilder) BuildRegistration() *ApplicationRegistration {
@@ -280,8 +273,8 @@ func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
 	return filter
 }
 
-func getCloneURLFromRepo(repo string) (string, error) {
+func getCloneURLFromRepo(repo string) string {
 	cloneURL := repoPattern.ReplaceAllString(repo, sshURL)
 	cloneURL += ".git"
-	return cloneURL, nil
+	return cloneURL
 }
