@@ -20,10 +20,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var repoPattern = regexp.MustCompile("https://github.com/(.*?)")
-
+const repoURL = "https://github.com/"
 const sshURL = "git@github.com:"
 const rootPath = "/platform"
+
+var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
@@ -101,21 +102,21 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 			log.Infof("Added RR to store for %s", rr.Name)
 
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "New RR Added to Store")
 			data <- body
 			//}
 		},
 		UpdateFunc: func(old interface{}, new interface{}) {
 			rr := new.(*v1.RadixRegistration)
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR updated")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR updated")
 			data <- body
 			//}
 		},
 		DeleteFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
 			//if rr.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR Deleted from Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR Deleted from Store")
 			data <- body
 			//}
 		},

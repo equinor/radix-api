@@ -8,13 +8,6 @@ import (
 	kubernetes "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestGetCloneURLRepo_ValidRepo_CreatesValidClone(t *testing.T) {
-	expected := "git@github.com:Equinor/my-app.git"
-	actual := getCloneURLFromRepo("https://github.com/Equinor/my-app")
-
-	assert.Equal(t, actual, expected, "getCloneURLFromRepo - not equal")
-}
-
 func TestGetRegistations_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
 	anyApp := NewBuilder().withName("my-app").withRepository("https://github.com/Equinor/my-app").BuildRegistration()
@@ -23,17 +16,17 @@ func TestGetRegistations_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	registrations, _ := HandleGetRegistations(radixclient, "git@github.com:Equinor/my-app.git")
 	expected := 1
 	actual := len(registrations)
-	assert.Equal(t, actual, expected, "GetRegistations - expected to be listed")
+	assert.Equal(t, expected, actual, "GetRegistations - expected to be listed")
 
 	registrations, _ = HandleGetRegistations(radixclient, "git@github.com:Equinor/my-app2.git")
 	expected = 0
 	actual = len(registrations)
-	assert.Equal(t, actual, expected, "GetRegistations - expected not to be listed")
+	assert.Equal(t, expected, actual, "GetRegistations - expected not to be listed")
 
 	registrations, _ = HandleGetRegistations(radixclient, " ")
 	expected = 1
 	actual = len(registrations)
-	assert.Equal(t, actual, expected, "GetRegistations - expected to be listed when no filter is provided")
+	assert.Equal(t, expected, actual, "GetRegistations - expected to be listed when no filter is provided")
 }
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
@@ -50,7 +43,7 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	expected := ""
 	actual := registration.PublicKey
-	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is missing, do not generate deploy key")
+	assert.Equal(t, expected, actual, "HandleCreateRegistation - when repo is missing, do not generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
@@ -66,7 +59,7 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	expected = "Any public key"
 	actual = registration.PublicKey
-	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is provided, as well as deploy key, do not generate deploy key")
+	assert.Equal(t, expected, actual, "HandleCreateRegistation - when repo is provided, as well as deploy key, do not generate deploy key")
 }
 
 func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
@@ -116,31 +109,31 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	registration, _ := HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
 	expected := "Any repo"
 	actual := registration.Repository
-	assert.Equal(t, actual, expected, "HandleUpdateRegistation - repository should be updatable")
+	assert.Equal(t, expected, actual, "HandleUpdateRegistation - repository should be updatable")
 
 	builder = NewBuilder().withName("Any Name").withSharedSecret("Any shared secret")
 	registration, _ = HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
 	expected = "Any shared secret"
 	actual = registration.SharedSecret
-	assert.Equal(t, actual, expected, "HandleUpdateRegistation - shared secret should be updatable")
+	assert.Equal(t, expected, actual, "HandleUpdateRegistation - shared secret should be updatable")
 
 	builder = NewBuilder().withName("Any Name").withPublicKey("Any public key")
 	registration, _ = HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
 	expected = "Any public key"
 	actual = registration.PublicKey
-	assert.Equal(t, actual, expected, "HandleUpdateRegistation - public key should be updatable")
+	assert.Equal(t, expected, actual, "HandleUpdateRegistation - public key should be updatable")
 
 }
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+	builder := NewBuilder().withName("Any Name").withRepository("https://github.com/a-user/a-repo/").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
 
 	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 	registration, _ := HandleGetRegistation(radixclient, "Any Name")
-	assert.Equal(t, registration.Repository, "Any repo", "HandleGetRegistation - Repository is not the same")
-	assert.Equal(t, registration.SharedSecret, "Any secret", "HandleGetRegistation - Shared secret is not the same")
-	assert.Equal(t, registration.AdGroups, []string{"Some ad group"}, "HandleGetRegistation - Ad groups is not the same")
+	assert.Equal(t, "https://github.com/a-user/a-repo/", registration.Repository, "HandleGetRegistation - Repository is not the same")
+	assert.Equal(t, "Any secret", registration.SharedSecret, "HandleGetRegistation - Shared secret is not the same")
+	assert.Equal(t, []string{"Some ad group"}, registration.AdGroups, "HandleGetRegistation - Ad groups is not the same")
 
 }
 
@@ -162,8 +155,36 @@ func TestHandleCreateApplicationPipelineJob_ExistingAndNonExistingRegistration_J
 	job, err := HandleCreateApplicationPipelineJob(kubeclient, radixclient, "Any Name", "master")
 
 	assert.NoError(t, err, "HandleCreateApplicationPipelineJob - Should be able to create job on existing app")
-	assert.Equal(t, job.AppName, "Any Name", "HandleCreateApplicationPipelineJob - Name of app was unexpected")
-	assert.Equal(t, job.Branch, "master", "HandleCreateApplicationPipelineJob - Branch was unexpected")
+	assert.Equal(t, "Any Name", job.AppName, "HandleCreateApplicationPipelineJob - Name of app was unexpected")
+	assert.Equal(t, "master", job.Branch, "HandleCreateApplicationPipelineJob - Branch was unexpected")
 	assert.NotEmpty(t, job.Name, "HandleCreateApplicationPipelineJob - Expected a jobname")
 	assert.NotEmpty(t, job.SSHRepo, "HandleCreateApplicationPipelineJob - Expected a repo")
+}
+
+func TestCloneToRepositoryURL_ValidUrl(t *testing.T) {
+	cloneURL := "git@github.com:Statoil/radix-api.git"
+	repo := getRepositoryURLFromCloneURL(cloneURL)
+
+	assert.Equal(t, "https://github.com/Statoil/radix-api", repo)
+}
+
+func TestCloneToRepositoryURL_EmptyURL(t *testing.T) {
+	cloneURL := ""
+	repo := getRepositoryURLFromCloneURL(cloneURL)
+
+	assert.Equal(t, "", repo)
+}
+
+func TestGetCloneURLRepo_ValidRepo_CreatesValidClone(t *testing.T) {
+	expected := "git@github.com:Equinor/my-app.git"
+	actual := getCloneURLFromRepo("https://github.com/Equinor/my-app")
+
+	assert.Equal(t, expected, actual, "getCloneURLFromRepo - not equal")
+}
+
+func TestGetCloneURLRepo_EmptyRepo_CreatesEmptyClone(t *testing.T) {
+	expected := ""
+	actual := getCloneURLFromRepo("")
+
+	assert.Equal(t, expected, actual, "getCloneURLFromRepo - not equal")
 }
