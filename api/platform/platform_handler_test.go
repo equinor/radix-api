@@ -46,14 +46,14 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo string")
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
 	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
 	assert.NotEmpty(t, registration.PublicKey, "HandleCreateRegistation - when repo is provided, and deploy key is not, generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo string").withPublicKey("Any public key")
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo").withPublicKey("Any public key")
 	registration, _ = HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
 	expected = "Any public key"
@@ -61,14 +61,37 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 	assert.Equal(t, actual, expected, "HandleCreateRegistation - when repo is provided, as well as deploy key, do not generate deploy key")
 }
 
+func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
+	builder = NewBuilder().withName("Another Name").withRepository("Any repo")
+	_, err := HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+	assert.Error(t, err, "HandleCreateRegistation - Should not be able to create another application with the same repo")
+}
+
+func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
+	radixclient := fake.NewSimpleClientset()
+	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
+	builder = NewBuilder().withName("Another Name").withRepository("Another repo")
+	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
+
+	builder = NewBuilder().withName("Another Name").withRepository("Any repo")
+	_, err := HandleUpdateRegistation(radixclient, "Another Name", *builder.BuildRegistration())
+	assert.Error(t, err, "HandleUpdateRegistation - Should not be able to update application with the same repo")
+}
+
 func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
 	builder := NewBuilder().withName("Any Name")
 	HandleCreateRegistation(radixclient, *builder.BuildRegistration())
 
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo string")
+	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
 	registration, _ := HandleUpdateRegistation(radixclient, "Any Name", *builder.BuildRegistration())
-	expected := "Any repo string"
+	expected := "Any repo"
 	actual := registration.Repository
 	assert.Equal(t, actual, expected, "HandleUpdateRegistation - repository should be updatable")
 

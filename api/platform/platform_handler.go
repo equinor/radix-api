@@ -53,6 +53,11 @@ func HandleCreateRegistation(radixclient radixclient.Interface, registration App
 		return nil, err
 	}
 
+	err = validate(radixclient, radixRegistration)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Create(radixRegistration)
 	if err != nil {
 		return nil, err
@@ -83,6 +88,11 @@ func HandleUpdateRegistation(radixclient radixclient.Interface, appName string, 
 	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+
+	err = validate(radixclient, existingRegistration)
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Update(existingRegistration)
 	if err != nil {
@@ -148,6 +158,24 @@ func buildRadixRegistration(registration *ApplicationRegistration) (*v1.RadixReg
 	}
 
 	return radixRegistration, nil
+}
+
+func validate(radixclient radixclient.Interface, radixRegistration *v1.RadixRegistration) error {
+	if radixRegistration.Name == "" {
+		return utils.ValidationError("Radix Registration", "Name is required")
+	}
+
+	registrations, err := HandleGetRegistations(radixclient, radixRegistration.Spec.CloneURL)
+	if err != nil {
+		return err
+	}
+
+	if len(registrations) == 1 &&
+		!strings.EqualFold(registrations[0].Name, radixRegistration.Name) {
+		return utils.ValidationError("Radix Registration", fmt.Sprintf("Repository is in use by %s", registrations[0].Name))
+	}
+
+	return nil
 }
 
 // RegistrationBuilder Handles construction of RR or applicationRegistation
