@@ -20,10 +20,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var repoPattern = regexp.MustCompile("https://github.com/(.*?)")
-
+const repoURL = "https://github.com/"
 const sshURL = "git@github.com:"
 const rootPath = "/platform"
+
+var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
@@ -32,6 +33,11 @@ func GetRoutes() models.Routes {
 			Path:        rootPath + "/registrations",
 			Method:      "POST",
 			HandlerFunc: CreateRegistation,
+		},
+		models.Route{
+			Path:        rootPath + "/registrations/{appName}",
+			Method:      "PUT",
+			HandlerFunc: UpdateRegistation,
 		},
 		models.Route{
 			Path:        rootPath + "/registrations",
@@ -96,21 +102,21 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 			log.Infof("Added RR to store for %s", rr.Name)
 
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "New RR Added to Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "New RR Added to Store")
 			data <- body
 			//}
 		},
 		UpdateFunc: func(old interface{}, new interface{}) {
 			rr := new.(*v1.RadixRegistration)
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR updated")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR updated")
 			data <- body
 			//}
 		},
 		DeleteFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
 			//if rr.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, rr.Spec.Repository, "RR Deleted from Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR Deleted from Store")
 			data <- body
 			//}
 		},
@@ -266,6 +272,51 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	}
 
 	appRegistration, err := HandleCreateRegistation(radixclient, registration)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &appRegistration)
+}
+
+// UpdateRegistation Updates registration for application
+func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /platform/registrations/{appName} registrations updateRegistation
+	// ---
+	// summary: Update application registration
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: applicationRegistration
+	//   in: body
+	//   description: Application to register
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ApplicationRegistration"
+	// responses:
+	//   "200":
+	//     "$ref": "#/definitions/ApplicationRegistration"
+	//   "400":
+	//     description: "Invalid registration"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	appName := mux.Vars(r)["appName"]
+
+	var registration ApplicationRegistration
+	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	appRegistration, err := HandleUpdateRegistation(radixclient, appName, registration)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
