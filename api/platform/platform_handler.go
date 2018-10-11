@@ -29,7 +29,7 @@ func HandleGetRegistations(radixclient radixclient.Interface, sshRepo string) ([
 		}
 
 		builder := NewBuilder()
-		radixRegistations = append(radixRegistations, builder.withName(rr.Name).withCloneURL(rr.Spec.CloneURL).withSharedSecret(rr.Spec.SharedSecret).withAdGroups(rr.Spec.AdGroups).BuildRegistration())
+		radixRegistations = append(radixRegistations, builder.withRadixRegistration(&rr).BuildRegistration())
 	}
 
 	return radixRegistations, nil
@@ -43,7 +43,7 @@ func HandleGetRegistation(radixclient radixclient.Interface, appName string) (*A
 	}
 
 	builder := NewBuilder()
-	return builder.withName(radixRegistation.Name).withCloneURL(radixRegistation.Spec.CloneURL).withSharedSecret(radixRegistation.Spec.SharedSecret).withAdGroups(radixRegistation.Spec.AdGroups).BuildRegistration(), nil
+	return builder.withRadixRegistration(radixRegistation).BuildRegistration(), nil
 }
 
 // HandleCreateRegistation handler for CreateRegistation
@@ -120,7 +120,7 @@ func HandleCreateApplicationPipelineJob(client kubernetes.Interface, radixclient
 		return nil, err
 	}
 
-	radixRegistration := NewBuilder().withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
+	radixRegistration := NewBuilder().withAppRegistration(registration).BuildRR()
 
 	pipelineJobSpec := &job.PipelineJob{
 		AppName: radixRegistration.GetName(),
@@ -152,7 +152,7 @@ func buildRadixRegistration(registration *ApplicationRegistration) (*v1.RadixReg
 		builder.withPrivateKey(deployKey.PrivateKey)
 	}
 
-	radixRegistration := builder.withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
+	radixRegistration := builder.withPublicKey(registration.PublicKey).withName(registration.Name).withRepository(registration.Repository).withSharedSecret(registration.SharedSecret).withAdGroups(registration.AdGroups).BuildRR()
 	return radixRegistration, nil
 }
 
@@ -183,6 +183,8 @@ type RegistrationBuilder interface {
 	withPublicKey(string) RegistrationBuilder
 	withPrivateKey(string) RegistrationBuilder
 	withCloneURL(string) RegistrationBuilder
+	withRadixRegistration(*v1.RadixRegistration) RegistrationBuilder
+	withAppRegistration(*ApplicationRegistration) RegistrationBuilder
 	BuildRR() *v1.RadixRegistration
 	BuildRegistration() *ApplicationRegistration
 }
@@ -195,6 +197,25 @@ type registrationBuilder struct {
 	publicKey    string
 	privateKey   string
 	cloneURL     string
+}
+
+func (rb *registrationBuilder) withAppRegistration(appRegistration *ApplicationRegistration) RegistrationBuilder {
+	rb.withName(appRegistration.Name)
+	rb.withRepository(appRegistration.Repository)
+	rb.withSharedSecret(appRegistration.SharedSecret)
+	rb.withAdGroups(appRegistration.AdGroups)
+	rb.withPublicKey(appRegistration.PublicKey)
+	return rb
+}
+
+func (rb *registrationBuilder) withRadixRegistration(radixRegistration *v1.RadixRegistration) RegistrationBuilder {
+	rb.withName(radixRegistration.Name)
+	rb.withCloneURL(radixRegistration.Spec.CloneURL)
+	rb.withSharedSecret(radixRegistration.Spec.SharedSecret)
+	rb.withAdGroups(radixRegistration.Spec.AdGroups)
+	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
+	rb.withPrivateKey(radixRegistration.Spec.DeployKey)
+	return rb
 }
 
 func (rb *registrationBuilder) withName(name string) RegistrationBuilder {
@@ -223,7 +244,7 @@ func (rb *registrationBuilder) withAdGroups(adGroups []string) RegistrationBuild
 }
 
 func (rb *registrationBuilder) withPublicKey(publicKey string) RegistrationBuilder {
-	rb.publicKey = publicKey
+	rb.publicKey = strings.TrimSuffix(publicKey, "\n")
 	return rb
 }
 
