@@ -16,10 +16,11 @@ build: $(BINS)
 
 .PHONY: test
 test:
-	go test -cover `go list ./...
+	go test -cover `go list ./...`
 
 .PHONY: swagger
 swagger:
+	rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go
 	swagger generate spec -o ./swagger.json --scan-models
 	mv swagger.json ./swaggerui_src/swagger.json
 	statik -src=./swaggerui_src/ -p swaggerui
@@ -48,6 +49,7 @@ $(BINS): vendor
 
 build-docker-bins: $(addsuffix -docker-bin,$(BINS))
 %-docker-bin: vendor
+	make swagger
 	GOOS=linux GOARCH=$(CX_ARCHS) CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o ./rootfs/$* .
 
 .PHONY: docker-build
