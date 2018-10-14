@@ -49,9 +49,17 @@ func HandlePromoteEnvironment(client kubernetes.Interface, radixclient radixclie
 	fromNs := getNameSpaceForApplicationEnvironment(appName, promotionParameters.FromEnvironment)
 	toNs := getNameSpaceForApplicationEnvironment(appName, promotionParameters.ToEnvironment)
 
-	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
+	_, err := client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
+	if err != nil {
+		return nil, utils.ValidationError("Radix Promotion", "Non existing from environment")
+	}
 
-	var err error
+	_, err = client.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
+	if err != nil {
+		return nil, utils.ValidationError("Radix Promotion", "Non existing to environment")
+	}
+
+	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
 	var radixDeployment *v1.RadixDeployment
 
 	if strings.TrimSpace(promotionParameters.ImageTag) != "" {

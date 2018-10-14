@@ -37,6 +37,43 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 
 	deployments, _ = HandleGetDeployments(radixclient, "", "", true)
 	assert.Equal(t, 3, len(deployments), "GetDeployments - only list latest for all apps in all environments")
+
+	// TODO : Should these cases lead to errors?
+	deployments, _ = HandleGetDeployments(radixclient, "anyapp3", "", true)
+	assert.Equal(t, 0, len(deployments), "GetDeployments - non existing app should lead to empty list")
+
+	deployments, _ = HandleGetDeployments(radixclient, "anyapp2", "qa", true)
+	assert.Equal(t, 0, len(deployments), "GetDeployments - non existing environment should lead to empty list")
+}
+
+func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
+	kubeclient := kubernetes.NewSimpleClientset()
+	radixclient := radix.NewSimpleClientset()
+
+	_, err := HandlePromoteEnvironment(kubeclient, radixclient, "", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote empty app")
+
+	_, err = HandlePromoteEnvironment(kubeclient, radixclient, "noapp", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote non-existing app")
+
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp").withEnvironment("prod").withImageTag("abcdef"))
+	_, err = HandlePromoteEnvironment(kubeclient, radixclient, "anyapp", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote from non-existing environment")
+
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("dev").withImageTag("abcdef"))
+	_, err = HandlePromoteEnvironment(kubeclient, radixclient, "anyapp1", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote to non-existing environment")
+
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("abcdef"))
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("prod").withImageTag("ghijklm"))
+	_, err = HandlePromoteEnvironment(kubeclient, radixclient, "anyapp2", PromotionParameters{FromEnvironment: "dev", ImageTag: "nopqrst", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote non-existing image")
+
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp3").withEnvironment("dev").withImageTag("abcdef"))
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp3").withEnvironment("prod").withImageTag("abcdef"))
+	_, err = HandlePromoteEnvironment(kubeclient, radixclient, "anyapp3", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
+	assert.Error(t, err, "HandlePromoteEnvironment - Cannot promote an image into environment having already that image")
+
 }
 
 func save(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, builder DeploymentBuilder) {
