@@ -79,7 +79,7 @@ func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.I
 
 // GetPipelineJobs gets pipeline jobs
 func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /job/pipelines pipelines getPipelineJobs
+	// swagger:operation GET /job/pipelines job getPipelineJobs
 	// ---
 	// summary: Gets the pipeline jobs
 	// responses:
@@ -105,7 +105,7 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 
 // CreatePipelineJob gets pipeline jobs
 func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /job/pipelines pipelines createPipelineJob
+	// swagger:operation POST /job/pipelines job createPipelineJob
 	// ---
 	// summary: Create a pipeline job
 	// parameters:

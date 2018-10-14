@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
+	"github.com/statoil/radix-api/api/deployment"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/platform"
 	"github.com/statoil/radix-api/api/pod"
@@ -46,6 +47,7 @@ func NewServer() http.Handler {
 	addHandlerRoutes(router, platform.GetRoutes())
 	addHandlerRoutes(router, job.GetRoutes())
 	addHandlerRoutes(router, pod.GetRoutes())
+	addHandlerRoutes(router, deployment.GetRoutes())
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/api/", negroni.New(
@@ -135,6 +137,7 @@ func initializeSocketServer(router *mux.Router) {
 		disconnect := make(chan struct{})
 		allSubscriptions := make(map[string]chan struct{})
 
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, deployment.GetSubscriptions())
 		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, platform.GetSubscriptions())
 		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pod.GetSubscriptions())
 		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, job.GetSubscriptions())

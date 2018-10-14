@@ -183,7 +183,7 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 
 // GetRegistations Lists registrations
 func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations registrations getRegistations
+	// swagger:operation GET /platform/registrations platform getRegistations
 	// ---
 	// summary: Lists the application registrations
 	// parameters:
@@ -217,7 +217,7 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 
 // GetRegistation Gets registration by application name
 func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName} registrations getRegistation
+	// swagger:operation GET /platform/registrations/{appName} platform getRegistation
 	// ---
 	// summary: Gets the application registration by name
 	// parameters:
@@ -246,7 +246,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 
 // CreateRegistation Creates new registration for application
 func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/registrations registrations createRegistation
+	// swagger:operation POST /platform/registrations platform createRegistation
 	// ---
 	// summary: Create an application registration
 	// parameters:
@@ -282,7 +282,7 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // UpdateRegistation Updates registration for application
 func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /platform/registrations/{appName} registrations updateRegistation
+	// swagger:operation PUT /platform/registrations/{appName} platform updateRegistation
 	// ---
 	// summary: Update application registration
 	// parameters:
@@ -327,7 +327,7 @@ func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // DeleteRegistation Deletes registration for application
 func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /platform/registrations/{appName} registrations deleteRegistation
+	// swagger:operation DELETE /platform/registrations/{appName} platform deleteRegistation
 	// ---
 	// summary: Delete registration
 	// parameters:
@@ -356,7 +356,7 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 
 // CreateApplicationPipelineJob creates a pipeline job for the application
 func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/registrations/{appName}/pipeline/{branchName} registrations createApplicationPipelineJob
+	// swagger:operation POST /platform/registrations/{appName}/pipeline/{branchName} platform createApplicationPipelineJob
 	// ---
 	// summary: Create an application pipeline for a given application and branch
 	// parameters:

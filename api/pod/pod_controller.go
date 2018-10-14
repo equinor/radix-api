@@ -75,7 +75,7 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 
 // GetPods list pods
 func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /container/pods pods getPods
+	// swagger:operation GET /container/pods container getPods
 	// ---
 	// summary: Gets a list of all pods
 	// responses:
