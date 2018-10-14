@@ -1,5 +1,9 @@
 package deployment
 
+import (
+	"time"
+)
+
 // ApplicationDeployment describe an deployment
 // swagger:model ApplicationDeployment
 type ApplicationDeployment struct {
@@ -20,4 +24,10 @@ type ApplicationDeployment struct {
 	// required: false
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
+
+	// Created Created timestamp
+	//
+	// required: false
+	// example: timestamp
+	Created time.Time `json:"created"`
 }

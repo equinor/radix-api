@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"testing"
+	"time"
 
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	radix "github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
@@ -16,17 +17,26 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("prod").withImageTag("abcdef"))
-	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("ghijklm"))
-	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("prod").withImageTag("nopqlmn"))
+
+	// Ensure the second image is considered the latest version
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("ghijklm").withTime(time.Now()))
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("nopqrst").withTime(time.Now().AddDate(0, 0, 1)))
+	save(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("prod").withImageTag("uvwxyza"))
 
 	deployments, _ := HandleGetDeployments(radixclient, "", "", false)
-	assert.Equal(t, 3, len(deployments), "GetDeployments - expected to be listed")
+	assert.Equal(t, 4, len(deployments), "GetDeployments - no filter should list all")
 
 	deployments, _ = HandleGetDeployments(radixclient, "anyapp2", "", false)
-	assert.Equal(t, 2, len(deployments), "GetDeployments - expected to be listed")
+	assert.Equal(t, 3, len(deployments), "GetDeployments - list all accross all environments")
 
 	deployments, _ = HandleGetDeployments(radixclient, "anyapp2", "dev", false)
-	assert.Equal(t, 1, len(deployments), "GetDeployments - expected to be listed")
+	assert.Equal(t, 2, len(deployments), "GetDeployments - list all for environment")
+
+	deployments, _ = HandleGetDeployments(radixclient, "anyapp2", "dev", true)
+	assert.Equal(t, 1, len(deployments), "GetDeployments - only list latest in environment")
+
+	deployments, _ = HandleGetDeployments(radixclient, "", "", true)
+	assert.Equal(t, 3, len(deployments), "GetDeployments - only list latest for all apps in all environments")
 }
 
 func save(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, builder DeploymentBuilder) {
@@ -49,6 +59,7 @@ type DeploymentBuilder interface {
 	withImageTag(string) DeploymentBuilder
 	withAppName(string) DeploymentBuilder
 	withEnvironment(string) DeploymentBuilder
+	withTime(time.Time) DeploymentBuilder
 	BuildRD() *v1.RadixDeployment
 }
 
@@ -56,6 +67,7 @@ type deploymentBuilder struct {
 	imageTag    string
 	appName     string
 	environment string
+	time        time.Time
 }
 
 func (db *deploymentBuilder) withImageTag(imageTag string) DeploymentBuilder {
@@ -73,6 +85,11 @@ func (db *deploymentBuilder) withEnvironment(environment string) DeploymentBuild
 	return db
 }
 
+func (db *deploymentBuilder) withTime(time time.Time) DeploymentBuilder {
+	db.time = time
+	return db
+}
+
 func (db *deploymentBuilder) BuildRD() *v1.RadixDeployment {
 	radixDeployment := &v1.RadixDeployment{
 		TypeMeta: metav1.TypeMeta{
@@ -86,6 +103,7 @@ func (db *deploymentBuilder) BuildRD() *v1.RadixDeployment {
 				"radixApp": db.appName,
 				"env":      db.environment,
 			},
+			CreationTimestamp: metav1.Time{Time: db.time},
 		},
 		Spec: v1.RadixDeploymentSpec{
 			AppName:     db.appName,
@@ -97,5 +115,7 @@ func (db *deploymentBuilder) BuildRD() *v1.RadixDeployment {
 
 // NewDeploymentBuilder Constructor for deployment builder
 func NewDeploymentBuilder() DeploymentBuilder {
-	return &deploymentBuilder{}
+	return &deploymentBuilder{
+		time: time.Now(),
+	}
 }

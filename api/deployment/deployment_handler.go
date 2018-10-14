@@ -34,10 +34,10 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 
 	radixDeployments := make([]*ApplicationDeployment, 0)
 	for _, rd := range radixDeploymentList.Items {
-		radixDeployments = append(radixDeployments, &ApplicationDeployment{Name: rd.Name, AppName: rd.Spec.AppName, Environment: rd.Spec.Environment})
+		radixDeployments = append(radixDeployments, &ApplicationDeployment{Name: rd.Name, AppName: rd.Spec.AppName, Environment: rd.Spec.Environment, Created: rd.CreationTimestamp.Time})
 	}
 
-	return radixDeployments, nil
+	return postFiltering(radixDeployments, latest), nil
 }
 
 // HandlePromoteEnvironment handler for PromoteEnvironment
@@ -75,6 +75,34 @@ func HandlePromoteEnvironment(client kubernetes.Interface, radixclient radixclie
 	}
 
 	return &ApplicationDeployment{Name: radixDeployment.Name}, nil
+}
+
+func postFiltering(all []*ApplicationDeployment, latest bool) []*ApplicationDeployment {
+	if latest {
+		filtered := all[:0]
+		for _, rd := range all {
+			if isLatest(rd, all) {
+				filtered = append(filtered, rd)
+			}
+		}
+
+		return filtered
+	}
+
+	return all
+}
+
+func isLatest(theOne *ApplicationDeployment, all []*ApplicationDeployment) bool {
+	for _, rd := range all {
+		if rd.AppName == theOne.AppName &&
+			rd.Environment == theOne.Environment &&
+			rd.Name != theOne.Name &&
+			rd.Created.After(theOne.Created) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // TODO : Separate out into library functions
