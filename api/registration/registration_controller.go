@@ -251,7 +251,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 
 // IsDeployKeyValidHandler validates deploy key for radix registration found for application name
 func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName}/deploykey-valid registrations isDeployKeyValid
+	// swagger:operation GET /platform/registrations/{appName}/deploykey-valid platform isDeployKeyValid
 	// ---
 	// summary: Validate if the application deploy key is correctly setup
 	// parameters:
