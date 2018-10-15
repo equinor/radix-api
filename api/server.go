@@ -11,8 +11,8 @@ import (
 	"github.com/rs/cors"
 	"github.com/statoil/radix-api/api/deployment"
 	"github.com/statoil/radix-api/api/job"
-	"github.com/statoil/radix-api/api/platform"
 	"github.com/statoil/radix-api/api/pod"
+	"github.com/statoil/radix-api/api/registration"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	_ "github.com/statoil/radix-api/swaggerui" // statik files
