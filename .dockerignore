@@ -1,0 +1,13 @@
+.vscode
+charts
+docs
+hack
+vendor
+.git
+bin
+Makefile
+swaggerui
+swaggerui_src
+api
+charts
+models
