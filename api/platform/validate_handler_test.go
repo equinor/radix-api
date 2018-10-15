@@ -18,6 +18,12 @@ func TestIsDeployKeyValid(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
 	kubeclient := kubernetes.NewSimpleClientset()
 
+	t.Run("missing rr", func(t *testing.T) {
+		isValid, err := IsDeployKeyValid(kubeclient, radixclient, "some-app")
+		assert.False(t, isValid)
+		assert.NotNil(t, err)
+	})
+
 	t.Run("job succeeded", func(t *testing.T) {
 		isValid, err := runIsDeployKeyValid(kubeclient, radixclient,
 			func(job batchv1.Job) batchv1.Job {
@@ -28,12 +34,6 @@ func TestIsDeployKeyValid(t *testing.T) {
 
 		assert.True(t, isValid)
 		assert.Nil(t, err)
-	})
-
-	t.Run("missing rr", func(t *testing.T) {
-		isValid, err := IsDeployKeyValid(kubeclient, radixclient, "some-app")
-		assert.False(t, isValid)
-		assert.NotNil(t, err)
 	})
 
 	t.Run("job failed", func(t *testing.T) {
