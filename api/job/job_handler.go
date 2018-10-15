@@ -50,12 +50,11 @@ func HandleCreatePipelineJob(client kubernetes.Interface, jobSpec *PipelineJob) 
 }
 
 func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.Job {
-	gitCloneCommand := fmt.Sprintf("git clone %s -b %s .", sshURL, "master")
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, "latest")
 	log.Infof("Using image: %s", imageTag)
+	cloneContainer, volume := CloneContainer(sshURL, "master")
 
 	backOffLimit := int32(4)
-	defaultMode := int32(256)
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,23 +69,7 @@ func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.J
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "radix-pipeline",
 					InitContainers: []corev1.Container{
-						{
-							Name:    "clone",
-							Image:   "alpine:3.7",
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{fmt.Sprintf("apk add --no-cache bash openssh-client git && ls /root/.ssh && cd /workspace && %s", gitCloneCommand)},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "build-context",
-									MountPath: "/workspace",
-								},
-								{
-									Name:      "git-ssh-keys",
-									MountPath: "/root/.ssh",
-									ReadOnly:  true,
-								},
-							},
-						},
+						cloneContainer,
 					},
 					Containers: []corev1.Container{
 						{
@@ -109,15 +92,7 @@ func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.J
 						{
 							Name: "build-context",
 						},
-						{
-							Name: "git-ssh-keys",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName:  "git-ssh-keys",
-									DefaultMode: &defaultMode,
-								},
-							},
-						},
+						volume,
 					},
 					// https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 					ImagePullSecrets: []corev1.LocalObjectReference{
@@ -132,6 +107,39 @@ func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.J
 	}
 
 	return &job
+}
+
+func CloneContainer(sshURL, branch string) (corev1.Container, corev1.Volume) {
+	gitCloneCommand := fmt.Sprintf("git clone %s -b %s .", sshURL, branch)
+	gitSSHKeyName := "git-ssh-keys"
+	defaultMode := int32(256)
+	container := corev1.Container{
+		Name:    "clone",
+		Image:   "radixdev.azurecr.io/gitclone:latest",
+		Command: []string{"/bin/sh", "-c"},
+		Args:    []string{gitCloneCommand},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "build-context",
+				MountPath: "/workspace",
+			},
+			{
+				Name:      gitSSHKeyName,
+				MountPath: "/root/.ssh",
+				ReadOnly:  true,
+			},
+		},
+	}
+	volume := corev1.Volume{
+		Name: gitSSHKeyName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  gitSSHKeyName,
+				DefaultMode: &defaultMode,
+			},
+		},
+	}
+	return container, volume
 }
 
 func getUniqueJobName(image string) (string, string) {

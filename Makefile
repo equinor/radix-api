@@ -25,6 +25,10 @@ swagger:
 	mv swagger.json ./swaggerui_src/swagger.json
 	statik -src=./swaggerui_src/ -p swaggerui
 
+deploy-gitclone:
+	docker build -t radixdev.azurecr.io/gitclone:$(IMAGE_TAG) -f gitclone.Dockerfile .
+	docker push radixdev.azurecr.io/gitclone:$(IMAGE_TAG)
+
 .PHONY: deploy
 deploy:
 	# Download deploy key + webhook shared secret
