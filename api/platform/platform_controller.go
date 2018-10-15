@@ -60,6 +60,11 @@ func GetRoutes() models.Routes {
 			Method:      "POST",
 			HandlerFunc: CreateApplicationPipelineJob,
 		},
+		models.Route{
+			Path:        rootPath + "/registrations/{appName}/deploykey-valid",
+			Method:      "GET",
+			HandlerFunc: IsDeployKeyValidHandler,
+		},
 	}
 
 	return routes
@@ -242,6 +247,35 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	}
 
 	utils.JSONResponse(w, r, &appRegistration)
+}
+
+// IsDeployKeyValidHandler validates deploy key for radix registration found for application name
+func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /platform/registrations/{appName}/deploykey-valid registrations isDeployKeyValid
+	// ---
+	// summary: Validate if the application deploy key is correctly setup
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Deploy key is valid"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	isDeployKeyValid, err := IsDeployKeyValid(client, radixclient, appName)
+
+	if isDeployKeyValid {
+		utils.JSONResponse(w, r, &isDeployKeyValid)
+		return
+	}
+
+	utils.ErrorResponse(w, r, err)
 }
 
 // CreateRegistation Creates new registration for application
