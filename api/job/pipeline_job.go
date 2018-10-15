@@ -1,6 +1,7 @@
 package job
 
 // PipelineJob hold info about pipeline job
+// todo: only need appname and branch?
 // swagger:model PipelineJob
 type PipelineJob struct {
 	// Name of the job
