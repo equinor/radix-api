@@ -81,6 +81,24 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// UnexpectedError any unexpected error
+func UnexpectedError(message string, underlyingError error) error {
+	return &Error{
+		Type:    Server,
+		Err:     underlyingError,
+		Message: message,
+	}
+}
+
+// TypeMissingError indication of underlying type missing
+func TypeMissingError(message string, underlyingError error) error {
+	return &Error{
+		Type:    Missing,
+		Err:     underlyingError,
+		Message: message,
+	}
+}
+
 // ValidationError Used for indication of validation errors
 func ValidationError(kind, message string) error {
 	return &Error{
