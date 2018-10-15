@@ -61,7 +61,7 @@ func GetRoutes() models.Routes {
 			HandlerFunc: CreateApplicationPipelineJob,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}/isDeployKeyValid",
+			Path:        rootPath + "/registrations/{appName}/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
@@ -251,7 +251,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 
 // IsDeployKeyValidHandler validates deploy key for radix registration found for application name
 func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName}/isDeployKeyValid registrations isDeployKeyValid
+	// swagger:operation GET /platform/registrations/{appName}/deploykey-valid registrations isDeployKeyValid
 	// ---
 	// summary: Validate if the application deploy key is correctly setup
 	// parameters:
