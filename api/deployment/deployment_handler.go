@@ -132,12 +132,42 @@ func isLatest(theOne *ApplicationDeployment, all []*ApplicationDeployment) bool 
 
 func mergeWithRadixApplication(radixclient radixclient.Interface, radixDeployment *v1.RadixDeployment, environment string) error {
 	appName := radixDeployment.Spec.AppName
-	_, err := radixclient.RadixV1().RadixApplications(getAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixConfig, err := radixclient.RadixV1().RadixApplications(getAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return utils.UnexpectedError(fmt.Sprintf("Unable to get application for app %s", appName), err)
 	}
 
+	for index, comp := range radixDeployment.Spec.Components {
+		raComp := getComponentConfig(radixConfig, comp.Name)
+		if raComp == nil {
+			return utils.UnexpectedError(fmt.Sprintf("Unable to get application component %s for app %s", comp.Name, appName), err)
+		}
+
+		environmentVariables := getEnvironmentVariables(raComp, environment)
+		radixDeployment.Spec.Components[index].EnvironmentVariables = environmentVariables
+	}
+
 	return nil
+}
+
+func getComponentConfig(radixConfig *v1.RadixApplication, componentName string) *v1.RadixComponent {
+	for _, comp := range radixConfig.Spec.Components {
+		if strings.EqualFold(comp.Name, componentName) {
+			return &comp
+		}
+	}
+
+	return nil
+}
+
+func getEnvironmentVariables(componentConfig *v1.RadixComponent, environment string) v1.EnvVarsMap {
+	for _, environmentVariables := range componentConfig.EnvironmentVariables {
+		if strings.EqualFold(environmentVariables.Environment, environment) {
+			return environmentVariables.Variables
+		}
+	}
+
+	return v1.EnvVarsMap{}
 }
 
 // TODO : Separate out into library functions
@@ -165,6 +195,7 @@ type Builder interface {
 	withAppName(string) Builder
 	withEnvironment(string) Builder
 	withCreated(time.Time) Builder
+	withComponent(DeployComponentBuilder) Builder
 	BuildApplicationDeployment() *ApplicationDeployment
 	BuildRD() *v1.RadixDeployment
 }
@@ -174,6 +205,7 @@ type deploymentBuilder struct {
 	appName     string
 	environment string
 	created     time.Time
+	components  []DeployComponentBuilder
 }
 
 func (db *deploymentBuilder) withRadixDeployment(radixDeployment *v1.RadixDeployment) Builder {
@@ -205,12 +237,22 @@ func (db *deploymentBuilder) withCreated(created time.Time) Builder {
 	return db
 }
 
+func (db *deploymentBuilder) withComponent(component DeployComponentBuilder) Builder {
+	db.components = append(db.components, component)
+	return db
+}
+
 func (db *deploymentBuilder) BuildApplicationDeployment() *ApplicationDeployment {
 	name := getDeploymentName(db.appName, db.imageTag)
 	return &ApplicationDeployment{Name: name, AppName: db.appName, Environment: db.environment, Created: db.created}
 }
 
 func (db *deploymentBuilder) BuildRD() *v1.RadixDeployment {
+	var components = make([]v1.RadixDeployComponent, 0)
+	for _, comp := range db.components {
+		components = append(components, comp.BuildComponent())
+	}
+
 	radixDeployment := &v1.RadixDeployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radix.equinor.com/v1",
@@ -227,6 +269,7 @@ func (db *deploymentBuilder) BuildRD() *v1.RadixDeployment {
 		},
 		Spec: v1.RadixDeploymentSpec{
 			AppName:     db.appName,
+			Components:  components,
 			Environment: db.environment,
 		},
 	}
@@ -238,4 +281,38 @@ func NewDeploymentBuilder() Builder {
 	return &deploymentBuilder{
 		created: time.Now(),
 	}
+}
+
+// DeployComponentBuilder Handles construction of RD component
+type DeployComponentBuilder interface {
+	withName(string) DeployComponentBuilder
+	withEnvironmentVariablesMap(v1.EnvVarsMap) DeployComponentBuilder
+	BuildComponent() v1.RadixDeployComponent
+}
+
+type deployComponentBuilder struct {
+	name                 string
+	environmentVariables v1.EnvVarsMap
+}
+
+func (dcb *deployComponentBuilder) withName(name string) DeployComponentBuilder {
+	dcb.name = name
+	return dcb
+}
+
+func (dcb *deployComponentBuilder) withEnvironmentVariablesMap(environmentVariables v1.EnvVarsMap) DeployComponentBuilder {
+	dcb.environmentVariables = environmentVariables
+	return dcb
+}
+
+func (dcb *deployComponentBuilder) BuildComponent() v1.RadixDeployComponent {
+	return v1.RadixDeployComponent{
+		Name:                 dcb.name,
+		EnvironmentVariables: dcb.environmentVariables,
+	}
+}
+
+// NewDeployComponentBuilder Constructor for component builder
+func NewDeployComponentBuilder() DeployComponentBuilder {
+	return &deployComponentBuilder{}
 }
