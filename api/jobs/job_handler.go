@@ -1,4 +1,4 @@
-package job
+package jobs
 
 import (
 	batchv1 "k8s.io/api/batch/v1"
@@ -17,9 +17,9 @@ import (
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
-// HandleGetPipelineJobs Handler for GetPipelineJobs
-func HandleGetPipelineJobs(client kubernetes.Interface) ([]PipelineJob, error) {
-	jobList, err := client.BatchV1().Jobs(corev1.NamespaceAll).List(metav1.ListOptions{})
+// HandleGetApplicationJobDetails Handler for GetApplicationJobDetails
+func HandleGetApplicationJobDetails(client kubernetes.Interface, appName string) ([]PipelineJob, error) {
+	jobList, err := client.BatchV1().Jobs(getAppNamespace(appName)).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -32,13 +32,13 @@ func HandleGetPipelineJobs(client kubernetes.Interface) ([]PipelineJob, error) {
 	return jobs, nil
 }
 
-// HandleCreatePipelineJob Handles the creation of a pipeline job for an application
-func HandleCreatePipelineJob(client kubernetes.Interface, jobSpec *PipelineJob) error {
+// HandleStartPipelineJob Handles the creation of a pipeline job for an application
+func HandleStartPipelineJob(client kubernetes.Interface, appName string, jobSpec *PipelineJob) error {
 	jobName, randomNr := getUniqueJobName(workerImage)
 	job := createPipelineJob(jobName, randomNr, jobSpec.SSHRepo, jobSpec.Branch)
 
 	log.Infof("Starting pipeline: %s, %s", jobName, workerImage)
-	appNamespace := fmt.Sprintf("%s-app", jobSpec.AppName)
+	appNamespace := fmt.Sprintf("%s-app", appName)
 	job, err := client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
 		return err
@@ -47,6 +47,11 @@ func HandleCreatePipelineJob(client kubernetes.Interface, jobSpec *PipelineJob) 
 	log.Infof("Started pipeline: %s, %s", jobName, workerImage)
 	jobSpec.Name = jobName
 	return nil
+}
+
+// TODO : Separate out into library functions
+func getAppNamespace(appName string) string {
+	return fmt.Sprintf("%s-app", appName)
 }
 
 func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.Job {
