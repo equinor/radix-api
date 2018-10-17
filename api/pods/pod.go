@@ -1,4 +1,4 @@
-package pod
+package pods
 
 // Pod hold info about pod
 // swagger:model Pod

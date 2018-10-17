@@ -1,4 +1,4 @@
-package job
+package jobs
 
 // PipelineJob hold info about pipeline job
 // todo: only need appname and branch?
@@ -8,11 +8,6 @@ type PipelineJob struct {
 	//
 	// required: true
 	Name string `json:"name"`
-
-	// Name of the application
-	//
-	// required: true
-	AppName string `json:"appName"`
 
 	// Name of the branch
 	//
