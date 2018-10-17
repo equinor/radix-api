@@ -1,6 +1,6 @@
-package platform
+package applications
 
-// ApplicationRegistration describe an application
+// ApplicationApplication describe an application
 // swagger:model ApplicationRegistration
 type ApplicationRegistration struct {
 	// Name the unique name of the Radix application
@@ -26,7 +26,7 @@ type ApplicationRegistration struct {
 	AdGroups []string `json:"adGroups"`
 
 	// PublicKey the public part of the deploy key returned
-	// after successful registration
+	// after successful application
 	//
 	// required: false
 	PublicKey string `json:"publicKey,omitempty"`

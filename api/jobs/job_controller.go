@@ -1,10 +1,11 @@
-package job
+package jobs
 
 import (
 	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -15,21 +16,21 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-const rootPath = "/job"
+const rootPath = "/applications/{appName}"
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/pipelines",
+			Path:        rootPath + "/jobs",
 			Method:      "GET",
-			HandlerFunc: GetPipelineJobs,
-			WatcherFunc: GetPipelineJobStream,
+			HandlerFunc: GetApplicationJobDetails,
+			WatcherFunc: GetApplicationJobStream,
 		},
 		models.Route{
-			Path:        rootPath + "/pipelines",
+			Path:        rootPath + "/jobs",
 			Method:      "POST",
-			HandlerFunc: CreatePipelineJob,
+			HandlerFunc: StartPipelineJob,
 		},
 	}
 
@@ -43,15 +44,15 @@ func GetSubscriptions() models.Subscriptions {
 			SubcribeCommand:    "job_subscribe",
 			UnsubscribeCommand: "job_unsubscribe",
 			DataType:           "job",
-			HandlerFunc:        GetPipelineJobStream,
+			HandlerFunc:        GetApplicationJobStream,
 		},
 	}
 
 	return subscriptions
 }
 
-// GetPipelineJobStream Lists new pods
-func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+// GetApplicationJobStream Lists new pods
+func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
 	watchList := cache.NewFilteredListWatchFromClient(client.BatchV1().RESTClient(), "jobs", corev1.NamespaceAll,
 		func(options *metav1.ListOptions) {
 		})
@@ -77,9 +78,9 @@ func GetPipelineJobStream(client kubernetes.Interface, radixclient radixclient.I
 	go controller.Run(stop)
 }
 
-// GetPipelineJobs gets pipeline jobs
-func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /job/pipelines pipelines getPipelineJobs
+// GetApplicationJobDetails gets pipeline jobs
+func GetApplicationJobDetails(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET/applications/{appName}/jobs jobs getApplicationJobDetails
 	// ---
 	// summary: Gets the pipeline jobs
 	// responses:
@@ -93,7 +94,8 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	pipelines, err := HandleGetPipelineJobs(client)
+	appName := mux.Vars(r)["appName"]
+	pipelines, err := HandleGetApplicationJobDetails(client, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -103,9 +105,9 @@ func GetPipelineJobs(client kubernetes.Interface, radixclient radixclient.Interf
 	utils.JSONResponse(w, r, pipelines)
 }
 
-// CreatePipelineJob gets pipeline jobs
-func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /job/pipelines pipelines createPipelineJob
+// StartPipelineJob gets pipeline jobs
+func StartPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST/applications/{appName}/jobs jobs startPipelineJob
 	// ---
 	// summary: Create a pipeline job
 	// parameters:
@@ -122,13 +124,15 @@ func CreatePipelineJob(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Invalid job"
 	//   "401":
 	//     description: "Unauthorized"
+	appName := mux.Vars(r)["appName"]
+
 	var pipelineJob PipelineJob
 	if err := json.NewDecoder(r.Body).Decode(&pipelineJob); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	err := HandleCreatePipelineJob(client, &pipelineJob)
+	err := HandleStartPipelineJob(client, appName, &pipelineJob)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return

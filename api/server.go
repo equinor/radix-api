@@ -9,9 +9,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/statoil/radix-api/api/job"
-	"github.com/statoil/radix-api/api/platform"
-	"github.com/statoil/radix-api/api/pod"
+	"github.com/statoil/radix-api/api/applications"
+	"github.com/statoil/radix-api/api/jobs"
+	"github.com/statoil/radix-api/api/pods"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	_ "github.com/statoil/radix-api/swaggerui" // statik files
@@ -43,9 +43,9 @@ func NewServer() http.Handler {
 	router.PathPrefix("/swaggerui/").Handler(sh)
 
 	initializeSocketServer(router)
-	addHandlerRoutes(router, platform.GetRoutes())
-	addHandlerRoutes(router, job.GetRoutes())
-	addHandlerRoutes(router, pod.GetRoutes())
+	addHandlerRoutes(router, applications.GetRoutes())
+	addHandlerRoutes(router, jobs.GetRoutes())
+	addHandlerRoutes(router, pods.GetRoutes())
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/api/", negroni.New(
@@ -135,9 +135,9 @@ func initializeSocketServer(router *mux.Router) {
 		disconnect := make(chan struct{})
 		allSubscriptions := make(map[string]chan struct{})
 
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, platform.GetSubscriptions())
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pod.GetSubscriptions())
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, job.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, applications.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pods.GetSubscriptions())
+		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, jobs.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			if disconnect != nil {

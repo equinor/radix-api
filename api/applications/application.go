@@ -1,4 +1,4 @@
-package platform
+package applications
 
 // Application describe an application
 type Application struct {
