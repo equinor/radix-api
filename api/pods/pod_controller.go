@@ -1,10 +1,11 @@
-package pod
+package pods
 
 import (
 	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const rootPath = "/container"
+const rootPath = "/applications/{appName}/environments/{envName}"
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
@@ -75,7 +76,7 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 
 // GetPods list pods
 func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /container/pods container getPods
+	// swagger:operation GET /applications/{appName}/environments/{envName}/pods environment getPods
 	// ---
 	// summary: Gets a list of all pods
 	// responses:
@@ -89,7 +90,10 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	pods, err := HandleGetPods(client)
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	pods, err := HandleGetPods(client, appName, envName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

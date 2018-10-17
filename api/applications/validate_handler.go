@@ -1,4 +1,4 @@
-package platform
+package applications
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/statoil/radix-operator/pkg/apis/kube"
 
 	log "github.com/Sirupsen/logrus"
-	radixjob "github.com/statoil/radix-api/api/job"
+	radixjob "github.com/statoil/radix-api/api/jobs"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"

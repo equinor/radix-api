@@ -1,4 +1,4 @@
-package platform
+package applications
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ import (
 
 const repoURL = "https://github.com/"
 const sshURL = "git@github.com:"
-const rootPath = "/platform"
+const rootPath = ""
 
 var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 
@@ -30,38 +30,38 @@ var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 func GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/registrations",
+			Path:        rootPath + "/applications",
 			Method:      "POST",
-			HandlerFunc: CreateRegistation,
+			HandlerFunc: RegisterApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}",
+			Path:        rootPath + "/applications/{appName}",
 			Method:      "PUT",
-			HandlerFunc: UpdateRegistation,
+			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations",
+			Path:        rootPath + "/applications",
 			Method:      "GET",
-			HandlerFunc: GetRegistations,
-			WatcherFunc: GetRegistrationStream,
+			HandlerFunc: ShowApplications,
+			WatcherFunc: GetApplicationStream,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}",
+			Path:        rootPath + "/applications/{appName}",
 			Method:      "GET",
-			HandlerFunc: GetRegistation,
+			HandlerFunc: GetApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}",
+			Path:        rootPath + "/applications/{appName}",
 			Method:      "DELETE",
-			HandlerFunc: DeleteRegistation,
+			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}/pipeline/{branch}",
+			Path:        rootPath + "/applications/{appName}/pipeline/{branch}",
 			Method:      "POST",
-			HandlerFunc: CreateApplicationPipelineJob,
+			HandlerFunc: TriggerPipeline,
 		},
 		models.Route{
-			Path:        rootPath + "/registrations/{appName}/deploykey-valid",
+			Path:        rootPath + "/applications/{appName}/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
@@ -77,15 +77,15 @@ func GetSubscriptions() models.Subscriptions {
 			SubcribeCommand:    "application_subscribe",
 			UnsubscribeCommand: "application_unsubscribe",
 			DataType:           "application",
-			HandlerFunc:        GetRegistrationStream,
+			HandlerFunc:        GetApplicationStream,
 		},
 	}
 
 	return subscriptions
 }
 
-// GetRegistrationStream Gets stream of registrations
-func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+// GetApplicationStream Gets stream of applications
+func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
 	if arg == "" {
 		arg = `{
 			name
@@ -95,7 +95,7 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	}
 
 	factory := informers.NewSharedInformerFactory(radixclient, 0)
-	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()
+	rrInformer := factory.Radix().V1().RadixApplications().Informer()
 	raInformer := factory.Radix().V1().RadixApplications().Informer()
 	rdInformer := factory.Radix().V1().RadixDeployments().Informer()
 
@@ -186,11 +186,11 @@ func GetRegistrationStream(client kubernetes.Interface, radixclient radixclient.
 	go rdInformer.Run(stop)
 }
 
-// GetRegistations Lists registrations
-func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations platform getRegistations
+// ShowApplications Lists applications
+func ShowApplications(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications platform showApplications
 	// ---
-	// summary: Lists the application registrations
+	// summary: Lists the applications
 	// parameters:
 	// - name: sshRepo
 	//   in: query
@@ -210,7 +210,7 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	appRegistrations, err := HandleGetRegistations(radixclient, sshRepo)
+	appRegistrations, err := HandleGetApplications(radixclient, sshRepo)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -220,11 +220,11 @@ func GetRegistations(client kubernetes.Interface, radixclient radixclient.Interf
 	utils.JSONResponse(w, r, appRegistrations)
 }
 
-// GetRegistation Gets registration by application name
-func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName} platform getRegistation
+// GetApplication Gets application by application name
+func GetApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName} application getApplication
 	// ---
-	// summary: Gets the application registration by name
+	// summary: Gets the application application by name
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -239,7 +239,7 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	appRegistration, err := HandleGetRegistation(radixclient, appName)
+	appRegistration, err := HandleGetApplication(radixclient, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -249,11 +249,11 @@ func GetRegistation(client kubernetes.Interface, radixclient radixclient.Interfa
 	utils.JSONResponse(w, r, &appRegistration)
 }
 
-// IsDeployKeyValidHandler validates deploy key for radix registration found for application name
+// IsDeployKeyValidHandler validates deploy key for radix application found for application name
 func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/registrations/{appName}/deploykey-valid platform isDeployKeyValid
+	// swagger:operation GET /applications/{appName}/deploykey-valid application isDeployKeyValid
 	// ---
-	// summary: Validate if the application deploy key is correctly setup
+	// summary: Checks if the deploy key is correctly setup for application by cloning the repository
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -278,9 +278,9 @@ func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclien
 	utils.ErrorResponse(w, r, err)
 }
 
-// CreateRegistation Creates new registration for application
-func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/registrations platform createRegistation
+// RegisterApplication Creates new application registation
+func RegisterApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications platform registerApplication
 	// ---
 	// summary: Create an application registration
 	// parameters:
@@ -294,18 +294,18 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//   "200":
 	//     "$ref": "#/definitions/ApplicationRegistration"
 	//   "400":
-	//     description: "Invalid registration"
+	//     description: "Invalid application registration"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "409":
 	//     description: "Conflict"
-	var registration ApplicationRegistration
-	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
+	var application ApplicationRegistration
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	appRegistration, err := HandleCreateRegistation(radixclient, registration)
+	appRegistration, err := HandleRegisterApplication(radixclient, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -314,9 +314,9 @@ func CreateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	utils.JSONResponse(w, r, &appRegistration)
 }
 
-// UpdateRegistation Updates registration for application
-func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /platform/registrations/{appName} platform updateRegistation
+// ChangeRegistrationDetails Updates application registration
+func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName} application changeRegistrationDetails
 	// ---
 	// summary: Update application registration
 	// parameters:
@@ -335,7 +335,7 @@ func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//   "200":
 	//     "$ref": "#/definitions/ApplicationRegistration"
 	//   "400":
-	//     description: "Invalid registration"
+	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -344,13 +344,13 @@ func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Conflict"
 	appName := mux.Vars(r)["appName"]
 
-	var registration ApplicationRegistration
-	if err := json.NewDecoder(r.Body).Decode(&registration); err != nil {
+	var application ApplicationRegistration
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	appRegistration, err := HandleUpdateRegistation(radixclient, appName, registration)
+	appRegistration, err := HandleChangeRegistrationDetails(radixclient, appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -359,11 +359,11 @@ func UpdateRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	utils.JSONResponse(w, r, &appRegistration)
 }
 
-// DeleteRegistation Deletes registration for application
-func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /platform/registrations/{appName} platform deleteRegistation
+// DeleteApplication Deletes application
+func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation DELETE /applications/{appName} application deleteApplication
 	// ---
-	// summary: Delete registration
+	// summary: Delete application
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -372,13 +372,13 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	//   required: true
 	// responses:
 	//   "200":
-	//     description: "Registration deleted ok"
+	//     description: "Application deleted ok"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	err := HandleDeleteRegistation(radixclient, appName)
+	err := HandleDeleteApplication(radixclient, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -388,9 +388,9 @@ func DeleteRegistation(client kubernetes.Interface, radixclient radixclient.Inte
 	utils.JSONResponse(w, r, "ok")
 }
 
-// CreateApplicationPipelineJob creates a pipeline job for the application
-func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/registrations/{appName}/pipeline/{branchName} platform createApplicationPipelineJob
+// TriggerPipeline creates a pipeline job for the application
+func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipeline/{branchName} application triggerPipeline
 	// ---
 	// summary: Create an application pipeline for a given application and branch
 	// parameters:
@@ -411,14 +411,14 @@ func CreateApplicationPipelineJob(client kubernetes.Interface, radixclient radix
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	branch := mux.Vars(r)["branch"]
-	jobSpec, err := HandleCreateApplicationPipelineJob(client, radixclient, appName, branch)
+	jobSpec, err := HandleTriggerPipeline(client, radixclient, appName, branch)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s started", jobSpec.Name, jobSpec.AppName, jobSpec.Branch))
+	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s started", jobSpec.Name, appName, jobSpec.Branch))
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
