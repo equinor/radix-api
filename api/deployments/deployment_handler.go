@@ -1,4 +1,4 @@
-package deployment
+package deployments
 
 import (
 	"fmt"
@@ -41,8 +41,8 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 	return postFiltering(radixDeployments, latest), nil
 }
 
-// HandlePromoteEnvironment handler for PromoteEnvironment
-func HandlePromoteEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName string, promotionParameters PromotionParameters) (*ApplicationDeployment, error) {
+// HandlePromoteToEnvironment handler for PromoteEnvironment
+func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName, deploymentName string, promotionParameters PromotionParameters) (*ApplicationDeployment, error) {
 	if strings.TrimSpace(appName) == "" {
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
@@ -63,26 +63,9 @@ func HandlePromoteEnvironment(client kubernetes.Interface, radixclient radixclie
 	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
 	var radixDeployment *v1.RadixDeployment
 
-	if strings.TrimSpace(promotionParameters.ImageTag) != "" {
-		radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(getDeploymentName(appName, promotionParameters.ImageTag), metav1.GetOptions{})
-		if err != nil {
-			return nil, utils.TypeMissingError("Non existing image", err)
-		}
-	} else {
-		// Get latest deployment
-		deployments, err := HandleGetDeployments(radixclient, appName, promotionParameters.FromEnvironment, true)
-		if err != nil {
-			return nil, utils.TypeMissingError("No deployment was found", err)
-		}
-
-		if len(deployments) != 1 {
-			return nil, utils.UnexpectedError("No latest deployment was found", err)
-		}
-
-		radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(deployments[0].Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, utils.TypeMissingError("Non existing image", err)
-		}
+	radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, utils.TypeMissingError("Non existing deployment", err)
 	}
 
 	radixDeployment.ResourceVersion = ""

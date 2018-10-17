@@ -1,4 +1,4 @@
-package deployment
+package deployments
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const rootPath = "/platform"
+const rootPath = "/applications/{appName}"
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
@@ -27,9 +27,9 @@ func GetRoutes() models.Routes {
 			HandlerFunc: GetDeployments,
 		},
 		models.Route{
-			Path:        rootPath + "/deployments/{appName}/promote",
+			Path:        rootPath + "/deployments/{deploymentName}/promote",
 			Method:      "POST",
-			HandlerFunc: PromoteEnvironment,
+			HandlerFunc: PromoteToEnvironment,
 		},
 	}
 
@@ -45,12 +45,12 @@ func GetSubscriptions() models.Subscriptions {
 
 // GetDeployments Lists deployments
 func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /platform/deployments platform getDeployments
+	// swagger:operation GET /applications/{appName}/deployments deployment getDeployments
 	// ---
 	// summary: Lists the application deployments
 	// parameters:
 	// - name: appName
-	//   in: query
+	//   in: path
 	//   description: name of Radix application
 	//   type: string
 	//   required: false
@@ -75,7 +75,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	appName := r.FormValue("appName")
+	appName := mux.Vars(r)["appName"]
 	environment := r.FormValue("environment")
 	latest := r.FormValue("latest")
 
@@ -99,15 +99,20 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	utils.JSONResponse(w, r, appDeployments)
 }
 
-// PromoteEnvironment promote an environment from another environment
-func PromoteEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /platform/deployments/{appName}/promote platform promoteEnvironment
+// PromoteToEnvironment promote an environment from another environment
+func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/deployments/{deploymentName}/promote deployment promoteToEnvironment
 	// ---
 	// summary: Promote an environment from another environment
 	// parameters:
 	// - name: appName
 	//   in: path
 	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: Name of deployment
 	//   type: string
 	//   required: true
 	// - name: promotionParameters
@@ -122,13 +127,15 @@ func PromoteEnvironment(client kubernetes.Interface, radixclient radixclient.Int
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
+	deploymentName := mux.Vars(r)["deploymentName"]
+
 	var promotionParameters PromotionParameters
 	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	_, err := HandlePromoteEnvironment(client, radixclient, appName, promotionParameters)
+	_, err := HandlePromoteToEnvironment(client, radixclient, appName, deploymentName, promotionParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

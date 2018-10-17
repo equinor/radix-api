@@ -1,4 +1,4 @@
-package deployment
+package deployments
 
 import (
 	"testing"
@@ -76,19 +76,15 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", ""},
 		{"promote from non-existing environment", "anyapp", "dev", "abcdef", "prod", "Non existing from environment"},
 		{"promote to non-existing environment", "anyapp1", "dev", "abcdef", "prod", "Non existing to environment"},
-		{"promote non-existing image", "anyapp2", "dev", "nopqrst", "prod", "Non existing image"},
+		{"promote non-existing image", "anyapp2", "dev", "nopqrst", "prod", "Non existing deployment"},
 		{"promote an image into environment having already that image", "anyapp3", "dev", "abcdef", "prod", ""},
-		{"promote from environment with no images and with no image tag in parameters", "anyapp4", "dev", "", "prod", "No latest deployment was found"},
 	}
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
-			if scenario.imageTag != "" {
-				parameters.ImageTag = scenario.imageTag
-			}
 
-			_, err := HandlePromoteEnvironment(kubeclient, radixclient, scenario.appName, parameters)
+			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, getDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.Error(t, err)
 
 			if scenario.expectedErrorMessage != "" {
@@ -122,17 +118,13 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 		imageExpected   string
 	}{
 		{"promote single image", "anyapp", "dev", "abcdef", "prod", ""},
-		{"promote latest image", "anyapp1", "dev", "", "prod", "nopqrst"},
 	}
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
-			if scenario.imageTag != "" {
-				parameters.ImageTag = scenario.imageTag
-			}
 
-			_, err := HandlePromoteEnvironment(kubeclient, radixclient, scenario.appName, parameters)
+			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, getDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.NoError(t, err)
 
 			if scenario.imageExpected != "" {
@@ -164,16 +156,16 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	createEnvNamespace(kubeclient, "anyapp2", "prod")
 
 	// Scenario
-	_, err := HandlePromoteEnvironment(kubeclient, radixclient, "anyapp2", PromotionParameters{FromEnvironment: "dev", ImageTag: "abcdef", ToEnvironment: "prod"})
-	assert.NoError(t, err, "HandlePromoteEnvironment - Unexpected error")
+	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "anyapp2", getDeploymentName("anyapp2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
+	assert.NoError(t, err, "HandlePromoteToEnvironment - Unexpected error")
 
 	deployments, _ := HandleGetDeployments(radixclient, "anyapp2", "prod", false)
-	assert.Equal(t, 1, len(deployments), "HandlePromoteEnvironment - Was not promoted as expected")
+	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
 	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(getNamespaceForApplicationEnvironment(deployments[0].AppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
-	assert.Equal(t, 1, len(radixDeployment.Spec.Components[0].EnvironmentVariables), "HandlePromoteEnvironment - Was not promoted as expected")
-	assert.Equal(t, "useless-prod", radixDeployment.Spec.Components[0].EnvironmentVariables["DB_HOST"], "HandlePromoteEnvironment - Was not promoted as expected")
+	assert.Equal(t, 1, len(radixDeployment.Spec.Components[0].EnvironmentVariables), "HandlePromoteToEnvironment - Was not promoted as expected")
+	assert.Equal(t, "useless-prod", radixDeployment.Spec.Components[0].EnvironmentVariables["DB_HOST"], "HandlePromoteToEnvironment - Was not promoted as expected")
 
 }
 
