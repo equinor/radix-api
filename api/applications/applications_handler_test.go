@@ -155,7 +155,6 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	job, err := HandleTriggerPipeline(kubeclient, radixclient, "Any Name", "master")
 
 	assert.NoError(t, err, "HandleTriggerPipeline - Should be able to create job on existing app")
-	assert.Equal(t, "Any Name", job.AppName, "HandleTriggerPipeline - Name of app was unexpected")
 	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was unexpected")
 	assert.NotEmpty(t, job.Name, "HandleTriggerPipeline - Expected a jobname")
 	assert.NotEmpty(t, job.SSHRepo, "HandleTriggerPipeline - Expected a repo")
