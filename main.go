@@ -42,15 +42,33 @@ func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		port      = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		certPath  = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
+		keyPath   = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
+		httpsPort = "3000"
 	)
 
 	parseFlagsFromArgs(fs)
 
-	log.Infof("Api is serving on port %s", *port)
-	err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer())
+	errs := make(chan error)
+	go func() {
+		log.Infof("Api is serving on port %s", *port)
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer())
+		errs <- err
+	}()
+	if certPath != "" && keyPath != "" {
+		go func() {
+			log.Infof("Api is serving on port %s", httpsPort)
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, routers.NewServer())
+			errs <- err
+		}()
+	} else {
+		log.Info("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
+	}
+
+	err := <-errs
 	if err != nil {
-		log.Fatalf("Unable to start serving: %v", err)
+		log.Fatalf("Web api server crached: %v", err)
 	}
 }
 
