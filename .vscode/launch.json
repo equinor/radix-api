@@ -10,7 +10,10 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
-            "env": {},
+            "env": {
+                "server_cert_path":"${workspaceFolder}/certs/cert.pem",
+                "server_key_path":"${workspaceFolder}/certs/key.pem"
+            },
             "args": []
         }
     ]

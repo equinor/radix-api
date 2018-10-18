@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
+	"github.com/statoil/radix-api/api/admissioncontrollers"
 	"github.com/statoil/radix-api/api/job"
 	"github.com/statoil/radix-api/api/platform"
 	"github.com/statoil/radix-api/api/pod"
@@ -46,8 +47,13 @@ func NewServer() http.Handler {
 	addHandlerRoutes(router, platform.GetRoutes())
 	addHandlerRoutes(router, job.GetRoutes())
 	addHandlerRoutes(router, pod.GetRoutes())
+	addHandlerRoutesInClusterKubeClient(router, admissioncontrollers.GetRoutes(), "")
 
 	serveMux := http.NewServeMux()
+	serveMux.Handle(fmt.Sprintf("%s/", admissioncontrollers.RootPath), negroni.New(
+		negroni.Wrap(router),
+	))
+
 	serveMux.Handle("/api/", negroni.New(
 		negroni.HandlerFunc(utils.BearerTokenHeaderVerifyerMiddleware),
 		negroni.Wrap(router),
@@ -113,6 +119,17 @@ func getHostName(componentName, namespace, clustername string) string {
 func addHandlerRoutes(router *mux.Router, routes models.Routes) {
 	for _, route := range routes {
 		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(route.HandlerFunc, route.WatcherFunc).Handle).Methods(route.Method)
+	}
+}
+
+// routes which should be run under radix-api service account, instead of using incomming access token
+func addHandlerRoutesInClusterKubeClient(router *mux.Router, routes models.Routes, rootURL string) {
+	for _, route := range routes {
+		router.HandleFunc(rootURL+route.Path,
+			func(w http.ResponseWriter, r *http.Request) {
+				client, radixclient := utils.GetInClusterKubernetesClient()
+				route.HandlerFunc(client, radixclient, w, r)
+			}).Methods(route.Method)
 	}
 }
 
