@@ -79,6 +79,17 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	// swagger:operation GET /applications/{appName}/environments/{envName}/pods environment getPods
 	// ---
 	// summary: Gets a list of all pods
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: false
+	// - name: envName
+	//   in: path
+	//   description: environment of Radix application
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"

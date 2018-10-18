@@ -83,6 +83,12 @@ func GetApplicationJobDetails(client kubernetes.Interface, radixclient radixclie
 	// swagger:operation GET/applications/{appName}/jobs jobs getApplicationJobDetails
 	// ---
 	// summary: Gets the pipeline jobs
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
