@@ -5,9 +5,13 @@ metadata:
 spec:
   environments:
   - name: prod
+  - name: qa
+    build:
+      from: master
   components:
   - name: "server"
     src: "."
+    replicas: 2
     dockerfileName: "Dockerfile"
     ports:
     - name: http
