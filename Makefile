@@ -29,6 +29,10 @@ deploy-gitclone:
 	docker build -t radixdev.azurecr.io/gitclone:$(IMAGE_TAG) -f gitclone.Dockerfile .
 	docker push radixdev.azurecr.io/gitclone:$(IMAGE_TAG)
 
+deploy-api:
+	make docker-build
+	make docker-push
+
 .PHONY: deploy
 deploy:
 	# Download deploy key + webhook shared secret
