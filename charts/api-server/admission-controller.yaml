@@ -1,0 +1,23 @@
+# Activate when we want to support admission controller
+# apiVersion: admissionregistration.k8s.io/v1beta1
+# kind: ValidatingWebhookConfiguration
+# metadata:
+#   name: rr-admission-controller
+# webhooks:
+# - name: admission-policy.registration.io
+#   failurePolicy: Fail
+#   rules:
+#   - apiGroups:
+#     - radix.equinor.com
+#     apiVersions:
+#     - v1
+#     operations:
+#     - CREATE
+#     resources:
+#     - radixregistrations
+#   clientConfig:
+#     caBundle: <certificate used for hosting api service> 
+#     service:
+#        name: server
+#        namespace: radix-api-prod
+#        path: "/admissioncontrollers/registrations"
