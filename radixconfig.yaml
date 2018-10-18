@@ -8,9 +8,6 @@ spec:
   - name: qa
     build:
       from: master
-  - name: feature
-    build:
-      from: OR-14_SupportPromotion
   components:
   - name: "server"
     src: "."
