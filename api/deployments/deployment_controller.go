@@ -45,7 +45,7 @@ func GetSubscriptions() models.Subscriptions {
 
 // GetDeployments Lists deployments
 func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments deployment getDeployments
+	// swagger:operation GET /applications/{appName}/deployments application getDeployments
 	// ---
 	// summary: Lists the application deployments
 	// parameters:
