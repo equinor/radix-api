@@ -1,6 +1,6 @@
 package applications
 
-// ApplicationApplication describe an application
+// ApplicationRegistration describe an application
 // swagger:model ApplicationRegistration
 type ApplicationRegistration struct {
 	// Name the unique name of the Radix application
