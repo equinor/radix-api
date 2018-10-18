@@ -18,12 +18,12 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("prod").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("prod").withImageTag("abcdef"))
 
 	// Ensure the second image is considered the latest version
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("prod").withImageTag("uvwxyza"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("prod").withImageTag("uvwxyza"))
 
 	var testScenarios = []struct {
 		name                   string
@@ -33,12 +33,12 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 		numDeploymentsExpected int
 	}{
 		{"no filter should list all", "", "", false, 4},
-		{"list all accross all environments", "anyapp2", "", false, 3},
-		{"list all for environment", "anyapp2", "dev", false, 2},
-		{"only list latest in environment", "anyapp2", "dev", true, 1},
+		{"list all accross all environments", "any-app-2", "", false, 3},
+		{"list all for environment", "any-app-2", "dev", false, 2},
+		{"only list latest in environment", "any-app-2", "dev", true, 1},
 		{"only list latest for all apps in all environments", "", "", true, 3},
-		{"non existing app should lead to empty list", "anyapp3", "", false, 0},
-		{"non existing environment should lead to empty list", "anyapp2", "qa", false, 0},
+		{"non existing app should lead to empty list", "any-app-3", "", false, 0},
+		{"non existing environment should lead to empty list", "any-app-2", "qa", false, 0},
 	}
 
 	for _, scenario := range testScenarios {
@@ -54,15 +54,15 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp").withEnvironment("prod").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("prod").withImageTag("ghijklm"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp3").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp3").withEnvironment("prod").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-").withEnvironment("prod").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("prod").withImageTag("ghijklm"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-3").withEnvironment("dev").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-3").withEnvironment("prod").withImageTag("abcdef"))
 
-	createEnvNamespace(kubeclient, "anyapp4", "dev")
-	createEnvNamespace(kubeclient, "anyapp4", "prod")
+	createEnvNamespace(kubeclient, "any-app-4", "dev")
+	createEnvNamespace(kubeclient, "any-app-4", "prod")
 
 	var testScenarios = []struct {
 		name                 string
@@ -74,10 +74,10 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 	}{
 		{"promote empty app", "", "dev", "abcdef", "prod", "App name is required"},
 		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", ""},
-		{"promote from non-existing environment", "anyapp", "dev", "abcdef", "prod", "Non existing from environment"},
-		{"promote to non-existing environment", "anyapp1", "dev", "abcdef", "prod", "Non existing to environment"},
-		{"promote non-existing image", "anyapp2", "dev", "nopqrst", "prod", "Non existing deployment"},
-		{"promote an image into environment having already that image", "anyapp3", "dev", "abcdef", "prod", ""},
+		{"promote from non-existing environment", "any-app-", "dev", "abcdef", "prod", "Non existing from environment"},
+		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "prod", "Non existing to environment"},
+		{"promote non-existing image", "any-app-2", "dev", "nopqrst", "prod", "Non existing deployment"},
+		{"promote an image into environment having already that image", "any-app-3", "dev", "abcdef", "prod", ""},
 	}
 
 	for _, scenario := range testScenarios {
@@ -99,15 +99,15 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp").withEnvironment("dev").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-").withEnvironment("dev").withImageTag("abcdef"))
 
 	// Create prod environment without any deployments
-	createEnvNamespace(kubeclient, "anyapp", "prod")
+	createEnvNamespace(kubeclient, "any-app-", "prod")
 
 	// Ensure the second image is considered the latest version
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("anyapp1").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
-	createEnvNamespace(kubeclient, "anyapp1", "prod")
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
+	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
+	createEnvNamespace(kubeclient, "any-app-1", "prod")
 
 	var testScenarios = []struct {
 		name            string
@@ -117,7 +117,7 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 		toEnvironment   string
 		imageExpected   string
 	}{
-		{"promote single image", "anyapp", "dev", "abcdef", "prod", ""},
+		{"promote single image", "any-app-", "dev", "abcdef", "prod", ""},
 	}
 
 	for _, scenario := range testScenarios {
@@ -149,17 +149,17 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	environmentVariables := []v1.EnvVars{v1.EnvVars{Environment: "dev", Variables: devVariable}, v1.EnvVars{Environment: "prod", Variables: prodVariable}}
 	appComponent := NewRadixConfigComponentBuilder().withName("app").withEnvironmentVariablesMap(environmentVariables)
-	customRadixConfig := NewRadixConfigBuilder().withAppName("anyapp2").withComponent(appComponent).withEnvironments([]string{"dev", "prod"})
-	applyWithConfig(kubeclient, radixclient, customRadixConfig, NewDeploymentBuilder().withAppName("anyapp2").withEnvironment("dev").withImageTag("abcdef").withComponent(NewDeployComponentBuilder().withName("app")))
+	customRadixConfig := NewRadixConfigBuilder().withAppName("any-app-2").withComponent(appComponent).withEnvironments([]string{"dev", "prod"})
+	applyWithConfig(kubeclient, radixclient, customRadixConfig, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("abcdef").withComponent(NewDeployComponentBuilder().withName("app")))
 
 	// Create prod environment without any deployments
-	createEnvNamespace(kubeclient, "anyapp2", "prod")
+	createEnvNamespace(kubeclient, "any-app-2", "prod")
 
 	// Scenario
-	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "anyapp2", getDeploymentName("anyapp2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
+	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "any-app-2", getDeploymentName("any-app-2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
 	assert.NoError(t, err, "HandlePromoteToEnvironment - Unexpected error")
 
-	deployments, _ := HandleGetDeployments(radixclient, "anyapp2", "prod", false)
+	deployments, _ := HandleGetDeployments(radixclient, "any-app-2", "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA

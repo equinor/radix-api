@@ -167,8 +167,9 @@ func getDeploymentName(appName, imageTag string) string {
 }
 
 func getAppAndImagePairFromName(name string) (string, string) {
-	pair := strings.Split(name, "-")
-	return pair[0], pair[1]
+	runes := []rune(name)
+	lastIndex := strings.LastIndex(name, "-")
+	return string(runes[0:lastIndex]), string(runes[(lastIndex + 1):len(runes)])
 }
 
 // Builder Handles construction of RD
@@ -193,6 +194,7 @@ type deploymentBuilder struct {
 
 func (db *deploymentBuilder) withRadixDeployment(radixDeployment *v1.RadixDeployment) Builder {
 	_, imageTag := getAppAndImagePairFromName(radixDeployment.Name)
+
 	db.withImageTag(imageTag)
 	db.withAppName(radixDeployment.Spec.AppName)
 	db.withEnvironment(radixDeployment.Spec.Environment)
