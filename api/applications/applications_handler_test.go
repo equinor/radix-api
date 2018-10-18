@@ -141,18 +141,18 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	kubeclient := kubernetes.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 
-	_, err := HandleTriggerPipeline(kubeclient, radixclient, "", "master")
+	_, err := HandleTriggerPipeline(kubeclient, radixclient, "", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined application")
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", "")
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", BuildDeploy.String(), PipelineParameters{Branch: ""})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined branch")
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", "master")
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non existing app")
 
 	builder := NewBuilder().withName("Any Name").withRepository("Any repo").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
-	job, err := HandleTriggerPipeline(kubeclient, radixclient, "Any Name", "master")
+	job, err := HandleTriggerPipeline(kubeclient, radixclient, "Any Name", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 
 	assert.NoError(t, err, "HandleTriggerPipeline - Should be able to create job on existing app")
 	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was unexpected")

@@ -15,6 +15,31 @@ import (
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
 
+// Pipeline Enumeration of the different pipelines we support
+type Pipeline int
+
+const (
+	// BuildDeploy Will do build based on docker file and deploy to mapped environment
+	BuildDeploy Pipeline = iota
+
+	// end marker of the enum
+	numPipelines
+)
+
+func (p Pipeline) String() string {
+	return [...]string{"build-deploy"}[p]
+}
+
+func getPipeline(name string) (Pipeline, error) {
+	for pipeline := BuildDeploy; pipeline < numPipelines; pipeline++ {
+		if pipeline.String() == name {
+			return pipeline, nil
+		}
+	}
+
+	return numPipelines, fmt.Errorf("No pipeline found by name %s", name)
+}
+
 // HandleGetApplications handler for ShowApplications
 func HandleGetApplications(radixclient radixclient.Interface, sshRepo string) ([]*ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
@@ -109,7 +134,14 @@ func HandleDeleteApplication(radixclient radixclient.Interface, appName string) 
 }
 
 // HandleTriggerPipeline handler for TriggerPipeline
-func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, branch string) (*job.PipelineJob, error) {
+func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, pipelineName string, pipelineParameters PipelineParameters) (*job.PipelineJob, error) {
+	_, err := getPipeline(pipelineName)
+	if err != nil {
+		return nil, utils.ValidationError("Radix Registration Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
+	}
+
+	branch := pipelineParameters.Branch
+
 	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
 		return nil, utils.ValidationError("Radix Registration Pipeline", "App name and branch is required")
 	}

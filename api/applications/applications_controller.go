@@ -56,7 +56,7 @@ func GetRoutes() models.Routes {
 			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipeline/{branch}",
+			Path:        rootPath + "/applications/{appName}/pipeline/{pipelineName}",
 			Method:      "POST",
 			HandlerFunc: TriggerPipeline,
 		},
@@ -390,28 +390,43 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 
 // TriggerPipeline creates a pipeline job for the application
 func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/pipeline/{branchName} application triggerPipeline
+	// swagger:operation POST /applications/{appName}/pipeline/{pipelineName} application triggerPipeline
 	// ---
-	// summary: Create an application pipeline for a given application and branch
+	// summary: Run a pipeline for a given application and branch
 	// parameters:
 	// - name: appName
 	//   in: path
 	//   description: Name of application
 	//   type: string
 	//   required: true
-	// - name: branchName
+	// - name: pipelineName
 	//   in: path
-	//   description: Name of branch
+	//   description: Name of pipeline
 	//   type: string
+	//   enum:
+	//   - build-deploy
 	//   required: true
+	// - name: pipelineParameters
+	//   in: body
+	//   description: Branch to build
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/PipelineParameters"
 	// responses:
 	//   "200":
 	//     description: "Pipeline job started ok"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	branch := mux.Vars(r)["branch"]
-	jobSpec, err := HandleTriggerPipeline(client, radixclient, appName, branch)
+	pipelineName := mux.Vars(r)["pipelineName"]
+
+	var pipelineParameters PipelineParameters
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	jobSpec, err := HandleTriggerPipeline(client, radixclient, appName, pipelineName, pipelineParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
