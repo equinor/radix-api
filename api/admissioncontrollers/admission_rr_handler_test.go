@@ -10,19 +10,19 @@ import (
 	. "github.com/statoil/radix-api/api/admissioncontrollers"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/utils"
+	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 )
 
 func Test_valid_rr_returns_true(t *testing.T) {
-	validRR, _ := utils.GetRadixRegistrationFromFile("testdata/sampleregistration.yaml")
-	kubeclient := kubefake.NewSimpleClientset()
-	client := radixfake.NewSimpleClientset()
+	kubeclient, client, validRR := validRRSetup()
 	admissionReview := admissionReviewMock(validRR)
-	isValid, err := ValidateRegistrationCreation(kubeclient, client, admissionReview)
+	isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
 
 	assert.True(t, isValid)
 	assert.Nil(t, err)
@@ -50,15 +50,13 @@ func Test_create_invalid_rr(t *testing.T) {
 		{"empty ad group", func(rr *v1.RadixRegistration) { rr.Spec.AdGroups = []string{""} }},
 	}
 
-	kubeclient := kubefake.NewSimpleClientset()
-	client := radixfake.NewSimpleClientset()
-	validRR, _ := utils.GetRadixRegistrationFromFile("testdata/sampleregistration.yaml")
+	kubeclient, client, validRR := validRRSetup()
 
 	for _, testcase := range testScenarios {
 		t.Run(testcase.name, func(t *testing.T) {
 			testcase.updateRR(validRR)
 			admissionReview := admissionReviewMock(validRR)
-			isValid, err := ValidateRegistrationCreation(kubeclient, client, admissionReview)
+			isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
 
 			assert.False(t, isValid)
 			assert.NotNil(t, err)
@@ -74,10 +72,8 @@ func Test_create_invalid_rr(t *testing.T) {
 	})
 }
 
-func Test_invalid_admission_review(t *testing.T) {
-	validRR, _ := utils.GetRadixRegistrationFromFile("testdata/sampleregistration.yaml")
-	kubeclient := kubefake.NewSimpleClientset()
-	client := radixfake.NewSimpleClientset()
+func Test_invalid_rr_admission_review(t *testing.T) {
+	kubeclient, client, validRR := validRRSetup()
 	t.Run("invalid resource type", func(t *testing.T) {
 		admissionReview := admissionReviewMock(validRR)
 		admissionReview.Request.Resource = metav1.GroupVersionResource{
@@ -85,7 +81,7 @@ func Test_invalid_admission_review(t *testing.T) {
 			Version:  "v1",
 			Resource: "namespaces",
 		}
-		isValid, err := ValidateRegistrationCreation(kubeclient, client, admissionReview)
+		isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
 
 		assert.False(t, isValid)
 		assert.NotNil(t, err)
@@ -94,11 +90,19 @@ func Test_invalid_admission_review(t *testing.T) {
 	t.Run("invalid encoded rr", func(t *testing.T) {
 		admissionReview := admissionReviewMock(validRR)
 		admissionReview.Request.Object = runtime.RawExtension{Raw: []byte("some invalid encoded rr")}
-		isValid, err := ValidateRegistrationCreation(kubeclient, client, admissionReview)
+		isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
 
 		assert.False(t, isValid)
 		assert.NotNil(t, err)
 	})
+}
+
+func validRRSetup() (kubernetes.Interface, radixclient.Interface, *v1.RadixRegistration) {
+	validRR, _ := utils.GetRadixRegistrationFromFile("testdata/sampleregistration.yaml")
+	kubeclient := kubefake.NewSimpleClientset()
+	client := radixfake.NewSimpleClientset()
+
+	return kubeclient, client, validRR
 }
 
 func admissionReviewMock(reg *v1.RadixRegistration) v1beta1.AdmissionReview {
