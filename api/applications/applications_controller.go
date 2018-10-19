@@ -56,7 +56,7 @@ func GetRoutes() models.Routes {
 			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipeline/{pipelineName}",
+			Path:        rootPath + "/applications/{appName}/pipelines/{pipelineName}",
 			Method:      "POST",
 			HandlerFunc: TriggerPipeline,
 		},
@@ -390,7 +390,7 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 
 // TriggerPipeline creates a pipeline job for the application
 func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/pipeline/{pipelineName} application triggerPipeline
+	// swagger:operation POST /applications/{appName}/pipelines/{pipelineName} application triggerPipeline
 	// ---
 	// summary: Run a pipeline for a given application and branch
 	// parameters:
