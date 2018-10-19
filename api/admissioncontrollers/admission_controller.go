@@ -1,9 +1,7 @@
 package admissioncontrollers
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/statoil/radix-api/api/utils"
@@ -11,7 +9,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/models"
 
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 
 	"k8s.io/api/admission/v1beta1"
@@ -29,7 +26,14 @@ func GetRoutes() models.Routes {
 			Path:   RootPath + "/registrations",
 			Method: "POST",
 			HandlerFunc: func(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-				serve(client, radixclient, w, r, ValidateRegistrationCreation)
+				serve(client, radixclient, w, r, ValidateRegistrationChange)
+			},
+		},
+		models.Route{
+			Path:   RootPath + "/applications",
+			Method: "POST",
+			HandlerFunc: func(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+				serve(client, radixclient, w, r, ValidateRadixConfigurationChange)
 			},
 		},
 	}
@@ -38,39 +42,6 @@ func GetRoutes() models.Routes {
 }
 
 type admitFunc func(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error)
-
-// Validates a new app registration
-func ValidateRegistrationCreation(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error) {
-	log.Infof("admitting radix registrations")
-
-	radixRegistration, err := decodeRadixRegistration(ar)
-	if err != nil {
-		log.Warnf("radix reg decoding failed")
-		return false, err
-	}
-	log.Infof("radix registration decoded")
-
-	isValid, err := CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
-	if isValid {
-		log.Infof("radix reg %s was admitted", radixRegistration.Name)
-	} else {
-		log.Warnf("radix reg %s was rejected", radixRegistration.Name)
-	}
-	return isValid, err
-}
-
-func decodeRadixRegistration(ar v1beta1.AdmissionReview) (*v1.RadixRegistration, error) {
-	rrResource := metav1.GroupVersionResource{Group: "radix.equinor.com", Version: "v1", Resource: "radixregistrations"}
-	if ar.Request.Resource != rrResource {
-		return nil, fmt.Errorf("resource was %s, expect resource to be %s", ar.Request.Resource, rrResource)
-	}
-
-	radixRegistration := v1.RadixRegistration{}
-	if err := json.NewDecoder(bytes.NewReader(ar.Request.Object.Raw)).Decode(&radixRegistration); err != nil {
-		return nil, err
-	}
-	return &radixRegistration, nil
-}
 
 func serve(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	// verify the content type is accurate
