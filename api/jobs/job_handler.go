@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"os"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +57,12 @@ func getAppNamespace(appName string) string {
 }
 
 func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.Job {
-	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, "latest")
+	pipelineTag := os.Getenv("PIPELINE_IMG_TAG")
+	if pipelineTag == "" {
+		pipelineTag = "latest"
+	}
+
+	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, pipelineTag)
 	log.Infof("Using image: %s", imageTag)
 	cloneContainer, volume := CloneContainer(sshURL, "master")
 
