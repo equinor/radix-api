@@ -17,3 +17,10 @@ spec:
     - name: http
       port: 3002
     public: true
+    environmentVariables:
+    - environment: qa
+      variables:
+        PIPELINE_IMG_TAG: "latest"
+    - environment: prod
+      variables:
+        PIPELINE_IMG_TAG: "prod"
