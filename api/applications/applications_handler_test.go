@@ -10,7 +10,11 @@ import (
 
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	anyApp := NewBuilder().withName("my-app").withRepository("https://github.com/Equinor/my-app").BuildApplicationRegistration()
+	anyApp := NewBuilder().
+		withName("my-app").
+		withRepository("https://github.com/Equinor/my-app").
+		BuildApplicationRegistration()
+
 	HandleRegisterApplication(radixclient, *anyApp)
 
 	applications, _ := HandleGetApplications(radixclient, "git@github.com:Equinor/my-app.git")
@@ -47,14 +51,20 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder = NewBuilder().
+		withName("Any Name").
+		withRepository("Any repo")
+
 	application, _ = HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	assert.NotEmpty(t, application.PublicKey, "HandleRegisterApplication - when repo is provided, and deploy key is not, generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo").withPublicKey("Any public key")
+	builder = NewBuilder().
+		withName("Any Name").
+		withRepository("Any repo").
+		withPublicKey("Any public key")
 	application, _ = HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	expected = "Any public key"
@@ -64,7 +74,10 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder := NewBuilder().
+		withName("Any Name").
+		withRepository("Any repo")
+
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	builder = NewBuilder().withName("Another Name").withRepository("Any repo")
@@ -74,7 +87,10 @@ func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 
 func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder := NewBuilder().
+		withName("Any Name").
+		withRepository("Any repo")
+
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	builder = NewBuilder().withName("Another Name").withRepository("Another repo")
@@ -105,19 +121,28 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	builder := NewBuilder().withName("Any Name")
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder = NewBuilder().
+		withName("Any Name").
+		withRepository("Any repo")
+
 	application, _ := HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
 	expected := "Any repo"
 	actual := application.Repository
 	assert.Equal(t, expected, actual, "HandleChangeRegistrationDetails - repository should be updatable")
 
-	builder = NewBuilder().withName("Any Name").withSharedSecret("Any shared secret")
+	builder = NewBuilder().
+		withName("Any Name").
+		withSharedSecret("Any shared secret")
+
 	application, _ = HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
 	expected = "Any shared secret"
 	actual = application.SharedSecret
 	assert.Equal(t, expected, actual, "HandleChangeRegistrationDetails - shared secret should be updatable")
 
-	builder = NewBuilder().withName("Any Name").withPublicKey("Any public key")
+	builder = NewBuilder().
+		withName("Any Name").
+		withPublicKey("Any public key")
+
 	application, _ = HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
 	expected = "Any public key"
 	actual = application.PublicKey
@@ -127,7 +152,11 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("https://github.com/a-user/a-repo/").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+	builder := NewBuilder().
+		withName("Any Name").
+		withRepository("https://github.com/a-user/a-repo/").
+		withSharedSecret("Any secret").
+		withAdGroups([]string{"Some ad group"})
 
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 	application, _ := HandleGetApplication(radixclient, "Any Name")
@@ -158,32 +187,4 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was unexpected")
 	assert.NotEmpty(t, job.Name, "HandleTriggerPipeline - Expected a jobname")
 	assert.NotEmpty(t, job.SSHRepo, "HandleTriggerPipeline - Expected a repo")
-}
-
-func TestCloneToRepositoryURL_ValidUrl(t *testing.T) {
-	cloneURL := "git@github.com:Statoil/radix-api.git"
-	repo := getRepositoryURLFromCloneURL(cloneURL)
-
-	assert.Equal(t, "https://github.com/Statoil/radix-api", repo)
-}
-
-func TestCloneToRepositoryURL_EmptyURL(t *testing.T) {
-	cloneURL := ""
-	repo := getRepositoryURLFromCloneURL(cloneURL)
-
-	assert.Equal(t, "", repo)
-}
-
-func TestGetCloneURLRepo_ValidRepo_CreatesValidClone(t *testing.T) {
-	expected := "git@github.com:Equinor/my-app.git"
-	actual := getCloneURLFromRepo("https://github.com/Equinor/my-app")
-
-	assert.Equal(t, expected, actual, "getCloneURLFromRepo - not equal")
-}
-
-func TestGetCloneURLRepo_EmptyRepo_CreatesEmptyClone(t *testing.T) {
-	expected := ""
-	actual := getCloneURLFromRepo("")
-
-	assert.Equal(t, expected, actual, "getCloneURLFromRepo - not equal")
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radix "github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -18,12 +19,25 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("prod").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().WithAppName("any-app-1").WithEnvironment("prod").WithImageTag("abcdef"))
 
 	// Ensure the second image is considered the latest version
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("prod").withImageTag("uvwxyza"))
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("dev").
+		WithImageTag("ghijklm").
+		WithCreated(time.Now()))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("dev").
+		WithImageTag("nopqrst").
+		WithCreated(time.Now().AddDate(0, 0, 1)))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("prod").
+		WithImageTag("uvwxyza"))
 
 	var testScenarios = []struct {
 		name                   string
@@ -54,12 +68,35 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-").withEnvironment("prod").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("prod").withImageTag("ghijklm"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-3").withEnvironment("dev").withImageTag("abcdef"))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-3").withEnvironment("prod").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-").
+		WithEnvironment("prod").
+		WithImageTag("abcdef"))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-1").
+		WithEnvironment("dev").
+		WithImageTag("abcdef"))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("dev").
+		WithImageTag("abcdef"))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("prod").
+		WithImageTag("ghijklm"))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-3").
+		WithEnvironment("dev").
+		WithImageTag("abcdef"))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-3").
+		WithEnvironment("prod").
+		WithImageTag("abcdef"))
 
 	createEnvNamespace(kubeclient, "any-app-4", "dev")
 	createEnvNamespace(kubeclient, "any-app-4", "prod")
@@ -84,7 +121,7 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
-			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, getDeploymentName(scenario.appName, scenario.imageTag), parameters)
+			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, crdUtils.GetDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.Error(t, err)
 
 			if scenario.expectedErrorMessage != "" {
@@ -99,14 +136,27 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 	radixclient := radix.NewSimpleClientset()
 
 	// Setup
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-").withEnvironment("dev").withImageTag("abcdef"))
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-").
+		WithEnvironment("dev").
+		WithImageTag("abcdef"))
 
 	// Create prod environment without any deployments
 	createEnvNamespace(kubeclient, "any-app-", "prod")
 
 	// Ensure the second image is considered the latest version
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("ghijklm").withCreated(time.Now()))
-	apply(kubeclient, radixclient, NewDeploymentBuilder().withAppName("any-app-1").withEnvironment("dev").withImageTag("nopqrst").withCreated(time.Now().AddDate(0, 0, 1)))
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-1").
+		WithEnvironment("dev").
+		WithImageTag("ghijklm").
+		WithCreated(time.Now()))
+
+	apply(kubeclient, radixclient, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-1").
+		WithEnvironment("dev").
+		WithImageTag("nopqrst").
+		WithCreated(time.Now().AddDate(0, 0, 1)))
+
 	createEnvNamespace(kubeclient, "any-app-1", "prod")
 
 	var testScenarios = []struct {
@@ -124,13 +174,13 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
-			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, getDeploymentName(scenario.appName, scenario.imageTag), parameters)
+			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, crdUtils.GetDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.NoError(t, err)
 
 			if scenario.imageExpected != "" {
 				deployments, _ := HandleGetDeployments(radixclient, scenario.appName, scenario.toEnvironment, false)
 				assert.Equal(t, 1, len(deployments))
-				assert.Equal(t, getDeploymentName(scenario.appName, scenario.imageExpected), deployments[0].Name)
+				assert.Equal(t, crdUtils.GetDeploymentName(scenario.appName, scenario.imageExpected), deployments[0].Name)
 			}
 		})
 	}
@@ -147,34 +197,50 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	devVariable["DB_HOST"] = "useless-dev"
 	prodVariable["DB_HOST"] = "useless-prod"
 
-	environmentVariables := []v1.EnvVars{v1.EnvVars{Environment: "dev", Variables: devVariable}, v1.EnvVars{Environment: "prod", Variables: prodVariable}}
-	appComponent := NewRadixConfigComponentBuilder().withName("app").withEnvironmentVariablesMap(environmentVariables)
-	customRadixConfig := NewRadixConfigBuilder().withAppName("any-app-2").withComponent(appComponent).withEnvironments([]string{"dev", "prod"})
-	applyWithConfig(kubeclient, radixclient, customRadixConfig, NewDeploymentBuilder().withAppName("any-app-2").withEnvironment("dev").withImageTag("abcdef").withComponent(NewDeployComponentBuilder().withName("app")))
+	environmentVariables := []v1.EnvVars{
+		v1.EnvVars{Environment: "dev", Variables: devVariable},
+		v1.EnvVars{Environment: "prod", Variables: prodVariable}}
+
+	appComponent := crdUtils.NewApplicationComponentBuilder().
+		WithName("app").
+		WithEnvironmentVariablesMap(environmentVariables)
+
+	customRadixConfig := crdUtils.NewRadixApplicationBuilder().
+		WithAppName("any-app-2").
+		WithComponent(appComponent).
+		WithEnvironments([]string{"dev", "prod"})
+
+	applyWithConfig(kubeclient, radixclient, customRadixConfig, crdUtils.NewDeploymentBuilder().
+		WithAppName("any-app-2").
+		WithEnvironment("dev").
+		WithImageTag("abcdef").
+		WithComponent(
+			crdUtils.NewDeployComponentBuilder().
+				WithName("app")))
 
 	// Create prod environment without any deployments
 	createEnvNamespace(kubeclient, "any-app-2", "prod")
 
 	// Scenario
-	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "any-app-2", getDeploymentName("any-app-2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
+	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "any-app-2", crdUtils.GetDeploymentName("any-app-2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
 	assert.NoError(t, err, "HandlePromoteToEnvironment - Unexpected error")
 
 	deployments, _ := HandleGetDeployments(radixclient, "any-app-2", "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
-	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(getNamespaceForApplicationEnvironment(deployments[0].AppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
+	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(crdUtils.GetEnvironmentNamespace(deployments[0].AppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
 	assert.Equal(t, 1, len(radixDeployment.Spec.Components[0].EnvironmentVariables), "HandlePromoteToEnvironment - Was not promoted as expected")
 	assert.Equal(t, "useless-prod", radixDeployment.Spec.Components[0].EnvironmentVariables["DB_HOST"], "HandlePromoteToEnvironment - Was not promoted as expected")
 
 }
 
-func apply(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, builder Builder) {
-	defaultRadixConfig := NewRadixConfigBuilder().withAppName(builder.BuildRD().Spec.AppName).withComponent(NewRadixConfigComponentBuilder().withName("app")).withEnvironments([]string{"dev", "prod"})
+func apply(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, builder crdUtils.DeploymentBuilder) {
+	defaultRadixConfig := crdUtils.NewRadixApplicationBuilder().WithAppName(builder.BuildRD().Spec.AppName).WithComponent(crdUtils.NewApplicationComponentBuilder().WithName("app")).WithEnvironments([]string{"dev", "prod"})
 	applyWithConfig(kubeclient, radixclient, defaultRadixConfig, builder)
 }
 
-func applyWithConfig(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, configBuilder RadixConfigBuilder, builder Builder) {
+func applyWithConfig(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, configBuilder crdUtils.ApplicationBuilder, builder crdUtils.DeploymentBuilder) {
 	rd := builder.BuildRD()
 
 	// Create a app namespace and RA
@@ -186,13 +252,13 @@ func applyWithConfig(kubeclient *kubernetes.Clientset, radixclient *radix.Client
 }
 
 func createAppNamespace(kubeclient *kubernetes.Clientset, appName string) string {
-	ns := getAppNamespace(appName)
+	ns := crdUtils.GetAppNamespace(appName)
 	createNamespace(kubeclient, ns)
 	return ns
 }
 
 func createEnvNamespace(kubeclient *kubernetes.Clientset, appName, environment string) string {
-	ns := getNamespaceForApplicationEnvironment(appName, environment)
+	ns := crdUtils.GetEnvironmentNamespace(appName, environment)
 	createNamespace(kubeclient, ns)
 	return ns
 }
@@ -205,101 +271,4 @@ func createNamespace(kubeclient *kubernetes.Clientset, ns string) {
 	}
 
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
-}
-
-// TODO: Move this builder to a more central location, if is has use outside of this test
-// RadixConfigBuilder Handles construction of RA
-type RadixConfigBuilder interface {
-	withAppName(string) RadixConfigBuilder
-	withEnvironments([]string) RadixConfigBuilder
-	withComponent(RadixConfigComponentBuilder) RadixConfigBuilder
-	BuildRA() *v1.RadixApplication
-}
-
-type radixConfigBuilder struct {
-	appName      string
-	environments []string
-	components   []RadixConfigComponentBuilder
-}
-
-func (cb *radixConfigBuilder) withAppName(appName string) RadixConfigBuilder {
-	cb.appName = appName
-	return cb
-}
-
-func (cb *radixConfigBuilder) withEnvironments(environments []string) RadixConfigBuilder {
-	cb.environments = environments
-	return cb
-}
-
-func (cb *radixConfigBuilder) withComponent(component RadixConfigComponentBuilder) RadixConfigBuilder {
-	cb.components = append(cb.components, component)
-	return cb
-}
-
-func (cb *radixConfigBuilder) BuildRA() *v1.RadixApplication {
-	var environments = make([]v1.Environment, 0)
-	for _, env := range cb.environments {
-		environments = append(environments, v1.Environment{Name: env})
-	}
-
-	var components = make([]v1.RadixComponent, 0)
-	for _, comp := range cb.components {
-		components = append(components, comp.BuildComponent())
-	}
-
-	radixApplication := &v1.RadixApplication{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "radix.equinor.com/v1",
-			Kind:       "RadixApplication",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cb.appName,
-			Namespace: getAppNamespace(cb.appName),
-		},
-		Spec: v1.RadixApplicationSpec{
-			Components:   components,
-			Environments: environments,
-		},
-	}
-	return radixApplication
-}
-
-// NewDeploymentBuilder Constructor for config builder
-func NewRadixConfigBuilder() RadixConfigBuilder {
-	return &radixConfigBuilder{}
-}
-
-// RadixConfigComponentBuilder Handles construction of RA component
-type RadixConfigComponentBuilder interface {
-	withName(string) RadixConfigComponentBuilder
-	withEnvironmentVariablesMap([]v1.EnvVars) RadixConfigComponentBuilder
-	BuildComponent() v1.RadixComponent
-}
-
-type radixConfigComponentBuilder struct {
-	name                 string
-	environmentVariables []v1.EnvVars
-}
-
-func (rcb *radixConfigComponentBuilder) withName(name string) RadixConfigComponentBuilder {
-	rcb.name = name
-	return rcb
-}
-
-func (rcb *radixConfigComponentBuilder) withEnvironmentVariablesMap(environmentVariables []v1.EnvVars) RadixConfigComponentBuilder {
-	rcb.environmentVariables = environmentVariables
-	return rcb
-}
-
-func (rcb *radixConfigComponentBuilder) BuildComponent() v1.RadixComponent {
-	return v1.RadixComponent{
-		Name:                 rcb.name,
-		EnvironmentVariables: rcb.environmentVariables,
-	}
-}
-
-// NewRadixConfigComponentBuilder Constructor for component builder
-func NewRadixConfigComponentBuilder() RadixConfigComponentBuilder {
-	return &radixConfigComponentBuilder{}
 }
