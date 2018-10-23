@@ -9,8 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/statoil/radix-api/api/applications"
 	"github.com/statoil/radix-api/api/admissioncontrollers"
+	"github.com/statoil/radix-api/api/applications"
 	"github.com/statoil/radix-api/api/deployments"
 	"github.com/statoil/radix-api/api/jobs"
 	"github.com/statoil/radix-api/api/pods"
@@ -28,11 +28,12 @@ const apiVersionRoute = "/api/v1"
 
 // Server Holds instance variables
 type Server struct {
-	Middleware *negroni.Negroni
+	Middleware  *negroni.Negroni
+	clusterName string
 }
 
 // NewServer Constructor function
-func NewServer() http.Handler {
+func NewServer(clusterName string) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	statikFS, err := fs.New()
@@ -77,13 +78,13 @@ func NewServer() http.Handler {
 
 	server := &Server{
 		n,
+		clusterName,
 	}
 
 	return getCORSHandler(server)
 }
 
 func getCORSHandler(apiRouter *Server) http.Handler {
-	clusterName := getClusterName()
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:3000", // For socket.io testing
@@ -92,8 +93,8 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
 			// 2. Keep cors rules in ingresses
-			getHostName("web", "radix-web-console-dev", clusterName),
-			getHostName("web", "radix-web-console-prod", clusterName),
+			getHostName("web", "radix-web-console-dev", apiRouter.clusterName),
+			getHostName("web", "radix-web-console-prod", apiRouter.clusterName),
 		},
 		AllowCredentials: true, // Needed for sockets
 		MaxAge:           600,
@@ -101,17 +102,6 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
 	})
 	return c.Handler(apiRouter.Middleware)
-}
-
-func getClusterName() string {
-	client, _ := utils.GetInClusterKubernetesClient()
-	radixconfigmap, err := client.CoreV1().ConfigMaps("default").Get("radix-config", metav1.GetOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	clustername := radixconfigmap.Data["clustername"]
-	return clustername
 }
 
 func getHostName(componentName, namespace, clustername string) string {

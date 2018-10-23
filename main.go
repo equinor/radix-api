@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.22
+// Version: 0.0.23
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -38,14 +38,17 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+const clusternameEnvironmentVariable = "clustername"
+
 func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port      = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
-		certPath  = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
-		keyPath   = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
-		httpsPort = "3000"
+		port        = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		clusterName = os.Getenv(clusternameEnvironmentVariable)
+		certPath    = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
+		keyPath     = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
+		httpsPort   = "3000"
 	)
 
 	parseFlagsFromArgs(fs)
@@ -53,13 +56,13 @@ func main() {
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer())
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer(clusterName))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, routers.NewServer())
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, routers.NewServer(clusterName))
 			errs <- err
 		}()
 	} else {
