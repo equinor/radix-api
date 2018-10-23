@@ -37,7 +37,7 @@ func HandleGetApplicationJobDetails(client kubernetes.Interface, appName string)
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func HandleStartPipelineJob(client kubernetes.Interface, appName string, jobSpec *PipelineJob) error {
 	jobName, randomNr := getUniqueJobName(workerImage)
-	job := createPipelineJob(jobName, randomNr, jobSpec.SSHRepo, jobSpec.Branch)
+	job := createPipelineJob(jobName, randomNr, jobSpec.SSHRepo, jobSpec.Branch, jobSpec.CommitID)
 
 	log.Infof("Starting pipeline: %s, %s", jobName, workerImage)
 	appNamespace := fmt.Sprintf("%s-app", appName)
@@ -56,7 +56,7 @@ func getAppNamespace(appName string) string {
 	return fmt.Sprintf("%s-app", appName)
 }
 
-func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.Job {
+func createPipelineJob(jobName, randomStr, sshURL, pushBranch, pushCommitID string) *batchv1.Job {
 	pipelineTag := os.Getenv("PIPELINE_IMG_TAG")
 	if pipelineTag == "" {
 		pipelineTag = "latest"
@@ -89,6 +89,7 @@ func createPipelineJob(jobName, randomStr, sshURL, pushBranch string) *batchv1.J
 							Image: imageTag,
 							Args: []string{
 								fmt.Sprintf("BRANCH=%s", pushBranch),
+								fmt.Sprintf("COMMIT_ID=%s", pushCommitID),
 								fmt.Sprintf("RADIX_FILE_NAME=%s", "/workspace/radixconfig.yaml"),
 								fmt.Sprintf("IMAGE_TAG=%s", randomStr),
 							},

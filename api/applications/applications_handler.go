@@ -172,13 +172,14 @@ func HandleDeleteApplication(radixclient radixclient.Interface, appName string) 
 func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, pipelineName string, pipelineParameters PipelineParameters) (*job.PipelineJob, error) {
 	_, err := getPipeline(pipelineName)
 	if err != nil {
-		return nil, utils.ValidationError("Radix Registration Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
+		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
 	}
 
 	branch := pipelineParameters.Branch
+	commitID := pipelineParameters.CommitID
 
-	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
-		return nil, utils.ValidationError("Radix Registration Pipeline", "App name and branch is required")
+	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" || strings.TrimSpace(commitID) == "" {
+		return nil, utils.ValidationError("Radix Application Pipeline", "App name, branch and commit ID are required")
 	}
 
 	log.Infof("Creating pipeline job for %s", appName)
@@ -196,8 +197,9 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		BuildRR()
 
 	pipelineJobSpec := &job.PipelineJob{
-		Branch:  branch,
-		SSHRepo: radixRegistration.Spec.CloneURL,
+		Branch:   branch,
+		CommitID: commitID,
+		SSHRepo:  radixRegistration.Spec.CloneURL,
 	}
 
 	err = job.HandleStartPipelineJob(client, appName, pipelineJobSpec)

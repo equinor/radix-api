@@ -6,13 +6,18 @@ package jobs
 type PipelineJob struct {
 	// Name of the job
 	//
-	// required: true
+	// required: false
 	Name string `json:"name"`
 
 	// Name of the branch
 	//
 	// required: true
 	Branch string `json:"branch"`
+
+	// Commit ID of the branch
+	//
+	// required: true
+	CommitID string `json:"branch"`
 
 	// Name of the branch
 	//
