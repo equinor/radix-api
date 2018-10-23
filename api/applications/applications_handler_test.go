@@ -10,7 +10,7 @@ import (
 
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	anyApp := NewBuilder().withName("my-app").withRepository("https://github.com/Equinor/my-app").BuildApplicationRegistration()
+	anyApp := NewBuilder().withName("my-app").withRepository("https://github.com/Equinor/my-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).BuildApplicationRegistration()
 	HandleRegisterApplication(radixclient, *anyApp)
 
 	applications, _ := HandleGetApplications(radixclient, "git@github.com:Equinor/my-app.git")
@@ -38,7 +38,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 
 func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name")
+	builder := NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	application, _ := HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	expected := ""
@@ -47,14 +47,14 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder = NewBuilder().withName("any-name").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	application, _ = HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	assert.NotEmpty(t, application.PublicKey, "HandleRegisterApplication - when repo is provided, and deploy key is not, generate deploy key")
 
 	// Restart
 	radixclient = fake.NewSimpleClientset()
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo").withPublicKey("Any public key")
+	builder = NewBuilder().withName("any-name").withRepository("https://github.com/Equinor/an-app").withPublicKey("Any public key").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	application, _ = HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
 	expected = "Any public key"
@@ -64,61 +64,61 @@ func TestCreateApplication_WhenRepoAndDeployKeyNotSet_GenerateDeployKey(t *testi
 
 func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder := NewBuilder().withName("any-name").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Another Name").withRepository("Any repo")
+	builder = NewBuilder().withName("any-other-name").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	_, err := HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 	assert.Error(t, err, "HandleRegisterApplication - Should not be able to create another application with the same repo")
 }
 
 func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo")
+	builder := NewBuilder().withName("any-name").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Another Name").withRepository("Another repo")
+	builder = NewBuilder().withName("any-other-name").withRepository("https://github.com/Equinor/another-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Another Name").withRepository("Any repo")
+	builder = NewBuilder().withName("any-other-name").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	_, err := HandleChangeRegistrationDetails(radixclient, "Another Name", *builder.BuildApplicationRegistration())
 	assert.Error(t, err, "HandleChangeRegistrationDetails - Should not be able to update application with the same repo")
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name")
+	builder := NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Any Name")
+	builder = NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	_, err := HandleChangeRegistrationDetails(radixclient, "Another Name", *builder.BuildApplicationRegistration())
 	assert.Error(t, err, "HandleChangeRegistrationDetails - Should not be able to call update application with different name in parameter and body")
 
-	builder = NewBuilder().withName("Another Name")
-	_, err = HandleChangeRegistrationDetails(radixclient, "Another Name", *builder.BuildApplicationRegistration())
+	builder = NewBuilder().withName("another-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
+	_, err = HandleChangeRegistrationDetails(radixclient, "another-name", *builder.BuildApplicationRegistration())
 	assert.Error(t, err, "HandleChangeRegistrationDetails - Should not be able to call update application on a non existing application")
 
 }
 
 func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name")
+	builder := NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
 
-	builder = NewBuilder().withName("Any Name").withRepository("Any repo")
-	application, _ := HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
-	expected := "Any repo"
+	expected := "https://github.com/Equinor/an-app"
+	builder = NewBuilder().withName("any-name").withRepository(expected).withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
+	application, _ := HandleChangeRegistrationDetails(radixclient, "any-name", *builder.BuildApplicationRegistration())
 	actual := application.Repository
 	assert.Equal(t, expected, actual, "HandleChangeRegistrationDetails - repository should be updatable")
 
-	builder = NewBuilder().withName("Any Name").withSharedSecret("Any shared secret")
-	application, _ = HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
+	builder = NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).withSharedSecret("Any shared secret")
+	application, _ = HandleChangeRegistrationDetails(radixclient, "any-name", *builder.BuildApplicationRegistration())
 	expected = "Any shared secret"
 	actual = application.SharedSecret
 	assert.Equal(t, expected, actual, "HandleChangeRegistrationDetails - shared secret should be updatable")
 
-	builder = NewBuilder().withName("Any Name").withPublicKey("Any public key")
-	application, _ = HandleChangeRegistrationDetails(radixclient, "Any Name", *builder.BuildApplicationRegistration())
+	builder = NewBuilder().withName("any-name").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).withPublicKey("Any public key")
+	application, _ = HandleChangeRegistrationDetails(radixclient, "any-name", *builder.BuildApplicationRegistration())
 	expected = "Any public key"
 	actual = application.PublicKey
 	assert.Equal(t, expected, actual, "HandleChangeRegistrationDetails - public key should be updatable")
@@ -127,13 +127,13 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	radixclient := fake.NewSimpleClientset()
-	builder := NewBuilder().withName("Any Name").withRepository("https://github.com/a-user/a-repo/").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+	builder := NewBuilder().withName("any-name").withRepository("https://github.com/a-user/a-repo").withSharedSecret("Any secret").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"})
 
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
-	application, _ := HandleGetApplication(radixclient, "Any Name")
-	assert.Equal(t, "https://github.com/a-user/a-repo/", application.Repository, "HandleGetApplication - Repository is not the same")
+	application, _ := HandleGetApplication(radixclient, "any-name")
+	assert.Equal(t, "https://github.com/a-user/a-repo", application.Repository, "HandleGetApplication - Repository is not the same")
 	assert.Equal(t, "Any secret", application.SharedSecret, "HandleGetApplication - Shared secret is not the same")
-	assert.Equal(t, []string{"Some ad group"}, application.AdGroups, "HandleGetApplication - Ad groups is not the same")
+	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.AdGroups, "HandleGetApplication - Ad groups is not the same")
 
 }
 
@@ -144,15 +144,15 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	_, err := HandleTriggerPipeline(kubeclient, radixclient, "", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined application")
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", BuildDeploy.String(), PipelineParameters{Branch: ""})
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: ""})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined branch")
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "Any app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non existing app")
 
-	builder := NewBuilder().withName("Any Name").withRepository("Any repo").withSharedSecret("Any secret").withAdGroups([]string{"Some ad group"})
+	builder := NewBuilder().withName("any-app").withRepository("https://github.com/Equinor/an-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).withSharedSecret("Any secret")
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
-	job, err := HandleTriggerPipeline(kubeclient, radixclient, "Any Name", BuildDeploy.String(), PipelineParameters{Branch: "master"})
+	job, err := HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
 
 	assert.NoError(t, err, "HandleTriggerPipeline - Should be able to create job on existing app")
 	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was unexpected")
