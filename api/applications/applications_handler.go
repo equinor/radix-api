@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	ac "github.com/statoil/radix-api/api/admissioncontrollers"
 	job "github.com/statoil/radix-api/api/jobs"
 	"github.com/statoil/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -91,7 +92,7 @@ func HandleRegisterApplication(radixclient radixclient.Interface, application Ap
 		return nil, err
 	}
 
-	err = validate(radixclient, radixRegistration)
+	_, err = ac.CanRadixRegistrationBeInserted(radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +128,7 @@ func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName 
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 
-	err = validate(radixclient, existingRegistration)
+	_, err = ac.CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -213,24 +214,6 @@ func buildRadixRegistration(application *ApplicationRegistration) (*v1.RadixRegi
 	return radixRegistration, nil
 }
 
-func validate(radixclient radixclient.Interface, radixRegistration *v1.RadixRegistration) error {
-	if radixRegistration.Name == "" {
-		return utils.ValidationError("Radix Registration", "Name is required")
-	}
-
-	applications, err := HandleGetApplications(radixclient, radixRegistration.Spec.CloneURL)
-	if err != nil {
-		return err
-	}
-
-	if len(applications) == 1 &&
-		!strings.EqualFold(applications[0].Name, radixRegistration.Name) {
-		return utils.ValidationError("Radix Registration", fmt.Sprintf("Repository is in use by %s", applications[0].Name))
-	}
-
-	return nil
-}
-
 // Builder Handles construction of DTO
 type Builder interface {
 	withName(name string) Builder
@@ -299,6 +282,16 @@ func (rb *applicationBuilder) BuildApplicationRegistration() *ApplicationRegistr
 // NewBuilder Constructor for application builder
 func NewBuilder() Builder {
 	return &applicationBuilder{}
+}
+
+// ABuilder Constructor for application builder with test values
+func ABuilder() Builder {
+	return &applicationBuilder{
+		name:         "my-app",
+		repository:   "https://github.com/Equinor/my-app",
+		sharedSecret: "AnySharedSecret",
+		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
+	}
 }
 
 func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {

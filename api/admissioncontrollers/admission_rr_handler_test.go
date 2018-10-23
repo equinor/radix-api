@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	kubefake "github.com/kubernetes/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/Sirupsen/logrus"
 	. "github.com/statoil/radix-api/api/admissioncontrollers"
