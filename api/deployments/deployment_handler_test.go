@@ -208,7 +208,8 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	customRadixConfig := crdUtils.NewRadixApplicationBuilder().
 		WithAppName("any-app-2").
 		WithComponent(appComponent).
-		WithEnvironments([]string{"dev", "prod"})
+		WithEnvironment("dev", "master").
+		WithEnvironment("prod", "")
 
 	applyWithConfig(kubeclient, radixclient, customRadixConfig, crdUtils.NewDeploymentBuilder().
 		WithAppName("any-app-2").
@@ -236,7 +237,12 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 }
 
 func apply(kubeclient *kubernetes.Clientset, radixclient *radix.Clientset, builder crdUtils.DeploymentBuilder) {
-	defaultRadixConfig := crdUtils.NewRadixApplicationBuilder().WithAppName(builder.BuildRD().Spec.AppName).WithComponent(crdUtils.NewApplicationComponentBuilder().WithName("app")).WithEnvironments([]string{"dev", "prod"})
+	defaultRadixConfig := crdUtils.NewRadixApplicationBuilder().
+		WithAppName(builder.BuildRD().Spec.AppName).
+		WithComponent(crdUtils.NewApplicationComponentBuilder().
+			WithName("app")).
+		WithEnvironment("dev", "dev").
+		WithEnvironment("prod", "prod")
 	applyWithConfig(kubeclient, radixclient, defaultRadixConfig, builder)
 }
 
