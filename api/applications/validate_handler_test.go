@@ -50,7 +50,10 @@ func TestIsDeployKeyValid(t *testing.T) {
 }
 
 func runIsDeployKeyValid(kubeclient kubereal.Interface, radixclient radixclient.Interface, setJobStatus func(batchv1.Job) batchv1.Job) (bool, error) {
-	anyApp := NewBuilder().withName("some-app").withRepository("https://github.com/Equinor/some-app").withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).BuildApplicationRegistration()
+	anyApp := ABuilder().
+		withName("some-app").
+		BuildApplicationRegistration()
+
 	HandleRegisterApplication(radixclient, *anyApp)
 
 	finish := make(chan bool)

@@ -96,7 +96,7 @@ func CanRadixRegistrationBeUpdated(client radixclient.Interface, radixRegistrati
 
 func validateDoesNameAlreadyExist(client radixclient.Interface, appName string) error {
 	rr, _ := client.RadixV1().RadixRegistrations("default").Get(appName, metav1.GetOptions{})
-	if rr != nil {
+	if rr != nil && rr.Name != "" {
 		return fmt.Errorf("App name must be unique in cluster - %s already exist", appName)
 	}
 	return nil
