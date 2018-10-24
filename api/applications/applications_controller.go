@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -16,15 +15,12 @@ import (
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
 
+	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
-const repoURL = "https://github.com/"
-const sshURL = "git@github.com:"
 const rootPath = ""
-
-var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {
@@ -107,21 +103,21 @@ func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.I
 			log.Infof("Added RR to store for %s", rr.Name)
 
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "New RR Added to Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), "New RR Added to Store")
 			data <- body
 			//}
 		},
 		UpdateFunc: func(old interface{}, new interface{}) {
 			rr := new.(*v1.RadixRegistration)
 			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR updated")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR updated")
 			data <- body
 			//}
 		},
 		DeleteFunc: func(obj interface{}) {
 			rr := obj.(*v1.RadixRegistration)
 			//if rr.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR Deleted from Store")
+			body, _ := getSubscriptionData(radixclient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR Deleted from Store")
 			data <- body
 			//}
 		},
