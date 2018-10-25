@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"regexp"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -14,10 +13,10 @@ import (
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 
 	"github.com/graphql-go/graphql"
+	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
 
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -99,7 +98,7 @@ func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.I
 
 	handleRR := func(obj interface{}, event string) {
 		rr := obj.(*v1.RadixRegistration)
-		body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
+		body, _ := getSubscriptionData(radixclient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
 		data <- body
 	}
 
