@@ -18,4 +18,9 @@ type PipelineJob struct {
 	//
 	// required: true
 	SSHRepo string `json:"sshRepo"`
+
+	// commit id from github
+	//
+	// required: false
+	Commit string `json:"commit"`
 }

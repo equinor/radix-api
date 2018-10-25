@@ -157,6 +157,7 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 	pipelineJobSpec := &job.PipelineJob{
 		Branch:  branch,
 		SSHRepo: radixRegistration.Spec.CloneURL,
+		Commit:  pipelineParameters.Commit,
 	}
 
 	err = job.HandleStartPipelineJob(client, appName, pipelineJobSpec)

@@ -1,0 +1,57 @@
+
+
+// func GetApplicationJobLogsStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+// 	keyValues := splitArgs(arg)
+// 	appName := keyValues["appname"]
+// 	jobId := keyValues["jobid"]
+// 	ns := getAppNamespace(appName)
+
+// 	pods, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
+// 		LabelSelector: fmt.Sprintf("job-name=%s", jobId),
+// 	})
+// 	if err != nil {
+// 		data <- []byte(fmt.Sprint("Failed to get jobs pod"))
+// 	}
+
+// 	logRequest := getPodLogRequest(client, &pods.Items[0], "", true)
+
+// 	w, err := logRequest.WatchWithSpecificDecoders(func(reader io.ReadCloser) streaming.Decoder {
+
+// 	}, )
+// 	if err != nil {
+// 		data <- []byte(fmt.Sprint("Failed to setup stream from log"))
+// 		close(unsubscribe)
+// 	}
+
+// 	stop := make(chan struct{})
+// 	go func() {
+// 		for {
+// 			select {
+// 			case events, ok := <-w.ResultChan():
+// 				if !ok {
+// 					data <- []byte(fmt.Sprint("Log channel failed"))
+// 					return
+// 				}
+// 				msg, _ := json.Marshal(events.Object)
+// 				data <- msg
+// 			}
+// 		}
+// 	}()
+
+// 	go func() {
+// 		<-unsubscribe
+// 		w.Stop()
+// 		close(stop)
+// 	}()
+// 	<-stop
+// }
+
+// func splitArgs(args string) map[string]string {
+// 	result := map[string]string{}
+// 	keyValues := strings.Split(args, " ")
+// 	for _, keyValue := range keyValues {
+// 		tmp := strings.Split(keyValue, "=")
+// 		result[strings.ToLower(tmp[0])] = tmp[1]
+// 	}
+// 	return result
+// }
