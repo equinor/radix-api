@@ -17,15 +17,12 @@ import (
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
 
+	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
-const repoURL = "https://github.com/"
-const sshURL = "git@github.com:"
 const rootPath = ""
-
-var repoPattern = regexp.MustCompile(fmt.Sprintf("%s(.*?)", repoURL))
 
 // GetRoutes List the supported routes of this handler
 func GetRoutes() models.Routes {

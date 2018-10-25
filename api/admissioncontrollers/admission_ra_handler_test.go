@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Sirupsen/logrus"
-	kubefake "github.com/kubernetes/client-go/kubernetes/fake"
 	. "github.com/statoil/radix-api/api/admissioncontrollers"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/utils"
@@ -16,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func Test_valid_ra_returns_true(t *testing.T) {

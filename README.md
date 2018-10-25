@@ -10,4 +10,4 @@ solution: make swagger
 
 problem: the version running in cluster is not the one you  expected
 
-solution: you may have forgotten to build and pushed the latest changes.
+solution: you may have forgotten to build and pushed the latest changes

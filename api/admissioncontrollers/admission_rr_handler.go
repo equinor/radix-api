@@ -59,6 +59,9 @@ func CanRadixRegistrationBeInserted(client radixclient.Interface, radixRegistrat
 	if isValid && errUniqueAppName != nil {
 		return false, errUniqueAppName
 	}
+	if !isValid && errUniqueAppName == nil {
+		return false, err
+	}
 	return false, concatErrors([]error{errUniqueAppName, err})
 }
 
@@ -80,6 +83,10 @@ func CanRadixRegistrationBeUpdated(client radixclient.Interface, radixRegistrati
 	if err != nil {
 		errs = append(errs, err)
 	}
+	err = validateNoDuplicateGitRepo(client, radixRegistration.Name, radixRegistration.Spec.CloneURL)
+	if err != nil {
+		errs = append(errs, err)
+	}
 
 	if len(errs) <= 0 {
 		return true, nil
@@ -89,7 +96,7 @@ func CanRadixRegistrationBeUpdated(client radixclient.Interface, radixRegistrati
 
 func validateDoesNameAlreadyExist(client radixclient.Interface, appName string) error {
 	rr, _ := client.RadixV1().RadixRegistrations("default").Get(appName, metav1.GetOptions{})
-	if rr != nil {
+	if rr != nil && rr.Name != "" {
 		return fmt.Errorf("App name must be unique in cluster - %s already exist", appName)
 	}
 	return nil
@@ -130,10 +137,10 @@ func validateAdGroups(groups []string) error {
 }
 
 func validateGitSSHUrl(sshURL string) error {
-	re := regexp.MustCompile("^(git@github.com:)(\\w+)/(\\w.+)(.git)$")
+	re := regexp.MustCompile("^(git@github.com:)([\\w-]+)/([\\w-]+)(.git)$")
 
 	if sshURL == "" {
-		return fmt.Errorf("Git clone url is required")
+		return nil
 	}
 
 	isValid := re.MatchString(sshURL)
@@ -142,6 +149,24 @@ func validateGitSSHUrl(sshURL string) error {
 		return nil
 	}
 	return fmt.Errorf("ssh url not valid %s. Must match regex %s", sshURL, re.String())
+}
+
+func validateNoDuplicateGitRepo(client radixclient.Interface, appName, sshURL string) error {
+	if sshURL == "" {
+		return nil
+	}
+
+	registrations, err := client.RadixV1().RadixRegistrations("default").List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, reg := range registrations.Items {
+		if reg.Spec.CloneURL == sshURL && !strings.EqualFold(reg.Name, appName) {
+			return fmt.Errorf("Repository is in use by %s", reg.Name)
+		}
+	}
+	return nil
 }
 
 func validateSSHKey(deployKey string) error {
