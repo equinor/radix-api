@@ -154,6 +154,12 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err er
 	fmt.Fprint(w, err.Error())
 }
 
+func StringResponse(w http.ResponseWriter, r *http.Request, result string) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(result))
+}
+
 // JSONResponse Marshals response with header
 func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	body, err := json.Marshal(result)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 
 	log "github.com/Sirupsen/logrus"
@@ -95,95 +96,41 @@ func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.I
 	}
 
 	factory := informers.NewSharedInformerFactory(radixclient, 0)
-	rrInformer := factory.Radix().V1().RadixApplications().Informer()
+	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()
 	raInformer := factory.Radix().V1().RadixApplications().Informer()
 	rdInformer := factory.Radix().V1().RadixDeployments().Informer()
 
-	//	now := time.Now()
+	handleRR := func(obj interface{}, event string) {
+		rr := obj.(*v1.RadixRegistration)
+		body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
+		data <- body
+	}
 
-	rrInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			rr := obj.(*v1.RadixRegistration)
-			log.Infof("Added RR to store for %s", rr.Name)
+	handleRA := func(obj interface{}, event string) {
+		ra := obj.(*v1.RadixApplication)
+		body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", event)
+		data <- body
+	}
 
-			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "New RR Added to Store")
-			data <- body
-			//}
-		},
-		UpdateFunc: func(old interface{}, new interface{}) {
-			rr := new.(*v1.RadixRegistration)
-			//if rr.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR updated")
-			data <- body
-			//}
-		},
-		DeleteFunc: func(obj interface{}) {
-			rr := obj.(*v1.RadixRegistration)
-			//if rr.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rr.Name, getRepositoryURLFromCloneURL(rr.Spec.CloneURL), "RR Deleted from Store")
-			data <- body
-			//}
-		},
-	})
+	handleRD := func(obj interface{}, event string) {
+		rd := obj.(*v1.RadixDeployment)
+		body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", event)
+		data <- body
+	}
 
-	raInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			ra := obj.(*v1.RadixApplication)
-			//if ra.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA Added to Store")
-			data <- body
-			//}
-		},
-		UpdateFunc: func(old interface{}, new interface{}) {
-			ra := new.(*v1.RadixApplication)
-			//if ra.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA updated")
-			data <- body
-			//}
-		},
-		DeleteFunc: func(obj interface{}) {
-			ra := obj.(*v1.RadixApplication)
-			//if ra.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", "RA deleted")
-			data <- body
-			//}
-		},
-	})
+	defaultResourceEventHandler := func(handler func(interface{}, string)) cache.ResourceEventHandler {
+		return cache.ResourceEventHandlerFuncs{
+			AddFunc:    func(obj interface{}) { handler(obj, fmt.Sprintf("%s added", reflect.TypeOf(obj))) },
+			UpdateFunc: func(old interface{}, new interface{}) { handler(new, fmt.Sprintf("%s updated", reflect.TypeOf(new))) },
+			DeleteFunc: func(obj interface{}) { handler(obj, fmt.Sprintf("%s deleted", reflect.TypeOf(obj))) },
+		}
+	}
 
-	rdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			rd := obj.(*v1.RadixDeployment)
-			//if rd.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "New RD Added to Store")
-			data <- body
-			//}
-		},
-		UpdateFunc: func(old interface{}, new interface{}) {
-			rd := new.(*v1.RadixDeployment)
-			//if rd.GetCreationTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "RD updated")
-			data <- body
-			//}
-		},
-		DeleteFunc: func(obj interface{}) {
-			rd := obj.(*v1.RadixDeployment)
-			//if rd.GetDeletionTimestamp().After(now) {
-			body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", "RD deleted")
-			data <- body
-			//}
-		},
-	})
+	rrInformer.AddEventHandler(defaultResourceEventHandler(handleRR))
+	raInformer.AddEventHandler(defaultResourceEventHandler(handleRA))
+	rdInformer.AddEventHandler(defaultResourceEventHandler(handleRD))
 
-	stop := make(chan struct{})
-	go func() {
-		<-unsubscribe
-		close(stop)
-	}()
-
-	go rrInformer.Run(stop)
-	go raInformer.Run(stop)
-	go rdInformer.Run(stop)
+	utils.StreamInformers(data, unsubscribe, rrInformer, raInformer, rdInformer)
 }
 
 // ShowApplications Lists applications
@@ -437,6 +384,7 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
+	log.Infof("%s", description)
 	radixApplication := &Application{
 		Name:        name,
 		Repository:  repo,

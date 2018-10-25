@@ -8,4 +8,9 @@ type PipelineParameters struct {
 	// required: true
 	// example: master
 	Branch string `json:"branch"`
+
+	// git commit hash
+	//
+	// required: false
+	Commit string `json:"commit"`
 }
