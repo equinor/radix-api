@@ -192,8 +192,9 @@ func createPipelineJob(appName, jobName, randomStr, sshURL, pushBranch, commitID
 					},
 					Containers: []corev1.Container{
 						{
-							Name:  workerImage,
-							Image: imageTag,
+							Name:            workerImage,
+							Image:           imageTag,
+							ImagePullPolicy: corev1.PullAlways,
 							Args: []string{
 								fmt.Sprintf("BRANCH=%s", pushBranch),
 								fmt.Sprintf("COMMIT_ID=%s", commitID),
