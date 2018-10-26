@@ -182,7 +182,7 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		return nil, utils.ValidationError("Radix Application Pipeline", "App name, branch and commit ID are required")
 	}
 
-	log.Infof("Creating pipeline job for %s", appName)
+	log.Infof("Creating pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 	application, err := HandleGetApplication(radixclient, appName)
 	if err != nil {
 		return nil, err
