@@ -376,7 +376,7 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 		return
 	}
 
-	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s started", jobSpec.Name, appName, jobSpec.Branch))
+	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s with commit ID %s started", jobSpec.Name, appName, jobSpec.Branch, jobSpec.CommitID))
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
