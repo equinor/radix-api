@@ -24,7 +24,7 @@ type PipelineJobRead struct {
 	// Github commit id
 	//
 	// required: false
-	Commit string `json:"commit"`
+	CommitID string `json:"commitID"`
 
 	// job type (pipeline or build)
 	//
