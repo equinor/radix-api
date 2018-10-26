@@ -3,8 +3,10 @@ package applications
 import (
 	"testing"
 
+	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/errors"
 	kubernetes "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -179,22 +181,32 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	kubeclient := kubernetes.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 
-	_, err := HandleTriggerPipeline(kubeclient, radixclient, "", BuildDeploy.String(), PipelineParameters{Branch: "master"})
+	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+
+	_, err := HandleTriggerPipeline(kubeclient, radixclient, "", BuildDeploy.String(), PipelineParameters{Branch: "master", CommitID: pushCommitID})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined application")
+	assert.Equal(t, "App name, branch and commit ID are required", (err.(*utils.Error)).Message)
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: ""})
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "", CommitID: pushCommitID})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined branch")
+	assert.Equal(t, "App name, branch and commit ID are required", (err.(*utils.Error)).Message)
 
-	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master", CommitID: ""})
+	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non defined commit ID")
+	assert.Equal(t, "App name, branch and commit ID are required", (err.(*utils.Error)).Message)
+
+	_, err = HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master", CommitID: pushCommitID})
 	assert.Error(t, err, "HandleTriggerPipeline - Cannot run pipeline on non existing app")
+	assert.Equal(t, "radixregistrations.radix.equinor.com \"any-app\" not found", (err.(*errors.StatusError)).ErrStatus.Message)
 
 	builder := ABuilder().
 		withName("any-app")
 	HandleRegisterApplication(radixclient, *builder.BuildApplicationRegistration())
-	job, err := HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master"})
+	job, err := HandleTriggerPipeline(kubeclient, radixclient, "any-app", BuildDeploy.String(), PipelineParameters{Branch: "master", CommitID: pushCommitID})
 
 	assert.NoError(t, err, "HandleTriggerPipeline - Should be able to create job on existing app")
-	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was unexpected")
+	assert.Equal(t, "master", job.Branch, "HandleTriggerPipeline - Branch was expected")
+	assert.Equal(t, pushCommitID, job.CommitID, "HandleTriggerPipeline - CommitID was expected")
 	assert.NotEmpty(t, job.Name, "HandleTriggerPipeline - Expected a jobname")
 	assert.NotEmpty(t, job.SSHRepo, "HandleTriggerPipeline - Expected a repo")
 }
