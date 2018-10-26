@@ -38,13 +38,13 @@ func HandleJobApplied(job *batchv1.Job, data chan []byte) *PipelineJobRead {
 	status := job.Status
 
 	pipelineJob := &PipelineJobRead{
-		AppName: appName,
-		Name:    job.Name,
-		Branch:  branch,
-		Commit:  commit,
-		Type:    jobType,
-		Status:  status,
-		Event:   event,
+		AppName:  appName,
+		Name:     job.Name,
+		Branch:   branch,
+		CommitID: commit,
+		Type:     jobType,
+		Status:   status,
+		Event:    event,
 	}
 	return pipelineJob
 }

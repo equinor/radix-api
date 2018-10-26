@@ -17,15 +17,10 @@ type PipelineJob struct {
 	// Commit ID of the branch
 	//
 	// required: true
-	CommitID string `json:"branch"`
+	CommitID string `json:"commitID"`
 
 	// Name of the branch
 	//
 	// required: true
 	SSHRepo string `json:"sshRepo"`
-
-	// commit id from github
-	//
-	// required: false
-	Commit string `json:"commit"`
 }
