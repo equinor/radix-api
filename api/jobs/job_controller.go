@@ -3,17 +3,18 @@ package jobs
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
+	"k8s.io/client-go/tools/cache"
+
+	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/client-go/informers"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 )
 
 const rootPath = "/applications/{appName}"
@@ -26,6 +27,11 @@ func GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetApplicationJobDetails,
 			WatcherFunc: GetApplicationJobStream,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobId}/logs",
+			Method:      "GET",
+			HandlerFunc: GetApplicationJobLogs,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs",
@@ -51,31 +57,62 @@ func GetSubscriptions() models.Subscriptions {
 	return subscriptions
 }
 
-// GetApplicationJobStream Lists new pods
+// get logs of a job
+func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET/applications/{appName}/jobs/{jobId}/logs jobs getApplicationJobLogs
+	// ---
+	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: false
+	// - name: jobId
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobId := mux.Vars(r)["jobId"]
+	pipelines, err := HandleGetApplicationJobLogs(client, appName, jobId)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.StringResponse(w, r, pipelines)
+}
+
+// GetApplicationJobStream Lists starting pipeline and build jobs
 func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
-	watchList := cache.NewFilteredListWatchFromClient(client.BatchV1().RESTClient(), "jobs", corev1.NamespaceAll,
-		func(options *metav1.ListOptions) {
-		})
-	_, controller := cache.NewInformer(
-		watchList,
-		&batchv1.Job{},
-		time.Second*30,
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				job := obj.(*batchv1.Job)
-				body, _ := json.Marshal(PipelineJob{Name: job.Name})
-				data <- body
-			},
-		},
-	)
+	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
+	jobsInformer := factory.Batch().V1().Jobs().Informer()
 
-	stop := make(chan struct{})
-	go func() {
-		<-unsubscribe
-		close(stop)
-	}()
+	handleJobApplied := func(obj interface{}) {
+		job := obj.(*batchv1.Job)
+		pipelineJob := HandleJobApplied(job, data)
+		if pipelineJob == nil {
+			return
+		}
+		result, _ := json.Marshal(pipelineJob)
+		data <- result
+	}
 
-	go controller.Run(stop)
+	jobsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { handleJobApplied(obj) },
+		UpdateFunc: func(old interface{}, new interface{}) { handleJobApplied(new) },
+		DeleteFunc: func(obj interface{}) { log.Infof("job deleted") },
+	})
+	utils.StreamInformers(data, unsubscribe, jobsInformer)
 }
 
 // GetApplicationJobDetails gets pipeline jobs
