@@ -1,3 +1,10 @@
+# Use bash as a shell command (bash or dash is required,
+# we need arithmetic in the shell)
+SHELL = /bin/bash
+
+# Include our auto incrementer
+include ./hack/Makefile.apiver
+
 DOCKER_REGISTRY	?= radixdev.azurecr.io
 
 BINS	= radix-api
@@ -21,6 +28,10 @@ test:
 .PHONY: swagger
 swagger:
 	rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go
+
+	# Increase verson of API
+	$(call apiver, %1)
+
 	swagger generate spec -o ./swagger.json --scan-models
 	mv swagger.json ./swaggerui_src/swagger.json
 	statik -src=./swaggerui_src/ -p swaggerui

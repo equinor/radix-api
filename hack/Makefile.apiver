@@ -1,0 +1,15 @@
+# File where to store auto increments
+version_file := ".apiver"
+APIVER_FILE ?= $(version_file)
+
+# Prepare callable function. This function updates APIVER_FILE
+currentver := $(shell cat ${APIVER_FILE})
+major := $(shell echo $(currentver) | cut -d. -f1)
+minor := $(shell echo $(currentver) | cut -d. -f2)
+oldrevision := $(shell echo $(currentver) | cut -d. -f3)
+revision := $(shell expr $(oldrevision) + 1)
+
+define apiver
+    $(shell echo "$(major).$(minor).$(revision)" > $(APIVER_FILE))
+    sed -i 's/$(currentver)/$(major).$(minor).$(revision)/g' main.go
+endef
