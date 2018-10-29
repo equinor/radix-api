@@ -9,6 +9,11 @@ type PipelineJob struct {
 	// required: false
 	Name string `json:"name"`
 
+	// Name of the application
+	//
+	// required: true
+	AppName string `json:"appname"`
+
 	// Name of the branch
 	//
 	// required: true
@@ -16,11 +21,16 @@ type PipelineJob struct {
 
 	// Commit ID of the branch
 	//
-	// required: true
+	// required: false
 	CommitID string `json:"commitID"`
 
-	// Name of the branch
+	// Refers to the repo of the app this job is for
 	//
-	// required: true
+	// required: false
 	SSHRepo string `json:"sshRepo"`
+
+	// Status of the job
+	//
+	// required: false
+	JobStatus string `json:"jobStatus"`
 }
