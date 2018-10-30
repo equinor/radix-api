@@ -21,51 +21,52 @@ import (
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
-// used to handle job added or updated, report to data channel
-func HandleJobApplied(job *batchv1.Job, data chan []byte) *PipelineJobRead {
-	jobType := job.Labels["type"]
-	if jobType != "pipeline" && jobType != "build" {
-		return nil
-	}
-	event := "added"
-	if job.Status.StartTime != nil {
-		event = "updated"
-	}
-
+// GetPipelineJob Used to handle job added or updated, report to data channel
+func GetPipelineJob(job *batchv1.Job) *PipelineJob {
 	appName := job.Labels["appName"]
 	branch := job.Labels["branch"]
 	commit := job.Labels["commit"]
 	status := job.Status
 
-	pipelineJob := &PipelineJobRead{
-		AppName:  appName,
-		Name:     job.Name,
-		Branch:   branch,
-		CommitID: commit,
-		Type:     jobType,
-		Status:   status,
-		Event:    event,
+	jobStatus := "Active"
+	if status.Failed == 1 {
+		jobStatus = "Failed"
+	}
+
+	if status.Succeeded == 1 {
+		jobStatus = "Succeeded"
+	}
+
+	pipelineJob := &PipelineJob{
+		AppName:   appName,
+		Name:      job.Name,
+		Branch:    branch,
+		CommitID:  commit,
+		JobStatus: jobStatus,
 	}
 	return pipelineJob
 }
 
-func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobId string) (string, error) {
+// HandleGetApplicationJobLogs Gets logs for an job of an application
+func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobID string) (string, error) {
 	ns := getAppNamespace(appName)
 
 	pods, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobId),
+		LabelSelector: fmt.Sprintf("job-name=%s", jobID),
 	})
+
 	if err != nil {
 		return "", err
 	}
+
 	pipelinePod := pods.Items[0]
 
-	cloneLog, err := HandleGetPodLog(client, &pipelinePod, "clone")
+	cloneLog, err := handleGetPodLog(client, &pipelinePod, "clone")
 	if err != nil {
 		return "", err
 	}
 
-	podLog, err := HandleGetPodLog(client, &pipelinePod, "")
+	podLog, err := handleGetPodLog(client, &pipelinePod, "")
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +82,7 @@ func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobId str
 	}
 	sbBuildersLog := strings.Builder{}
 	for _, buildPod := range pods.Items {
-		buildLog, err := HandleGetPodLog(client, &buildPod, "")
+		buildLog, err := handleGetPodLog(client, &buildPod, "")
 		if err != nil {
 			return "", err
 		}
@@ -91,8 +92,7 @@ func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobId str
 	return fmt.Sprintln(cloneLog, podLog, sbBuildersLog.String()), nil
 }
 
-// containerName: leave empty for default
-func HandleGetPodLog(client kubernetes.Interface, pod *corev1.Pod, containerName string) (string, error) {
+func handleGetPodLog(client kubernetes.Interface, pod *corev1.Pod, containerName string) (string, error) {
 	req := getPodLogRequest(client, pod, containerName, false)
 
 	readCloser, err := req.Stream()
@@ -130,7 +130,7 @@ func HandleGetApplicationJobDetails(client kubernetes.Interface, appName string)
 
 	jobs := make([]PipelineJob, len(jobList.Items))
 	for i, job := range jobList.Items {
-		jobs[i] = PipelineJob{Name: job.Name}
+		jobs[i] = *GetPipelineJob(&job)
 	}
 
 	return jobs, nil
@@ -166,7 +166,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL, pushBranch, commitID
 
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, pipelineTag)
 	log.Infof("Using image: %s", imageTag)
-	cloneContainer, volume := CloneContainer(sshURL, "master")
+	CloneContainer, volume := CloneContainer(sshURL, "master")
 
 	backOffLimit := int32(1)
 
@@ -188,7 +188,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL, pushBranch, commitID
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "radix-pipeline",
 					InitContainers: []corev1.Container{
-						cloneContainer,
+						CloneContainer,
 					},
 					Containers: []corev1.Container{
 						{
@@ -230,6 +230,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL, pushBranch, commitID
 	return &job
 }
 
+// CloneContainer The sidecar for cloning repo
 func CloneContainer(sshURL, branch string) (corev1.Container, corev1.Volume) {
 	gitCloneCommand := fmt.Sprintf("git clone %s -b %s -v .", sshURL, branch)
 	gitSSHKeyName := "git-ssh-keys"
