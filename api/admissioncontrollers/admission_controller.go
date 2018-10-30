@@ -19,8 +19,16 @@ import (
 
 const RootPath = "/admissioncontrollers"
 
+type admissionController struct {
+}
+
+// NewAdmissionController Constructor
+func NewAdmissionController() models.Controller {
+	return &admissionController{}
+}
+
 // GetRoutes List the supported routes of this handler
-func GetRoutes() models.Routes {
+func (ac *admissionController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:   RootPath + "/registrations",
@@ -39,6 +47,18 @@ func GetRoutes() models.Routes {
 	}
 
 	return routes
+}
+
+// GetSubscriptions Lists subscriptions this handler offers
+func (ac *admissionController) GetSubscriptions() models.Subscriptions {
+	subscriptions := models.Subscriptions{}
+
+	return subscriptions
+}
+
+// UseInCLusterConfig Use in cluster role
+func (ac *admissionController) UseInCLusterConfig() bool {
+	return true
 }
 
 type admitFunc func(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error)

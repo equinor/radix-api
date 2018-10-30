@@ -28,12 +28,22 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
-	routers "github.com/statoil/radix-api/api"
+
+	// Controllers
+	"github.com/statoil/radix-api/api/admissioncontrollers"
+	"github.com/statoil/radix-api/api/applications"
+	"github.com/statoil/radix-api/api/deployments"
+	"github.com/statoil/radix-api/api/jobs"
+	"github.com/statoil/radix-api/api/pods"
+
+	router "github.com/statoil/radix-api/api/router"
+	"github.com/statoil/radix-api/models"
 
 	// Force loading of needed authentication library
-
 	"net/http"
 	"os"
+
+	"github.com/statoil/radix-api/api/utils"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
@@ -56,13 +66,13 @@ func main() {
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), routers.NewServer(clusterName))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, routers.NewServer(clusterName))
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
 			errs <- err
 		}()
 	} else {
@@ -72,6 +82,16 @@ func main() {
 	err := <-errs
 	if err != nil {
 		log.Fatalf("Web api server crached: %v", err)
+	}
+}
+
+func getControllers() []models.Controller {
+	return []models.Controller{
+		admissioncontrollers.NewAdmissionController(),
+		applications.NewApplicationController(),
+		deployments.NewDeploymentController(),
+		jobs.NewJobController(),
+		pods.NewPodController(),
 	}
 }
 
