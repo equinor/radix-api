@@ -26,11 +26,47 @@ func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Inter
 		return false, err
 	}
 
+	err = verifyDeployKey(client, rr)
+	return err == nil, err
+}
+
+func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) error {
 	namespace := kube.GetCiCdNamespace(rr)
 	jobApplied, err := createCloneJob(client, rr)
 
-	err = waitForCloneJobAndPerformCleanup(client, namespace, jobApplied)
-	return err == nil, err
+	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(metav1.ListOptions{
+		FieldSelector: fields.Set{"metadata.name": jobApplied.Name}.AsSelector().String(),
+	})
+	if err != nil {
+		return err
+	}
+	done := make(chan error)
+	go func() {
+		for {
+			select {
+			case events, ok := <-w.ResultChan():
+				if !ok {
+					done <- fmt.Errorf("Channel failed")
+				}
+
+				j := events.Object.(*batchv1.Job)
+				switch {
+				case j.Status.Succeeded == 1:
+					done <- cleanup(client, namespace, jobApplied)
+					return
+				case j.Status.Failed == 1:
+					cleanup(client, namespace, jobApplied)
+					done <- radixerr.ValidationError("Radix Registration", fmt.Sprintf("Deploy key was invalid"))
+					return
+				default:
+					log.Debugf("Ongoing - build docker image")
+				}
+			}
+		}
+	}()
+
+	err = <-done
+	return err
 }
 
 func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
@@ -79,42 +115,6 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		log.Errorf("%v", err)
 	}
 	return jobApplied, err
-}
-
-func waitForCloneJobAndPerformCleanup(client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
-	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(metav1.ListOptions{
-		FieldSelector: fields.Set{"metadata.name": jobApplied.Name}.AsSelector().String(),
-	})
-	if err != nil {
-		return err
-	}
-	done := make(chan error)
-	go func() {
-		for {
-			select {
-			case events, ok := <-w.ResultChan():
-				if !ok {
-					done <- fmt.Errorf("Channel failed")
-				}
-
-				j := events.Object.(*batchv1.Job)
-				switch {
-				case j.Status.Succeeded == 1:
-					done <- cleanup(client, namespace, jobApplied)
-					return
-				case j.Status.Failed == 1:
-					cleanup(client, namespace, jobApplied)
-					done <- radixerr.ValidationError("Radix Registration", fmt.Sprintf("Deploy key was invalid"))
-					return
-				default:
-					log.Debugf("Ongoing - build docker image")
-				}
-			}
-		}
-	}()
-
-	err = <-done
-	return err
 }
 
 func cleanup(client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
