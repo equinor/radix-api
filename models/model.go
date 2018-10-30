@@ -13,10 +13,20 @@ type RadixHandlerFunc func(kubernetes.Interface, radixclient.Interface, http.Res
 // RadixWatcherFunc Pattern for watcher functions
 type RadixWatcherFunc func(kubernetes.Interface, radixclient.Interface, string, chan []byte, chan struct{})
 
-// Handler Pattern of an rest/stream handler
-type Handler interface {
+// Controller Pattern of an rest/stream controller
+type Controller interface {
 	GetRoutes() Routes
 	GetSubscriptions() Subscriptions
+	UseInCLusterConfig() bool
+}
+
+// DefaultController Default implementation
+type DefaultController struct {
+}
+
+// UseInCLusterConfig Default implementation
+func (d *DefaultController) UseInCLusterConfig() bool {
+	return false
 }
 
 // Routes Holder of all routes

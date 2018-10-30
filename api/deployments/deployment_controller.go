@@ -18,8 +18,17 @@ import (
 
 const rootPath = "/applications/{appName}"
 
+type deploymentController struct {
+	*models.DefaultController
+}
+
+// NewDeploymentController Constructor
+func NewDeploymentController() models.Controller {
+	return &deploymentController{}
+}
+
 // GetRoutes List the supported routes of this handler
-func GetRoutes() models.Routes {
+func (dc *deploymentController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/deployments",
@@ -37,7 +46,7 @@ func GetRoutes() models.Routes {
 }
 
 // GetSubscriptions Lists subscriptions this handler offers
-func GetSubscriptions() models.Subscriptions {
+func (dc *deploymentController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{}
 
 	return subscriptions

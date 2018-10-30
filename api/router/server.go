@@ -1,4 +1,4 @@
-package api
+package router
 
 import (
 	"fmt"
@@ -9,11 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/statoil/radix-api/api/admissioncontrollers"
-	"github.com/statoil/radix-api/api/applications"
-	"github.com/statoil/radix-api/api/deployments"
-	"github.com/statoil/radix-api/api/jobs"
-	"github.com/statoil/radix-api/api/pods"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	_ "github.com/statoil/radix-api/swaggerui" // statik files
@@ -25,15 +20,17 @@ import (
 )
 
 const apiVersionRoute = "/api/v1"
+const admissionControllerRootPath = "/admissioncontrollers"
 
 // Server Holds instance variables
 type Server struct {
 	Middleware  *negroni.Negroni
 	clusterName string
+	controllers []models.Controller
 }
 
 // NewServer Constructor function
-func NewServer(clusterName string) http.Handler {
+func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	statikFS, err := fs.New()
@@ -45,15 +42,22 @@ func NewServer(clusterName string) http.Handler {
 	sh := http.StripPrefix("/swaggerui/", staticServer)
 	router.PathPrefix("/swaggerui/").Handler(sh)
 
-	initializeSocketServer(router)
-	addHandlerRoutes(router, applications.GetRoutes())
-	addHandlerRoutes(router, jobs.GetRoutes())
-	addHandlerRoutes(router, pods.GetRoutes())
-	addHandlerRoutes(router, deployments.GetRoutes())
-	addHandlerRoutesInClusterKubeClient(router, admissioncontrollers.GetRoutes(), "")
+	initializeSocketServer(kubeUtil, router)
+
+	for _, controller := range controllers {
+		if controller.UseInCLusterConfig() {
+			addHandlerRoutesInClusterKubeClient(kubeUtil, router, controller.GetRoutes(), "")
+		} else {
+			addHandlerRoutes(kubeUtil, router, controller.GetRoutes())
+		}
+	}
+	//addHandlerRoutes(router, jobs.GetRoutes())
+	//addHandlerRoutes(router, pods.GetRoutes())
+	//addHandlerRoutes(router, deployments.GetRoutes())
+	//addHandlerRoutesInClusterKubeClient(router, admissioncontrollers.GetRoutes(), "")
 
 	serveMux := http.NewServeMux()
-	serveMux.Handle(fmt.Sprintf("%s/", admissioncontrollers.RootPath), negroni.New(
+	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
 		negroni.Wrap(router),
 	))
 
@@ -79,6 +83,7 @@ func NewServer(clusterName string) http.Handler {
 	server := &Server{
 		n,
 		clusterName,
+		controllers,
 	}
 
 	return getCORSHandler(server)
@@ -108,29 +113,29 @@ func getHostName(componentName, namespace, clustername string) string {
 	return fmt.Sprintf("https://%s-%s.%s.dev.radix.equinor.com", componentName, namespace, clustername)
 }
 
-func addHandlerRoutes(router *mux.Router, routes models.Routes) {
+func addHandlerRoutes(kubeUtil utils.KubeUtil, router *mux.Router, routes models.Routes) {
 	for _, route := range routes {
-		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(route.HandlerFunc, route.WatcherFunc).Handle).Methods(route.Method)
+		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc, route.WatcherFunc).Handle).Methods(route.Method)
 	}
 }
 
 // routes which should be run under radix-api service account, instead of using incomming access token
-func addHandlerRoutesInClusterKubeClient(router *mux.Router, routes models.Routes, rootURL string) {
+func addHandlerRoutesInClusterKubeClient(kubeUtil utils.KubeUtil, router *mux.Router, routes models.Routes, rootURL string) {
 	for _, route := range routes {
 		router.HandleFunc(rootURL+route.Path,
 			func(w http.ResponseWriter, r *http.Request) {
-				client, radixclient := utils.GetInClusterKubernetesClient()
+				client, radixclient := kubeUtil.GetInClusterKubernetesClient()
 				route.HandlerFunc(client, radixclient, w, r)
 			}).Methods(route.Method)
 	}
 }
 
-func initializeSocketServer(router *mux.Router) {
+func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers ...models.Controller) {
 	socketServer, _ := socketio.NewServer(nil)
 
 	socketServer.On("connection", func(so socketio.Socket) {
 		token := utils.GetTokenFromQuery(so.Request())
-		client, radixclient := utils.GetOutClusterKubernetesClient(token)
+		client, radixclient := kubeUtil.GetOutClusterKubernetesClient(token)
 
 		// Make an extra check that the user has the correct access
 		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
@@ -144,10 +149,13 @@ func initializeSocketServer(router *mux.Router) {
 		disconnect := make(chan struct{})
 		allSubscriptions := make(map[string]chan struct{})
 
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, deployments.GetSubscriptions())
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, applications.GetSubscriptions())
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pods.GetSubscriptions())
-		addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, jobs.GetSubscriptions())
+		for _, controller := range controllers {
+			addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, controller.GetSubscriptions())
+		}
+		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, deployments.GetSubscriptions())
+		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, applications.GetSubscriptions())
+		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pods.GetSubscriptions())
+		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, jobs.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			if disconnect != nil {

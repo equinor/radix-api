@@ -11,14 +11,28 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// KubeUtil Interface to be mocked in tests
+type KubeUtil interface {
+	GetOutClusterKubernetesClient(string) (kubernetes.Interface, radixclient.Interface)
+	GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface)
+}
+
+type kubeUtil struct {
+}
+
+// NewKubeUtil Constructor
+func NewKubeUtil() KubeUtil {
+	return &kubeUtil{}
+}
+
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
 	config := getOutClusterClientConfig(token)
 	return getKubernetesClientFromConfig(config)
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
-func GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
 	config := getInClusterClientConfig()
 	return getKubernetesClientFromConfig(config)
 }
