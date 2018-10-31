@@ -26,6 +26,14 @@ func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Inter
 		return false, err
 	}
 
+	if rr.Spec.CloneURL == "" {
+		return false, radixerr.ValidationError("Radix Registration", fmt.Sprintf("Clone URL is missing"))
+	}
+
+	if rr.Spec.DeployKey == "" {
+		return false, radixerr.ValidationError("Radix Registration", fmt.Sprintf("Deploy key is missing"))
+	}
+
 	err = verifyDeployKey(client, rr)
 	return err == nil, err
 }
