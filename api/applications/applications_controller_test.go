@@ -3,120 +3,74 @@ package applications
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/statoil/radix-api/api/router"
-	"github.com/statoil/radix-api/api/utils"
+	controllertest "github.com/statoil/radix-api/api/test"
+	commontest "github.com/statoil/radix-operator/pkg/apis/test"
+	builders "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	"github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
-	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestIsDeployKeyValid(t *testing.T) {
-	radixclient := fake.NewSimpleClientset()
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
+	radixclient := fake.NewSimpleClientset()
 
-	/*
-		t.Run("missing rr", func(t *testing.T) {
-			response := executeRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
-			assert.Equal(t, http.StatusNotFound, response.Code)
-		})
-	*/
-	t.Run("existing rr", func(t *testing.T) {
-		anyApp := ABuilder().
-			withName("some-app-2").
-			BuildApplicationRegistration()
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController())
 
-		HandleRegisterApplication(radixclient, *anyApp)
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
 
-		response := executeRequest(kubeclient, radixclient, "GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app-2"))
+func TestIsDeployKeyValid(t *testing.T) {
+	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName("some-app"))
+
+	t.Run("missing rr", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-nonexisting-app"))
+		response := <-responseChannel
+
 		assert.Equal(t, http.StatusNotFound, response.Code)
 	})
 
-	/*
-		t.Run("job succeeded", func(t *testing.T) {
-			isValid, err := runIsDeployKeyValid(kubeclient, radixclient,
-				func(job batchv1.Job) batchv1.Job {
-					job.Status.Succeeded =
-						int32(1)
-					return job
-				})
+	t.Run("job succeeded", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
+		setStatusOfJob(kubeclient, "some-app-app", true)
 
-			assert.True(t, isValid)
-			assert.Nil(t, err)
-		})
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+	})
 
-		t.Run("job failed", func(t *testing.T) {
-			isValid, err := runIsDeployKeyValid(kubeclient, radixclient,
-				func(job batchv1.Job) batchv1.Job {
-					job.Status.Failed =
-						int32(1)
-					return job
-				})
+	t.Run("job failed", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
+		setStatusOfJob(kubeclient, "some-app-app", false)
 
-			assert.False(t, isValid)
-			assert.NotNil(t, err)
-		})*/
+		response := <-responseChannel
+		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Equal(t, "Deploy key was invalid", errorResponse.Message)
+	})
 }
 
-func runIsDeployKeyValid(kubeclient kubernetes.Interface, radixclient radixclient.Interface, setJobStatus func(batchv1.Job) batchv1.Job) (bool, error) {
-	anyApp := ABuilder().
-		withName("some-app").
-		BuildApplicationRegistration()
+func setStatusOfJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
+	time.Sleep(500 * time.Millisecond)
+	jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(metav1.ListOptions{})
+	job := jobs.Items[0]
 
-	HandleRegisterApplication(radixclient, *anyApp)
-
-	finish := make(chan bool)
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		jobs, _ := kubeclient.BatchV1().Jobs("some-app-app").List(metav1.ListOptions{})
-		job := jobs.Items[0]
-		job = setJobStatus(job)
-		kubeclient.BatchV1().Jobs("some-app-app").Update(&job)
-		finish <- true
-	}()
-
-	isValid, err := IsDeployKeyValid(kubeclient, radixclient, "some-app")
-
-	<-finish
-	return isValid, err
-}
-
-func executeRequest(client kubernetes.Interface, radixclient radixclient.Interface, method, endpoint string) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(method, endpoint, nil)
-	req.Header.Add("Authorization", "bearer xyz")
-
-	rr := httptest.NewRecorder()
-	router.NewServer("anyClusterName", NewKubeUtilMock(client, radixclient), NewApplicationController()).ServeHTTP(rr, req)
-	return rr
-}
-
-type kubeUtilMock struct {
-	kubeFake  kubernetes.Interface
-	radixFake radixclient.Interface
-}
-
-// NewKubeUtilMock Constructor
-func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interface) utils.KubeUtil {
-	return &kubeUtilMock{
-		client,
-		radixclient,
+	if succeededStatus {
+		job.Status.Succeeded = int32(1)
+	} else {
+		job.Status.Failed = int32(1)
 	}
-}
 
-// GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	return ku.kubeFake, ku.radixFake
-}
-
-// GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
-func (ku *kubeUtilMock) GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
-	return ku.kubeFake, ku.radixFake
+	kubeclient.BatchV1().Jobs(appNamespace).Update(&job)
 }
