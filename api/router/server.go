@@ -51,10 +51,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 			addHandlerRoutes(kubeUtil, router, controller.GetRoutes())
 		}
 	}
-	//addHandlerRoutes(router, jobs.GetRoutes())
-	//addHandlerRoutes(router, pods.GetRoutes())
-	//addHandlerRoutes(router, deployments.GetRoutes())
-	//addHandlerRoutesInClusterKubeClient(router, admissioncontrollers.GetRoutes(), "")
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
@@ -152,10 +148,6 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 		for _, controller := range controllers {
 			addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, controller.GetSubscriptions())
 		}
-		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, deployments.GetSubscriptions())
-		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, applications.GetSubscriptions())
-		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, pods.GetSubscriptions())
-		//addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, jobs.GetSubscriptions())
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
