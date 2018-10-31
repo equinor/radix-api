@@ -35,14 +35,15 @@ func NewTestUtils(client kubernetes.Interface, radixclient radixclient.Interface
 
 // ExecuteRequest Helper method to issue a http request
 func (tu *Utils) ExecuteRequest(method, endpoint string) <-chan *httptest.ResponseRecorder {
-	return tu.ExecuteRequestWithPayload(method, endpoint, nil)
+	return tu.ExecuteRequestWithParameters(method, endpoint, nil)
 }
 
-// ExecuteRequestWithPayload Helper method to issue a http request with payload
-func (tu *Utils) ExecuteRequestWithPayload(method, endpoint string, payload []byte) <-chan *httptest.ResponseRecorder {
+// ExecuteRequestWithParameters Helper method to issue a http request with payload
+func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameters interface{}) <-chan *httptest.ResponseRecorder {
 	var reader io.Reader
 
-	if payload != nil {
+	if parameters != nil {
+		payload, _ := json.Marshal(parameters)
 		reader = bytes.NewReader(payload)
 	}
 
@@ -77,6 +78,8 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*utils.Error, error)
 // GetResponseBody Gets response payload as type
 func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) error {
 	body, _ := ioutil.ReadAll(response.Body)
+	log.Infof(string(body))
+
 	return json.Unmarshal(body, target)
 }
 
