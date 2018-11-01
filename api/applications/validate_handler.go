@@ -60,7 +60,8 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 				j := events.Object.(*batchv1.Job)
 				switch {
 				case j.Status.Succeeded == 1:
-					done <- cleanup(client, namespace, jobApplied)
+					cleanup(client, namespace, jobApplied)
+					done <- nil
 					return
 				case j.Status.Failed == 1:
 					cleanup(client, namespace, jobApplied)

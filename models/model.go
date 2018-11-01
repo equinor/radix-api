@@ -17,15 +17,15 @@ type RadixWatcherFunc func(kubernetes.Interface, radixclient.Interface, string, 
 type Controller interface {
 	GetRoutes() Routes
 	GetSubscriptions() Subscriptions
-	UseInCLusterConfig() bool
+	UseInClusterConfig() bool
 }
 
 // DefaultController Default implementation
 type DefaultController struct {
 }
 
-// UseInCLusterConfig Default implementation
-func (d *DefaultController) UseInCLusterConfig() bool {
+// UseInClusterConfig Default implementation
+func (d *DefaultController) UseInClusterConfig() bool {
 	return false
 }
 
