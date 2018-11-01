@@ -35,21 +35,27 @@ deploy-api:
 
 .PHONY: deploy
 deploy:
-	# Download deploy key + webhook shared secret
-	az keyvault secret download -f ./charts/api-server/values.yaml -n radix-api-registration --vault-name radix-boot-dev-vault
-	# Install RR referring to the downloaded secrets
-	helm install -n radix-api-server ./charts/api-server/
+	# Add and update ACR Helm repo
+	az acr helm repo add --name radixdev && helm repo update
+
+	# Download deploy key and other secrets
+	az keyvault secret download -f radix-api-radixregistration-values.yaml -n radix-api-radixregistration-values --vault-name radix-boot-dev-vault
+
+	# Install RR
+	helm upgrade --install radix-api -f radix-api-radixregistration-values.yaml radixdev/radix-registration
 	# Delete secret file to avvoid being checked in
-	rm ./charts/api-server/values.yaml
+	rm radix-api-radixregistration-values.yaml
+	
 	# Allow operator to pick up RR. TODO should be handled with waiting for app namespace
-	sleep 5
-	# Create pipeline job
-	helm install -n radix-api-init-deploy ./charts/init-deploy/		
+	sleep 5	
+	
+	# Create pipeline
+	helm upgrade --install radix-pipeline-api radixdev/radix-pipeline-invocation --set name="radix-api" --set cloneURL="git@github.com:Statoil/radix-api.git" --set cloneBranch="master"
 
 .PHONY: undeploy
 undeploy:
-	helm delete --purge radix-api-init-deploy
-	helm delete --purge radix-api-server
+	helm delete --purge radix-pipeline-api
+	helm delete --purge radix-api
 
 .PHONY: $(BINS)
 $(BINS): vendor
