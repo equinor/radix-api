@@ -19,8 +19,17 @@ import (
 
 const rootPath = "/applications/{appName}"
 
+type jobController struct {
+	*models.DefaultController
+}
+
+// NewJobController Constructor
+func NewJobController() models.Controller {
+	return &jobController{}
+}
+
 // GetRoutes List the supported routes of this handler
-func GetRoutes() models.Routes {
+func (jc *jobController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/jobs",
@@ -44,7 +53,7 @@ func GetRoutes() models.Routes {
 }
 
 // GetSubscriptions Lists subscriptions this handler offers
-func GetSubscriptions() models.Subscriptions {
+func (jc *jobController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
 			SubcribeCommand:    "job_subscribe",
