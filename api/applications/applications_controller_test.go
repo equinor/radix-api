@@ -24,7 +24,10 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 
+	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+
+	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
