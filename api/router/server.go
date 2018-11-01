@@ -45,7 +45,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	initializeSocketServer(kubeUtil, router)
 
 	for _, controller := range controllers {
-		if controller.UseInCLusterConfig() {
+		if controller.UseInClusterConfig() {
 			addHandlerRoutesInClusterKubeClient(kubeUtil, router, controller.GetRoutes(), "")
 		} else {
 			addHandlerRoutes(kubeUtil, router, controller.GetRoutes())

@@ -56,8 +56,8 @@ func (ac *admissionController) GetSubscriptions() models.Subscriptions {
 	return subscriptions
 }
 
-// UseInCLusterConfig Use in cluster role
-func (ac *admissionController) UseInCLusterConfig() bool {
+// UseInClusterConfig Use in cluster role
+func (ac *admissionController) UseInClusterConfig() bool {
 	return true
 }
 
