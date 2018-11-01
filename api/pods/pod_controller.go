@@ -18,8 +18,17 @@ import (
 
 const rootPath = "/applications/{appName}/environments/{envName}"
 
+type podController struct {
+	*models.DefaultController
+}
+
+// NewPodController Constructor
+func NewPodController() models.Controller {
+	return &podController{}
+}
+
 // GetRoutes List the supported routes of this handler
-func GetRoutes() models.Routes {
+func (pc *podController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/pods",
@@ -33,7 +42,7 @@ func GetRoutes() models.Routes {
 }
 
 // GetSubscriptions Lists subscriptions this handler offers
-func GetSubscriptions() models.Subscriptions {
+func (pc *podController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
 			SubcribeCommand:    "pod_subscribe",

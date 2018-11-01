@@ -23,8 +23,17 @@ import (
 
 const rootPath = ""
 
-// GetRoutes List the supported routes of this handler
-func GetRoutes() models.Routes {
+type applicationController struct {
+	*models.DefaultController
+}
+
+// NewApplicationController Constructor
+func NewApplicationController() models.Controller {
+	return &applicationController{}
+}
+
+// GetRoutes List the supported routes of this controller
+func (ac *applicationController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/applications",
@@ -67,8 +76,8 @@ func GetRoutes() models.Routes {
 	return routes
 }
 
-// GetSubscriptions Lists subscriptions this handler offers
-func GetSubscriptions() models.Subscriptions {
+// GetSubscriptions Lists subscriptions this controller offers
+func (ac *applicationController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
 			SubcribeCommand:    "application_subscribe",

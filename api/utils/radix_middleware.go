@@ -9,13 +9,15 @@ import (
 
 // RadixMiddleware The middleware beween router and radix handler functions
 type RadixMiddleware struct {
-	next  models.RadixHandlerFunc
-	watch models.RadixWatcherFunc
+	kubeUtil KubeUtil
+	next     models.RadixHandlerFunc
+	watch    models.RadixWatcherFunc
 }
 
 // NewRadixMiddleware Constructor for radix middleware
-func NewRadixMiddleware(next models.RadixHandlerFunc, watch models.RadixWatcherFunc) *RadixMiddleware {
+func NewRadixMiddleware(kubeUtil KubeUtil, next models.RadixHandlerFunc, watch models.RadixWatcherFunc) *RadixMiddleware {
 	handler := &RadixMiddleware{
+		kubeUtil,
 		next,
 		watch,
 	}
@@ -37,7 +39,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, radixclient := GetOutClusterKubernetesClient(token)
+	client, radixclient := handler.kubeUtil.GetOutClusterKubernetesClient(token)
 
 	if watch {
 		// Sending data as server side events
