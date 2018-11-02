@@ -367,7 +367,7 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 	//       "$ref": "#/definitions/PipelineParameters"
 	// responses:
 	//   "200":
-	//     description: "Pipeline job started ok"
+	//     "$ref": "#/definitions/JobSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]

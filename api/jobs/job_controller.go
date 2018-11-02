@@ -38,9 +38,14 @@ func (jc *jobController) GetRoutes() models.Routes {
 			WatcherFunc: GetApplicationJobStream,
 		},
 		models.Route{
-			Path:        rootPath + "/jobs/{jobID}/logs",
+			Path:        rootPath + "/jobs/{jobName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetApplicationJobLogs,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}",
+			Method:      "GET",
+			HandlerFunc: GetApplicationJob,
 		},
 	}
 
@@ -63,7 +68,7 @@ func (jc *jobController) GetSubscriptions() models.Subscriptions {
 
 // GetApplicationJobLogs Get logs of a job for an application
 func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET/applications/{appName}/jobs/{jobID}/logs jobs getApplicationJobLogs
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs jobs getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
 	// parameters:
@@ -71,8 +76,8 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 	//   in: path
 	//   description: name of Radix application
 	//   type: string
-	//   required: false
-	// - name: jobID
+	//   required: true
+	// - name: jobName
 	//   in: path
 	//   description: Name of pipeline job
 	//   type: string
@@ -85,8 +90,8 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	jobID := mux.Vars(r)["jobID"]
-	pipelines, err := HandleGetApplicationJobLogs(client, appName, jobID)
+	jobName := mux.Vars(r)["jobName"]
+	pipelines, err := HandleGetApplicationJobLogs(client, appName, jobName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -119,9 +124,9 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 	utils.StreamInformers(data, unsubscribe, jobsInformer)
 }
 
-// GetApplicationJobs gets pipeline jobs
+// GetApplicationJobs gets job summaries
 func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET/applications/{appName}/jobs jobs getApplicationJobs
+	// swagger:operation GET /applications/{appName}/jobs jobs getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
 	// parameters:
@@ -129,7 +134,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	//   in: path
 	//   description: name of Radix application
 	//   type: string
-	//   required: false
+	//   required: true
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -150,4 +155,43 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	}
 
 	utils.JSONResponse(w, r, jobSummaries)
+}
+
+// GetApplicationJob gets specific job details
+func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName} jobs getApplicationJob
+	// ---
+	// summary: Gets the detail of a given job for a given application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: name of job
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/Job"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	jobDetail, err := HandleGetApplicationJob(client, appName, jobName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, jobDetail)
 }
