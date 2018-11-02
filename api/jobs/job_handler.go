@@ -17,6 +17,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
+	"github.com/statoil/radix-api/api/utils"
 )
 
 const workerImage = "radix-pipeline"
@@ -24,9 +25,9 @@ const dockerRegistry = "radixdev.azurecr.io"
 
 // GetJobSummary Used to get job summary from a kubernetes job
 func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
-	_ = job.Labels["appName"]
-	_ = job.Labels["branch"]
-	_ = job.Labels["commit"]
+	appName := job.Labels["appName"]
+	branch := job.Labels["branch"]
+	commit := job.Labels["commit"]
 	status := job.Status
 
 	jobStatus := jobModels.Pending.String()
@@ -39,18 +40,23 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 	}
 
 	pipelineJob := &jobModels.JobSummary{
-		Name:   job.Name,
-		Status: jobStatus,
+		Name:     job.Name,
+		AppName:  appName,
+		Branch:   branch,
+		CommitID: commit,
+		Status:   jobStatus,
+		Started:  utils.FormatTime(status.StartTime),
+		Ended:    utils.FormatTime(status.CompletionTime),
 	}
 	return pipelineJob
 }
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
-func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobID string) (string, error) {
+func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName string) (string, error) {
 	ns := getAppNamespace(appName)
 
 	pods, err := client.CoreV1().Pods(ns).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobID),
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
 	})
 
 	if err != nil {
@@ -121,7 +127,9 @@ func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerNam
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
 func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jobModels.JobSummary, error) {
-	jobList, err := client.BatchV1().Jobs(getAppNamespace(appName)).List(metav1.ListOptions{})
+	jobList, err := client.BatchV1().Jobs(getAppNamespace(appName)).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("type=%s", "pipeline"),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +140,27 @@ func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jo
 	}
 
 	return jobs, nil
+}
+
+// HandleGetApplicationJob Handler for GetApplicationJob
+func HandleGetApplicationJob(client kubernetes.Interface, appName, jobName string) (*jobModels.Job, error) {
+	return &jobModels.Job{
+		Name:        "dummy-data",
+		TriggeredBy: "webhook",
+		Started:     utils.FormatTimestamp(time.Now()),
+		Status:      jobModels.Pending.String(),
+		Pipeline:    "build-deploy",
+		Steps: []jobModels.Step{
+			jobModels.Step{
+				Name:    "build",
+				Status:  jobModels.Success.String(),
+				Started: utils.FormatTimestamp(time.Now())},
+			jobModels.Step{
+				Name:    "deploy",
+				Status:  jobModels.Pending.String(),
+				Started: utils.FormatTimestamp(time.Now())},
+		},
+	}, nil
 }
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
@@ -147,7 +176,7 @@ func HandleStartPipelineJob(client kubernetes.Interface, appName, sshRepo string
 	}
 
 	log.Infof("Started pipeline: %s, %s", jobName, workerImage)
-	return nil, nil
+	return GetJobSummary(job), nil
 }
 
 // TODO : Separate out into library functions
