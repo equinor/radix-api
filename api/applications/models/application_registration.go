@@ -1,4 +1,4 @@
-package applications
+package models
 
 // ApplicationRegistration describe an application
 // swagger:model ApplicationRegistration

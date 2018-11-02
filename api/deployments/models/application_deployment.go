@@ -1,12 +1,14 @@
-package deployments
-
-import (
-	"time"
-)
+package models
 
 // ApplicationDeployment describe an deployment
 // swagger:model ApplicationDeployment
 type ApplicationDeployment struct {
+	// Name the unique name of the Radix application deployment
+	//
+	// required: false
+	// example: radix-canary-golang-tzbqi
+	Name string `json:"name"`
+
 	// AppName the name of the Radix application owning this deployment
 	//
 	// required: false
@@ -19,15 +21,9 @@ type ApplicationDeployment struct {
 	// example: prod
 	Environment string `json:"environment"`
 
-	// Name the unique name of the Radix application deployment
-	//
-	// required: false
-	// example: radix-canary-golang-tzbqi
-	Name string `json:"name"`
-
 	// Created Created timestamp
 	//
 	// required: false
-	// example: timestamp
-	Created time.Time `json:"created"`
+	// example: 2006-01-02T15:04:05-0700
+	Created string `json:"created"`
 }

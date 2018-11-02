@@ -6,7 +6,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	ac "github.com/statoil/radix-api/api/admissioncontrollers"
+	applicationModels "github.com/statoil/radix-api/api/applications/models"
 	job "github.com/statoil/radix-api/api/jobs"
+	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,13 +45,13 @@ func getPipeline(name string) (Pipeline, error) {
 }
 
 // HandleGetApplications handler for ShowApplications
-func HandleGetApplications(radixclient radixclient.Interface, sshRepo string) ([]*ApplicationRegistration, error) {
+func HandleGetApplications(radixclient radixclient.Interface, sshRepo string) ([]*applicationModels.ApplicationRegistration, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]*ApplicationRegistration, 0)
+	radixRegistations := make([]*applicationModels.ApplicationRegistration, 0)
 	for _, rr := range radixRegistationList.Items {
 		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
@@ -65,7 +67,7 @@ func HandleGetApplications(radixclient radixclient.Interface, sshRepo string) ([
 }
 
 // HandleGetApplication handler for GetApplication
-func HandleGetApplication(radixclient radixclient.Interface, appName string) (*ApplicationRegistration, error) {
+func HandleGetApplication(radixclient radixclient.Interface, appName string) (*applicationModels.ApplicationRegistration, error) {
 	radixRegistration, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -78,7 +80,7 @@ func HandleGetApplication(radixclient radixclient.Interface, appName string) (*A
 }
 
 // HandleRegisterApplication handler for RegisterApplication
-func HandleRegisterApplication(radixclient radixclient.Interface, application ApplicationRegistration) (*ApplicationRegistration, error) {
+func HandleRegisterApplication(radixclient radixclient.Interface, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
 	// Only if repository is provided and deploykey is not set by user
 	// generate the key
 	var deployKey *utils.DeployKey
@@ -113,7 +115,7 @@ func HandleRegisterApplication(radixclient radixclient.Interface, application Ap
 }
 
 // HandleChangeRegistrationDetails handler for ChangeRegistrationDetails
-func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName string, application ApplicationRegistration) (*ApplicationRegistration, error) {
+func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
 	if appName != application.Name {
 		return nil, utils.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
@@ -169,7 +171,7 @@ func HandleDeleteApplication(radixclient radixclient.Interface, appName string) 
 }
 
 // HandleTriggerPipeline handler for TriggerPipeline
-func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, pipelineName string, pipelineParameters PipelineParameters) (*job.PipelineJob, error) {
+func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, pipelineName string, pipelineParameters applicationModels.PipelineParameters) (*jobModels.JobSummary, error) {
 	_, err := getPipeline(pipelineName)
 	if err != nil {
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
@@ -196,18 +198,17 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		WithPublicKey(application.PublicKey).
 		BuildRR()
 
-	pipelineJobSpec := &job.PipelineJob{
+	jobParameters := &jobModels.JobParameters{
 		Branch:   branch,
 		CommitID: commitID,
-		SSHRepo:  radixRegistration.Spec.CloneURL,
 	}
 
-	err = job.HandleStartPipelineJob(client, appName, pipelineJobSpec)
+	jobSummary, err := job.HandleStartPipelineJob(client, appName, radixRegistration.Spec.CloneURL, jobParameters)
 	if err != nil {
 		return nil, err
 	}
 
-	return pipelineJobSpec, nil
+	return jobSummary, nil
 }
 
 // Builder Handles construction of DTO
@@ -219,9 +220,9 @@ type Builder interface {
 	withPublicKey(string) Builder
 	withCloneURL(string) Builder
 	withDeployKey(*utils.DeployKey) Builder
-	withAppRegistration(appRegistration *ApplicationRegistration) Builder
+	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
-	BuildApplicationRegistration() *ApplicationRegistration
+	BuildApplicationRegistration() *applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
 }
 
@@ -235,7 +236,7 @@ type applicationBuilder struct {
 	cloneURL     string
 }
 
-func (rb *applicationBuilder) withAppRegistration(appRegistration *ApplicationRegistration) Builder {
+func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
 	rb.withName(appRegistration.Name)
 	rb.withRepository(appRegistration.Repository)
 	rb.withSharedSecret(appRegistration.SharedSecret)
@@ -292,13 +293,13 @@ func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder 
 	return rb
 }
 
-func (rb *applicationBuilder) BuildApplicationRegistration() *ApplicationRegistration {
+func (rb *applicationBuilder) BuildApplicationRegistration() *applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
 		repository = crdUtils.GetGithubRepositoryURLFromCloneURL(rb.cloneURL)
 	}
 
-	return &ApplicationRegistration{
+	return &applicationModels.ApplicationRegistration{
 		Name:         rb.name,
 		Repository:   repository,
 		SharedSecret: rb.sharedSecret,

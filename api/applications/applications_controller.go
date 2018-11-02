@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	applicationModels "github.com/statoil/radix-api/api/applications/models"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
@@ -251,7 +252,7 @@ func RegisterApplication(client kubernetes.Interface, radixclient radixclient.In
 	//     description: "Unauthorized"
 	//   "409":
 	//     description: "Conflict"
-	var application ApplicationRegistration
+	var application applicationModels.ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -296,7 +297,7 @@ func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixcli
 	//     description: "Conflict"
 	appName := mux.Vars(r)["appName"]
 
-	var application ApplicationRegistration
+	var application applicationModels.ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -372,28 +373,26 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 	appName := mux.Vars(r)["appName"]
 	pipelineName := mux.Vars(r)["pipelineName"]
 
-	var pipelineParameters PipelineParameters
+	var pipelineParameters applicationModels.PipelineParameters
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	jobSpec, err := HandleTriggerPipeline(client, radixclient, appName, pipelineName, pipelineParameters)
+	jobSummary, err := HandleTriggerPipeline(client, radixclient, appName, pipelineName, pipelineParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, fmt.Sprintf("Pipeline %s for %s on branch %s with commit ID %s started", jobSpec.Name, appName, jobSpec.Branch, jobSpec.CommitID))
+	utils.JSONResponse(w, r, &jobSummary)
 }
 
 func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
 	log.Infof("%s", description)
-	radixApplication := &Application{
-		Name:        name,
-		Repository:  repo,
-		Description: description,
+	radixApplication := &applicationModels.ApplicationSummary{
+		Name: name,
 	}
 
 	queryData, err := getDataFromQuery(arg, radixApplication)
@@ -405,25 +404,13 @@ func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, des
 	return body, nil
 }
 
-func getDataFromQuery(arg string, radixApplication *Application) (*graphql.Result, error) {
+func getDataFromQuery(arg string, radixApplication *applicationModels.ApplicationSummary) (*graphql.Result, error) {
 	// Schema
 	fields := graphql.Fields{
 		"name": &graphql.Field{
 			Type: graphql.String,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return radixApplication.Name, nil
-			},
-		},
-		"repository": &graphql.Field{
-			Type: graphql.String,
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return radixApplication.Repository, nil
-			},
-		},
-		"description": &graphql.Field{
-			Type: graphql.String,
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return radixApplication.Description, nil
 			},
 		},
 	}
