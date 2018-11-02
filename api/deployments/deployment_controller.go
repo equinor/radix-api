@@ -11,6 +11,7 @@ import (
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 
+	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 
 	"k8s.io/client-go/kubernetes"
@@ -138,7 +139,7 @@ func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.I
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	var promotionParameters PromotionParameters
+	var promotionParameters deploymentModels.PromotionParameters
 	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return

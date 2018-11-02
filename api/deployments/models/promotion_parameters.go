@@ -1,4 +1,4 @@
-package deployments
+package models
 
 // PromotionParameters describe environment to promote from and to
 // swagger:model PromotionParameters

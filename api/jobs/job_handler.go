@@ -16,33 +16,31 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	jobModels "github.com/statoil/radix-api/api/jobs/models"
 )
 
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
-// GetPipelineJob Used to handle job added or updated, report to data channel
-func GetPipelineJob(job *batchv1.Job) *PipelineJob {
-	appName := job.Labels["appName"]
-	branch := job.Labels["branch"]
-	commit := job.Labels["commit"]
+// GetJobSummary Used to get job summary from a kubernetes job
+func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
+	_ = job.Labels["appName"]
+	_ = job.Labels["branch"]
+	_ = job.Labels["commit"]
 	status := job.Status
 
-	jobStatus := "Active"
+	jobStatus := jobModels.Pending.String()
 	if status.Failed == 1 {
-		jobStatus = "Failed"
+		jobStatus = jobModels.Fail.String()
 	}
 
 	if status.Succeeded == 1 {
-		jobStatus = "Succeeded"
+		jobStatus = jobModels.Success.String()
 	}
 
-	pipelineJob := &PipelineJob{
-		AppName:   appName,
-		Name:      job.Name,
-		Branch:    branch,
-		CommitID:  commit,
-		JobStatus: jobStatus,
+	pipelineJob := &jobModels.JobSummary{
+		Name:   job.Name,
+		Status: jobStatus,
 	}
 	return pipelineJob
 }
@@ -121,36 +119,35 @@ func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerNam
 	return req
 }
 
-// HandleGetApplicationJobDetails Handler for GetApplicationJobDetails
-func HandleGetApplicationJobDetails(client kubernetes.Interface, appName string) ([]PipelineJob, error) {
+// HandleGetApplicationJobs Handler for GetApplicationJobs
+func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jobModels.JobSummary, error) {
 	jobList, err := client.BatchV1().Jobs(getAppNamespace(appName)).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	jobs := make([]PipelineJob, len(jobList.Items))
+	jobs := make([]jobModels.JobSummary, len(jobList.Items))
 	for i, job := range jobList.Items {
-		jobs[i] = *GetPipelineJob(&job)
+		jobs[i] = *GetJobSummary(&job)
 	}
 
 	return jobs, nil
 }
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func HandleStartPipelineJob(client kubernetes.Interface, appName string, jobSpec *PipelineJob) error {
+func HandleStartPipelineJob(client kubernetes.Interface, appName, sshRepo string, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	jobName, randomNr := getUniqueJobName(workerImage)
-	job := createPipelineJob(appName, jobName, randomNr, jobSpec.SSHRepo, jobSpec.Branch, jobSpec.CommitID)
+	job := createPipelineJob(appName, jobName, randomNr, sshRepo, jobSpec.Branch, jobSpec.CommitID)
 
 	log.Infof("Starting pipeline: %s, %s", jobName, workerImage)
 	appNamespace := fmt.Sprintf("%s-app", appName)
 	job, err := client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("Started pipeline: %s, %s", jobName, workerImage)
-	jobSpec.Name = jobName
-	return nil
+	return nil, nil
 }
 
 // TODO : Separate out into library functions
