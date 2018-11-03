@@ -8,7 +8,7 @@ spec:
   - name: qa
     build:
       from: master
-  - name: feat_240
+  - name: feat-240
     build:
       from: OR-240_RefactorSwaggerContracts
   components:
