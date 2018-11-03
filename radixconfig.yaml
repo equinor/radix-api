@@ -8,6 +8,9 @@ spec:
   - name: qa
     build:
       from: master
+  - name: feat_240
+    build:
+      from: OR-240_RefactorSwaggerContracts
   components:
   - name: "server"
     src: "."
