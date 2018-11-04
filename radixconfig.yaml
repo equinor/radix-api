@@ -27,5 +27,5 @@ spec:
     - environment: prod
       variables:
         PIPELINE_IMG_TAG: "prod"
-    build-secrets:
+    buildSecrets:
     - DEPLOY_KEY_OPERATOR
