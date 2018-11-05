@@ -1,0 +1,24 @@
+apiVersion: radix.equinor.com/v1
+kind: RadixDeployment
+metadata:
+  labels:
+    commitID: {{ .Values.buildID }}
+    env: {{ .Values.app.env }}
+    radixApp: {{ .Values.app.name }}
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"    
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.app.namespace }}
+spec:
+  appname: {{ .Values.app.name }}
+  components:
+  - environmentVariables:
+      PIPELINE_IMG_TAG: latest
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    name: {{ .Values.component.name }}
+    ports:
+    - name: http
+      port: {{ .Values.component.port }}
+    public: true
+    replicas: 2
+  environment: {{ .Values.app.env }}
