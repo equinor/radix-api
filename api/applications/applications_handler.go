@@ -190,20 +190,12 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		return nil, err
 	}
 
-	radixRegistration := crdUtils.NewRegistrationBuilder().
-		WithName(application.Name).
-		WithRepository(application.Repository).
-		WithSharedSecret(application.SharedSecret).
-		WithAdGroups(application.AdGroups).
-		WithPublicKey(application.PublicKey).
-		BuildRR()
-
 	jobParameters := &jobModels.JobParameters{
 		Branch:   branch,
 		CommitID: commitID,
 	}
 
-	jobSummary, err := job.HandleStartPipelineJob(client, appName, radixRegistration.Spec.CloneURL, jobParameters)
+	jobSummary, err := job.HandleStartPipelineJob(client, appName, crdUtils.GetGithubCloneURLFromRepo(application.Repository), jobParameters)
 	if err != nil {
 		return nil, err
 	}
