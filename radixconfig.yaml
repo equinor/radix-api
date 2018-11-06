@@ -8,9 +8,7 @@ spec:
   - name: qa
     build:
       from: master
-  - name: feat-240
-    build:
-      from: OR-240_RefactorSwaggerContracts
+  - name: dev
   components:
   - name: "server"
     src: "."
@@ -27,5 +25,3 @@ spec:
     - environment: prod
       variables:
         PIPELINE_IMG_TAG: "prod"
-    buildSecrets:
-    - DEPLOY_KEY_OPERATOR
