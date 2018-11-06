@@ -2,13 +2,13 @@ FROM golang:alpine3.7 as builder
 RUN apk update && apk add bash && apk add sed && apk add gawk && apk add git && apk add -y ca-certificates curl && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-USER root
 RUN mkdir -p /go/src/github.com/statoil/radix-api/vendor/github.com/statoil/radix-operator/pkg
 RUN mkdir -p /go/src/github.com/statoil/radix-api/hack
 
 WORKDIR /go/src/github.com/statoil/radix-api/
 COPY Gopkg.toml Gopkg.lock ./
 COPY ./hack/removeDependencyToPrivateRepo.sh ./hack/
+RUN chmod +x ./hack/removeDependencyToPrivateRepo.sh
 
 # Remove dependeny on operator which is manually added to vendor folder
 RUN sed -ri '/### REMOVE IN DOCKERFILE/,/### END REMOVE/d' ./Gopkg.toml
