@@ -9,6 +9,7 @@ import (
 	"github.com/statoil/radix-api/api/utils"
 	"k8s.io/client-go/kubernetes"
 
+	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -17,7 +18,7 @@ import (
 )
 
 // HandleGetDeployments handler for GetDeployments
-func HandleGetDeployments(radixclient radixclient.Interface, appName, environment string, latest bool) ([]*ApplicationDeployment, error) {
+func HandleGetDeployments(radixclient radixclient.Interface, appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -34,7 +35,7 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 		return nil, err
 	}
 
-	radixDeployments := make([]*ApplicationDeployment, 0)
+	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
 	for _, rd := range radixDeploymentList.Items {
 		builder := NewBuilder().
 			withName(rd.GetName()).
@@ -49,7 +50,7 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 }
 
 // HandlePromoteToEnvironment handler for PromoteEnvironment
-func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName, deploymentName string, promotionParameters PromotionParameters) (*ApplicationDeployment, error) {
+func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
 	if strings.TrimSpace(appName) == "" {
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
@@ -89,10 +90,10 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 		return nil, err
 	}
 
-	return &ApplicationDeployment{Name: radixDeployment.Name}, nil
+	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
 }
 
-func postFiltering(all []*ApplicationDeployment, latest bool) []*ApplicationDeployment {
+func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
 	if latest {
 		filtered := all[:0]
 		for _, rd := range all {
@@ -107,12 +108,22 @@ func postFiltering(all []*ApplicationDeployment, latest bool) []*ApplicationDepl
 	return all
 }
 
-func isLatest(theOne *ApplicationDeployment, all []*ApplicationDeployment) bool {
+func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentModels.ApplicationDeployment) bool {
+	theOneCreated, err := utils.ParseTimestamp(theOne.Created)
+	if err != nil {
+		return false
+	}
+
 	for _, rd := range all {
+		rdCreated, err := utils.ParseTimestamp(rd.Created)
+		if err != nil {
+			continue
+		}
+
 		if rd.AppName == theOne.AppName &&
 			rd.Environment == theOne.Environment &&
 			rd.Name != theOne.Name &&
-			rd.Created.After(theOne.Created) {
+			rdCreated.After(theOneCreated) {
 			return false
 		}
 	}
@@ -166,7 +177,7 @@ type Builder interface {
 	withAppName(string) Builder
 	withEnvironment(string) Builder
 	withCreated(time.Time) Builder
-	buildApplicationDeployment() *ApplicationDeployment
+	buildApplicationDeployment() *deploymentModels.ApplicationDeployment
 }
 
 type builder struct {
@@ -196,12 +207,12 @@ func (b *builder) withCreated(created time.Time) Builder {
 	return b
 }
 
-func (b *builder) buildApplicationDeployment() *ApplicationDeployment {
-	return &ApplicationDeployment{
+func (b *builder) buildApplicationDeployment() *deploymentModels.ApplicationDeployment {
+	return &deploymentModels.ApplicationDeployment{
 		Name:        b.name,
 		AppName:     b.appName,
 		Environment: b.environment,
-		Created:     b.created,
+		Created:     utils.FormatTimestamp(b.created),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -119,7 +120,7 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
+			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
 			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, crdUtils.GetDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.Error(t, err)
@@ -172,7 +173,7 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			parameters := PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
+			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
 			_, err := HandlePromoteToEnvironment(kubeclient, radixclient, scenario.appName, crdUtils.GetDeploymentName(scenario.appName, scenario.imageTag), parameters)
 			assert.NoError(t, err)
@@ -223,7 +224,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	createEnvNamespace(kubeclient, "any-app-2", "prod")
 
 	// Scenario
-	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "any-app-2", crdUtils.GetDeploymentName("any-app-2", "abcdef"), PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
+	_, err := HandlePromoteToEnvironment(kubeclient, radixclient, "any-app-2", crdUtils.GetDeploymentName("any-app-2", "abcdef"), deploymentModels.PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
 	assert.NoError(t, err, "HandlePromoteToEnvironment - Unexpected error")
 
 	deployments, _ := HandleGetDeployments(radixclient, "any-app-2", "prod", false)
