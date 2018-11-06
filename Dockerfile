@@ -2,6 +2,7 @@ FROM golang:alpine3.7 as builder
 RUN apk update && apk add bash && apk add sed && apk add gawk && apk add git && apk add -y ca-certificates curl && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
+USER root
 RUN mkdir -p /go/src/github.com/statoil/radix-api/vendor/github.com/statoil/radix-operator/pkg
 RUN mkdir -p /go/src/github.com/statoil/radix-api/hack
 
