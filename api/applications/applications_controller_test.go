@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	applicationModels "github.com/statoil/radix-api/api/applications/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
 	builders "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -44,7 +45,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications?sshRepo=%s", url.QueryEscape("git@github.com:Equinor/my-app.git")))
 		response := <-responseChannel
 
-		applications := make([]ApplicationRegistration, 0)
+		applications := make([]applicationModels.ApplicationRegistration, 0)
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 1, len(applications))
 	})
@@ -53,7 +54,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications?sshRepo=%s", url.QueryEscape("git@github.com:Equinor/my-app2.git")))
 		response := <-responseChannel
 
-		applications := make([]*ApplicationRegistration, 0)
+		applications := make([]*applicationModels.ApplicationRegistration, 0)
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 0, len(applications))
 	})
@@ -62,7 +63,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
-		applications := make([]*ApplicationRegistration, 0)
+		applications := make([]*applicationModels.ApplicationRegistration, 0)
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 1, len(applications))
 	})
@@ -91,7 +92,7 @@ func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	application := ApplicationRegistration{}
+	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, "", application.PublicKey)
 }
@@ -108,7 +109,7 @@ func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *te
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	application := ApplicationRegistration{}
+	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 	assert.NotEmpty(t, application.PublicKey)
 }
@@ -126,7 +127,7 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	application := ApplicationRegistration{}
+	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, "Any public key", application.PublicKey)
 
@@ -173,7 +174,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response := <-responseChannel
 
-	application := ApplicationRegistration{}
+	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Repository)
@@ -258,7 +259,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistration())
 	response := <-responseChannel
 
-	application := ApplicationRegistration{}
+	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Repository)
 
@@ -290,7 +291,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	// Test
 	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
 
-	parameters := PipelineParameters{Branch: "master", CommitID: pushCommitID}
+	parameters := applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", " ", BuildDeploy.String()), parameters)
 	response := <-responseChannel
 
@@ -298,7 +299,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
-	parameters = PipelineParameters{Branch: "", CommitID: pushCommitID}
+	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
@@ -306,7 +307,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
-	parameters = PipelineParameters{Branch: "master", CommitID: ""}
+	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: ""}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
@@ -314,7 +315,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
-	parameters = PipelineParameters{Branch: "master", CommitID: pushCommitID}
+	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
