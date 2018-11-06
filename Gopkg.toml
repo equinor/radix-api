@@ -1,7 +1,8 @@
+### REMOVE IN DOCKERFILE
 [[constraint]]
   name = "github.com/statoil/radix-operator"
   branch = "master"
-
+### END REMOVE
 [[constraint]]
   name = "k8s.io/client-go"
   version = "8.0.0"
