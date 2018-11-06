@@ -11,7 +11,7 @@ spec:
   - name: dev
   - name: platformbuild
     build:
-      from: MakeApiServerBuildOnPlatform
+      from: AddDraftToApi
   components:
   - name: "server"
     src: "."
