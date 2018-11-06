@@ -23,7 +23,6 @@ solution: you may have forgotten to build and pushed the latest changes
 ### Process 
 1. Make sure that the `kubernetes.go` in utils is not changed before you build
 2. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
-3. Execute `make docker-build`
-4. Execute `draft up` to install to dev environment of radix-api
-5. Wait for pods to start
-6. Go to https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/ to see if the version in the swagger corresponds with the version you set in the header
+3. Execute `draft up` to install to dev environment of radix-api
+4. Wait for pods to start
+5. Go to https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/ to see if the version in the swagger corresponds with the version you set in the header
