@@ -18,6 +18,8 @@ build: $(BINS)
 test:
 	go test -cover `go list ./...`
 
+# This make command is only needed for local testing now
+# we also do make swagger inside Dockerfile
 .PHONY: swagger
 swagger:
 	rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go
@@ -63,7 +65,6 @@ $(BINS): vendor
 
 build-docker-bins: $(addsuffix -docker-bin,$(BINS))
 %-docker-bin: vendor
-	make swagger
 	GOOS=linux GOARCH=$(CX_ARCHS) CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o ./rootfs/$* .
 
 .PHONY: docker-build
