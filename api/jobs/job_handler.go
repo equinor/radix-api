@@ -30,15 +30,7 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 	commit := job.Labels["commit"]
 	status := job.Status
 
-	jobStatus := jobModels.Pending.String()
-	if status.Failed == 1 {
-		jobStatus = jobModels.Fail.String()
-	}
-
-	if status.Succeeded == 1 {
-		jobStatus = jobModels.Success.String()
-	}
-
+	jobStatus := jobModels.GetStatusFromJobStatus(status).String()
 	pipelineJob := &jobModels.JobSummary{
 		Name:     job.Name,
 		AppName:  appName,
@@ -144,12 +136,28 @@ func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jo
 
 // HandleGetApplicationJob Handler for GetApplicationJob
 func HandleGetApplicationJob(client kubernetes.Interface, appName, jobName string) (*jobModels.Job, error) {
+	job, err := client.BatchV1().Jobs(getAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.EqualFold(job.Labels["type"], "pipeline") {
+		return nil, utils.ValidationError("Radix Application Job", "Job was not of expected type")
+	}
+
+	//stepList, err := client.BatchV1().Jobs(getAppNamespace(appName)).List(metav1.ListOptions{
+	//LabelSelector: fmt.Sprintf("imageTag=%s", job.),
+	//})
+
 	return &jobModels.Job{
-		Name:        "dummy-data",
-		TriggeredBy: "webhook",
-		Started:     utils.FormatTimestamp(time.Now()),
-		Status:      jobModels.Pending.String(),
-		Pipeline:    "build-deploy",
+		Name: job.Name,
+		// TODO: Put label on pipeline to say who triggered the pipeline
+		TriggeredBy: "",
+		Started:     utils.FormatTime(job.Status.StartTime),
+		Ended:       utils.FormatTime(job.Status.CompletionTime),
+		Status:      jobModels.GetStatusFromJobStatus(job.Status).String(),
+		// TODO: Put label on pipeline to say which pipeline we are running
+		Pipeline: "build-deploy",
 		Steps: []jobModels.Step{
 			jobModels.Step{
 				Name:    "build",
