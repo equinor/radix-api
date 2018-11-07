@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 
+	podModels "github.com/statoil/radix-api/api/pods/models"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
@@ -67,7 +68,7 @@ func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				pod := obj.(*corev1.Pod)
-				body, _ := json.Marshal(Pod{Name: pod.Name})
+				body, _ := json.Marshal(podModels.Pod{Name: pod.Name})
 				data <- body
 			},
 		},

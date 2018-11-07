@@ -1,4 +1,4 @@
-package applications
+package models
 
 // PipelineParameters describe branch to build and its commit ID
 // swagger:model PipelineParameters
