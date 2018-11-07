@@ -9,6 +9,9 @@ spec:
     build:
       from: master
   - name: dev
+  - name: platformbuild
+    build:
+      from: AddDraftToApi
   components:
   - name: "server"
     src: "."
