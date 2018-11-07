@@ -1,0 +1,22 @@
+apiVersion: radix.equinor.com/v1
+kind: RadixApplication
+metadata:
+  name: radix-static-html
+spec:
+  environments:
+    - name: dev
+    - name: prod
+  components:
+    - name: app
+      src: .
+      ports:
+       - name: http
+         port: 8080
+      public: true
+      replicas: 4
+    - name: redis
+      src: redis/
+      ports:
+        - name: http
+          port: 6379
+      public: false

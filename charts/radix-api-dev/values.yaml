@@ -1,0 +1,11 @@
+# Default values for golang.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+app:
+  name: radix-api
+  namespace: radix-api-dev
+  env: dev
+
+component:
+  name: server
+  port: 3002
