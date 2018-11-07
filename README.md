@@ -15,14 +15,14 @@ solution: you may have forgotten to build and pushed the latest changes
 ## Manual redeployment on existing cluster
 
 ### Prerequisites
-1. Install draft
-2. draft init from project directory (inside radix-api)
-3. draft config set registry radixdev.azurecr.io
-4. az acr login --name radixdev
+1. Install draft (https://draft.sh/)
+2. `draft init` from project directory (inside `radix-api`)
+3. `draft config set registry radixdev.azurecr.io`
+4. `az acr login --name radixdev`
 
 ### Process 
 1. Make sure that the `kubernetes.go` in utils is not changed before you build
 2. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
 3. Execute `draft up` to install to dev environment of radix-api
 4. Wait for pods to start
-5. Go to https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/ to see if the version in the swagger corresponds with the version you set in the header
+5. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header
