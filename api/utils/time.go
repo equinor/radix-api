@@ -15,7 +15,13 @@ func ParseTimestamp(timestamp string) (time.Time, error) {
 
 // FormatTimestamp Converts time to formatted timestamp
 func FormatTimestamp(timestamp time.Time) string {
-	return timestamp.Format(timestampFormat)
+	emptyTime := time.Time{}
+
+	if timestamp != emptyTime {
+		return timestamp.Format(timestampFormat)
+	}
+
+	return ""
 }
 
 // FormatTime Converts kubernetes time to formatted timestamp

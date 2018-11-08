@@ -1,36 +1,57 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+
+	batchv1 "k8s.io/api/batch/v1"
+)
 
 // ProgressStatus Enumeration of the statuses of a job or step
 type ProgressStatus int
 
 const (
-	// Pending Awaiting start
-	Pending ProgressStatus = iota
+	// Active Started
+	Active ProgressStatus = iota
 
-	// Running Started
-	Running
+	// Succeeded Job/step succeeded
+	Succeeded
 
-	// Success Job/step succeeded
-	Success
+	// Failed Job/step failed
+	Failed
 
-	// Fail Job/step failed
-	Fail
+	// Waiting Job/step pending
+	Waiting
 
 	numStatuses
 )
 
 func (p ProgressStatus) String() string {
-	return [...]string{"Pending", "Running", "Success", "Fail"}[p]
+	return [...]string{"Active", "Succeeded", "Failed"}[p]
 }
 
-func getStatus(name string) (ProgressStatus, error) {
-	for status := Pending; status < numStatuses; status++ {
+// GetStatusFromName Gets status from name
+func GetStatusFromName(name string) (ProgressStatus, error) {
+	for status := Active; status < numStatuses; status++ {
 		if status.String() == name {
 			return status, nil
 		}
 	}
 
 	return numStatuses, fmt.Errorf("No progress status found by name %s", name)
+}
+
+// GetStatusFromJobStatus Gets status from kubernetes job status
+func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
+	var status ProgressStatus
+	if jobStatus.Active > 0 {
+		status = Active
+
+	} else if jobStatus.Succeeded > 0 {
+		status = Succeeded
+
+	} else if jobStatus.Failed > 0 {
+		status = Failed
+	}
+
+	return status
 }
