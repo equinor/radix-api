@@ -43,12 +43,14 @@ func GetStatusFromName(name string) (ProgressStatus, error) {
 // GetStatusFromJobStatus Gets status from kubernetes job status
 func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
 	status := Pending
-	if jobStatus.Failed == 1 {
-		status = Fail
-	}
+	if jobStatus.Active > 0 {
+		status = Running
 
-	if jobStatus.Succeeded == 1 {
+	} else if jobStatus.Succeeded > 0 {
 		status = Success
+
+	} else if jobStatus.Failed > 0 {
+		status = Fail
 	}
 
 	return status
