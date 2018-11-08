@@ -46,10 +46,9 @@ func (pc *podController) GetRoutes() models.Routes {
 func (pc *podController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
-			SubcribeCommand:    "pod_subscribe",
-			UnsubscribeCommand: "pod_unsubscribe",
-			DataType:           "pod",
-			HandlerFunc:        GetPodStream,
+			Resource:    rootPath + "/pods",
+			DataType:    "Pod",
+			HandlerFunc: GetPodStream,
 		},
 	}
 

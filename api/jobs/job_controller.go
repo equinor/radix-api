@@ -35,7 +35,6 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Path:        rootPath + "/jobs",
 			Method:      "GET",
 			HandlerFunc: GetApplicationJobs,
-			WatcherFunc: GetApplicationJobStream,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/logs",
@@ -56,10 +55,14 @@ func (jc *jobController) GetRoutes() models.Routes {
 func (jc *jobController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
-			SubcribeCommand:    "job_subscribe",
-			UnsubscribeCommand: "job_unsubscribe",
-			DataType:           "job",
-			HandlerFunc:        GetApplicationJobStream,
+			Resource:    rootPath + "/jobs",
+			DataType:    "JobSummary",
+			HandlerFunc: GetApplicationJobsStream,
+		},
+		models.Subscription{
+			Resource:    rootPath + "/jobs/{jobName}",
+			DataType:    "Job",
+			HandlerFunc: GetApplicationJobStream,
 		},
 	}
 
@@ -101,8 +104,8 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 	utils.StringResponse(w, r, pipelines)
 }
 
-// GetApplicationJobStream Lists starting pipeline and build jobs
-func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+// GetApplicationJobsStream Lists starting pipeline and build jobs
+func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
 	jobsInformer := factory.Batch().V1().Jobs().Informer()
 
@@ -122,6 +125,10 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 		DeleteFunc: func(obj interface{}) { log.Infof("job deleted") },
 	})
 	utils.StreamInformers(data, unsubscribe, jobsInformer)
+}
+
+// GetApplicationJobstream Lists starting pipeline and build jobs
+func GetApplicationJobstream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
 }
 
 // GetApplicationJobs gets job summaries

@@ -81,10 +81,9 @@ func (ac *applicationController) GetRoutes() models.Routes {
 func (ac *applicationController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{
 		models.Subscription{
-			SubcribeCommand:    "application_subscribe",
-			UnsubscribeCommand: "application_unsubscribe",
-			DataType:           "application",
-			HandlerFunc:        GetApplicationStream,
+			Resource:    rootPath + "/applications",
+			DataType:    "ApplicationSummary",
+			HandlerFunc: GetApplicationStream,
 		},
 	}
 

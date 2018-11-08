@@ -45,8 +45,7 @@ type Subscriptions []Subscription
 
 // Subscription Holds information on stream handler function
 type Subscription struct {
-	SubcribeCommand    string
-	UnsubscribeCommand string
-	DataType           string
-	HandlerFunc        RadixWatcherFunc
+	Resource    string
+	DataType    string
+	HandlerFunc RadixWatcherFunc
 }

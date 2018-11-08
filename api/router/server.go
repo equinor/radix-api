@@ -144,11 +144,16 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 		}
 
 		disconnect := make(chan struct{})
-		allSubscriptions := make(map[string]chan struct{})
+		allResourceSubscriptions := make(map[models.Subscription]chan struct{})
 
 		for _, controller := range controllers {
-			addSubscriptions(so, disconnect, allSubscriptions, client, radixclient, controller.GetSubscriptions())
+			for _, sub := range controller.GetSubscriptions() {
+				resourceSubscriptionChannel := make(chan struct{})
+				allResourceSubscriptions[sub] = resourceSubscriptionChannel
+			}
 		}
+
+		addSubscriptions(so, disconnect, allResourceSubscriptions, client, radixclient)
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
@@ -156,12 +161,12 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 				disconnect = nil
 
 				// close all open subscriptions
-				for datatype, subscription := range allSubscriptions {
-					close(subscription)
-					subscription = nil
-					delete(allSubscriptions, datatype)
+				for sub, subscriptionChannel := range allResourceSubscriptions {
+					close(subscriptionChannel)
+					subscriptionChannel = nil
+					delete(allResourceSubscriptions, sub)
 
-					log.Infof("Unsubscribed from %s", datatype)
+					log.Infof("Unsubscribed from %s", sub)
 				}
 			}
 		})
@@ -170,29 +175,27 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 	router.Handle("/socket.io/", socketServer)
 }
 
-func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscriptions map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface, subscriptions models.Subscriptions) {
-	for _, sub := range subscriptions {
-		var subscription chan struct{}
+func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allResourceSubscriptions map[models.Subscription]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface) {
+	const subscribeCommand = "watch"
+	const unSubscribeCommand = "unwatch"
 
-		so.On(sub.SubcribeCommand, func(so socketio.Socket, arg string) {
-			// Allow only one subscription for now,
-			// unsubscribe and resubscribe with new arguments
-			if subscription != nil {
-				close(subscription)
-				subscription = nil
-			}
+	so.On(subscribeCommand, func(so socketio.Socket, resource string) {
+		log.Infof("%s", resource)
 
-			subscription = make(chan struct{})
-			allSubscriptions[sub.DataType] = subscription
-
+		/*	for sub, channel := range allResourceSubscriptions {
 			data := make(chan []byte)
 			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
 			go writeEventToSocket(so, sub.DataType, disconnect, data)
 
 			log.Infof("Subscribing to %s", sub.DataType)
-		})
 
-		so.On(sub.UnsubscribeCommand, func() {
+		}*/
+	})
+
+	so.On(unSubscribeCommand, func(so socketio.Socket, resource string) {
+		log.Infof("%s", resource)
+
+		/*
 			// In case we call unsubscribe when we are not subscribed
 			if subscription != nil {
 				close(subscription)
@@ -200,9 +203,9 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allSubscript
 				delete(allSubscriptions, sub.DataType)
 
 				log.Infof("Unsubscribed from %s", sub.DataType)
-			}
-		})
-	}
+			}*/
+	})
+
 }
 
 func writeEventToSocket(so socketio.Socket, event string, disconnect chan struct{}, data chan []byte) {
