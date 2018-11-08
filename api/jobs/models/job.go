@@ -9,11 +9,17 @@ type Job struct {
 	// example: radix-pipeline-20181029135644-algpv-6hznh
 	Name string `json:"name"`
 
-	// TriggeredBy who triggered the job
+	// Branch branch to build from
 	//
 	// required: false
-	// example: radix-pipeline-20181029135644-algpv-6hznh
-	TriggeredBy string `json:"triggeredBy"`
+	// example: master
+	Branch string `json:"branch"`
+
+	// CommitID the commit ID of the branch to build
+	//
+	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	CommitID string `json:"commitID"`
 
 	// Started timestamp
 	//

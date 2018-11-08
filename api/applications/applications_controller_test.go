@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
+	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
 	builders "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -292,7 +293,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
 
 	parameters := applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", " ", BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", " ", jobModels.BuildDeploy.String()), parameters)
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -300,7 +301,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -308,7 +309,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: ""}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -316,9 +317,15 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, "App name, branch and commit ID are required", errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
+
+	jobSummary := jobModels.JobSummary{}
+	controllertest.GetResponseBody(response, &jobSummary)
+	assert.Equal(t, "any-app", jobSummary.AppName)
+	assert.Equal(t, "master", jobSummary.Branch)
+	assert.Equal(t, pushCommitID, jobSummary.CommitID)
 }
 
 func TestIsDeployKeyValid(t *testing.T) {
