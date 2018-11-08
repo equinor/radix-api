@@ -175,7 +175,7 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 
 	jobStatus := jobModels.GetStatusFromJobStatus(status)
 	ended := utils.FormatTime(status.CompletionTime)
-	if jobStatus == jobModels.Fail {
+	if jobStatus == jobModels.Failed {
 		ended = utils.FormatTime(&status.Conditions[0].LastTransitionTime)
 	}
 
@@ -229,22 +229,22 @@ func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {
 	var startedAt metav1.Time
 	var finishedAt metav1.Time
 
-	status := jobModels.Success
+	status := jobModels.Succeeded
 
 	if containerStatus.State.Terminated != nil {
 		startedAt = containerStatus.State.Terminated.StartedAt
 		finishedAt = containerStatus.State.Terminated.FinishedAt
 
 		if containerStatus.State.Terminated.ExitCode > 0 {
-			status = jobModels.Fail
+			status = jobModels.Failed
 		}
 
 	} else if containerStatus.State.Running != nil {
 		startedAt = containerStatus.State.Running.StartedAt
-		status = jobModels.Running
+		status = jobModels.Active
 
 	} else if containerStatus.State.Waiting != nil {
-		status = jobModels.Pending
+		status = jobModels.Waiting
 
 	}
 

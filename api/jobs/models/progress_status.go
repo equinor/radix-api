@@ -10,28 +10,28 @@ import (
 type ProgressStatus int
 
 const (
-	// Pending Awaiting start
-	Pending ProgressStatus = iota
+	// Active Started
+	Active ProgressStatus = iota
 
-	// Running Started
-	Running
+	// Succeeded Job/step succeeded
+	Succeeded
 
-	// Success Job/step succeeded
-	Success
+	// Failed Job/step failed
+	Failed
 
-	// Fail Job/step failed
-	Fail
+	// Waiting Job/step pending
+	Waiting
 
 	numStatuses
 )
 
 func (p ProgressStatus) String() string {
-	return [...]string{"Pending", "Running", "Success", "Fail"}[p]
+	return [...]string{"Active", "Succeeded", "Failed"}[p]
 }
 
 // GetStatusFromName Gets status from name
 func GetStatusFromName(name string) (ProgressStatus, error) {
-	for status := Pending; status < numStatuses; status++ {
+	for status := Active; status < numStatuses; status++ {
 		if status.String() == name {
 			return status, nil
 		}
@@ -42,15 +42,15 @@ func GetStatusFromName(name string) (ProgressStatus, error) {
 
 // GetStatusFromJobStatus Gets status from kubernetes job status
 func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
-	status := Pending
+	var status ProgressStatus
 	if jobStatus.Active > 0 {
-		status = Running
+		status = Active
 
 	} else if jobStatus.Succeeded > 0 {
-		status = Success
+		status = Succeeded
 
 	} else if jobStatus.Failed > 0 {
-		status = Fail
+		status = Failed
 	}
 
 	return status
