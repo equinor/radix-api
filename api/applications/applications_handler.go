@@ -155,8 +155,8 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 	branch := pipelineParameters.Branch
 	commitID := pipelineParameters.CommitID
 
-	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" || strings.TrimSpace(commitID) == "" {
-		return nil, utils.ValidationError("Radix Application Pipeline", "App name, branch and commit ID are required")
+	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
+		return nil, utils.ValidationError("Radix Application Pipeline", "App name and branch are required")
 	}
 
 	log.Infof("Creating pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
