@@ -3,6 +3,7 @@ package jobs
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -40,7 +41,7 @@ func (jc *jobController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetApplicationJobLogs,
+			HandlerFunc: GetPipelineJobLogs,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}",
@@ -66,8 +67,8 @@ func (jc *jobController) GetSubscriptions() models.Subscriptions {
 	return subscriptions
 }
 
-// GetApplicationJobLogs Get logs of a job for an application
-func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+// GetPipelineJobLogs Get logs of a job for an application
+func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs jobs getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
@@ -85,6 +86,10 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/StepLog"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -98,7 +103,8 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 		return
 	}
 
-	utils.StringResponse(w, r, pipelines)
+	sort.Slice(pipelines, func(i, j int) bool { return pipelines[i].Sort < pipelines[j].Sort })
+	utils.JSONResponse(w, r, pipelines)
 }
 
 // GetApplicationJobStream Lists starting pipeline and build jobs
