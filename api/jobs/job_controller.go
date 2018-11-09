@@ -157,7 +157,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 
 		case *corev1.Pod:
 			pod := obj.(*corev1.Pod)
-			jobName = pod.Labels["job-name"]
+			jobName = pod.Labels["radix-job-name"]
 			namespace = pod.Namespace
 
 		default:
