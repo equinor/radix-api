@@ -148,7 +148,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
 		}
 
-		result, _ := json.Marshal(radixJob)
+		result, _ := json.Marshal(*radixJob)
 		data <- result
 	}
 
