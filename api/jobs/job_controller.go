@@ -3,6 +3,7 @@ package jobs
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -105,7 +106,7 @@ func GetApplicationJobLogs(client kubernetes.Interface, radixclient radixclient.
 }
 
 // GetApplicationJobsStream Lists starting pipeline and build jobs
-func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
 	jobsInformer := factory.Batch().V1().Jobs().Informer()
 
@@ -127,8 +128,35 @@ func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclie
 	utils.StreamInformers(data, unsubscribe, jobsInformer)
 }
 
-// GetApplicationJobstream Lists starting pipeline and build jobs
-func GetApplicationJobstream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+// GetApplicationJobStream Lists starting pipeline and build jobs
+func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
+	jobsInformer := factory.Batch().V1().Jobs().Informer()
+
+	handleJobApplied := func(obj interface{}) {
+		job := obj.(*batchv1.Job)
+
+		appNameToWatch := resourceIdentifiers[0]
+		jobNameToWatch := resourceIdentifiers[1]
+
+		if !strings.EqualFold(job.Name, jobNameToWatch) {
+			return
+		}
+
+		radixJob, err := HandleGetApplicationJob(client, appNameToWatch, jobNameToWatch)
+		if err != nil {
+			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
+		}
+
+		result, _ := json.Marshal(radixJob)
+		data <- result
+	}
+
+	jobsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { handleJobApplied(obj) },
+		UpdateFunc: func(old interface{}, new interface{}) { handleJobApplied(new) },
+	})
+	utils.StreamInformers(data, unsubscribe, jobsInformer)
 }
 
 // GetApplicationJobs gets job summaries

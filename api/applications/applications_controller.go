@@ -50,7 +50,6 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        rootPath + "/applications",
 			Method:      "GET",
 			HandlerFunc: ShowApplications,
-			WatcherFunc: GetApplicationStream,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}",
@@ -91,14 +90,12 @@ func (ac *applicationController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetApplicationStream Gets stream of applications
-func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
-	if arg == "" {
-		arg = `{
+func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+	arg := `{
 			name
 			repository
 			description
 		}`
-	}
 
 	factory := informers.NewSharedInformerFactory(radixclient, 0)
 	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()

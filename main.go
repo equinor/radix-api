@@ -54,11 +54,12 @@ func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port        = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
-		clusterName = os.Getenv(clusternameEnvironmentVariable)
-		certPath    = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
-		keyPath     = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
-		httpsPort   = "3000"
+		port                = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
+		clusterName         = os.Getenv(clusternameEnvironmentVariable)
+		certPath            = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
+		keyPath             = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
+		httpsPort           = "3003"
 	)
 
 	parseFlagsFromArgs(fs)
@@ -66,13 +67,13 @@ func main() {
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
 			errs <- err
 		}()
 	} else {

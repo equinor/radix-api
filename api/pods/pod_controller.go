@@ -35,7 +35,6 @@ func (pc *podController) GetRoutes() models.Routes {
 			Path:        rootPath + "/pods",
 			Method:      "GET",
 			HandlerFunc: GetPods,
-			WatcherFunc: GetPodStream,
 		},
 	}
 
@@ -56,7 +55,7 @@ func (pc *podController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetPodStream Lists new pods
-func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface, arg string, data chan []byte, unsubscribe chan struct{}) {
+func GetPodStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
 	watchList := cache.NewFilteredListWatchFromClient(client.CoreV1().RESTClient(), "pods", corev1.NamespaceAll,
 		func(options *metav1.ListOptions) {
 		})

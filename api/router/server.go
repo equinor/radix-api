@@ -42,7 +42,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	sh := http.StripPrefix("/swaggerui/", staticServer)
 	router.PathPrefix("/swaggerui/").Handler(sh)
 
-	initializeSocketServer(kubeUtil, router)
+	initializeSocketServer(kubeUtil, router, controllers)
 
 	for _, controller := range controllers {
 		if controller.UseInClusterConfig() {
@@ -112,7 +112,7 @@ func getHostName(componentName, namespace, clustername string) string {
 
 func addHandlerRoutes(kubeUtil utils.KubeUtil, router *mux.Router, routes models.Routes) {
 	for _, route := range routes {
-		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc, route.WatcherFunc).Handle).Methods(route.Method)
+		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc).Handle).Methods(route.Method)
 	}
 }
 
@@ -127,8 +127,15 @@ func addHandlerRoutesInClusterKubeClient(kubeUtil utils.KubeUtil, router *mux.Ro
 	}
 }
 
-func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers ...models.Controller) {
+func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
 	socketServer, _ := socketio.NewServer(nil)
+
+	allAvailableResourceSubscriptions := make(map[string]*models.Subscription)
+	for _, controller := range controllers {
+		for _, sub := range controller.GetSubscriptions() {
+			allAvailableResourceSubscriptions[sub.Resource] = &sub
+		}
+	}
 
 	socketServer.On("connection", func(so socketio.Socket) {
 		token := utils.GetTokenFromQuery(so.Request())
@@ -144,16 +151,9 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 		}
 
 		disconnect := make(chan struct{})
-		allResourceSubscriptions := make(map[models.Subscription]chan struct{})
 
-		for _, controller := range controllers {
-			for _, sub := range controller.GetSubscriptions() {
-				resourceSubscriptionChannel := make(chan struct{})
-				allResourceSubscriptions[sub] = resourceSubscriptionChannel
-			}
-		}
-
-		addSubscriptions(so, disconnect, allResourceSubscriptions, client, radixclient)
+		allSubscriptionChannels := make(map[string]chan struct{})
+		addSubscriptions(so, disconnect, allAvailableResourceSubscriptions, allSubscriptionChannels, client, radixclient)
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
@@ -161,12 +161,12 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 				disconnect = nil
 
 				// close all open subscriptions
-				for sub, subscriptionChannel := range allResourceSubscriptions {
+				for resource, subscriptionChannel := range allSubscriptionChannels {
 					close(subscriptionChannel)
 					subscriptionChannel = nil
-					delete(allResourceSubscriptions, sub)
+					delete(allSubscriptionChannels, resource)
 
-					log.Infof("Unsubscribed from %s", sub)
+					log.Infof("Unsubscribed from %s", resource)
 				}
 			}
 		})
@@ -175,35 +175,41 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 	router.Handle("/socket.io/", socketServer)
 }
 
-func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allResourceSubscriptions map[models.Subscription]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface) {
-	const subscribeCommand = "watch"
-	const unSubscribeCommand = "unwatch"
+func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailableResourceSubscriptions map[string]*models.Subscription, allSubscriptionChannels map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface) {
+	so.On("watch", func(so socketio.Socket, resource string) {
+		sub := utils.FindMatchingSubscription(resource, allAvailableResourceSubscriptions)
+		if sub == nil {
+			log.Errorf("No matching subscription for resource %s", resource)
+			return
+		}
 
-	so.On(subscribeCommand, func(so socketio.Socket, resource string) {
-		log.Infof("%s", resource)
+		resourceIdentifiers := utils.GetResourceIdentifiers(sub.Resource, resource)
 
-		/*	for sub, channel := range allResourceSubscriptions {
-			data := make(chan []byte)
-			go sub.HandlerFunc(client, radixclient, arg, data, subscription)
-			go writeEventToSocket(so, sub.DataType, disconnect, data)
+		data := make(chan []byte)
+		subscription := make(chan struct{})
+		allSubscriptionChannels[resource] = subscription
 
-			log.Infof("Subscribing to %s", sub.DataType)
+		go sub.HandlerFunc(client, radixclient, resource, resourceIdentifiers, data, subscription)
+		go writeEventToSocket(so, sub.DataType, disconnect, data)
 
-		}*/
+		log.Infof("Subscribing to %s", resource)
 	})
 
-	so.On(unSubscribeCommand, func(so socketio.Socket, resource string) {
-		log.Infof("%s", resource)
+	so.On("unwatch", func(so socketio.Socket, resource string) {
+		subscription := allSubscriptionChannels[resource]
+		if subscription == nil {
+			log.Errorf("Not subscribing to resource %s", resource)
+			return
+		}
 
-		/*
-			// In case we call unsubscribe when we are not subscribed
-			if subscription != nil {
-				close(subscription)
-				subscription = nil
-				delete(allSubscriptions, sub.DataType)
+		// In case we call unsubscribe when we are not subscribed
+		if subscription != nil {
+			close(subscription)
+			subscription = nil
+			delete(allSubscriptionChannels, resource)
 
-				log.Infof("Unsubscribed from %s", sub.DataType)
-			}*/
+			log.Infof("Unsubscribed from: %s", resource)
+		}
 	})
 
 }
