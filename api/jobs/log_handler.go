@@ -19,8 +19,8 @@ func PipelineNotFoundError(appName, jobName string) error {
 }
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
-func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName string) ([]jobModels.PipelineStep, error) {
-	steps := []jobModels.PipelineStep{}
+func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName string) ([]jobModels.StepLog, error) {
+	steps := []jobModels.StepLog{}
 	pipelinePod, err := getPipelinePod(client, appName, jobName)
 	if err != nil {
 		return steps, err
@@ -32,7 +32,7 @@ func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName s
 	if err != nil {
 		// use clone from pipeline step
 		cloneStep := getInitCloneStepLog(client, pipelinePod)
-		steps = append(steps, cloneStep, pipelineStep, jobModels.PipelineStep{
+		steps = append(steps, cloneStep, pipelineStep, jobModels.StepLog{
 			Name: "docker build",
 			Log:  fmt.Sprintf("%v", err),
 			Sort: 3,
@@ -93,12 +93,12 @@ func getBuildPods(client kubernetes.Interface, pipelinePod *corev1.Pod) (*corev1
 	return pods, nil
 }
 
-func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.PipelineStep {
+func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
 	cloneLog, err := handleGetPodLog(client, pipelinePod, "clone")
 	if err != nil {
 		cloneLog = "error: log not found"
 	}
-	return jobModels.PipelineStep{
+	return jobModels.StepLog{
 		Name:    "clone",
 		Log:     cloneLog,
 		PodName: fmt.Sprintf("%s %s", pipelinePod.GetName(), "clone"),
@@ -106,26 +106,26 @@ func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) j
 	}
 }
 
-func getPipelineStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.PipelineStep {
+func getPipelineStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
 	podLog, err := handleGetPodLog(client, pipelinePod, "")
 	if err != nil {
 		podLog = "error: pipeline log not found"
 	}
-	return jobModels.PipelineStep{
-		Name:    "pipeline",
+	return jobModels.StepLog{
+		Name:    "job",
 		Log:     podLog,
 		PodName: pipelinePod.GetName(),
 		Sort:    2,
 	}
 }
 
-func getBuildStep(client kubernetes.Interface, buildPod corev1.Pod, containerName string, sort int32) jobModels.PipelineStep {
+func getBuildStep(client kubernetes.Interface, buildPod corev1.Pod, containerName string, sort int32) jobModels.StepLog {
 	buildLog, err := handleGetPodLog(client, &buildPod, containerName)
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		buildLog = fmt.Sprintf("%v", err)
 	}
-	return jobModels.PipelineStep{
+	return jobModels.StepLog{
 		Name:    containerName,
 		Log:     buildLog,
 		PodName: buildPod.GetName(),
