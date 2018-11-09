@@ -9,7 +9,7 @@ import (
 )
 
 // StreamInformers Starts and stops informers given subscription
-func StreamInformers(data chan []byte, unsubscribe chan struct{}, informers ...cache.SharedIndexInformer) {
+func StreamInformers(unsubscribe chan struct{}, informers ...cache.SharedIndexInformer) {
 	stop := make(chan struct{})
 	go func() {
 		<-unsubscribe

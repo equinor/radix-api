@@ -132,7 +132,7 @@ func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.I
 	raInformer.AddEventHandler(defaultResourceEventHandler(handleRA))
 	rdInformer.AddEventHandler(defaultResourceEventHandler(handleRD))
 
-	utils.StreamInformers(data, unsubscribe, rrInformer, raInformer, rdInformer)
+	utils.StreamInformers(unsubscribe, rrInformer, raInformer, rdInformer)
 }
 
 // ShowApplications Lists applications

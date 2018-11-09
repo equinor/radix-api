@@ -225,7 +225,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-job-label": jobName,
+				"radix-job-name":  jobName,
 				"radix-job-type":  "job",
 				"radix-pipeline":  pipeline.String(),
 				"radix-app-name":  appName,
@@ -252,6 +252,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 								fmt.Sprintf("COMMIT_ID=%s", commitID),
 								fmt.Sprintf("RADIX_FILE_NAME=%s", "/workspace/radixconfig.yaml"),
 								fmt.Sprintf("IMAGE_TAG=%s", randomStr),
+								fmt.Sprintf("JOB_NAME=%s", jobName),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	socketio "github.com/googollee/go-socket.io"
@@ -215,15 +216,22 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailable
 }
 
 func writeEventToSocket(so socketio.Socket, event string, disconnect chan struct{}, data chan []byte) {
+	var previousMessage *string
+
 	for {
 		select {
 		case <-disconnect:
 			return
-		case <-data:
-			for dataElement := range data {
-				so.Emit(event, string(dataElement))
-				log.Infof("Emitted data for %s", event)
+		case messageData := <-data:
+			message := string(messageData)
+
+			if previousMessage != nil && strings.EqualFold(string(message), *previousMessage) {
+				continue
 			}
+
+			so.Emit(event, message)
+			log.Infof("Emitted data for %s", event)
+			previousMessage = &message
 		}
 	}
 }

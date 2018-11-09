@@ -3,18 +3,20 @@ package jobs
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"sort"
+	"strings"
 
 	"k8s.io/client-go/tools/cache"
 
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
+	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
@@ -131,27 +133,49 @@ func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclie
 		UpdateFunc: func(old interface{}, new interface{}) { handleJobApplied(new) },
 		DeleteFunc: func(obj interface{}) { log.Infof("job deleted") },
 	})
-	utils.StreamInformers(data, unsubscribe, jobsInformer)
+	utils.StreamInformers(unsubscribe, jobsInformer)
 }
 
 // GetApplicationJobStream Lists starting pipeline and build jobs
 func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
 	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
 	jobsInformer := factory.Batch().V1().Jobs().Informer()
+	podsInformer := factory.Core().V1().Pods().Informer()
+
+	appNameToWatch := resourceIdentifiers[0]
+	jobNameToWatch := resourceIdentifiers[1]
+	namespaceToWatch := crdUtils.GetAppNamespace(appNameToWatch)
 
 	handleJobApplied := func(obj interface{}) {
-		job := obj.(*batchv1.Job)
+		var jobName, namespace string
 
-		appNameToWatch := resourceIdentifiers[0]
-		jobNameToWatch := resourceIdentifiers[1]
+		switch obj.(type) {
+		case *batchv1.Job:
+			job := obj.(*batchv1.Job)
+			jobName = job.Labels["radix-job-name"]
+			namespace = job.Namespace
 
-		if !strings.EqualFold(job.Name, jobNameToWatch) {
+		case *corev1.Pod:
+			pod := obj.(*corev1.Pod)
+			jobName = pod.Labels["job-name"]
+			namespace = pod.Namespace
+
+		default:
+			return
+		}
+
+		if !strings.EqualFold(namespace, namespaceToWatch) {
+			return
+		}
+
+		if !strings.EqualFold(jobName, jobNameToWatch) {
 			return
 		}
 
 		radixJob, err := HandleGetApplicationJob(client, appNameToWatch, jobNameToWatch)
 		if err != nil {
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
+			return
 		}
 
 		result, _ := json.Marshal(*radixJob)
@@ -162,7 +186,13 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 		AddFunc:    func(obj interface{}) { handleJobApplied(obj) },
 		UpdateFunc: func(old interface{}, new interface{}) { handleJobApplied(new) },
 	})
-	utils.StreamInformers(data, unsubscribe, jobsInformer)
+
+	podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { handleJobApplied(obj) },
+		UpdateFunc: func(old interface{}, new interface{}) { handleJobApplied(new) },
+	})
+
+	utils.StreamInformers(unsubscribe, jobsInformer, podsInformer)
 }
 
 // GetApplicationJobs gets job summaries
