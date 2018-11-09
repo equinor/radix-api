@@ -138,33 +138,27 @@ func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclie
 
 // GetApplicationJobStream Lists starting pipeline and build jobs
 func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
-	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
-	jobsInformer := factory.Batch().V1().Jobs().Informer()
-	podsInformer := factory.Core().V1().Pods().Informer()
-
 	appNameToWatch := resourceIdentifiers[0]
 	jobNameToWatch := resourceIdentifiers[1]
 	namespaceToWatch := crdUtils.GetAppNamespace(appNameToWatch)
 
+	factory := informers.NewSharedInformerFactoryWithOptions(client, 0, informers.WithNamespace(namespaceToWatch))
+	jobsInformer := factory.Batch().V1().Jobs().Informer()
+	podsInformer := factory.Core().V1().Pods().Informer()
+
 	handleJobApplied := func(obj interface{}) {
-		var jobName, namespace string
+		var jobName string
 
 		switch obj.(type) {
 		case *batchv1.Job:
 			job := obj.(*batchv1.Job)
 			jobName = job.Labels["radix-job-name"]
-			namespace = job.Namespace
 
 		case *corev1.Pod:
 			pod := obj.(*corev1.Pod)
 			jobName = pod.Labels["radix-job-name"]
-			namespace = pod.Namespace
 
 		default:
-			return
-		}
-
-		if !strings.EqualFold(namespace, namespaceToWatch) {
 			return
 		}
 
