@@ -1,4 +1,4 @@
-package jobs
+package jobs_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	. "github.com/statoil/radix-api/api/jobs"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
@@ -14,6 +15,14 @@ import (
 	"github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+)
+
+const (
+	anyAppName      = "any-app"
+	anyCloneURL     = "git@github.com:Equinor/any-app.git"
+	anyBranch       = "master"
+	anyPushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+	anyPipeline     = jobModels.BuildDeploy
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -33,12 +42,6 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, _ := setupTest()
-
-	const anyAppName = "any-app"
-	const anyCloneURL = "git@github.com:Equinor/any-app.git"
-	const anyBranch = "master"
-	const anyPushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
-	const anyPipeline = jobModels.BuildDeploy
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -63,4 +66,19 @@ func TestGetApplicationJob(t *testing.T) {
 		assert.Equal(t, anyPipeline.String(), job.Pipeline)
 	})
 
+}
+
+func TestGetPipelineJobLogsError(t *testing.T) {
+	_, controllerTestUtils, _, _ := setupTest()
+
+	t.Run("job doesn't exist", func(t *testing.T) {
+		aJobName := "aJobName"
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
+		response := <-responseChannel
+
+		pipelineNotFoundError := PipelineNotFoundError(anyAppName, aJobName)
+		err, _ := controllertest.GetErrorResponse(response)
+		assert.NotNil(t, err)
+		assert.Equal(t, pipelineNotFoundError.Error(), err.Error())
+	})
 }

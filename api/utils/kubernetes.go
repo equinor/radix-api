@@ -28,6 +28,7 @@ func NewKubeUtil() KubeUtil {
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
 	config := getOutClusterClientConfig(token)
+	config = getInClusterClientConfig()
 	return getKubernetesClientFromConfig(config)
 }
 
