@@ -1,10 +1,13 @@
 #!/bin/bash
+# this script 
+# - creates a certificate
+# - set certificate to valid in kubernetes
+# - creates a secret in "title" namespaces containing cert
+# - register an admission controller using public key from cert and endpoint "/admissioncontrollers/applications" 
+# last step should be moved somewhere else, so that it can be used to register admission controller for 
+# different crds as RadixRegistration, RadixApplication and RadixDeployment
 title="radix-api-prod"
-# kubectl create namespace ${title} || true
-
-[ -z ${title} ] && service=sidecar-injector-webhook-svc
-[ -z ${title} ] && secret=sidecar-injector-webhook-certs
-[ -z ${title} ] && namespace=default
+kubectl create namespace ${title} || true
 
 csrName=${title}.${title}
 tmpdir=$(mktemp -d)
@@ -21,7 +24,7 @@ keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 [alt_names]
-DNS.5 = server.${title}.svc
+DNS.1 = server.${title}.svc
 EOF
 
 openssl genrsa -out ${tmpdir}/server-key.pem 2048
@@ -77,3 +80,30 @@ kubectl create secret generic ${title}-certs \
         --from-file=cert.pem=${tmpdir}/server-cert.pem \
         --dry-run -o yaml |
     kubectl -n ${title} apply -f -
+
+# update admission controller with new certificate public key
+cat <<EOF | kubectl apply -f -
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: ra-admission-controller
+webhooks:
+- name: admission-policy.applications.io
+  failurePolicy: Fail
+  rules:
+  - apiGroups:
+    - radix.equinor.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - radixapplications
+  clientConfig:
+    caBundle: $(cat ${tmpdir}/server-cert.pem | base64)
+    service:
+       name: server
+       namespace: radix-api-prod
+       path: "/admissioncontrollers/applications"
+EOF
