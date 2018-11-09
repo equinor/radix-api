@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.39
+// Version: 0.0.40
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -48,7 +48,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-const clusternameEnvironmentVariable = "radix-clustername"
+const clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
 
 func main() {
 	fs := initializeFlagSet()
