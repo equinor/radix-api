@@ -1,7 +1,7 @@
 package models
 
-// swagger:model PipelineStep
-type PipelineStep struct {
+// swagger:model StepLog
+type StepLog struct {
 	// Name of the step
 	//
 	// required: true

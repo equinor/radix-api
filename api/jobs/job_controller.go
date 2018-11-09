@@ -89,7 +89,7 @@ func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Int
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/PipelineStep"
+	//           "$ref": "#/definitions/StepLog"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
