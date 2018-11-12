@@ -18,17 +18,25 @@ type KubeUtil interface {
 }
 
 type kubeUtil struct {
+	useOutClusterClient bool
 }
 
 // NewKubeUtil Constructor
-func NewKubeUtil() KubeUtil {
-	return &kubeUtil{}
+func NewKubeUtil(useOutClusterClient bool) KubeUtil {
+	return &kubeUtil{
+		useOutClusterClient,
+	}
 }
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	config := getOutClusterClientConfig(token)
-	return getKubernetesClientFromConfig(config)
+	if ku.useOutClusterClient {
+		config := getOutClusterClientConfig(token)
+		return getKubernetesClientFromConfig(config)
+	} else {
+		return ku.GetInClusterKubernetesClient()
+	}
+
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod

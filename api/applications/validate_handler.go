@@ -89,8 +89,8 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-job-label": jobName,
-				"radix-job-type":  "validate-clone-url",
+				"radix-job-name": jobName,
+				"radix-job-type": "validate-clone-url",
 			},
 		},
 		Spec: batchv1.JobSpec{

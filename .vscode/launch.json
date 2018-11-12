@@ -14,7 +14,9 @@
                 "server_cert_path":"${workspaceFolder}/certs/cert.pem",
                 "server_key_path":"${workspaceFolder}/certs/key.pem"
             },
-            "args": []
+            "args": [
+                "--useOutClusterClient=false"
+            ]
         }
     ]
 }

@@ -26,7 +26,7 @@ const (
 )
 
 func (p ProgressStatus) String() string {
-	return [...]string{"Active", "Succeeded", "Failed"}[p]
+	return [...]string{"Active", "Succeeded", "Failed", "Waiting"}[p]
 }
 
 // GetStatusFromName Gets status from name
