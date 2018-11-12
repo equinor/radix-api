@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.40
+// Version: 0.0.41
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -25,6 +25,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -39,12 +41,9 @@ import (
 	router "github.com/statoil/radix-api/api/router"
 	"github.com/statoil/radix-api/models"
 
-	// Force loading of needed authentication library
-	"net/http"
-	"os"
-
 	"github.com/statoil/radix-api/api/utils"
 
+	// Force loading of needed authentication library
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
@@ -54,11 +53,12 @@ func main() {
 	fs := initializeFlagSet()
 
 	var (
-		port        = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
-		clusterName = os.Getenv(clusternameEnvironmentVariable)
-		certPath    = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
-		keyPath     = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
-		httpsPort   = "3000"
+		port                = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
+		clusterName         = os.Getenv(clusternameEnvironmentVariable)
+		certPath            = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
+		keyPath             = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
+		httpsPort           = "3003"
 	)
 
 	parseFlagsFromArgs(fs)
@@ -66,13 +66,13 @@ func main() {
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(), getControllers()...))
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
 			errs <- err
 		}()
 	} else {

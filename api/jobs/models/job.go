@@ -36,7 +36,7 @@ type Job struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: [Pending, Running, Success, Fail]
+	// Enum: [Waiting, Active, Succeeded, Failed]
 	// example: Pending
 	Status string `json:"status"`
 

@@ -11,15 +11,13 @@ import (
 type RadixMiddleware struct {
 	kubeUtil KubeUtil
 	next     models.RadixHandlerFunc
-	watch    models.RadixWatcherFunc
 }
 
 // NewRadixMiddleware Constructor for radix middleware
-func NewRadixMiddleware(kubeUtil KubeUtil, next models.RadixHandlerFunc, watch models.RadixWatcherFunc) *RadixMiddleware {
+func NewRadixMiddleware(kubeUtil KubeUtil, next models.RadixHandlerFunc) *RadixMiddleware {
 	handler := &RadixMiddleware{
 		kubeUtil,
 		next,
-		watch,
 	}
 
 	return handler
@@ -33,26 +31,8 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	watch, _ := isWatch(r)
-	if watch && handler.watch == nil {
-		ErrorResponse(w, r, errors.New("Watch is not supported for this type"))
-		return
-	}
-
 	client, radixclient := handler.kubeUtil.GetOutClusterKubernetesClient(token)
-
-	if watch {
-		// Sending data as server side events
-		data := make(chan []byte)
-		subscription := make(chan struct{})
-
-		// Set it running - listening and broadcasting events
-		go handler.watch(client, radixclient, "", data, subscription)
-		serveSSE(w, r, data, subscription)
-
-	} else {
-		handler.next(client, radixclient, w, r)
-	}
+	handler.next(client, radixclient, w, r)
 }
 
 // BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header
@@ -77,43 +57,4 @@ func BearerTokenQueryVerifyerMiddleware(w http.ResponseWriter, r *http.Request, 
 	}
 
 	next(w, r)
-}
-
-// ServeSSE Serves server side events
-func serveSSE(w http.ResponseWriter, r *http.Request, data chan []byte, subscription chan struct{}) {
-	flusher, ok := w.(http.Flusher)
-
-	if !ok {
-		ErrorResponse(w, r, errors.New("Streaming unsupported"))
-		return
-	}
-
-	// Set the headers related to event streaming.
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	// Listen to connection close and un-register messageChan
-	notify := w.(http.CloseNotifier).CloseNotify()
-
-	go func() {
-		<-notify
-		close(subscription)
-	}()
-
-	for {
-		select {
-		case <-subscription:
-			return
-		default:
-			// Write to the ResponseWriter
-			// Server Sent Events compatible
-			w.Write(<-data)
-
-			// Flush the data immediatly instead of buffering it for later.
-			flusher.Flush()
-		}
-	}
-
 }
