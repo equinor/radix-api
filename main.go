@@ -25,6 +25,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -39,12 +41,9 @@ import (
 	router "github.com/statoil/radix-api/api/router"
 	"github.com/statoil/radix-api/models"
 
-	// Force loading of needed authentication library
-	"net/http"
-	"os"
-
 	"github.com/statoil/radix-api/api/utils"
 
+	// Force loading of needed authentication library
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 

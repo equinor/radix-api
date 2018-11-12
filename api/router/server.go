@@ -184,7 +184,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailable
 			return
 		}
 
-		resourceIdentifiers := utils.GetResourceIdentifiers(sub.Resource, resource)
+		resourceIdentifiers := utils.GetResourceIdentifiers(apiVersionRoute+sub.Resource, resource)
 
 		data := make(chan []byte)
 		subscription := make(chan struct{})
