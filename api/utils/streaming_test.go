@@ -8,48 +8,48 @@ import (
 
 func TestFindMatchingResource(t *testing.T) {
 	resourcePatterns := []string{
-		"/applications",
-		"/applications/{appName}/jobs",
-		"/applications/{appName}/jobs/{jobName}",
-		"/applications/{appName}/environments/{envName}/pods",
+		"/api/v1/applications",
+		"/api/v1/applications/{appName}/jobs",
+		"/api/v1/applications/{appName}/jobs/{jobName}",
+		"/api/v1/applications/{appName}/environments/{envName}/pods",
 	}
 
-	expected := "/applications"
-	actual := findMatchingResource("/applications", resourcePatterns)
+	expected := "/api/v1/applications"
+	actual := findMatchingResource("/api/v1/applications", resourcePatterns)
 	assert.Equal(t, expected, *actual)
 
-	expected = "/applications/{appName}/jobs"
-	actual = findMatchingResource("/applications/any-app/jobs", resourcePatterns)
+	expected = "/api/v1/applications/{appName}/jobs"
+	actual = findMatchingResource("/api/v1/applications/any-app/jobs", resourcePatterns)
 	assert.Equal(t, expected, *actual)
 
-	expected = "/applications/{appName}/jobs/{jobName}"
-	actual = findMatchingResource("/applications/any-app/jobs/any-job", resourcePatterns)
+	expected = "/api/v1/applications/{appName}/jobs/{jobName}"
+	actual = findMatchingResource("/api/v1/applications/any-app/jobs/any-job", resourcePatterns)
 	assert.Equal(t, expected, *actual)
 
-	expected = "/applications/{appName}/environments/{envName}/pods"
-	actual = findMatchingResource("/applications/any-app/environments/prod/pods", resourcePatterns)
+	expected = "/api/v1/applications/{appName}/environments/{envName}/pods"
+	actual = findMatchingResource("/api/v1/applications/any-app/environments/prod/pods", resourcePatterns)
 	assert.Equal(t, expected, *actual)
 
 }
 
 func TestGetResourceIdentifiers(t *testing.T) {
-	actual := GetResourceIdentifiers("/applications", "/applications")
+	actual := GetResourceIdentifiers("/api/v1/applications", "/api/v1/applications")
 	expected := []string{}
 	assert.Equal(t, expected, actual)
 
-	actual = GetResourceIdentifiers("/applications/{appName}", "/applications/any-app")
+	actual = GetResourceIdentifiers("/api/v1/applications/{appName}", "/api/v1/applications/any-app")
 	expected = []string{"any-app"}
 	assert.Equal(t, expected, actual)
 
-	actual = GetResourceIdentifiers("/applications/{appName}/jobs", "/applications/any-app/jobs")
+	actual = GetResourceIdentifiers("/api/v1/applications/{appName}/jobs", "/api/v1/applications/any-app/jobs")
 	expected = []string{"any-app"}
 	assert.Equal(t, expected, actual)
 
-	actual = GetResourceIdentifiers("/applications/{appName}/jobs/{jobName}", "/applications/any-app/jobs/any-job")
+	actual = GetResourceIdentifiers("/api/v1/applications/{appName}/jobs/{jobName}", "/api/v1/applications/any-app/jobs/any-job")
 	expected = []string{"any-app", "any-job"}
 	assert.Equal(t, expected, actual)
 
-	actual = GetResourceIdentifiers("/applications/{appName}/environments/{envName}/pods", "/applications/any-app/environments/prod/pods")
+	actual = GetResourceIdentifiers("/api/v1/applications/{appName}/environments/{envName}/pods", "/api/v1/applications/any-app/environments/prod/pods")
 	expected = []string{"any-app", "prod"}
 	assert.Equal(t, expected, actual)
 }

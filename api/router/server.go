@@ -134,7 +134,7 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 	allAvailableResourceSubscriptions := make(map[string]*models.Subscription)
 	for _, controller := range controllers {
 		for _, sub := range controller.GetSubscriptions() {
-			allAvailableResourceSubscriptions[sub.Resource] = &sub
+			allAvailableResourceSubscriptions[apiVersionRoute+sub.Resource] = &sub
 		}
 	}
 
