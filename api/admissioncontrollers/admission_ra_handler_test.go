@@ -27,44 +27,6 @@ func Test_valid_ra_returns_true(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-type updateRAFunc func(rr *v1.RadixApplication)
-
-func Test_invalid_ra(t *testing.T) {
-	var testScenarios = []struct {
-		name     string
-		updateRA updateRAFunc
-	}{
-		{"to long app name", func(ra *v1.RadixApplication) {
-			ra.Name = "way.toooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo.long-app-name"
-		}},
-		{"invalid app name", func(ra *v1.RadixApplication) { ra.Name = "invalid,char.appname" }},
-		{"empty name", func(ra *v1.RadixApplication) { ra.Name = "" }},
-		{"no related rr", func(ra *v1.RadixApplication) { ra.Name = "no related rr" }},
-		{"var connected to non existing env", func(ra *v1.RadixApplication) {
-			ra.Spec.Components[0].EnvironmentVariables = []v1.EnvVars{
-				v1.EnvVars{
-					Environment: "nonexistingenv",
-					Variables: map[string]string{
-						"DB_CON": "somedbcon",
-					},
-				},
-			}
-		}},
-	}
-
-	kubeclient, client, validRA := validRASetup()
-	for _, testcase := range testScenarios {
-		t.Run(testcase.name, func(t *testing.T) {
-			testcase.updateRA(validRA)
-			admissionReview := admissionReviewMockApp(validRA)
-			isValid, err := ValidateRadixConfigurationChange(kubeclient, client, admissionReview)
-
-			assert.False(t, isValid)
-			assert.NotNil(t, err)
-		})
-	}
-}
-
 func Test_invalid_ra_admission_review(t *testing.T) {
 	kubeclient, client, validRA := validRASetup()
 	t.Run("invalid resource type", func(t *testing.T) {
@@ -80,9 +42,18 @@ func Test_invalid_ra_admission_review(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	t.Run("invalid encoded rr", func(t *testing.T) {
+	t.Run("invalid encoded ra", func(t *testing.T) {
 		admissionReview := admissionReviewMockApp(validRA)
 		admissionReview.Request.Object = runtime.RawExtension{Raw: []byte("some invalid encoded rr")}
+		isValid, err := ValidateRadixConfigurationChange(kubeclient, client, admissionReview)
+
+		assert.False(t, isValid)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("invalid ra", func(t *testing.T) {
+		validRA.Name = "∞§|[][|§∞€INVALID_NAME"
+		admissionReview := admissionReviewMockApp(validRA)
 		isValid, err := ValidateRadixConfigurationChange(kubeclient, client, admissionReview)
 
 		assert.False(t, isValid)
