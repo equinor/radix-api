@@ -28,50 +28,6 @@ func Test_valid_rr_returns_true(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-type updateRRFunc func(rr *v1.RadixRegistration)
-
-func Test_create_invalid_rr(t *testing.T) {
-	var testScenarios = []struct {
-		name     string
-		updateRR updateRRFunc
-	}{
-		{"to long app name", func(rr *v1.RadixRegistration) {
-			rr.Name = "way.toooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo.long-app-name"
-		}},
-		{"invalid app name", func(rr *v1.RadixRegistration) { rr.Name = "invalid,char.appname" }},
-		{"empty app name", func(rr *v1.RadixRegistration) { rr.Name = "" }},
-		{"invalid ssh url ending", func(rr *v1.RadixRegistration) { rr.Spec.CloneURL = "git@github.com:auser/go-roman.gitblabla" }},
-		{"invalid ssh url start", func(rr *v1.RadixRegistration) { rr.Spec.CloneURL = "asdfasdgit@github.com:auser/go-roman.git" }},
-		{"invalid ssh url https", func(rr *v1.RadixRegistration) { rr.Spec.CloneURL = "https://github.com/auser/go-roman" }},
-		{"empty ssh url", func(rr *v1.RadixRegistration) { rr.Spec.CloneURL = "" }},
-		{"invalid ad group lenght", func(rr *v1.RadixRegistration) { rr.Spec.AdGroups = []string{"7552642f-asdff-fs43-23sf-3ab8f3742c16"} }},
-		{"invalid ad group name", func(rr *v1.RadixRegistration) { rr.Spec.AdGroups = []string{"fg_some_group_name"} }},
-		{"empty ad group list", func(rr *v1.RadixRegistration) { rr.Spec.AdGroups = []string{} }},
-		{"empty ad group", func(rr *v1.RadixRegistration) { rr.Spec.AdGroups = []string{""} }},
-	}
-
-	kubeclient, client, validRR := validRRSetup()
-
-	for _, testcase := range testScenarios {
-		t.Run(testcase.name, func(t *testing.T) {
-			testcase.updateRR(validRR)
-			admissionReview := admissionReviewMock(validRR)
-			isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
-
-			assert.False(t, isValid)
-			assert.NotNil(t, err)
-		})
-	}
-
-	t.Run("name already exist", func(t *testing.T) {
-		client = radixfake.NewSimpleClientset(validRR)
-		isValid, err := CanRadixRegistrationBeInserted(client, validRR)
-
-		assert.False(t, isValid)
-		assert.NotNil(t, err)
-	})
-}
-
 func Test_invalid_rr_admission_review(t *testing.T) {
 	kubeclient, client, validRR := validRRSetup()
 	t.Run("invalid resource type", func(t *testing.T) {
@@ -90,6 +46,15 @@ func Test_invalid_rr_admission_review(t *testing.T) {
 	t.Run("invalid encoded rr", func(t *testing.T) {
 		admissionReview := admissionReviewMock(validRR)
 		admissionReview.Request.Object = runtime.RawExtension{Raw: []byte("some invalid encoded rr")}
+		isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
+
+		assert.False(t, isValid)
+		assert.NotNil(t, err)
+	})
+
+	t.Run("invalid rr", func(t *testing.T) {
+		validRR.Name = "|[[]§∞§|INVALID_CHARACTERS"
+		admissionReview := admissionReviewMock(validRR)
 		isValid, err := ValidateRegistrationChange(kubeclient, client, admissionReview)
 
 		assert.False(t, isValid)

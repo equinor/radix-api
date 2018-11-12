@@ -247,7 +247,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 	builder := ABuilder().
 		withName("any-name").
-		withRepository("").
+		withRepository("https://github.com/Equinor/a-repo").
 		withSharedSecret("").
 		withPublicKey("")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistration())

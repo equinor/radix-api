@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	ac "github.com/statoil/radix-api/api/admissioncontrollers"
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
 	job "github.com/statoil/radix-api/api/jobs"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
@@ -15,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
@@ -76,7 +76,7 @@ func HandleRegisterApplication(radixclient radixclient.Interface, application ap
 		return nil, err
 	}
 
-	_, err = ac.CanRadixRegistrationBeInserted(radixclient, radixRegistration)
+	_, err = radixvalidators.CanRadixRegistrationBeInserted(radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName 
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 
-	_, err = ac.CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
+	_, err = radixvalidators.CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
