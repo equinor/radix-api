@@ -11,6 +11,7 @@ import (
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -83,6 +84,11 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	err = mergeWithRadixApplication(radixclient, radixDeployment, promotionParameters.ToEnvironment)
 	if err != nil {
 		return nil, utils.UnexpectedError("Uable to merge deployment with application", err)
+	}
+
+	isValid, err := radixvalidators.CanRadixDeploymentBeInserted(radixclient, radixDeployment)
+	if !isValid {
+		return nil, err
 	}
 
 	radixDeployment, err = radixclient.RadixV1().RadixDeployments(toNs).Create(radixDeployment)

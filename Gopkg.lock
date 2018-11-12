@@ -324,7 +324,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6c669823cf37325b3ce889d4877b9186432ac800f9ed4ee179e5094cd96561c5"
+  digest = "1:56b15452e2067f8dacd23eaa8fb8eac6dd95aaaf466ad636025bb9e73c6988ee"
   name = "github.com/statoil/radix-operator"
   packages = [
     "pkg/apis/kube",
@@ -344,7 +344,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "5cbd4f6d3baa18232409c458ff2d407b82d90c5b"
+  revision = "21c80f6e270c954e89a79ef39f449cce32ae61ed"
 
 [[projects]]
   digest = "1:9ebd4efd9624c5ab26ab64f32b2f821ca967ee108c3e3d589f5c5e3e2514a256"
