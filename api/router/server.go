@@ -145,7 +145,7 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 		// Make an extra check that the user has the correct access
 		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
 		if err != nil {
-			log.Errorf("Socket connection refused, due to %v", err)
+			log.Errorf("Socket connection refused, due to error %v", err)
 
 			// Refuse connection
 			so.Disconnect()
