@@ -36,13 +36,16 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 		return nil, err
 	}
 
+	// TODO
+	//rds := sortRdsByCreationTimestamp(radixDeploymentList.Items)
+
 	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
 	for _, rd := range radixDeploymentList.Items {
 		builder := NewBuilder().
 			withName(rd.GetName()).
 			withAppName(rd.Spec.AppName).
 			withEnvironment(rd.Spec.Environment).
-			withCreated(rd.CreationTimestamp.Time)
+			withActiveFrom(rd.CreationTimestamp.Time)
 
 		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
 	}
@@ -99,6 +102,11 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
 }
 
+// TODO
+func sortRdsByCreationTimestamp(rds []v1.RadixDeployment) []v1.RadixDeployment {
+	return nil
+}
+
 func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
 	if latest {
 		filtered := all[:0]
@@ -115,13 +123,13 @@ func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) [
 }
 
 func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentModels.ApplicationDeployment) bool {
-	theOneCreated, err := utils.ParseTimestamp(theOne.Created)
+	theOneActiveFrom, err := utils.ParseTimestamp(theOne.ActiveFrom)
 	if err != nil {
 		return false
 	}
 
 	for _, rd := range all {
-		rdCreated, err := utils.ParseTimestamp(rd.Created)
+		rdActiveFrom, err := utils.ParseTimestamp(rd.ActiveFrom)
 		if err != nil {
 			continue
 		}
@@ -129,7 +137,7 @@ func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentM
 		if rd.AppName == theOne.AppName &&
 			rd.Environment == theOne.Environment &&
 			rd.Name != theOne.Name &&
-			rdCreated.After(theOneCreated) {
+			rdActiveFrom.After(theOneActiveFrom) {
 			return false
 		}
 	}
@@ -182,7 +190,8 @@ type Builder interface {
 	withName(string) Builder
 	withAppName(string) Builder
 	withEnvironment(string) Builder
-	withCreated(time.Time) Builder
+	withActiveFrom(time.Time) Builder
+	withActiveTo(time.Time) Builder
 	buildApplicationDeployment() *deploymentModels.ApplicationDeployment
 }
 
@@ -190,7 +199,8 @@ type builder struct {
 	name        string
 	appName     string
 	environment string
-	created     time.Time
+	activeFrom  time.Time
+	activeTo    time.Time
 }
 
 func (b *builder) withName(name string) Builder {
@@ -208,8 +218,13 @@ func (b *builder) withEnvironment(environment string) Builder {
 	return b
 }
 
-func (b *builder) withCreated(created time.Time) Builder {
-	b.created = created
+func (b *builder) withActiveFrom(activeFrom time.Time) Builder {
+	b.activeFrom = activeFrom
+	return b
+}
+
+func (b *builder) withActiveTo(activeTo time.Time) Builder {
+	b.activeTo = activeTo
 	return b
 }
 
@@ -218,7 +233,8 @@ func (b *builder) buildApplicationDeployment() *deploymentModels.ApplicationDepl
 		Name:        b.name,
 		AppName:     b.appName,
 		Environment: b.environment,
-		Created:     utils.FormatTimestamp(b.created),
+		ActiveFrom:  utils.FormatTimestamp(b.activeFrom),
+		ActiveTo:    utils.FormatTimestamp(b.activeTo),
 	}
 }
 
