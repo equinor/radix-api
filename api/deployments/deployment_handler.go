@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,17 +58,19 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 		return nil, err
 	}
 
-	// TODO
-	//rds := sortRdsByCreationTimestamp(radixDeploymentList.Items)
+	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
 
 	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
-	for _, rd := range radixDeploymentList.Items {
+	for i, rd := range rds {
 		builder := NewBuilder().
 			withName(rd.GetName()).
 			withAppName(rd.Spec.AppName).
 			withEnvironment(rd.Spec.Environment).
 			withActiveFrom(rd.CreationTimestamp.Time)
 
+		if i > 0 {
+			builder.withActiveTo(rds[i-1].CreationTimestamp.Time)
+		}
 		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
 	}
 
@@ -128,9 +131,11 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
 }
 
-// TODO
-func sortRdsByCreationTimestamp(rds []v1.RadixDeployment) []v1.RadixDeployment {
-	return nil
+func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
+	sort.Slice(rds, func(i, j int) bool {
+		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
+	})
+	return rds
 }
 
 func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
