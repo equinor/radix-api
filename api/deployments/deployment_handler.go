@@ -18,6 +18,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// errors
+func nonExistingApplication(underlyingError error, appName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Unable to get application for app %s", appName), underlyingError)
+}
+
+func nonExistingFromEnvironment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing from environment", underlyingError)
+}
+
+func nonExistingToEnvironment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing to environment", underlyingError)
+}
+
+func nonExistingDeployment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing deployment", underlyingError)
+}
+
+func nonExistingComponentName(appName, componentName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Unable to get application component %s for app %s", componentName, appName), nil)
+}
+
 // HandleGetDeployments handler for GetDeployments
 func HandleGetDeployments(radixclient radixclient.Interface, appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
 	var listOptions metav1.ListOptions
@@ -59,17 +80,22 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
 
+	radixConfig, err := radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, nonExistingApplication(err, appName)
+	}
+
 	fromNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.FromEnvironment)
 	toNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.ToEnvironment)
 
-	_, err := client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
+	_, err = client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing from environment", err)
+		return nil, nonExistingFromEnvironment(err)
 	}
 
 	_, err = client.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing to environment", err)
+		return nil, nonExistingToEnvironment(err)
 	}
 
 	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
@@ -77,16 +103,16 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 
 	radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing deployment", err)
+		return nil, nonExistingDeployment(err)
 	}
 
 	radixDeployment.ResourceVersion = ""
 	radixDeployment.Namespace = toNs
 	radixDeployment.Spec.Environment = promotionParameters.ToEnvironment
 
-	err = mergeWithRadixApplication(radixclient, radixDeployment, promotionParameters.ToEnvironment)
+	err = mergeWithRadixApplication(radixConfig, radixDeployment, promotionParameters.ToEnvironment)
 	if err != nil {
-		return nil, utils.UnexpectedError("Uable to merge deployment with application", err)
+		return nil, err
 	}
 
 	isValid, err := radixvalidators.CanRadixDeploymentBeInserted(radixclient, radixDeployment)
@@ -145,17 +171,11 @@ func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentM
 	return true
 }
 
-func mergeWithRadixApplication(radixclient radixclient.Interface, radixDeployment *v1.RadixDeployment, environment string) error {
-	appName := radixDeployment.Spec.AppName
-	radixConfig, err := radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
-	if err != nil {
-		return utils.UnexpectedError(fmt.Sprintf("Unable to get application for app %s", appName), err)
-	}
-
+func mergeWithRadixApplication(radixConfig *v1.RadixApplication, radixDeployment *v1.RadixDeployment, environment string) error {
 	for index, comp := range radixDeployment.Spec.Components {
 		raComp := getComponentConfig(radixConfig, comp.Name)
 		if raComp == nil {
-			return utils.UnexpectedError(fmt.Sprintf("Unable to get application component %s for app %s", comp.Name, appName), err)
+			return nonExistingComponentName(radixConfig.GetName(), comp.Name)
 		}
 
 		environmentVariables := getEnvironmentVariables(raComp, environment)
