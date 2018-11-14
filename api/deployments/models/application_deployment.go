@@ -21,9 +21,15 @@ type ApplicationDeployment struct {
 	// example: prod
 	Environment string `json:"environment"`
 
-	// Created Created timestamp
+	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
 	// required: false
 	// example: 2006-01-02T15:04:05-0700
-	Created string `json:"created"`
+	ActiveFrom string `json:"activeFrom"`
+
+	// ActiveTo Timestamp when the deployment ends
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05-0700
+	ActiveTo string `json:"activeTo"`
 }

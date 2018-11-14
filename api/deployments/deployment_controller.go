@@ -63,7 +63,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   in: path
 	//   description: name of Radix application
 	//   type: string
-	//   required: false
+	//   required: true
 	// - name: environment
 	//   in: query
 	//   description: environment of Radix application
