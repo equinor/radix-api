@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,27 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// errors
+func nonExistingApplication(underlyingError error, appName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Unable to get application for app %s", appName), underlyingError)
+}
+
+func nonExistingFromEnvironment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing from environment", underlyingError)
+}
+
+func nonExistingToEnvironment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing to environment", underlyingError)
+}
+
+func nonExistingDeployment(underlyingError error) error {
+	return utils.TypeMissingError("Non existing deployment", underlyingError)
+}
+
+func nonExistingComponentName(appName, componentName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Unable to get application component %s for app %s", componentName, appName), nil)
+}
 
 // HandleGetDeployments handler for GetDeployments
 func HandleGetDeployments(radixclient radixclient.Interface, appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
@@ -36,14 +58,19 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 		return nil, err
 	}
 
+	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
+
 	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
-	for _, rd := range radixDeploymentList.Items {
+	for i, rd := range rds {
 		builder := NewBuilder().
 			withName(rd.GetName()).
 			withAppName(rd.Spec.AppName).
 			withEnvironment(rd.Spec.Environment).
-			withCreated(rd.CreationTimestamp.Time)
+			withActiveFrom(rd.CreationTimestamp.Time)
 
+		if i > 0 {
+			builder.withActiveTo(rds[i-1].CreationTimestamp.Time)
+		}
 		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
 	}
 
@@ -56,17 +83,22 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
 
+	radixConfig, err := radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, nonExistingApplication(err, appName)
+	}
+
 	fromNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.FromEnvironment)
 	toNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.ToEnvironment)
 
-	_, err := client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
+	_, err = client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing from environment", err)
+		return nil, nonExistingFromEnvironment(err)
 	}
 
 	_, err = client.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing to environment", err)
+		return nil, nonExistingToEnvironment(err)
 	}
 
 	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
@@ -74,16 +106,16 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 
 	radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, utils.TypeMissingError("Non existing deployment", err)
+		return nil, nonExistingDeployment(err)
 	}
 
 	radixDeployment.ResourceVersion = ""
 	radixDeployment.Namespace = toNs
 	radixDeployment.Spec.Environment = promotionParameters.ToEnvironment
 
-	err = mergeWithRadixApplication(radixclient, radixDeployment, promotionParameters.ToEnvironment)
+	err = mergeWithRadixApplication(radixConfig, radixDeployment, promotionParameters.ToEnvironment)
 	if err != nil {
-		return nil, utils.UnexpectedError("Uable to merge deployment with application", err)
+		return nil, err
 	}
 
 	isValid, err := radixvalidators.CanRadixDeploymentBeInserted(radixclient, radixDeployment)
@@ -97,6 +129,13 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	}
 
 	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
+}
+
+func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
+	sort.Slice(rds, func(i, j int) bool {
+		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
+	})
+	return rds
 }
 
 func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
@@ -115,13 +154,13 @@ func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) [
 }
 
 func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentModels.ApplicationDeployment) bool {
-	theOneCreated, err := utils.ParseTimestamp(theOne.Created)
+	theOneActiveFrom, err := utils.ParseTimestamp(theOne.ActiveFrom)
 	if err != nil {
 		return false
 	}
 
 	for _, rd := range all {
-		rdCreated, err := utils.ParseTimestamp(rd.Created)
+		rdActiveFrom, err := utils.ParseTimestamp(rd.ActiveFrom)
 		if err != nil {
 			continue
 		}
@@ -129,7 +168,7 @@ func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentM
 		if rd.AppName == theOne.AppName &&
 			rd.Environment == theOne.Environment &&
 			rd.Name != theOne.Name &&
-			rdCreated.After(theOneCreated) {
+			rdActiveFrom.After(theOneActiveFrom) {
 			return false
 		}
 	}
@@ -137,17 +176,11 @@ func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentM
 	return true
 }
 
-func mergeWithRadixApplication(radixclient radixclient.Interface, radixDeployment *v1.RadixDeployment, environment string) error {
-	appName := radixDeployment.Spec.AppName
-	radixConfig, err := radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
-	if err != nil {
-		return utils.UnexpectedError(fmt.Sprintf("Unable to get application for app %s", appName), err)
-	}
-
+func mergeWithRadixApplication(radixConfig *v1.RadixApplication, radixDeployment *v1.RadixDeployment, environment string) error {
 	for index, comp := range radixDeployment.Spec.Components {
 		raComp := getComponentConfig(radixConfig, comp.Name)
 		if raComp == nil {
-			return utils.UnexpectedError(fmt.Sprintf("Unable to get application component %s for app %s", comp.Name, appName), err)
+			return nonExistingComponentName(radixConfig.GetName(), comp.Name)
 		}
 
 		environmentVariables := getEnvironmentVariables(raComp, environment)
@@ -182,7 +215,8 @@ type Builder interface {
 	withName(string) Builder
 	withAppName(string) Builder
 	withEnvironment(string) Builder
-	withCreated(time.Time) Builder
+	withActiveFrom(time.Time) Builder
+	withActiveTo(time.Time) Builder
 	buildApplicationDeployment() *deploymentModels.ApplicationDeployment
 }
 
@@ -190,7 +224,8 @@ type builder struct {
 	name        string
 	appName     string
 	environment string
-	created     time.Time
+	activeFrom  time.Time
+	activeTo    time.Time
 }
 
 func (b *builder) withName(name string) Builder {
@@ -208,8 +243,13 @@ func (b *builder) withEnvironment(environment string) Builder {
 	return b
 }
 
-func (b *builder) withCreated(created time.Time) Builder {
-	b.created = created
+func (b *builder) withActiveFrom(activeFrom time.Time) Builder {
+	b.activeFrom = activeFrom
+	return b
+}
+
+func (b *builder) withActiveTo(activeTo time.Time) Builder {
+	b.activeTo = activeTo
 	return b
 }
 
@@ -218,7 +258,8 @@ func (b *builder) buildApplicationDeployment() *deploymentModels.ApplicationDepl
 		Name:        b.name,
 		AppName:     b.appName,
 		Environment: b.environment,
-		Created:     utils.FormatTimestamp(b.created),
+		ActiveFrom:  utils.FormatTimestamp(b.activeFrom),
+		ActiveTo:    utils.FormatTimestamp(b.activeTo),
 	}
 }
 
