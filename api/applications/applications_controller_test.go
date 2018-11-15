@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -71,51 +70,6 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 1, len(applications))
 	})
-}
-
-func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-1"))
-
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-2"))
-
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-3"))
-
-	commontest.CreateAppNamespace(kubeclient, "app-1")
-	commontest.CreateAppNamespace(kubeclient, "app-2")
-	commontest.CreateAppNamespace(kubeclient, "app-3")
-
-	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26.371Z")
-	app2Job1Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14.000Z")
-	app2Job2Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00.000Z")
-
-	createRadixJob(kubeclient, "app-1", "app-1-job-1", app1Job1Started)
-	createRadixJob(kubeclient, "app-2", "app-2-job-1", app2Job1Started)
-	createRadixJob(kubeclient, "app-2", "app-2-job-2", app2Job2Started)
-
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
-	response := <-responseChannel
-
-	applications := make([]*applicationModels.ApplicationSummary, 0)
-	controllertest.GetResponseBody(response, &applications)
-
-	for _, application := range applications {
-		if strings.EqualFold(application.Name, "app-1") {
-			assert.NotNil(t, 1, application.JobSummary)
-			assert.Equal(t, "app-1-job-1", application.JobSummary.Name)
-		} else if strings.EqualFold(application.Name, "app-2") {
-			assert.NotNil(t, 1, application.JobSummary)
-			assert.Equal(t, "app-2-job-2", application.JobSummary.Name)
-		} else if strings.EqualFold(application.Name, "app-3") {
-			assert.Nil(t, application.JobSummary)
-		}
-	}
-
 }
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
@@ -488,9 +442,5 @@ func createRadixJob(kubeclient kubernetes.Interface, appName, jobName string, st
 			Name: jobName,
 			Labels: map[string]string{
 				"radix-job-type": "job"}},
-			Status: batchv1.JobStatus{
-				StartTime: &metav1.Time{
-					started,
-				},
-			}})
+		})
 }
