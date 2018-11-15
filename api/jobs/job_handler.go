@@ -53,7 +53,7 @@ func HandleGetLatestApplicationJob(client kubernetes.Interface, appName string) 
 	}
 
 	// Sort jobs descending
-	sort.Slice(&jobs, func(i, j int) bool {
+	sort.Slice(jobs, func(i, j int) bool {
 		return jobs[j].Status.StartTime.Before(jobs[i].Status.StartTime)
 	})
 

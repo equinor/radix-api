@@ -188,14 +188,14 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	appRegistration, err := HandleGetApplication(client, radixclient, appName)
+	application, err := HandleGetApplication(client, radixclient, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	utils.JSONResponse(w, r, &application)
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name

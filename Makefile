@@ -32,8 +32,7 @@ deploy-gitclone:
 	docker push radixdev.azurecr.io/gitclone:$(IMAGE_TAG)
 
 deploy-api:
-	make docker-build
-	make docker-push
+	draft up
 
 .PHONY: deploy
 deploy:
