@@ -68,9 +68,24 @@ func (jc *jobController) GetSubscriptions() models.Subscriptions {
 			DataType:    "Job",
 			HandlerFunc: GetApplicationJobStream,
 		},
+		models.Subscription{
+			Resource:    rootPath + "/jobs/{jobName}/logs",
+			DataType:    "LogMsg",
+			HandlerFunc: GetPiplineJobLogStream,
+		},
 	}
 
 	return subscriptions
+}
+
+func GetPiplineJobLogStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+	appNameToWatch := resourceIdentifiers[0]
+	jobNameToWatch := resourceIdentifiers[1]
+
+	err := StreamLogFromPod(client, appNameToWatch, jobNameToWatch, data)
+	if err != nil {
+
+	}
 }
 
 // GetPipelineJobLogs Get logs of a job for an application

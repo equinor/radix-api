@@ -64,7 +64,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	))
 
 	serveMux.Handle("/socket.io/", negroni.New(
-		negroni.HandlerFunc(utils.BearerTokenQueryVerifyerMiddleware),
+		// negroni.HandlerFunc(utils.BearerTokenQueryVerifyerMiddleware),
 		negroni.Wrap(router),
 	))
 

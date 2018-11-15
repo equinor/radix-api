@@ -3,6 +3,7 @@ package jobs
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -10,6 +11,7 @@ import (
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -55,6 +57,38 @@ func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName s
 	}
 
 	return steps, nil
+}
+
+type logStream struct {
+	request string
+}
+
+func (stream logStream) Write(p []byte) (n int, err error) {
+	log.Infof(string(p))
+	return 0, nil
+}
+
+func StreamLogFromPod(client kubernetes.Interface, appName, jobName string, data chan []byte) error {
+	pipelinePod, err := getPipelinePod(client, appName, jobName)
+	if err != nil {
+		return err
+	}
+
+	logRequest := getPodLogRequest(client, pipelinePod, "", true)
+	logRequest.WatchWithSpecificDecoders(
+		func(body io.ReadCloser) streaming.Decoder {
+			
+		},
+	)
+
+	readCloser, err := logRequest.Stream()
+	if err != nil {
+		return err
+	}
+	writer := logStream{request: ""}
+	defer readCloser.Close()
+	_, err = io.Copy(writer, readCloser)
+	return err
 }
 
 func getPipelinePod(client kubernetes.Interface, appName, jobName string) (*corev1.Pod, error) {
