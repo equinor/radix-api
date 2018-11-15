@@ -159,7 +159,7 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	appRegistrations, err := HandleGetApplications(radixclient, sshRepo)
+	appRegistrations, err := HandleGetApplications(client, radixclient, sshRepo)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -188,7 +188,7 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	appRegistration, err := HandleGetApplication(radixclient, appName)
+	appRegistration, err := HandleGetApplication(client, radixclient, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
