@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"os"
+	"sort"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,16 +15,18 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	deployments "github.com/statoil/radix-api/api/deployments"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/utils"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
 
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
-func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jobModels.JobSummary, error) {
+func HandleGetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Interface, appName string) ([]jobModels.JobSummary, error) {
 	jobList, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-job-type=%s", "job"),
 	})
@@ -31,9 +34,26 @@ func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jo
 		return nil, err
 	}
 
+	// Sort jobs descending
+	sort.Slice(jobList.Items, func(i, j int) bool {
+		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
+	})
+
 	jobs := make([]jobModels.JobSummary, len(jobList.Items))
 	for i, job := range jobList.Items {
-		jobs[i] = *GetJobSummary(&job)
+		jobSummary := GetJobSummary(&job)
+		jobDeployments, err := deployments.GetDeploymentsForJob(radixclient, jobSummary.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		environments := make([]string, len(jobDeployments))
+		for num, jobDeployment := range jobDeployments {
+			environments[num] = jobDeployment.Environment
+		}
+
+		jobSummary.Environments = environments
+		jobs[i] = *jobSummary
 	}
 
 	return jobs, nil
@@ -124,6 +144,8 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 	appName := job.Labels["radix-app-name"]
 	branch := job.Labels["radix-branch"]
 	commit := job.Labels["radix-commit"]
+	pipeline := job.Labels["radix-pipeline"]
+
 	status := job.Status
 
 	jobStatus := jobModels.GetStatusFromJobStatus(status)
@@ -140,6 +162,7 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 		Status:   jobStatus.String(),
 		Started:  utils.FormatTime(status.StartTime),
 		Ended:    ended,
+		Pipeline: pipeline,
 	}
 	return pipelineJob
 }

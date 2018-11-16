@@ -212,7 +212,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	jobSummaries, err := HandleGetApplicationJobs(client, appName)
+	jobSummaries, err := HandleGetApplicationJobs(client, radixclient, appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

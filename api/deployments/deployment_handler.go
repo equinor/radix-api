@@ -77,6 +77,31 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 	return postFiltering(radixDeployments, latest), nil
 }
 
+// GetDeploymentsForJob Lists deployments for job name
+func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]*deploymentModels.ApplicationDeployment, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("radix-job-name=%s", jobName),
+	}
+
+	radixDeploymentList, err := radixclient.RadixV1().RadixDeployments(corev1.NamespaceAll).List(listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	for _, rd := range radixDeploymentList.Items {
+		builder := NewBuilder().
+			withName(rd.GetName()).
+			withAppName(rd.Spec.AppName).
+			withEnvironment(rd.Spec.Environment).
+			withActiveFrom(rd.CreationTimestamp.Time)
+
+		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
+	}
+
+	return radixDeployments, nil
+}
+
 // HandlePromoteToEnvironment handler for PromoteEnvironment
 func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
 	if strings.TrimSpace(appName) == "" {
