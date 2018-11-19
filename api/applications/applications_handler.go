@@ -49,7 +49,7 @@ func (ah ApplicationHandler) HandleGetApplications(sshRepo string) ([]*applicati
 			return nil, err
 		}
 
-		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, JobSummary: jobSummary})
+		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
 	}
 
 	return applications, nil

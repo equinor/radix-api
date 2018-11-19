@@ -219,13 +219,13 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 	for _, application := range applications {
 		if strings.EqualFold(application.Name, "app-1") {
-			assert.NotNil(t, 1, application.JobSummary)
-			assert.Equal(t, "app-1-job-1", application.JobSummary.Name)
+			assert.NotNil(t, 1, application.LatestJob)
+			assert.Equal(t, "app-1-job-1", application.LatestJob.Name)
 		} else if strings.EqualFold(application.Name, "app-2") {
-			assert.NotNil(t, 1, application.JobSummary)
-			assert.Equal(t, "app-2-job-3", application.JobSummary.Name)
+			assert.NotNil(t, 1, application.LatestJob)
+			assert.Equal(t, "app-2-job-3", application.LatestJob.Name)
 		} else if strings.EqualFold(application.Name, "app-3") {
-			assert.Nil(t, application.JobSummary)
+			assert.Nil(t, application.LatestJob)
 		}
 	}
 }
