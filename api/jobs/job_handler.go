@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"os"
+	"sort"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,9 +25,7 @@ const dockerRegistry = "radixdev.azurecr.io"
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
 func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jobModels.JobSummary, error) {
-	jobList, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("radix-job-type=%s", "job"),
-	})
+	jobList, err := getJobs(client, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +36,28 @@ func HandleGetApplicationJobs(client kubernetes.Interface, appName string) ([]jo
 	}
 
 	return jobs, nil
+}
+
+// HandleGetLatestApplicationJob Get last run application job
+func HandleGetLatestApplicationJob(client kubernetes.Interface, appName string) (*jobModels.JobSummary, error) {
+	jobList, err := getJobs(client, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := make([]batchv1.Job, len(jobList.Items))
+	copy(jobs, jobList.Items)
+
+	if len(jobs) == 0 {
+		return nil, nil
+	}
+
+	// Sort jobs descending
+	sort.Slice(jobs, func(i, j int) bool {
+		return jobs[j].Status.StartTime.Before(jobs[i].Status.StartTime)
+	})
+
+	return GetJobSummary(&jobs[0]), nil
 }
 
 // HandleGetApplicationJob Handler for GetApplicationJob
@@ -176,6 +197,18 @@ func CloneContainer(sshURL, branch string) (corev1.Container, corev1.Volume) {
 		},
 	}
 	return container, volume
+}
+
+func getJobs(client kubernetes.Interface, appName string) (*batchv1.JobList, error) {
+	jobList, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("radix-job-type=%s", "job"),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jobList, nil
 }
 
 func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {

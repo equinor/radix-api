@@ -20,38 +20,47 @@ import (
 )
 
 // HandleGetApplications handler for ShowApplications
-func HandleGetApplications(radixclient radixclient.Interface, sshRepo string) ([]*applicationModels.ApplicationRegistration, error) {
+func HandleGetApplications(client kubernetes.Interface, radixclient radixclient.Interface, sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	radixRegistations := make([]*applicationModels.ApplicationRegistration, 0)
+	applications := make([]*applicationModels.ApplicationSummary, 0)
 	for _, rr := range radixRegistationList.Items {
 		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
 		}
 
-		builder := NewBuilder()
-		radixRegistations = append(radixRegistations, builder.
-			withRadixRegistration(&rr).
-			BuildApplicationRegistration())
+		jobSummary, err := job.HandleGetLatestApplicationJob(client, rr.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, JobSummary: jobSummary})
 	}
 
-	return radixRegistations, nil
+	return applications, nil
 }
 
 // HandleGetApplication handler for GetApplication
-func HandleGetApplication(radixclient radixclient.Interface, appName string) (*applicationModels.ApplicationRegistration, error) {
+func HandleGetApplication(client kubernetes.Interface, radixclient radixclient.Interface, appName string) (*applicationModels.Application, error) {
 	radixRegistration, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	builder := NewBuilder()
-	return builder.
+	applicationRegistrationBuilder := NewBuilder()
+	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
-		BuildApplicationRegistration(), nil
+		Build()
+
+	jobs, err := job.HandleGetApplicationJobs(client, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs}, nil
 }
 
 // HandleRegisterApplication handler for RegisterApplication
@@ -160,7 +169,7 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 	}
 
 	log.Infof("Creating pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
-	application, err := HandleGetApplication(radixclient, appName)
+	application, err := HandleGetApplication(client, radixclient, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +179,7 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		CommitID: commitID,
 	}
 
-	jobSummary, err := job.HandleStartPipelineJob(client, appName, crdUtils.GetGithubCloneURLFromRepo(application.Repository), pipeline, jobParameters)
+	jobSummary, err := job.HandleStartPipelineJob(client, appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +198,7 @@ type Builder interface {
 	withDeployKey(*utils.DeployKey) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
-	BuildApplicationRegistration() *applicationModels.ApplicationRegistration
+	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
 }
 
@@ -260,13 +269,13 @@ func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder 
 	return rb
 }
 
-func (rb *applicationBuilder) BuildApplicationRegistration() *applicationModels.ApplicationRegistration {
+func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
 		repository = crdUtils.GetGithubRepositoryURLFromCloneURL(rb.cloneURL)
 	}
 
-	return &applicationModels.ApplicationRegistration{
+	return applicationModels.ApplicationRegistration{
 		Name:         rb.name,
 		Repository:   repository,
 		SharedSecret: rb.sharedSecret,
@@ -295,8 +304,8 @@ func NewBuilder() Builder {
 	return &applicationBuilder{}
 }
 
-// ABuilder Constructor for application builder with test values
-func ABuilder() Builder {
+// AnApplicationRegistration Constructor for application builder with test values
+func AnApplicationRegistration() Builder {
 	return &applicationBuilder{
 		name:         "my-app",
 		repository:   "https://github.com/Equinor/my-app",
