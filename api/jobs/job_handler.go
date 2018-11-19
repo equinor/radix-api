@@ -25,9 +25,20 @@ import (
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
 
+// JobHandler Instance variables
+type JobHandler struct {
+	client      kubernetes.Interface
+	radixclient radixclient.Interface
+}
+
+// Init Constructor
+func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHandler {
+	return JobHandler{client, radixclient}
+}
+
 // HandleGetApplicationJobs Handler for GetApplicationJobs
-func HandleGetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Interface, appName string) ([]jobModels.JobSummary, error) {
-	jobList, err := getJobs(client, appName)
+func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]jobModels.JobSummary, error) {
+	jobList, err := getJobs(jh.client, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +51,7 @@ func HandleGetApplicationJobs(client kubernetes.Interface, radixclient radixclie
 	jobs := make([]jobModels.JobSummary, len(jobList.Items))
 	for i, job := range jobList.Items {
 		jobSummary := GetJobSummary(&job)
-		jobDeployments, err := deployments.GetDeploymentsForJob(radixclient, jobSummary.Name)
+		jobDeployments, err := deployments.GetDeploymentsForJob(jh.radixclient, jobSummary.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -58,8 +69,8 @@ func HandleGetApplicationJobs(client kubernetes.Interface, radixclient radixclie
 }
 
 // HandleGetLatestApplicationJob Get last run application job
-func HandleGetLatestApplicationJob(client kubernetes.Interface, appName string) (*jobModels.JobSummary, error) {
-	jobList, err := getJobs(client, appName)
+func (jh JobHandler) HandleGetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
+	jobList, err := getJobs(jh.client, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +91,8 @@ func HandleGetLatestApplicationJob(client kubernetes.Interface, appName string) 
 }
 
 // HandleGetApplicationJob Handler for GetApplicationJob
-func HandleGetApplicationJob(client kubernetes.Interface, appName, jobName string) (*jobModels.Job, error) {
-	job, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
+	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,13 +102,13 @@ func HandleGetApplicationJob(client kubernetes.Interface, appName, jobName strin
 	}
 
 	labelSelector := fmt.Sprintf("radix-image-tag=%s, radix-job-type!=%s", job.Labels["radix-image-tag"], "job")
-	jobStepList, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+	jobStepList, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
 
 	steps := make([]jobModels.Step, 0)
 	for _, jobStep := range jobStepList.Items {
-		jobStepPod, err := client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+		jobStepPod, err := jh.client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("job-name=%s", jobStep.Name),
 		})
 
@@ -144,13 +155,13 @@ func HandleGetApplicationJob(client kubernetes.Interface, appName, jobName strin
 }
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func HandleStartPipelineJob(client kubernetes.Interface, appName, sshRepo string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	jobName, randomNr := getUniqueJobName(workerImage)
 	job := createPipelineJob(appName, jobName, randomNr, sshRepo, pipeline, jobSpec.Branch, jobSpec.CommitID)
 
 	log.Infof("Starting job: %s, %s", jobName, workerImage)
 	appNamespace := fmt.Sprintf("%s-app", appName)
-	job, err := client.BatchV1().Jobs(appNamespace).Create(job)
+	job, err := jh.client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +278,10 @@ func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {
 func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobModels.Pipeline, pushBranch, commitID string) *batchv1.Job {
 	pipelineTag := os.Getenv("PIPELINE_IMG_TAG")
 	if pipelineTag == "" {
+		log.Warning("No pipeline image tag defined. Using latest")
 		pipelineTag = "latest"
+	} else {
+		log.Infof("Using %s pipeline image tag", pipelineTag)
 	}
 
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, pipelineTag)

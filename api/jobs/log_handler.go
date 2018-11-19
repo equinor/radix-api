@@ -14,24 +14,25 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// PipelineNotFoundError Job not found
 func PipelineNotFoundError(appName, jobName string) error {
 	return fmt.Errorf("Job %s not found for app %s", jobName, appName)
 }
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
-func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName string) ([]jobModels.StepLog, error) {
+func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
 	steps := []jobModels.StepLog{}
-	pipelinePod, err := getPipelinePod(client, appName, jobName)
+	pipelinePod, err := getPipelinePod(jh.client, appName, jobName)
 	if err != nil {
 		return steps, err
 	}
 
-	pipelineStep := getPipelineStepLog(client, pipelinePod)
+	pipelineStep := getPipelineStepLog(jh.client, pipelinePod)
 
-	pods, err := getBuildPods(client, pipelinePod)
+	pods, err := getBuildPods(jh.client, pipelinePod)
 	if err != nil {
 		// use clone from pipeline step
-		cloneStep := getInitCloneStepLog(client, pipelinePod)
+		cloneStep := getInitCloneStepLog(jh.client, pipelinePod)
 		steps = append(steps, cloneStep, pipelineStep, jobModels.StepLog{
 			Name: "docker build",
 			Log:  fmt.Sprintf("%v", err),
@@ -44,12 +45,12 @@ func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName s
 	steps = append(steps, pipelineStep)
 	for _, buildPod := range pods.Items {
 		for _, initContainer := range buildPod.Spec.InitContainers {
-			buildStep := getBuildStep(client, buildPod, initContainer.Name, 1)
+			buildStep := getBuildStep(jh.client, buildPod, initContainer.Name, 1)
 			steps = append(steps, buildStep)
 		}
 
 		for _, container := range buildPod.Spec.Containers {
-			buildStep := getBuildStep(client, buildPod, container.Name, 3)
+			buildStep := getBuildStep(jh.client, buildPod, container.Name, 3)
 			steps = append(steps, buildStep)
 		}
 	}

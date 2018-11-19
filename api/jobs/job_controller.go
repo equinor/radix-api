@@ -102,7 +102,9 @@ func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Int
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
-	pipelines, err := HandleGetApplicationJobLogs(client, appName, jobName)
+
+	handler := Init(client, radixclient)
+	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -166,7 +168,8 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 			return
 		}
 
-		radixJob, err := HandleGetApplicationJob(client, appNameToWatch, jobNameToWatch)
+		handler := Init(client, radixclient)
+		radixJob, err := handler.HandleGetApplicationJob(appNameToWatch, jobNameToWatch)
 		if err != nil {
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
 			return
@@ -212,7 +215,9 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	jobSummaries, err := HandleGetApplicationJobs(client, radixclient, appName)
+
+	handler := Init(client, radixclient)
+	jobSummaries, err := handler.HandleGetApplicationJobs(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -251,7 +256,9 @@ func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
-	jobDetail, err := HandleGetApplicationJob(client, appName, jobName)
+
+	handler := Init(client, radixclient)
+	jobDetail, err := handler.HandleGetApplicationJob(appName, jobName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
