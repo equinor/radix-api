@@ -23,6 +23,16 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	anyAppName  = "any-app"
+	anyCloneURL = "git@github.com:Equinor/any-app.git"
+	anyPodName  = "any-pod"
+)
+
+func createGetLogEndpoint(appName, podName string) string {
+	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
+}
+
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -35,6 +45,53 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
+
+func TestGetPodLog_no_radixconfig(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	t.Run("no radixconfig registered for app", func(t *testing.T) {
+		endpoint := createGetLogEndpoint(anyAppName, anyPodName)
+
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+		response := <-responseChannel
+
+		assert.Equal(t, 404, response.Code)
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		expectedError := nonExistingApplication(nil, anyAppName)
+
+		assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	})
+}
+
+func TestGetPodLog_No_Pod(t *testing.T) {
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
+
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName(anyAppName).
+		WithCloneURL(anyCloneURL))
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName).
+		WithComponents(
+			builders.
+				NewApplicationComponentBuilder().
+				WithName("app")).
+		WithEnvironment("dev", "master").
+		WithEnvironment("prod", ""))
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 404, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := nonExistingPod(anyAppName, anyPodName)
+
+	assert.Equal(t, (expectedError.(*utils.Error)).Error(), errorResponse.Error())
+
 }
 
 func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
@@ -250,6 +307,7 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
+	deployHandler := Init(kubeclient, radixclient)
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -282,7 +340,7 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 			assert.Equal(t, http.StatusOK, response.Code)
 
 			if scenario.imageExpected != "" {
-				deployments, _ := HandleGetDeployments(radixclient, scenario.appName, scenario.toEnvironment, false)
+				deployments, _ := deployHandler.HandleGetDeployments(scenario.appName, scenario.toEnvironment, false)
 				assert.Equal(t, 1, len(deployments))
 				assert.Equal(t, deploymentName, deployments[0].Name)
 			}
@@ -293,6 +351,7 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
+	deployHandler := Init(kubeclient, radixclient)
 
 	// Setup
 	// When we have enviroment specific config the deployment should contain the environment variables defined in the config
@@ -335,7 +394,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	deployments, _ := HandleGetDeployments(radixclient, "any-app-2", "prod", false)
+	deployments, _ := deployHandler.HandleGetDeployments("any-app-2", "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
