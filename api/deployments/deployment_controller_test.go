@@ -170,11 +170,12 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	}
 }
 
-func TestGetDeployments_SortedWithFromTo(t *testing.T) {
+func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
 	anyAppName := "any-app-1"
+	environment := "dev"
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
@@ -187,25 +188,25 @@ func TestGetDeployments_SortedWithFromTo(t *testing.T) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
+		WithEnvironment(environment).
 		WithImageTag(deploymentOneImage).
 		WithCreated(deploymentOneCreated))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
+		WithEnvironment(environment).
 		WithImageTag(deploymentTwoImage).
 		WithCreated(deploymentTwoCreated))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
+		WithEnvironment(environment).
 		WithImageTag(deploymentThreeImage).
 		WithCreated(deploymentThreeCreated))
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", "any-app-1"))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
@@ -223,7 +224,164 @@ func TestGetDeployments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentOneImage), deployments[2].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+}
 
+func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app-1"
+	environment := "dev"
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environment).
+		WithImageTag(deploymentOneImage).
+		WithCreated(deploymentOneCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environment).
+		WithImageTag(deploymentTwoImage).
+		WithCreated(deploymentTwoCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environment).
+		WithImageTag(deploymentThreeImage).
+		WithCreated(deploymentThreeCreated))
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 1, len(deployments))
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+}
+
+func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app-1"
+	environmentOne := "dev"
+	environmentTwo := "prod"
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentOneImage).
+		WithCreated(deploymentOneCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentTwo).
+		WithImageTag(deploymentTwoImage).
+		WithCreated(deploymentTwoCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentThreeImage).
+		WithCreated(deploymentThreeCreated))
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", "any-app-1"))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 3, len(deployments))
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentTwoImage), deployments[1].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, "", deployments[1].ActiveTo)
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentOneImage), deployments[2].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[2].ActiveTo)
+}
+
+func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app-1"
+	environmentOne := "dev"
+	environmentTwo := "prod"
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentOneImage).
+		WithCreated(deploymentOneCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentTwo).
+		WithImageTag(deploymentTwoImage).
+		WithCreated(deploymentTwoCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentThreeImage).
+		WithCreated(deploymentThreeCreated))
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", "any-app-1"))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 2, len(deployments))
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+
+	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentTwoImage), deployments[1].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, "", deployments[1].ActiveTo)
 }
 
 func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
