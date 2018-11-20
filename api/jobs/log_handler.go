@@ -18,6 +18,23 @@ func PipelineNotFoundError(appName, jobName string) error {
 	return fmt.Errorf("Job %s not found for app %s", jobName, appName)
 }
 
+func HandleGetPodLog(client kubernetes.Interface, pod *corev1.Pod, containerName string) (string, error) {
+	req := getPodLogRequest(client, pod, containerName, false)
+
+	readCloser, err := req.Stream()
+	if err != nil {
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(readCloser)
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 // HandleGetApplicationJobLogs Gets logs for an job of an application
 func HandleGetApplicationJobLogs(client kubernetes.Interface, appName, jobName string) ([]jobModels.StepLog, error) {
 	steps := []jobModels.StepLog{}
@@ -94,7 +111,7 @@ func getBuildPods(client kubernetes.Interface, pipelinePod *corev1.Pod) (*corev1
 }
 
 func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
-	cloneLog, err := handleGetPodLog(client, pipelinePod, "clone")
+	cloneLog, err := HandleGetPodLog(client, pipelinePod, "clone")
 	if err != nil {
 		cloneLog = "error: log not found"
 	}
@@ -107,7 +124,7 @@ func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) j
 }
 
 func getPipelineStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
-	podLog, err := handleGetPodLog(client, pipelinePod, "")
+	podLog, err := HandleGetPodLog(client, pipelinePod, "")
 	if err != nil {
 		podLog = "error: pipeline log not found"
 	}
@@ -120,7 +137,7 @@ func getPipelineStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jo
 }
 
 func getBuildStep(client kubernetes.Interface, buildPod corev1.Pod, containerName string, sort int32) jobModels.StepLog {
-	buildLog, err := handleGetPodLog(client, &buildPod, containerName)
+	buildLog, err := HandleGetPodLog(client, &buildPod, containerName)
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		buildLog = fmt.Sprintf("%v", err)
@@ -140,23 +157,6 @@ func getImageTag(args []string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("IMAGE_TAG not found under args")
-}
-
-func handleGetPodLog(client kubernetes.Interface, pod *corev1.Pod, containerName string) (string, error) {
-	req := getPodLogRequest(client, pod, containerName, false)
-
-	readCloser, err := req.Stream()
-	if err != nil {
-		return "", err
-	}
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(readCloser)
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
 }
 
 func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerName string, follow bool) *rest.Request {
