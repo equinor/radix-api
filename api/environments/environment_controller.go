@@ -80,6 +80,8 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	envName := mux.Vars(r)["envName"]
 	latest := r.FormValue("latest")
 
+	deploy := deployments.Init(client, radixclient)
+
 	var err error
 	var useLatest = false
 	if strings.TrimSpace(latest) != "" {
@@ -90,7 +92,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 		}
 	}
 
-	appEnvironmentDeployments, err := deployments.HandleGetDeployments(radixclient, appName, envName, useLatest)
+	appEnvironmentDeployments, err := deploy.HandleGetDeployments(appName, envName, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

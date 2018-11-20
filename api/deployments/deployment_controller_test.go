@@ -171,40 +171,17 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 }
 
 func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app-1"
-	environment := "dev"
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
-
 	layout := "2006-01-02T15:04:05.000Z"
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
@@ -227,40 +204,17 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 }
 
 func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app-1"
-	environment := "dev"
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
-
 	layout := "2006-01-02T15:04:05.000Z"
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
@@ -275,43 +229,19 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 }
 
 func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app-1"
-	environmentOne := "dev"
-	environmentTwo := "prod"
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
-
 	layout := "2006-01-02T15:04:05.000Z"
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentTwo).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", "any-app-1"))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
@@ -332,43 +262,19 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 }
 
 func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app-1"
-	environmentOne := "dev"
-	environmentTwo := "prod"
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
-
 	layout := "2006-01-02T15:04:05.000Z"
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentTwo).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", "any-app-1"))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
@@ -582,4 +488,37 @@ func createNamespace(kubeclient kubernetes.Interface, ns string) {
 	}
 
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
+}
+
+func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {
+	var environmentOne, environmentTwo string
+
+	if len(environments) == 1 {
+		environmentOne = environments[0]
+		environmentTwo = environments[0]
+	} else {
+		environmentOne = environments[0]
+		environmentTwo = environments[1]
+	}
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentOneImage).
+		WithCreated(deploymentOneCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentTwo).
+		WithImageTag(deploymentTwoImage).
+		WithCreated(deploymentTwoCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentThreeImage).
+		WithCreated(deploymentThreeCreated))
 }
