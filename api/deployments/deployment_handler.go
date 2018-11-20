@@ -103,18 +103,24 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	}
 
 	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
+	envsLastIndexMap := getRdEnvironments(rds)
 
 	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
 	for i, rd := range rds {
+		envName := rd.Spec.Environment
+
 		builder := NewBuilder().
 			withName(rd.GetName()).
 			withAppName(rd.Spec.AppName).
-			withEnvironment(rd.Spec.Environment).
+			withEnvironment(envName).
 			withActiveFrom(rd.CreationTimestamp.Time)
 
-		if i > 0 {
-			builder.withActiveTo(rds[i-1].CreationTimestamp.Time)
+		lastIndex := envsLastIndexMap[envName]
+		if lastIndex >= 0 {
+			builder.withActiveTo(rds[lastIndex].CreationTimestamp.Time)
 		}
+		envsLastIndexMap[envName] = i
+
 		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
 	}
 
@@ -180,6 +186,17 @@ func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployme
 		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
 	})
 	return rds
+}
+
+func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {
+	envs := make(map[string]int)
+	for _, rd := range rds {
+		envName := rd.Spec.Environment
+		if _, exists := envs[envName]; !exists {
+			envs[envName] = -1
+		}
+	}
+	return envs
 }
 
 func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
