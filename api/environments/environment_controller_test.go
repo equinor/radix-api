@@ -56,15 +56,15 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentTwoImage), deployments[1].Name)
+	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentOneImage), deployments[2].Name)
+	assert.Equal(t, deploymentOneImage, deployments[2].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
 }
@@ -90,7 +90,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 1, len(deployments))
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 }
@@ -98,6 +98,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName(deploymentOneImage).
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentOneImage).
@@ -105,6 +106,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName(deploymentTwoImage).
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentTwoImage).
@@ -112,6 +114,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName(deploymentThreeImage).
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentThreeImage).

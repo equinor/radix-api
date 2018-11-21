@@ -42,6 +42,11 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			HandlerFunc: GetPodLog,
 		},
 		models.Route{
+			Path:        rootPath + "/deployments/{deploymentName}/components",
+			Method:      "GET",
+			HandlerFunc: GetComponents,
+		},
+		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/promote",
 			Method:      "POST",
 			HandlerFunc: PromoteToEnvironment,
@@ -116,9 +121,48 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	utils.JSONResponse(w, r, appDeployments)
 }
 
+// GetComponents for a deployment
+func GetComponents(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components components components
+	// ---
+	// summary: Get components for a deployment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: Name of deployment
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ComponentDeployment"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	deploymentName := mux.Vars(r)["deploymentName"]
+
+	deploy := Init(client, radixclient)
+
+	components, err := deploy.HandleGetComponents(appName, deploymentName)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, components)
+}
+
 // Get logs of a single pod
 func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs deployment log
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs components log
 	// ---
 	// summary: Get logs from a deployed pod
 	// parameters:
