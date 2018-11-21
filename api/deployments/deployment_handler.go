@@ -47,8 +47,8 @@ func nonExistingToEnvironment(underlyingError error) error {
 	return utils.TypeMissingError("Non existing to environment", underlyingError)
 }
 
-func nonExistingDeployment(underlyingError error) error {
-	return utils.TypeMissingError("Non existing deployment", underlyingError)
+func nonExistingDeployment(underlyingError error, deploymentName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Non existing deployment %s", deploymentName), underlyingError)
 }
 
 func nonExistingComponentName(appName, componentName string) error {
@@ -62,6 +62,7 @@ func nonExistingPod(appName, podName string) error {
 // HandleGetLogs handler for GetLogs
 func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
+	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return "", nonExistingApplication(err, appName)
@@ -156,7 +157,7 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 
 	radixDeployment, err = deploy.radixClient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingDeployment(err)
+		return nil, nonExistingDeployment(err, deploymentName)
 	}
 
 	radixDeployment.ResourceVersion = ""
