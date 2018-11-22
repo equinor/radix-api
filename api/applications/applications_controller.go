@@ -47,9 +47,10 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
-			Path:        rootPath + "/applications",
-			Method:      "GET",
-			HandlerFunc: ShowApplications,
+			Path:                   rootPath + "/applications",
+			Method:                 "GET",
+			RunInClusterKubeClient: true,
+			HandlerFunc:            ShowApplications,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}",
