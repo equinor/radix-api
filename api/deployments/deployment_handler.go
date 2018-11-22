@@ -6,11 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/api/utils"
 	"k8s.io/client-go/kubernetes"
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+	logs "github.com/statoil/radix-api/api/jobs"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -18,6 +21,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type DeployHandler struct {
+	kubeClient  kubernetes.Interface
+	radixClient radixclient.Interface
+}
+
+func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) DeployHandler {
+	return DeployHandler{
+		kubeClient:  kubeClient,
+		radixClient: radixClient,
+	}
+}
 
 // errors
 func nonExistingApplication(underlyingError error, appName string) error {
@@ -32,16 +47,46 @@ func nonExistingToEnvironment(underlyingError error) error {
 	return utils.TypeMissingError("Non existing to environment", underlyingError)
 }
 
-func nonExistingDeployment(underlyingError error) error {
-	return utils.TypeMissingError("Non existing deployment", underlyingError)
+func nonExistingDeployment(underlyingError error, deploymentName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Non existing deployment %s", deploymentName), underlyingError)
 }
 
 func nonExistingComponentName(appName, componentName string) error {
 	return utils.TypeMissingError(fmt.Sprintf("Unable to get application component %s for app %s", componentName, appName), nil)
 }
 
+func nonExistingPod(appName, podName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Unable to get pod %s for app %s", podName, appName), nil)
+}
+
+// HandleGetLogs handler for GetLogs
+func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, error) {
+	ns := crdUtils.GetAppNamespace(appName)
+	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
+	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return "", nonExistingApplication(err, appName)
+	}
+	for _, env := range ra.Spec.Environments {
+		envNs := crdUtils.GetEnvironmentNamespace(appName, env.Name)
+		pod, err := deploy.kubeClient.CoreV1().Pods(envNs).Get(podName, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			log.Warnf("Failed to get pod %s in ns %s", podName, envNs)
+		} else if pod != nil {
+			log, err := logs.HandleGetPodLog(deploy.kubeClient, pod, "")
+			if err != nil {
+				return "", err
+			}
+			return log, nil
+		}
+	}
+	return "", nonExistingPod(appName, podName)
+}
+
 // HandleGetDeployments handler for GetDeployments
-func HandleGetDeployments(radixclient radixclient.Interface, appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -52,25 +97,31 @@ func HandleGetDeployments(radixclient radixclient.Interface, appName, environmen
 		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
 	}
 
-	radixDeploymentList, err := radixclient.RadixV1().RadixDeployments(namespace).List(listOptions)
+	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(listOptions)
 
 	if err != nil {
 		return nil, err
 	}
 
 	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
+	envsLastIndexMap := getRdEnvironments(rds)
 
 	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
 	for i, rd := range rds {
+		envName := rd.Spec.Environment
+
 		builder := NewBuilder().
 			withName(rd.GetName()).
 			withAppName(rd.Spec.AppName).
-			withEnvironment(rd.Spec.Environment).
+			withEnvironment(envName).
 			withActiveFrom(rd.CreationTimestamp.Time)
 
-		if i > 0 {
-			builder.withActiveTo(rds[i-1].CreationTimestamp.Time)
+		lastIndex := envsLastIndexMap[envName]
+		if lastIndex >= 0 {
+			builder.withActiveTo(rds[lastIndex].CreationTimestamp.Time)
 		}
+		envsLastIndexMap[envName] = i
+
 		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
 	}
 
@@ -103,12 +154,12 @@ func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]
 }
 
 // HandlePromoteToEnvironment handler for PromoteEnvironment
-func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
 	if strings.TrimSpace(appName) == "" {
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
 
-	radixConfig, err := radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixConfig, err := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nonExistingApplication(err, appName)
 	}
@@ -116,12 +167,12 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	fromNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.FromEnvironment)
 	toNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.ToEnvironment)
 
-	_, err = client.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
+	_, err = deploy.kubeClient.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
 	if err != nil {
 		return nil, nonExistingFromEnvironment(err)
 	}
 
-	_, err = client.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
+	_, err = deploy.kubeClient.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
 	if err != nil {
 		return nil, nonExistingToEnvironment(err)
 	}
@@ -129,9 +180,9 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
 	var radixDeployment *v1.RadixDeployment
 
-	radixDeployment, err = radixclient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
+	radixDeployment, err = deploy.radixClient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingDeployment(err)
+		return nil, nonExistingDeployment(err, deploymentName)
 	}
 
 	radixDeployment.ResourceVersion = ""
@@ -143,12 +194,12 @@ func HandlePromoteToEnvironment(client kubernetes.Interface, radixclient radixcl
 		return nil, err
 	}
 
-	isValid, err := radixvalidators.CanRadixDeploymentBeInserted(radixclient, radixDeployment)
+	isValid, err := radixvalidators.CanRadixDeploymentBeInserted(deploy.radixClient, radixDeployment)
 	if !isValid {
 		return nil, err
 	}
 
-	radixDeployment, err = radixclient.RadixV1().RadixDeployments(toNs).Create(radixDeployment)
+	radixDeployment, err = deploy.radixClient.RadixV1().RadixDeployments(toNs).Create(radixDeployment)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +212,17 @@ func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployme
 		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
 	})
 	return rds
+}
+
+func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {
+	envs := make(map[string]int)
+	for _, rd := range rds {
+		envName := rd.Spec.Environment
+		if _, exists := envs[envName]; !exists {
+			envs[envName] = -1
+		}
+	}
+	return envs
 }
 
 func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
