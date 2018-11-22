@@ -70,7 +70,9 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
-	applyRegistrationAndAppConfig(commonTestUtils)
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName))
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
 	response := <-responseChannel

@@ -1,39 +1,21 @@
 package jobs
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
+	"github.com/statoil/radix-api/api/pods"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 // PipelineNotFoundError Job not found
 func PipelineNotFoundError(appName, jobName string) error {
 	return fmt.Errorf("Job %s not found for app %s", jobName, appName)
-}
-
-func HandleGetPodLog(client kubernetes.Interface, pod *corev1.Pod, containerName string) (string, error) {
-	req := getPodLogRequest(client, pod, containerName, false)
-
-	readCloser, err := req.Stream()
-	if err != nil {
-		return "", err
-	}
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(readCloser)
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
 }
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
@@ -44,12 +26,12 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 		return steps, err
 	}
 
-	pipelineStep := getPipelineStepLog(jh.client, pipelinePod)
+	pipelineStep := getPipelineStepLog(jh.client, appName, pipelinePod.GetName())
 
 	pods, err := getBuildPods(jh.client, pipelinePod)
 	if err != nil {
 		// use clone from pipeline step
-		cloneStep := getInitCloneStepLog(jh.client, pipelinePod)
+		cloneStep := getInitCloneStepLog(jh.client, appName, pipelinePod.GetName())
 		steps = append(steps, cloneStep, pipelineStep, jobModels.StepLog{
 			Name: "docker build",
 			Log:  fmt.Sprintf("%v", err),
@@ -62,12 +44,12 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 	steps = append(steps, pipelineStep)
 	for _, buildPod := range pods.Items {
 		for _, initContainer := range buildPod.Spec.InitContainers {
-			buildStep := getBuildStep(jh.client, buildPod, initContainer.Name, 1)
+			buildStep := getBuildStepLog(jh.client, appName, buildPod.GetName(), initContainer.Name, 1)
 			steps = append(steps, buildStep)
 		}
 
 		for _, container := range buildPod.Spec.Containers {
-			buildStep := getBuildStep(jh.client, buildPod, container.Name, 3)
+			buildStep := getBuildStepLog(jh.client, appName, buildPod.GetName(), container.Name, 3)
 			steps = append(steps, buildStep)
 		}
 	}
@@ -111,34 +93,38 @@ func getBuildPods(client kubernetes.Interface, pipelinePod *corev1.Pod) (*corev1
 	return pods, nil
 }
 
-func getInitCloneStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
-	cloneLog, err := HandleGetPodLog(client, pipelinePod, "clone")
+func getInitCloneStepLog(client kubernetes.Interface, appName, podName string) jobModels.StepLog {
+	podHandler := pods.Init(client)
+	cloneLog, err := podHandler.HandleGetAppPodLog(appName, podName, "clone")
+
 	if err != nil {
 		cloneLog = "error: log not found"
 	}
 	return jobModels.StepLog{
 		Name:    "clone",
 		Log:     cloneLog,
-		PodName: fmt.Sprintf("%s %s", pipelinePod.GetName(), "clone"),
+		PodName: fmt.Sprintf("%s %s", podName, "clone"),
 		Sort:    1,
 	}
 }
 
-func getPipelineStepLog(client kubernetes.Interface, pipelinePod *corev1.Pod) jobModels.StepLog {
-	podLog, err := HandleGetPodLog(client, pipelinePod, "")
+func getPipelineStepLog(client kubernetes.Interface, appName, podName string) jobModels.StepLog {
+	podHandler := pods.Init(client)
+	podLog, err := podHandler.HandleGetAppPodLog(appName, podName, "")
 	if err != nil {
 		podLog = "error: pipeline log not found"
 	}
 	return jobModels.StepLog{
 		Name:    "job",
 		Log:     podLog,
-		PodName: pipelinePod.GetName(),
+		PodName: podName,
 		Sort:    2,
 	}
 }
 
-func getBuildStep(client kubernetes.Interface, buildPod corev1.Pod, containerName string, sort int32) jobModels.StepLog {
-	buildLog, err := HandleGetPodLog(client, &buildPod, containerName)
+func getBuildStepLog(client kubernetes.Interface, appName, podName, containerName string, sort int32) jobModels.StepLog {
+	podHandler := pods.Init(client)
+	buildLog, err := podHandler.HandleGetAppPodLog(appName, podName, containerName)
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		buildLog = fmt.Sprintf("%v", err)
@@ -146,7 +132,7 @@ func getBuildStep(client kubernetes.Interface, buildPod corev1.Pod, containerNam
 	return jobModels.StepLog{
 		Name:    containerName,
 		Log:     buildLog,
-		PodName: buildPod.GetName(),
+		PodName: podName,
 		Sort:    sort,
 	}
 }
@@ -158,16 +144,4 @@ func getImageTag(args []string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("IMAGE_TAG not found under args")
-}
-
-func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerName string, follow bool) *rest.Request {
-	podLogOption := corev1.PodLogOptions{
-		Follow: follow,
-	}
-	if containerName != "" {
-		podLogOption.Container = containerName
-	}
-
-	req := client.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOption)
-	return req
 }
