@@ -324,12 +324,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:56b15452e2067f8dacd23eaa8fb8eac6dd95aaaf466ad636025bb9e73c6988ee"
+  digest = "1:80d763c764e18e5977b6caae8028ad160c22ec825b258fef5140e81a3d4cfe14"
   name = "github.com/statoil/radix-operator"
   packages = [
     "pkg/apis/kube",
     "pkg/apis/radix",
     "pkg/apis/radix/v1",
+    "pkg/apis/radixvalidators",
     "pkg/apis/test",
     "pkg/apis/utils",
     "pkg/client/clientset/versioned",
@@ -344,7 +345,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "21c80f6e270c954e89a79ef39f449cce32ae61ed"
+  revision = "29835a566a7f22b9e92ed399d60c2fc3d0b89c4e"
 
 [[projects]]
   digest = "1:9ebd4efd9624c5ab26ab64f32b2f821ca967ee108c3e3d589f5c5e3e2514a256"
@@ -764,6 +765,7 @@
     "github.com/spf13/pflag",
     "github.com/statoil/radix-operator/pkg/apis/kube",
     "github.com/statoil/radix-operator/pkg/apis/radix/v1",
+    "github.com/statoil/radix-operator/pkg/apis/radixvalidators",
     "github.com/statoil/radix-operator/pkg/apis/test",
     "github.com/statoil/radix-operator/pkg/apis/utils",
     "github.com/statoil/radix-operator/pkg/client/clientset/versioned",

@@ -35,6 +35,7 @@ import (
 	"github.com/statoil/radix-api/api/admissioncontrollers"
 	"github.com/statoil/radix-api/api/applications"
 	"github.com/statoil/radix-api/api/deployments"
+	"github.com/statoil/radix-api/api/environments"
 	"github.com/statoil/radix-api/api/jobs"
 	"github.com/statoil/radix-api/api/pods"
 
@@ -92,6 +93,7 @@ func getControllers() []models.Controller {
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		pods.NewPodController(),
+		environments.NewEnvironmentController(),
 	}
 }
 

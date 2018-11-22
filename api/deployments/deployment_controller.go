@@ -37,6 +37,16 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			HandlerFunc: GetDeployments,
 		},
 		models.Route{
+			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs",
+			Method:      "GET",
+			HandlerFunc: GetPodLog,
+		},
+		models.Route{
+			Path:        rootPath + "/deployments/{deploymentName}/components",
+			Method:      "GET",
+			HandlerFunc: GetComponents,
+		},
+		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/promote",
 			Method:      "POST",
 			HandlerFunc: PromoteToEnvironment,
@@ -89,6 +99,8 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	environment := r.FormValue("environment")
 	latest := r.FormValue("latest")
 
+	deploy := Init(client, radixclient)
+
 	var err error
 	var useLatest = false
 	if strings.TrimSpace(latest) != "" {
@@ -99,7 +111,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 		}
 	}
 
-	appDeployments, err := HandleGetDeployments(radixclient, appName, environment, useLatest)
+	appDeployments, err := deploy.HandleGetDeployments(appName, environment, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -107,6 +119,92 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	}
 
 	utils.JSONResponse(w, r, appDeployments)
+}
+
+// GetComponents for a deployment
+func GetComponents(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components components components
+	// ---
+	// summary: Get components for a deployment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: Name of deployment
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ComponentDeployment"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	deploymentName := mux.Vars(r)["deploymentName"]
+
+	deploy := Init(client, radixclient)
+
+	components, err := deploy.HandleGetComponents(appName, deploymentName)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, components)
+}
+
+// Get logs of a single pod
+func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs components log
+	// ---
+	// summary: Get logs from a deployed pod
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: Name of deployment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: podName
+	//   in: path
+	//   description: Name of pod
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	// deploymentName := mux.Vars(r)["deploymentName"]
+	// componentName := mux.Vars(r)["componentName"]
+	podName := mux.Vars(r)["podName"]
+
+	deploy := Init(client, radixclient)
+
+	log, err := deploy.HandleGetLogs(appName, podName)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.StringResponse(w, r, log)
 }
 
 // PromoteToEnvironment promote an environment from another environment
@@ -139,13 +237,15 @@ func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.I
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
+	deploy := Init(client, radixclient)
+
 	var promotionParameters deploymentModels.PromotionParameters
 	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	_, err := HandlePromoteToEnvironment(client, radixclient, appName, deploymentName, promotionParameters)
+	_, err := deploy.HandlePromoteToEnvironment(appName, deploymentName, promotionParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

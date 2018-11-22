@@ -23,6 +23,18 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	anyAppName    = "any-app"
+	anyCloneURL   = "git@github.com:Equinor/any-app.git"
+	anyPodName    = "any-pod"
+	anyDeployName = "any-deploy"
+	anyEnv        = "any-env"
+)
+
+func createGetLogEndpoint(appName, podName string) string {
+	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
+}
+
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -35,6 +47,40 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
+
+func TestGetPodLog_no_radixconfig(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 404, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := nonExistingApplication(nil, anyAppName)
+
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+}
+
+func TestGetPodLog_No_Pod(t *testing.T) {
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
+
+	applyRegistrationAndAppConfig(commonTestUtils)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 404, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := nonExistingPod(anyAppName, anyPodName)
+
+	assert.Equal(t, (expectedError.(*utils.Error)).Error(), errorResponse.Error())
+
 }
 
 func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
@@ -113,60 +159,124 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	}
 }
 
-func TestGetDeployments_SortedWithFromTo(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app-1"
+func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	deploymentOneImage := "abcdef"
 	deploymentTwoImage := "ghijkl"
 	deploymentThreeImage := "mnopqr"
-
 	layout := "2006-01-02T15:04:05.000Z"
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
 
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", "any-app-1"))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentThreeImage), deployments[0].Name)
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentTwoImage), deployments[1].Name)
+	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
 
-	assert.Equal(t, builders.GetDeploymentName(anyAppName, deploymentOneImage), deployments[2].Name)
+	assert.Equal(t, deploymentOneImage, deployments[2].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+}
 
+func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 1, len(deployments))
+
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+}
+
+func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 3, len(deployments))
+
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+
+	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, "", deployments[1].ActiveTo)
+
+	assert.Equal(t, deploymentOneImage, deployments[2].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[2].ActiveTo)
+}
+
+func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
+	deploymentOneImage := "abcdef"
+	deploymentTwoImage := "ghijkl"
+	deploymentThreeImage := "mnopqr"
+	layout := "2006-01-02T15:04:05.000Z"
+	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
+	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
+	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
+	response := <-responseChannel
+
+	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	controllertest.GetResponseBody(response, &deployments)
+	assert.Equal(t, 2, len(deployments))
+
+	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, "", deployments[0].ActiveTo)
+
+	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
+	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, "", deployments[1].ActiveTo)
 }
 
 func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
@@ -175,36 +285,42 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("1").
 		WithAppName("any-app-1").
 		WithEnvironment("prod").
 		WithImageTag("abcdef"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("2").
 		WithAppName("any-app-1").
 		WithEnvironment("dev").
 		WithImageTag("abcdef"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("3").
 		WithAppName("any-app-2").
 		WithEnvironment("dev").
 		WithImageTag("abcdef"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("4").
 		WithAppName("any-app-2").
 		WithEnvironment("prod").
 		WithImageTag("ghijklm"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("5").
 		WithAppName("any-app-3").
 		WithEnvironment("dev").
 		WithImageTag("abcdef"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName("5").
 		WithAppName("any-app-3").
 		WithEnvironment("prod").
 		WithImageTag("abcdef"))
@@ -219,21 +335,22 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 		fromEnvironment    string
 		imageTag           string
 		toEnvironment      string
+		deploymentName     string
 		excectedReturnCode int
 		expectedError      error
 	}{
-		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", http.StatusNotFound, nonExistingApplication(irrellevantUnderlyingError, "noapp")},
-		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", http.StatusNotFound, nonExistingFromEnvironment(irrellevantUnderlyingError)},
-		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", http.StatusNotFound, nonExistingToEnvironment(irrellevantUnderlyingError)},
-		{"promote non-existing image", "any-app-2", "dev", "nopqrst", "prod", http.StatusNotFound, nonExistingDeployment(irrellevantUnderlyingError)},
-		{"promote an image into environment having already that image", "any-app-3", "dev", "abcdef", "prod", http.StatusConflict, nil}, // Error comes from kubernetes API
+		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, nonExistingApplication(irrellevantUnderlyingError, "noapp")},
+		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", "2", http.StatusNotFound, nonExistingFromEnvironment(irrellevantUnderlyingError)},
+		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", "2", http.StatusNotFound, nonExistingToEnvironment(irrellevantUnderlyingError)},
+		{"promote non-existing deployment", "any-app-2", "dev", "nopqrst", "prod", "non-existing", http.StatusNotFound, nonExistingDeployment(irrellevantUnderlyingError, "non-existing")},
+		{"promote an deployment into environment having already that deployment", "any-app-3", "dev", "abcdef", "prod", "5", http.StatusConflict, nil}, // Error comes from kubernetes API
 	}
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
-			deploymentName := builders.GetDeploymentName(scenario.appName, scenario.imageTag)
+			deploymentName := scenario.deploymentName
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", scenario.appName, deploymentName), parameters)
 			response := <-responseChannel
 
@@ -250,9 +367,12 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
+	deployHandler := Init(kubeclient, radixclient)
+	deploymentName := "abcdef"
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName(deploymentName).
 		WithAppName("any-app-1").
 		WithEnvironment("dev").
 		WithImageTag("abcdef"))
@@ -275,14 +395,13 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
 
-			deploymentName := builders.GetDeploymentName(scenario.appName, scenario.imageTag)
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", scenario.appName, deploymentName), parameters)
 			response := <-responseChannel
 
 			assert.Equal(t, http.StatusOK, response.Code)
 
 			if scenario.imageExpected != "" {
-				deployments, _ := HandleGetDeployments(radixclient, scenario.appName, scenario.toEnvironment, false)
+				deployments, _ := deployHandler.HandleGetDeployments(scenario.appName, scenario.toEnvironment, false)
 				assert.Equal(t, 1, len(deployments))
 				assert.Equal(t, deploymentName, deployments[0].Name)
 			}
@@ -293,6 +412,8 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
+	deployHandler := Init(kubeclient, radixclient)
+	deploymentName := "abcdef"
 
 	// Setup
 	// When we have enviroment specific config the deployment should contain the environment variables defined in the config
@@ -318,6 +439,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithDeploymentName(deploymentName).
 		WithAppName("any-app-2").
 		WithEnvironment("dev").
 		WithImageTag("abcdef").
@@ -329,13 +451,12 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	createEnvNamespace(kubeclient, "any-app-2", "prod")
 
 	// Scenario
-	deploymentName := builders.GetDeploymentName("any-app-2", "abcdef")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", "any-app-2", deploymentName), deploymentModels.PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	deployments, _ := HandleGetDeployments(radixclient, "any-app-2", "prod", false)
+	deployments, _ := deployHandler.HandleGetDeployments("any-app-2", "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
@@ -365,4 +486,40 @@ func createNamespace(kubeclient kubernetes.Interface, ns string) {
 	}
 
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
+}
+
+func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {
+	var environmentOne, environmentTwo string
+
+	if len(environments) == 1 {
+		environmentOne = environments[0]
+		environmentTwo = environments[0]
+	} else {
+		environmentOne = environments[0]
+		environmentTwo = environments[1]
+	}
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithDeploymentName(deploymentOneImage).
+		WithAppName(appName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentOneImage).
+		WithCreated(deploymentOneCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithDeploymentName(deploymentTwoImage).
+		WithAppName(appName).
+		WithEnvironment(environmentTwo).
+		WithImageTag(deploymentTwoImage).
+		WithCreated(deploymentTwoCreated))
+
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithDeploymentName(deploymentThreeImage).
+		WithAppName(appName).
+		WithEnvironment(environmentOne).
+		WithImageTag(deploymentThreeImage).
+		WithCreated(deploymentThreeCreated))
 }
