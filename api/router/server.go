@@ -45,13 +45,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 
 	initializeSocketServer(kubeUtil, router, controllers)
 
-	for _, controller := range controllers {
-		if controller.UseInClusterConfig() {
-			addHandlerRoutesInClusterKubeClient(kubeUtil, router, controller.GetRoutes(), "")
-		} else {
-			addHandlerRoutes(kubeUtil, router, controller.GetRoutes())
-		}
-	}
+	initializeAPIServer(kubeUtil, router, controllers)
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
@@ -111,21 +105,31 @@ func getHostName(componentName, namespace, clustername string) string {
 	return fmt.Sprintf("https://%s-%s.%s.dev.radix.equinor.com", componentName, namespace, clustername)
 }
 
-func addHandlerRoutes(kubeUtil utils.KubeUtil, router *mux.Router, routes models.Routes) {
-	for _, route := range routes {
-		router.HandleFunc(apiVersionRoute+route.Path, utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc).Handle).Methods(route.Method)
+func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
+	for _, controller := range controllers {
+		useInClusterConfig := controller.UseInClusterConfig()
+		for _, route := range controller.GetRoutes() {
+			if useInClusterConfig || route.RunInClusterKubeClient {
+				addHandlerRouteInClusterKubeClient(kubeUtil, router, route)
+			} else {
+				addHandlerRoute(kubeUtil, router, route)
+			}
+		}
 	}
 }
 
+func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
+	router.HandleFunc(apiVersionRoute+route.Path,
+		utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc).Handle).Methods(route.Method)
+}
+
 // routes which should be run under radix-api service account, instead of using incomming access token
-func addHandlerRoutesInClusterKubeClient(kubeUtil utils.KubeUtil, router *mux.Router, routes models.Routes, rootURL string) {
-	for _, route := range routes {
-		router.HandleFunc(rootURL+route.Path,
-			func(w http.ResponseWriter, r *http.Request) {
-				client, radixclient := kubeUtil.GetInClusterKubernetesClient()
-				route.HandlerFunc(client, radixclient, w, r)
-			}).Methods(route.Method)
-	}
+func addHandlerRouteInClusterKubeClient(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
+	router.HandleFunc(apiVersionRoute+route.Path,
+		func(w http.ResponseWriter, r *http.Request) {
+			client, radixclient := kubeUtil.GetInClusterKubernetesClient()
+			route.HandlerFunc(client, radixclient, w, r)
+		}).Methods(route.Method)
 }
 
 func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {

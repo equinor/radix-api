@@ -34,9 +34,10 @@ type Routes []Route
 
 // Route Describe route
 type Route struct {
-	Path        string
-	Method      string
-	HandlerFunc RadixHandlerFunc
+	Path                   string
+	Method                 string
+	RunInClusterKubeClient bool // kube client will be run under radix-api service account, instead of using users access token
+	HandlerFunc            RadixHandlerFunc
 }
 
 // Subscriptions Holder of all subscriptions
