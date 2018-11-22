@@ -8,4 +8,5 @@ app:
 
 component:
   name: server
+  pipelineImage: latest
   port: 3002

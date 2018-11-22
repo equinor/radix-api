@@ -13,7 +13,7 @@ spec:
   appname: {{ .Values.app.name }}
   components:
   - environmentVariables:
-      PIPELINE_IMG_TAG: iknu
+      PIPELINE_IMG_TAG: {{ .Values.component.pipelineImage }}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     name: {{ .Values.component.name }}
     ports:
