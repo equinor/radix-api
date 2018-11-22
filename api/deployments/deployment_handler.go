@@ -6,14 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/statoil/radix-api/api/utils"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
-	logs "github.com/statoil/radix-api/api/jobs"
+	"github.com/statoil/radix-api/api/pods"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -22,11 +21,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// DeployHandler Instance variables
 type DeployHandler struct {
 	kubeClient  kubernetes.Interface
 	radixClient radixclient.Interface
 }
 
+// Init Constructor
 func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) DeployHandler {
 	return DeployHandler{
 		kubeClient:  kubeClient,
@@ -68,19 +69,15 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 		return "", nonExistingApplication(err, appName)
 	}
 	for _, env := range ra.Spec.Environments {
-		envNs := crdUtils.GetEnvironmentNamespace(appName, env.Name)
-		pod, err := deploy.kubeClient.CoreV1().Pods(envNs).Get(podName, metav1.GetOptions{})
+		podHandler := pods.Init(deploy.kubeClient)
+		log, err := podHandler.HandleGetEnvironmentPodLog(appName, env.Name, podName, "")
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {
-			log.Warnf("Failed to get pod %s in ns %s", podName, envNs)
-		} else if pod != nil {
-			log, err := logs.HandleGetPodLog(deploy.kubeClient, pod, "")
-			if err != nil {
-				return "", err
-			}
-			return log, nil
+			return "", err
 		}
+
+		return log, nil
 	}
 	return "", nonExistingPod(appName, podName)
 }
