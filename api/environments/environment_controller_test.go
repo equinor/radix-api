@@ -52,7 +52,7 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
@@ -86,13 +86,17 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
+}
+
+func TestGetEnvironmentSummary_ExistsInConfigNotInCluster_Pending(t *testing.T) {
+
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {

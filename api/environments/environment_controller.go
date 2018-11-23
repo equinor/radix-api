@@ -45,6 +45,7 @@ func (ec *environmentController) GetSubscriptions() models.Subscriptions {
 	return subscriptions
 }
 
+// GetApplicationEnvironmentDeployments Lists the application environment deployments
 func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environments getApplicationEnvironmentDeployments
 	// ---
@@ -100,4 +101,39 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	}
 
 	utils.JSONResponse(w, r, appEnvironmentDeployments)
+}
+
+// GetEnvironmentSummary Lists the environments for an application
+func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments environments getEnvironmentSummary
+	// ---
+	// summary: Lists the environments for an application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/EnvironmentSummary"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	var err error
+	appEnvironments := appName
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, appEnvironments)
 }

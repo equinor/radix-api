@@ -90,7 +90,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ApplicationDeployment"
+	//           "$ref": "#/definitions/DeploymentSummary"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
