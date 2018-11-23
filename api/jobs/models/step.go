@@ -12,7 +12,7 @@ type Step struct {
 	// Status of the step
 	//
 	// required: false
-	// Enum: [Waiting, Active, Succeeded, Failed]
+	// Enum: Waiting, Active, Succeeded, Failed
 	// example: Pending
 	Status string `json:"status"`
 
