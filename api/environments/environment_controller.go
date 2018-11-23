@@ -47,7 +47,7 @@ func (ec *environmentController) GetSubscriptions() models.Subscriptions {
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
 func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environments getApplicationEnvironmentDeployments
+	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments
 	// ---
 	// summary: Lists the application environment deployments
 	// parameters:
@@ -105,7 +105,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 
 // GetEnvironmentSummary Lists the environments for an application
 func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments environments getEnvironmentSummary
+	// swagger:operation GET /applications/{appName}/environments environment getEnvironmentSummary
 	// ---
 	// summary: Lists the environments for an application
 	// parameters:
