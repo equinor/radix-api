@@ -160,7 +160,8 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	appRegistrations, err := HandleGetApplications(client, radixclient, sshRepo)
+	handler := Init(client, radixclient)
+	appRegistrations, err := handler.HandleGetApplications(sshRepo)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -189,7 +190,9 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	application, err := HandleGetApplication(client, radixclient, appName)
+
+	handler := Init(client, radixclient)
+	application, err := handler.HandleGetApplication(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -255,7 +258,8 @@ func RegisterApplication(client kubernetes.Interface, radixclient radixclient.In
 		return
 	}
 
-	appRegistration, err := HandleRegisterApplication(radixclient, application)
+	handler := Init(client, radixclient)
+	appRegistration, err := handler.HandleRegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -300,7 +304,8 @@ func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixcli
 		return
 	}
 
-	appRegistration, err := HandleChangeRegistrationDetails(radixclient, appName, application)
+	handler := Init(client, radixclient)
+	appRegistration, err := handler.HandleChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -328,7 +333,9 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	err := HandleDeleteApplication(radixclient, appName)
+
+	handler := Init(client, radixclient)
+	err := handler.HandleDeleteApplication(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -376,7 +383,8 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 		return
 	}
 
-	jobSummary, err := HandleTriggerPipeline(client, radixclient, appName, pipelineName, pipelineParameters)
+	handler := Init(client, radixclient)
+	jobSummary, err := handler.HandleTriggerPipeline(appName, pipelineName, pipelineParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

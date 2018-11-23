@@ -41,7 +41,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, _ := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -54,7 +54,8 @@ func TestGetApplicationJob(t *testing.T) {
 
 	// Test
 	t.Run("job started ok", func(t *testing.T) {
-		jobSummary, _ := HandleStartPipelineJob(client, anyAppName, anyCloneURL, anyPipeline, jobParameters)
+		handler := Init(client, radixclient)
+		jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 		response := <-responseChannel
 
