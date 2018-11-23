@@ -13,8 +13,8 @@ type ApplicationSummary struct {
 	// example: radix-canary-golang
 	Name string `json:"name"`
 
-	// JobSummary The latest started job
+	// LatestJob The latest started job
 	//
 	// required: false
-	JobSummary *jobModels.JobSummary `json:"jobSummary"`
+	LatestJob *jobModels.JobSummary `json:"jobSummary"`
 }
