@@ -6,6 +6,7 @@ import (
 	"time"
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	"github.com/statoil/radix-api/api/utils"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
@@ -95,8 +96,53 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	assert.Equal(t, "", deployments[0].ActiveTo)
 }
 
-func TestGetEnvironmentSummary_ExistsInConfigNotInCluster_Pending(t *testing.T) {
+func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
+	anyAppName := "any-app"
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithRadixRegistration(builders.ARadixRegistration()).
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	assert.Equal(t, 1, len(environments))
+	assert.Equal(t, "dev", environments[0].Name)
+	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status.String())
+	assert.Equal(t, "master", environments[0].BranchMapping)
+	assert.Nil(t, environments[0].ActiveDeployment)
+}
+
+func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithRadixApplication(builders.
+			NewRadixApplicationBuilder().
+			WithRadixRegistration(builders.ARadixRegistration()).
+			WithAppName(anyAppName).
+			WithEnvironment("dev", "master")).
+		WithAppName(anyAppName).
+		WithEnvironment("dev"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status.String())
+	assert.NotNil(t, environments[0].ActiveDeployment)
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {

@@ -33,6 +33,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetApplicationEnvironmentDeployments,
 		},
+		models.Route{
+			Path:        rootPath + "/environments",
+			Method:      "GET",
+			HandlerFunc: GetEnvironmentSummary,
+		},
 	}
 
 	return routes
@@ -127,8 +132,8 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	var err error
-	appEnvironments := appName
+	environmentHandler := Init(client, radixclient)
+	appEnvironments, err := environmentHandler.HandleGetEnvironmentSummary(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
