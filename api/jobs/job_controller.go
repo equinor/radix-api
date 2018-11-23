@@ -75,7 +75,7 @@ func (jc *jobController) GetSubscriptions() models.Subscriptions {
 
 // GetPipelineJobLogs Get logs of a job for an application
 func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs jobs getApplicationJobLogs
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs job getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
 	// parameters:
@@ -194,7 +194,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 
 // GetApplicationJobs gets job summaries
 func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs jobs getApplicationJobs
+	// swagger:operation GET /applications/{appName}/jobs job getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
 	// parameters:
@@ -229,7 +229,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 
 // GetApplicationJob gets specific job details
 func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName} jobs getApplicationJob
+	// swagger:operation GET /applications/{appName}/jobs/{jobName} job getApplicationJob
 	// ---
 	// summary: Gets the detail of a given job for a given application
 	// parameters:
