@@ -126,7 +126,7 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 }
 
 // GetDeploymentsForJob Lists deployments for job name
-func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]*deploymentModels.ApplicationDeployment, error) {
+func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	listOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-job-name=%s", jobName),
 	}
@@ -136,7 +136,7 @@ func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]
 		return nil, err
 	}
 
-	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for _, rd := range radixDeploymentList.Items {
 		builder := NewBuilder().
 			withName(rd.GetName()).
@@ -144,7 +144,7 @@ func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]
 			withEnvironment(rd.Spec.Environment).
 			withActiveFrom(rd.CreationTimestamp.Time)
 
-		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
+		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
 	}
 
 	return radixDeployments, nil
