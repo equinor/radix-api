@@ -19,9 +19,20 @@ import (
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
 
+// ApplicationHandler Instance variables
+type ApplicationHandler struct {
+	client      kubernetes.Interface
+	radixclient radixclient.Interface
+}
+
+// Init Constructor
+func Init(client kubernetes.Interface, radixclient radixclient.Interface) ApplicationHandler {
+	return ApplicationHandler{client, radixclient}
+}
+
 // HandleGetApplications handler for ShowApplications
-func HandleGetApplications(client kubernetes.Interface, radixclient radixclient.Interface, sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
-	radixRegistationList, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
+func (ah ApplicationHandler) HandleGetApplications(sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
+	radixRegistationList, err := ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -32,20 +43,21 @@ func HandleGetApplications(client kubernetes.Interface, radixclient radixclient.
 			continue
 		}
 
-		jobSummary, err := job.HandleGetLatestApplicationJob(client, rr.Name)
+		jobHandler := job.Init(ah.client, ah.radixclient)
+		jobSummary, err := jobHandler.HandleGetLatestApplicationJob(rr.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, JobSummary: jobSummary})
+		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
 	}
 
 	return applications, nil
 }
 
 // HandleGetApplication handler for GetApplication
-func HandleGetApplication(client kubernetes.Interface, radixclient radixclient.Interface, appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+func (ah ApplicationHandler) HandleGetApplication(appName string) (*applicationModels.Application, error) {
+	radixRegistration, err := ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +67,8 @@ func HandleGetApplication(client kubernetes.Interface, radixclient radixclient.I
 		withRadixRegistration(radixRegistration).
 		Build()
 
-	jobs, err := job.HandleGetApplicationJobs(client, appName)
+	jobHandler := job.Init(ah.client, ah.radixclient)
+	jobs, err := jobHandler.HandleGetApplicationJobs(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +77,7 @@ func HandleGetApplication(client kubernetes.Interface, radixclient radixclient.I
 }
 
 // HandleRegisterApplication handler for RegisterApplication
-func HandleRegisterApplication(radixclient radixclient.Interface, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) HandleRegisterApplication(application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
 	// Only if repository is provided and deploykey is not set by user
 	// generate the key
 	var deployKey *utils.DeployKey
@@ -85,12 +98,12 @@ func HandleRegisterApplication(radixclient radixclient.Interface, application ap
 		return nil, err
 	}
 
-	_, err = radixvalidators.CanRadixRegistrationBeInserted(radixclient, radixRegistration)
+	_, err = radixvalidators.CanRadixRegistrationBeInserted(ah.radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Create(radixRegistration)
+	_, err = ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Create(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -99,13 +112,13 @@ func HandleRegisterApplication(radixclient radixclient.Interface, application ap
 }
 
 // HandleChangeRegistrationDetails handler for ChangeRegistrationDetails
-func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) HandleChangeRegistrationDetails(appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
 	if appName != application.Name {
 		return nil, utils.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -135,12 +148,12 @@ func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName 
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 
-	_, err = radixvalidators.CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
+	_, err = radixvalidators.CanRadixRegistrationBeUpdated(ah.radixclient, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Update(existingRegistration)
+	_, err = ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Update(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -149,13 +162,13 @@ func HandleChangeRegistrationDetails(radixclient radixclient.Interface, appName 
 }
 
 // HandleDeleteApplication handler for DeleteApplication
-func HandleDeleteApplication(radixclient radixclient.Interface, appName string) error {
+func (ah ApplicationHandler) HandleDeleteApplication(appName string) error {
 	log.Infof("Deleting app with name %s", appName)
 	return nil
 }
 
 // HandleTriggerPipeline handler for TriggerPipeline
-func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, appName, pipelineName string, pipelineParameters applicationModels.PipelineParameters) (*jobModels.JobSummary, error) {
+func (ah ApplicationHandler) HandleTriggerPipeline(appName, pipelineName string, pipelineParameters applicationModels.PipelineParameters) (*jobModels.JobSummary, error) {
 	pipeline, err := jobModels.GetPipelineFromName(pipelineName)
 	if err != nil {
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
@@ -169,7 +182,7 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 	}
 
 	log.Infof("Creating pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
-	application, err := HandleGetApplication(client, radixclient, appName)
+	application, err := ah.HandleGetApplication(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +192,8 @@ func HandleTriggerPipeline(client kubernetes.Interface, radixclient radixclient.
 		CommitID: commitID,
 	}
 
-	jobSummary, err := job.HandleStartPipelineJob(client, appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
+	jobHandler := job.Init(ah.client, ah.radixclient)
+	jobSummary, err := jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
