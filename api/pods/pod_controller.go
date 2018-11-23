@@ -112,7 +112,8 @@ func GetPods(client kubernetes.Interface, radixclient radixclient.Interface, w h
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	pods, err := HandleGetPods(client, appName, envName)
+	handler := Init(client)
+	pods, err := handler.HandleGetPods(appName, envName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

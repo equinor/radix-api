@@ -99,8 +99,6 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	environment := r.FormValue("environment")
 	latest := r.FormValue("latest")
 
-	deploy := Init(client, radixclient)
-
 	var err error
 	var useLatest = false
 	if strings.TrimSpace(latest) != "" {
@@ -111,7 +109,8 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 		}
 	}
 
-	appDeployments, err := deploy.HandleGetDeployments(appName, environment, useLatest)
+	deployHandler := Init(client, radixclient)
+	appDeployments, err := deployHandler.HandleGetDeployments(appName, environment, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -149,9 +148,8 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deploy := Init(client, radixclient)
-
-	components, err := deploy.HandleGetComponents(appName, deploymentName)
+	deployHandler := Init(client, radixclient)
+	components, err := deployHandler.HandleGetComponents(appName, deploymentName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -160,7 +158,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	utils.JSONResponse(w, r, components)
 }
 
-// Get logs of a single pod
+// GetPodLog Get logs of a single pod
 func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs components log
 	// ---
@@ -196,9 +194,9 @@ func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	deploy := Init(client, radixclient)
+	deployHandler := Init(client, radixclient)
+	log, err := deployHandler.HandleGetLogs(appName, podName)
 
-	log, err := deploy.HandleGetLogs(appName, podName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -237,15 +235,14 @@ func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.I
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deploy := Init(client, radixclient)
-
 	var promotionParameters deploymentModels.PromotionParameters
 	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	_, err := deploy.HandlePromoteToEnvironment(appName, deploymentName, promotionParameters)
+	deployHandler := Init(client, radixclient)
+	_, err := deployHandler.HandlePromoteToEnvironment(appName, deploymentName, promotionParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
