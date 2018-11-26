@@ -2,6 +2,7 @@ package environments
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,6 +144,55 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 
 	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status.String())
 	assert.NotNil(t, environments[0].ActiveDeployment)
+}
+
+func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	anyOrphanedEnvironment := "feature"
+
+	commonTestUtils.ApplyRegistration(builders.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment(anyOrphanedEnvironment, "feature"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithImageTag("someimageindev"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyOrphanedEnvironment).
+		WithImageTag("someimageinfeature"))
+
+	// Remove feature environment from application config
+	commonTestUtils.ApplyApplicationUpdate(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	for _, environment := range environments {
+		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status.String())
+			assert.NotNil(t, environment.ActiveDeployment)
+		}
+	}
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {

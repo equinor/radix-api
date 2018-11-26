@@ -6,6 +6,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
+	"github.com/statoil/radix-api/api/environments"
 	job "github.com/statoil/radix-api/api/jobs"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/utils"
@@ -73,7 +74,13 @@ func (ah ApplicationHandler) HandleGetApplication(appName string) (*applicationM
 		return nil, err
 	}
 
-	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs}, nil
+	environmentHandler := environments.Init(ah.client, ah.radixclient)
+	environments, err := environmentHandler.HandleGetEnvironmentSummary(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments}, nil
 }
 
 // HandleRegisterApplication handler for RegisterApplication
