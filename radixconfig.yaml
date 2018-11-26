@@ -9,6 +9,7 @@ spec:
     build:
       from: master
   - name: dev
+  - name: feature
   components:
   - name: "server"
     src: "."
