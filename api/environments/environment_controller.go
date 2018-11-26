@@ -151,7 +151,7 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 
 // ChangeEnvironmentComponentSecret Modifies an application environment component secret
 func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environments changeEnvironmentComponentSecret
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeEnvironmentComponentSecret
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:

@@ -302,13 +302,13 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 
 	for _, environment := range application.Environments {
 		if strings.EqualFold(environment.Name, "dev") {
-			assert.Equal(t, environmentModels.Consistent.String(), environment.Status.String())
+			assert.Equal(t, environmentModels.Consistent.String(), environment.Status)
 			assert.NotNil(t, environment.ActiveDeployment)
 		} else if strings.EqualFold(environment.Name, "prod") {
-			assert.Equal(t, environmentModels.Pending.String(), environment.Status.String())
+			assert.Equal(t, environmentModels.Pending.String(), environment.Status)
 			assert.Nil(t, environment.ActiveDeployment)
 		} else if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
-			assert.Equal(t, environmentModels.Orphan.String(), environment.Status.String())
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
 			assert.NotNil(t, environment.ActiveDeployment)
 		}
 	}

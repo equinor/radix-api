@@ -57,7 +57,7 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 			return nil, err
 		}
 
-		environmentSummary.Status = configurationStatus
+		environmentSummary.Status = configurationStatus.String()
 
 		if len(deploymentSummaries) == 1 {
 			environmentSummary.ActiveDeployment = deploymentSummaries[0]
@@ -152,7 +152,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 			environmentSummary := &environmentModels.EnvironmentSummary{
 				Name:   environmentName,
-				Status: environmentModels.Orphan,
+				Status: environmentModels.Orphan.String(),
 			}
 
 			if len(deploymentSummaries) == 1 {

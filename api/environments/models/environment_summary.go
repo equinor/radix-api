@@ -17,7 +17,7 @@ type EnvironmentSummary struct {
 	//
 	// required: false
 	// example: Consistent
-	Status ConfigurationStatus `json:"status"`
+	Status string `json:"status"`
 
 	// ActiveDeployment The latest deployment in the environment
 	//

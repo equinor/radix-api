@@ -2,9 +2,9 @@ package environments
 
 import (
 	"fmt"
-	"strings"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,7 +121,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 
 	assert.Equal(t, 1, len(environments))
 	assert.Equal(t, "dev", environments[0].Name)
-	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status.String())
+	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
 	assert.Equal(t, "master", environments[0].BranchMapping)
 	assert.Nil(t, environments[0].ActiveDeployment)
 }
@@ -147,7 +147,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
 
-	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status.String())
+	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status)
 	assert.NotNil(t, environments[0].ActiveDeployment)
 }
 
@@ -194,7 +194,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 
 	for _, environment := range environments {
 		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
-			assert.Equal(t, environmentModels.Orphan.String(), environment.Status.String())
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
 			assert.NotNil(t, environment.ActiveDeployment)
 		}
 	}
