@@ -4,15 +4,17 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/statoil/radix-api/api/deployments"
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	"github.com/statoil/radix-api/api/utils"
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 )
 
 const latestDeployment = true
@@ -30,7 +32,7 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) Enviro
 
 // HandleGetEnvironmentSummary Handler for GetEnvironmentSummary
 func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,7 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 			BranchMapping: environment.Build.From,
 		}
 
-		configurationStatus := eh.getConfigurationStatus(crdUtils.GetEnvironmentNamespace(appName, environment.Name), radixApplication)
+		configurationStatus := eh.getConfigurationStatus(k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name), radixApplication)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +79,7 @@ func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, env
 	}
 
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	secretObject, err := eh.kubeClient.CoreV1().Secrets(ns).Get(componentName, metaV1.GetOptions{})
+	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(componentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Secret object does not exist", err)
 	}
@@ -96,7 +98,7 @@ func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, env
 
 	secretObject.Data[secretName] = []byte(newSecretValue)
 
-	updatedSecret, err := eh.kubeClient.CoreV1().Secrets(ns).Update(secretObject)
+	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(secretObject)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +126,7 @@ func (eh EnvironmentHandler) addOrphanedEnvironments(appName string, radixApplic
 		return nil, err
 	}
 
-	appNamespace := crdUtils.GetAppNamespace(appName)
+	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 	for _, namespace := range namespaces.Items {
 		if strings.EqualFold(namespace.Name, appNamespace) {
@@ -132,13 +134,13 @@ func (eh EnvironmentHandler) addOrphanedEnvironments(appName string, radixApplic
 		}
 
 		for _, environment := range radixApplication.Spec.Environments {
-			environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
+			environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 			if strings.EqualFold(namespace.Name, environmentNamespace) {
 				continue
 			}
 
 			// Orphaned
-			_, environmentName := crdUtils.GetAppAndTagPairFromName(namespace.Name)
+			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
 			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment.Name, latestDeployment)
 			if err != nil {
 				return nil, err
