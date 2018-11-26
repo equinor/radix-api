@@ -34,7 +34,8 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) Enviro
 func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		// This is no error, as the application may only have been just registered
+		return []*environmentModels.EnvironmentSummary{}, nil
 	}
 
 	deployHandler := deployments.Init(eh.client, eh.radixclient)
@@ -65,7 +66,7 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 		environments[i] = environmentSummary
 	}
 
-	orphanedEnvironments, err := eh.addOrphanedEnvironments(appName, radixApplication, deployHandler)
+	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication, deployHandler)
 	environments = append(environments, orphanedEnvironments...)
 
 	return environments, nil
@@ -117,7 +118,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixAppli
 	return environmentModels.Consistent
 }
 
-func (eh EnvironmentHandler) addOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
+func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
 	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
 		FieldSelector: fields.Set{"metadata.ownerReferences.name": appName}.AsSelector().String(),
 	})
@@ -133,15 +134,18 @@ func (eh EnvironmentHandler) addOrphanedEnvironments(appName string, radixApplic
 			continue
 		}
 
+		isOrphaned := true
 		for _, environment := range radixApplication.Spec.Environments {
 			environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 			if strings.EqualFold(namespace.Name, environmentNamespace) {
-				continue
+				isOrphaned = false
+				break
 			}
+		}
 
-			// Orphaned
+		if isOrphaned {
 			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
-			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment.Name, latestDeployment)
+			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
 			if err != nil {
 				return nil, err
 			}
