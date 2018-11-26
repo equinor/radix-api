@@ -13,7 +13,7 @@ import (
 )
 
 // HandlePromoteToEnvironment handler for PromoteEnvironment
-func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.DeploymentSummary, error) {
 	if strings.TrimSpace(appName) == "" {
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
@@ -63,7 +63,7 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 		return nil, err
 	}
 
-	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
+	return &deploymentModels.DeploymentSummary{Name: radixDeployment.Name}, nil
 }
 
 func mergeWithRadixApplication(radixConfig *v1.RadixApplication, radixDeployment *v1.RadixDeployment, environment string) error {

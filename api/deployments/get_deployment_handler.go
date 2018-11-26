@@ -55,7 +55,7 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 }
 
 // HandleGetDeployments handler for GetDeployments
-func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -75,7 +75,7 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
 	envsLastIndexMap := getRdEnvironments(rds)
 
-	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for i, rd := range rds {
 		envName := rd.Spec.Environment
 
@@ -87,20 +87,20 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 		}
 		envsLastIndexMap[envName] = i
 
-		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
+		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
 	}
 
 	return postFiltering(radixDeployments, latest), nil
 }
 
 // GetDeploymentsForJob Lists deployments for job name
-func (deploy DeployHandler) GetDeploymentsForJob(radixclient radixclient.Interface, appName, jobName string) ([]*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) GetDeploymentsForJob(radixclient radixclient.Interface, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	deployments, err := deploy.HandleGetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
 	}
 
-	deploymentsForJob := []*deploymentModels.ApplicationDeployment{}
+	deploymentsForJob := []*deploymentModels.DeploymentSummary{}
 	for _, deployment := range deployments {
 		if deployment.JobName == jobName {
 			deploymentsForJob = append(deploymentsForJob, deployment)
@@ -128,7 +128,7 @@ func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployme
 	return rds
 }
 
-func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
+func postFiltering(all []*deploymentModels.DeploymentSummary, latest bool) []*deploymentModels.DeploymentSummary {
 	if latest {
 		filtered := all[:0]
 		for _, rd := range all {
@@ -143,7 +143,7 @@ func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) [
 	return all
 }
 
-func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentModels.ApplicationDeployment) bool {
+func isLatest(theOne *deploymentModels.DeploymentSummary, all []*deploymentModels.DeploymentSummary) bool {
 	theOneActiveFrom, err := utils.ParseTimestamp(theOne.ActiveFrom)
 	if err != nil {
 		return false
