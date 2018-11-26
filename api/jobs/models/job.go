@@ -64,8 +64,8 @@ type Job struct {
 	// required: false
 	// type: "array"
 	// items:
-	//    "$ref": "#/definitions/ApplicationDeployment"
-	Deployments []*deploymentModels.ApplicationDeployment `json:"deployments"`
+	//    "$ref": "#/definitions/DeploymentSummary"
+	Deployments []*deploymentModels.DeploymentSummary `json:"deployments"`
 
 	// Array of components
 	//

@@ -18,7 +18,7 @@ type Builder interface {
 	withActiveTo(time.Time) Builder
 	withJobName(string) Builder
 	withComponents([]v1.RadixDeployComponent) Builder
-	buildApplicationDeployment() *deploymentModels.ApplicationDeployment
+	buildDeploymentSummary() *deploymentModels.DeploymentSummary
 }
 
 type builder struct {
@@ -85,8 +85,8 @@ func (b *builder) withActiveTo(activeTo time.Time) Builder {
 	return b
 }
 
-func (b *builder) buildApplicationDeployment() *deploymentModels.ApplicationDeployment {
-	return &deploymentModels.ApplicationDeployment{
+func (b *builder) buildDeploymentSummary() *deploymentModels.DeploymentSummary {
+	return &deploymentModels.DeploymentSummary{
 		Name:        b.name,
 		AppName:     b.appName,
 		Environment: b.environment,
