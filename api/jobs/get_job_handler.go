@@ -34,7 +34,7 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHan
 }
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
-func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]jobModels.JobSummary, error) {
+func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
 	jobList, err := getJobs(jh.client, appName)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]jobModels.JobSu
 		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
 	})
 
-	jobs := make([]jobModels.JobSummary, len(jobList.Items))
+	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
 	deploy := deployments.Init(jh.client, jh.radixclient)
 	for i, job := range jobList.Items {
 		jobSummary := GetJobSummary(&job)
@@ -60,7 +60,7 @@ func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]jobModels.JobSu
 		}
 
 		jobSummary.Environments = environments
-		jobs[i] = *jobSummary
+		jobs[i] = jobSummary
 	}
 
 	return jobs, nil
