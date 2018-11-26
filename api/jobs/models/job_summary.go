@@ -42,8 +42,8 @@ type JobSummary struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting, Active, Succeeded, Failed
-	// example: Pending
+	// Enum: Waiting,Active,Succeeded,Failed
+	// example: Waiting
 	Status string `json:"status"`
 
 	// Name of the pipeline
