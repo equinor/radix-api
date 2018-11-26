@@ -1,6 +1,8 @@
 package environments
 
 import (
+	"strings"
+
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/statoil/radix-api/api/deployments"
@@ -9,7 +11,10 @@ import (
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 )
+
+const latestDeployment = true
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
@@ -29,7 +34,6 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 		return nil, err
 	}
 
-	latestDeployment := true
 	deployHandler := deployments.Init(eh.client, eh.radixclient)
 
 	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
@@ -58,6 +62,9 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 		environments[i] = environmentSummary
 	}
 
+	orphanedEnvironments, err := eh.addOrphanedEnvironments(appName, radixApplication, deployHandler)
+	environments = append(environments, orphanedEnvironments...)
+
 	return environments, nil
 }
 
@@ -68,4 +75,49 @@ func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixAppli
 	}
 
 	return environmentModels.Consistent
+}
+
+func (eh EnvironmentHandler) addOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
+	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
+		FieldSelector: fields.Set{"metadata.ownerReferences.name": appName}.AsSelector().String(),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	appNamespace := crdUtils.GetAppNamespace(appName)
+	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
+	for _, namespace := range namespaces.Items {
+		if strings.EqualFold(namespace.Name, appNamespace) {
+			continue
+		}
+
+		for _, environment := range radixApplication.Spec.Environments {
+			environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
+			if strings.EqualFold(namespace.Name, environmentNamespace) {
+				continue
+			}
+
+			// Orphaned
+			_, environmentName := crdUtils.GetAppAndTagPairFromName(namespace.Name)
+			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment.Name, latestDeployment)
+			if err != nil {
+				return nil, err
+			}
+
+			environmentSummary := &environmentModels.EnvironmentSummary{
+				Name:   environmentName,
+				Status: environmentModels.Orphan,
+			}
+
+			if len(deploymentSummaries) == 1 {
+				environmentSummary.ActiveDeployment = deploymentSummaries[0]
+			}
+
+			orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
+		}
+	}
+
+	return orphanedEnvironments, nil
 }
