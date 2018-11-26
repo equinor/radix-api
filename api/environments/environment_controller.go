@@ -1,12 +1,14 @@
 package environments
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/deployments"
+	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
 	"k8s.io/client-go/kubernetes"
@@ -33,6 +35,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetApplicationEnvironmentDeployments,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
+			Method:      "PUT",
+			HandlerFunc: ChangeEnvironmentComponentSecret,
+		},
 	}
 
 	return routes
@@ -45,6 +52,7 @@ func (ec *environmentController) GetSubscriptions() models.Subscriptions {
 	return subscriptions
 }
 
+// GetApplicationEnvironmentDeployments Gets deployments of an application environment
 func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environments getApplicationEnvironmentDeployments
 	// ---
@@ -71,7 +79,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/Secret"
+	//           "$ref": "#/definitions/ApplicationDeployment"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -79,8 +87,6 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	latest := r.FormValue("latest")
-
-	deploy := deployments.Init(client, radixclient)
 
 	var err error
 	var useLatest = false
@@ -92,12 +98,78 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 		}
 	}
 
-	appEnvironmentDeployments, err := deploy.HandleGetDeployments(appName, envName, useLatest)
+	deploymentHandler := deployments.Init(client, radixclient)
 
+	appEnvironmentDeployments, err := deploymentHandler.HandleGetDeployments(appName, envName, useLatest)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	utils.JSONResponse(w, r, appEnvironmentDeployments)
+}
+
+// ChangeEnvironmentComponentSecret Modifies an application environment component secret
+func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environments changeEnvironmentComponentSecret
+	// ---
+	// summary: Update an application environment component secret
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: environment of Radix application
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: environment component of Radix application
+	//   type: string
+	//   required: true
+	// - name: secretName
+	//   in: path
+	//   description: environment component secret name to be updated
+	//   type: string
+	//   required: true
+	// - name: componentSecret
+	//   in: body
+	//   description: New secret value
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ComponentSecret"
+	// responses:
+	//   "200":
+	//     "$ref": "#/definitions/ComponentSecret"
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	secretName := mux.Vars(r)["secretName"]
+
+	var componentSecret environmentModels.ComponentSecret
+	if err := json.NewDecoder(r.Body).Decode(&componentSecret); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	environmentHandler := Init(client, radixclient)
+
+	newSecret, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, componentSecret)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &newSecret)
 }
