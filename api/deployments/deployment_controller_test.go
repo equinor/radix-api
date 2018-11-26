@@ -154,7 +154,7 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 			responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint+queryParameters)
 			response := <-responseChannel
 
-			deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+			deployments := make([]*deploymentModels.DeploymentSummary, 0)
 			controllertest.GetResponseBody(response, &deployments)
 			assert.Equal(t, scenario.numDeploymentsExpected, len(deployments))
 		})
@@ -177,7 +177,7 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
@@ -210,7 +210,7 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 1, len(deployments))
 
@@ -235,7 +235,7 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
@@ -268,7 +268,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 2, len(deployments))
 

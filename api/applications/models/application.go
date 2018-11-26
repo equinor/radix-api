@@ -1,6 +1,7 @@
 package models
 
 import (
+	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 )
 
@@ -18,8 +19,13 @@ type Application struct {
 	// required: false
 	Registration ApplicationRegistration `json:"registration"`
 
+	// Environments List of environments for this application
+	//
+	// required: false
+	Environments []*environmentModels.EnvironmentSummary `json:"environments"`
+
 	// Jobs list of run jobs for the application
 	//
 	// required: false
-	Jobs []jobModels.JobSummary `json:"jobs"`
+	Jobs []*jobModels.JobSummary `json:"jobs"`
 }

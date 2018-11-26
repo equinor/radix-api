@@ -90,7 +90,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ApplicationDeployment"
+	//           "$ref": "#/definitions/DeploymentSummary"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -122,7 +122,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 
 // GetComponents for a deployment
 func GetComponents(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components components components
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components component components
 	// ---
 	// summary: Get components for a deployment
 	// parameters:
@@ -160,7 +160,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 
 // GetPodLog Get logs of a single pod
 func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs components log
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs component log
 	// ---
 	// summary: Get logs from a deployed pod
 	// parameters:

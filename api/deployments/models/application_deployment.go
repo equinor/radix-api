@@ -1,8 +1,8 @@
 package models
 
-// ApplicationDeployment describe an deployment
-// swagger:model ApplicationDeployment
-type ApplicationDeployment struct {
+// DeploymentSummary describe an deployment
+// swagger:model DeploymentSummary
+type DeploymentSummary struct {
 	// Name the unique name of the Radix application deployment
 	//
 	// required: false
