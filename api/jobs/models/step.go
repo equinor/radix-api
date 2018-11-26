@@ -12,8 +12,8 @@ type Step struct {
 	// Status of the step
 	//
 	// required: false
-	// Enum: Waiting, Active, Succeeded, Failed
-	// example: Pending
+	// Enum: Waiting,Active,Succeeded,Failed
+	// example: Waiting
 	Status string `json:"status"`
 
 	// Started timestamp
