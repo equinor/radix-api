@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
+	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	"github.com/statoil/radix-api/api/utils"
@@ -252,6 +253,66 @@ func TestGetApplication_WithJobs(t *testing.T) {
 	application := applicationModels.Application{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, 3, len(application.Jobs))
+}
+
+func TestGetApplication_WithEnvironments(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	anyOrphanedEnvironment := "feature"
+
+	commonTestUtils.ApplyRegistration(builders.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment("prod", "release").
+		WithEnvironment(anyOrphanedEnvironment, "feature"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithImageTag("someimageindev"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyOrphanedEnvironment).
+		WithImageTag("someimageinfeature"))
+
+	// Remove feature environment from application config
+	commonTestUtils.ApplyApplicationUpdate(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment("prod", "release"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, 3, len(application.Environments))
+
+	for _, environment := range application.Environments {
+		if strings.EqualFold(environment.Name, "dev") {
+			assert.Equal(t, environmentModels.Consistent.String(), environment.Status)
+			assert.NotNil(t, environment.ActiveDeployment)
+		} else if strings.EqualFold(environment.Name, "prod") {
+			assert.Equal(t, environmentModels.Pending.String(), environment.Status)
+			assert.Nil(t, environment.ActiveDeployment)
+		} else if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
+			assert.NotNil(t, environment.ActiveDeployment)
+		}
+	}
+
 }
 
 func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {

@@ -83,7 +83,7 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 }
 
 // HandleGetDeployments handler for GetDeployments
-func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -103,7 +103,7 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
 	envsLastIndexMap := getRdEnvironments(rds)
 
-	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for i, rd := range rds {
 		envName := rd.Spec.Environment
 
@@ -119,14 +119,14 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 		}
 		envsLastIndexMap[envName] = i
 
-		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
+		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
 	}
 
 	return postFiltering(radixDeployments, latest), nil
 }
 
 // GetDeploymentsForJob Lists deployments for job name
-func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]*deploymentModels.ApplicationDeployment, error) {
+func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	listOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-job-name=%s", jobName),
 	}
@@ -136,7 +136,7 @@ func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]
 		return nil, err
 	}
 
-	radixDeployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for _, rd := range radixDeploymentList.Items {
 		builder := NewBuilder().
 			withName(rd.GetName()).
@@ -144,14 +144,14 @@ func GetDeploymentsForJob(radixclient radixclient.Interface, jobName string) ([]
 			withEnvironment(rd.Spec.Environment).
 			withActiveFrom(rd.CreationTimestamp.Time)
 
-		radixDeployments = append(radixDeployments, builder.buildApplicationDeployment())
+		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
 	}
 
 	return radixDeployments, nil
 }
 
 // HandlePromoteToEnvironment handler for PromoteEnvironment
-func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.ApplicationDeployment, error) {
+func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName string, promotionParameters deploymentModels.PromotionParameters) (*deploymentModels.DeploymentSummary, error) {
 	if strings.TrimSpace(appName) == "" {
 		return nil, utils.ValidationError("Radix Promotion", "App name is required")
 	}
@@ -201,7 +201,7 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 		return nil, err
 	}
 
-	return &deploymentModels.ApplicationDeployment{Name: radixDeployment.Name}, nil
+	return &deploymentModels.DeploymentSummary{Name: radixDeployment.Name}, nil
 }
 
 func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
@@ -222,7 +222,7 @@ func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {
 	return envs
 }
 
-func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) []*deploymentModels.ApplicationDeployment {
+func postFiltering(all []*deploymentModels.DeploymentSummary, latest bool) []*deploymentModels.DeploymentSummary {
 	if latest {
 		filtered := all[:0]
 		for _, rd := range all {
@@ -237,7 +237,7 @@ func postFiltering(all []*deploymentModels.ApplicationDeployment, latest bool) [
 	return all
 }
 
-func isLatest(theOne *deploymentModels.ApplicationDeployment, all []*deploymentModels.ApplicationDeployment) bool {
+func isLatest(theOne *deploymentModels.DeploymentSummary, all []*deploymentModels.DeploymentSummary) bool {
 	theOneActiveFrom, err := utils.ParseTimestamp(theOne.ActiveFrom)
 	if err != nil {
 		return false
@@ -301,7 +301,7 @@ type Builder interface {
 	withEnvironment(string) Builder
 	withActiveFrom(time.Time) Builder
 	withActiveTo(time.Time) Builder
-	buildApplicationDeployment() *deploymentModels.ApplicationDeployment
+	buildDeploymentSummary() *deploymentModels.DeploymentSummary
 }
 
 type builder struct {
@@ -337,8 +337,8 @@ func (b *builder) withActiveTo(activeTo time.Time) Builder {
 	return b
 }
 
-func (b *builder) buildApplicationDeployment() *deploymentModels.ApplicationDeployment {
-	return &deploymentModels.ApplicationDeployment{
+func (b *builder) buildDeploymentSummary() *deploymentModels.DeploymentSummary {
+	return &deploymentModels.DeploymentSummary{
 		Name:        b.name,
 		AppName:     b.appName,
 		Environment: b.environment,
