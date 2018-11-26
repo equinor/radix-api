@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
+	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	"github.com/statoil/radix-api/api/utils"
@@ -298,6 +299,19 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 	application := applicationModels.Application{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, 3, len(application.Environments))
+
+	for _, environment := range application.Environments {
+		if strings.EqualFold(environment.Name, "dev") {
+			assert.Equal(t, environmentModels.Consistent.String(), environment.Status.String())
+			assert.NotNil(t, environment.ActiveDeployment)
+		} else if strings.EqualFold(environment.Name, "prod") {
+			assert.Equal(t, environmentModels.Pending.String(), environment.Status.String())
+			assert.Nil(t, environment.ActiveDeployment)
+		} else if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status.String())
+			assert.NotNil(t, environment.ActiveDeployment)
+		}
+	}
 
 }
 
