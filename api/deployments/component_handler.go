@@ -27,7 +27,7 @@ func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([
 	return nil, nonExistingDeployment(nil, deploymentID)
 }
 
-func (deploy DeployHandler) getComponents(deployment *deploymentModels.ApplicationDeployment) ([]*deploymentModels.ComponentDeployment, error) {
+func (deploy DeployHandler) getComponents(deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(deployment.AppName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(deployment.Name, metav1.GetOptions{})
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 3, len(deployments))
 
@@ -92,13 +93,111 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
 	response := <-responseChannel
 
-	deployments := make([]*deploymentModels.ApplicationDeployment, 0)
+	deployments := make([]*deploymentModels.DeploymentSummary, 0)
 	controllertest.GetResponseBody(response, &deployments)
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
+}
+
+func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithRadixRegistration(builders.ARadixRegistration()).
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	assert.Equal(t, 1, len(environments))
+	assert.Equal(t, "dev", environments[0].Name)
+	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
+	assert.Equal(t, "master", environments[0].BranchMapping)
+	assert.Nil(t, environments[0].ActiveDeployment)
+}
+
+func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithRadixApplication(builders.
+			NewRadixApplicationBuilder().
+			WithRadixRegistration(builders.ARadixRegistration()).
+			WithAppName(anyAppName).
+			WithEnvironment("dev", "master")).
+		WithAppName(anyAppName).
+		WithEnvironment("dev"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status)
+	assert.NotNil(t, environments[0].ActiveDeployment)
+}
+
+func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	anyOrphanedEnvironment := "feature"
+
+	commonTestUtils.ApplyRegistration(builders.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment(anyOrphanedEnvironment, "feature"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithImageTag("someimageindev"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyOrphanedEnvironment).
+		WithImageTag("someimageinfeature"))
+
+	// Remove feature environment from application config
+	commonTestUtils.ApplyApplicationUpdate(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	for _, environment := range environments {
+		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
+			assert.NotNil(t, environment.ActiveDeployment)
+		}
+	}
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {

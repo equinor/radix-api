@@ -153,7 +153,7 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ApplicationRegistration"
+	//           "$ref": "#/definitions/ApplicationSummary"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -184,7 +184,7 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   required: true
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/ApplicationRegistration"
+	//     "$ref": "#/definitions/Application"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
