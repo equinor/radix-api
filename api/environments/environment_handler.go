@@ -13,11 +13,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
 	kubeClient  kubernetes.Interface
 	radixClient radixclient.Interface
 }
 
+// Init Constructor
 func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) EnvironmentHandler {
 	return EnvironmentHandler{
 		kubeClient:  kubeClient,
@@ -26,14 +28,14 @@ func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) En
 }
 
 // HandleChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
-func HandleChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient radixclient.Interface, appName, envName, componentName, secretName string, componentSecret environmentModels.ComponentSecret) (*environmentModels.ComponentSecret, error) {
+func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.ComponentSecret) (*environmentModels.ComponentSecret, error) {
 	newSecretValue := componentSecret.SecretValue
 	if strings.TrimSpace(newSecretValue) == "" {
 		return nil, utils.ValidationError("Secret", "New secret value is empty")
 	}
 
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	secretObject, err := client.CoreV1().Secrets(ns).Get(componentName, metaV1.GetOptions{})
+	secretObject, err := eh.kubeClient.CoreV1().Secrets(ns).Get(componentName, metaV1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Secret object does not exist", err)
 	}
@@ -52,7 +54,7 @@ func HandleChangeEnvironmentComponentSecret(client kubernetes.Interface, radixcl
 
 	secretObject.Data[secretName] = []byte(newSecretValue)
 
-	updatedSecret, err := client.CoreV1().Secrets(ns).Update(secretObject)
+	updatedSecret, err := eh.kubeClient.CoreV1().Secrets(ns).Update(secretObject)
 	if err != nil {
 		return nil, err
 	}

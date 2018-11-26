@@ -88,7 +88,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	envName := mux.Vars(r)["envName"]
 	latest := r.FormValue("latest")
 
-	deploy := deployments.Init(client, radixclient)
+	deploymentHandler := deployments.Init(client, radixclient)
 
 	var err error
 	var useLatest = false
@@ -100,7 +100,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 		}
 	}
 
-	appEnvironmentDeployments, err := deploy.HandleGetDeployments(appName, envName, useLatest)
+	appEnvironmentDeployments, err := deploymentHandler.HandleGetDeployments(appName, envName, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -158,13 +158,15 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 	componentName := mux.Vars(r)["componentName"]
 	secretName := mux.Vars(r)["secretName"]
 
+	environmentHandler := Init(client, radixclient)
+
 	var componentSecret environmentModels.ComponentSecret
 	if err := json.NewDecoder(r.Body).Decode(&componentSecret); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	newSecret, err := HandleChangeEnvironmentComponentSecret(client, radixclient, appName, envName, componentName, secretName, componentSecret)
+	newSecret, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, componentSecret)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
