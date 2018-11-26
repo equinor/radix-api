@@ -11,7 +11,6 @@ import (
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
@@ -119,10 +118,9 @@ func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixAppli
 }
 
 func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
-	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
-		FieldSelector: fields.Set{"metadata.ownerReferences.name": appName}.AsSelector().String(),
-	})
-
+	// List all namespaces, as field selector doesn't work in cluster
+	// Should we have had a label called radix-app on the namespace to indicate ownership??
+	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -130,38 +128,48 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 	for _, namespace := range namespaces.Items {
-		if strings.EqualFold(namespace.Name, appNamespace) {
-			continue
-		}
-
-		isOrphaned := true
-		for _, environment := range radixApplication.Spec.Environments {
-			environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
-			if strings.EqualFold(namespace.Name, environmentNamespace) {
-				isOrphaned = false
-				break
-			}
-		}
-
-		if isOrphaned {
-			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
-			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
-			if err != nil {
-				return nil, err
+		if isEnvironmentOwnedByApp(namespace.Name, appName) {
+			if strings.EqualFold(namespace.Name, appNamespace) {
+				continue
 			}
 
-			environmentSummary := &environmentModels.EnvironmentSummary{
-				Name:   environmentName,
-				Status: environmentModels.Orphan.String(),
+			isOrphaned := true
+			for _, environment := range radixApplication.Spec.Environments {
+				environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
+				if strings.EqualFold(namespace.Name, environmentNamespace) {
+					isOrphaned = false
+					break
+				}
 			}
 
-			if len(deploymentSummaries) == 1 {
-				environmentSummary.ActiveDeployment = deploymentSummaries[0]
-			}
+			if isOrphaned {
+				_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
+				deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
+				if err != nil {
+					return nil, err
+				}
 
-			orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
+				environmentSummary := &environmentModels.EnvironmentSummary{
+					Name:   environmentName,
+					Status: environmentModels.Orphan.String(),
+				}
+
+				if len(deploymentSummaries) == 1 {
+					environmentSummary.ActiveDeployment = deploymentSummaries[0]
+				}
+
+				orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
+			}
 		}
 	}
 
 	return orphanedEnvironments, nil
+}
+
+func isEnvironmentOwnedByApp(namespace, appName string) bool {
+	if strings.HasPrefix(namespace, appName) {
+		return true
+	}
+
+	return false
 }
