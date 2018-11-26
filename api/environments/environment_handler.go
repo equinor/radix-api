@@ -125,41 +125,36 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 		return nil, err
 	}
 
+	namespacesInConfig := make(map[string]bool)
+	for _, environment := range radixApplication.Spec.Environments {
+		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
+		namespacesInConfig[environmentNamespace] = true
+	}
+
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 	for _, namespace := range namespaces.Items {
-		if isEnvironmentOwnedByApp(namespace.Name, appName) {
-			if strings.EqualFold(namespace.Name, appNamespace) {
-				continue
+		if isEnvironmentOwnedByApp(namespace.Name, appName) &&
+			!strings.EqualFold(namespace.Name, appNamespace) &&
+			isOrphaned(namespace.Name, namespacesInConfig) {
+
+			// Orphaned namespace
+			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
+			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
+			if err != nil {
+				return nil, err
 			}
 
-			isOrphaned := true
-			for _, environment := range radixApplication.Spec.Environments {
-				environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
-				if strings.EqualFold(namespace.Name, environmentNamespace) {
-					isOrphaned = false
-					break
-				}
+			environmentSummary := &environmentModels.EnvironmentSummary{
+				Name:   environmentName,
+				Status: environmentModels.Orphan.String(),
 			}
 
-			if isOrphaned {
-				_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
-				deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
-				if err != nil {
-					return nil, err
-				}
-
-				environmentSummary := &environmentModels.EnvironmentSummary{
-					Name:   environmentName,
-					Status: environmentModels.Orphan.String(),
-				}
-
-				if len(deploymentSummaries) == 1 {
-					environmentSummary.ActiveDeployment = deploymentSummaries[0]
-				}
-
-				orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
+			if len(deploymentSummaries) == 1 {
+				environmentSummary.ActiveDeployment = deploymentSummaries[0]
 			}
+
+			orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
 		}
 	}
 
@@ -172,4 +167,12 @@ func isEnvironmentOwnedByApp(namespace, appName string) bool {
 	}
 
 	return false
+}
+
+func isOrphaned(namespace string, namespacesInConfig map[string]bool) bool {
+	if namespacesInConfig[namespace] {
+		return false
+	}
+
+	return true
 }
