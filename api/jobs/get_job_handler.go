@@ -35,6 +35,24 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHan
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
 func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
+	return jh.getApplicationJobs(appName)
+}
+
+// HandleGetLatestApplicationJob Get last run application job
+func (jh JobHandler) HandleGetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
+	jobs, err := jh.getApplicationJobs(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(jobs) == 0 {
+		return nil, nil
+	}
+
+	return jobs[0], nil
+}
+
+func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
 	jobList, err := getJobs(jh.client, appName)
 	if err != nil {
 		return nil, err
@@ -64,28 +82,6 @@ func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]*jobModels.JobS
 	}
 
 	return jobs, nil
-}
-
-// HandleGetLatestApplicationJob Get last run application job
-func (jh JobHandler) HandleGetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
-	jobList, err := getJobs(jh.client, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	jobs := make([]batchv1.Job, len(jobList.Items))
-	copy(jobs, jobList.Items)
-
-	if len(jobs) == 0 {
-		return nil, nil
-	}
-
-	// Sort jobs descending
-	sort.Slice(jobs, func(i, j int) bool {
-		return jobs[j].Status.StartTime.Before(jobs[i].Status.StartTime)
-	})
-
-	return GetJobSummary(&jobs[0]), nil
 }
 
 // HandleGetApplicationJob Handler for GetApplicationJob

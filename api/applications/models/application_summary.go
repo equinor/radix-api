@@ -16,5 +16,5 @@ type ApplicationSummary struct {
 	// LatestJob The latest started job
 	//
 	// required: false
-	LatestJob *jobModels.JobSummary `json:"latestJob"`
+	LatestJob *jobModels.JobSummary `json:"latestJob,omitempty"`
 }
