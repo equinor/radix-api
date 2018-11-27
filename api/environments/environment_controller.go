@@ -84,7 +84,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ApplicationDeployment"
+	//           "$ref": "#/definitions/DeploymentSummary"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
