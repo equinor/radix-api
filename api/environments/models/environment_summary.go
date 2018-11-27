@@ -23,11 +23,11 @@ type EnvironmentSummary struct {
 	//
 	// required: false
 	// example: master
-	ActiveDeployment *deployModels.DeploymentSummary `json:"activeDeployment"`
+	ActiveDeployment *deployModels.DeploymentSummary `json:"activeDeployment,omitempty"`
 
 	// BranchMapping The branch mapped to this environment
 	//
 	// required: false
 	// example: master
-	BranchMapping string `json:"branchMapping"`
+	BranchMapping string `json:"branchMapping,omitempty"`
 }
