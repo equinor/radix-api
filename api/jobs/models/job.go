@@ -1,5 +1,9 @@
 package models
 
+import (
+	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+)
+
 // Job holds general information about job
 // swagger:model Job
 type Job struct {
@@ -47,11 +51,27 @@ type Job struct {
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 
-	// List of steps
+	// Array of steps
 	//
 	// required: false
 	// type: "array"
 	// items:
 	//    "$ref": "#/definitions/Step"
 	Steps []Step `json:"steps"`
+
+	// Array of deployments
+	//
+	// required: false
+	// type: "array"
+	// items:
+	//    "$ref": "#/definitions/DeploymentSummary"
+	Deployments []*deploymentModels.DeploymentSummary `json:"deployments"`
+
+	// Array of components
+	//
+	// required: false
+	// type: "array"
+	// items:
+	//    "$ref": "#/definitions/ComponentSummary"
+	Components []*deploymentModels.ComponentSummary `json:"components"`
 }

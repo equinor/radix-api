@@ -39,3 +39,19 @@ type ComponentDeployment struct {
 	// required: false
 	Replicas []string `json:"replicas"`
 }
+
+// ComponentSummary describe an component part of an deployment
+// swagger:model ComponentSummary
+type ComponentSummary struct {
+	// Name the component
+	//
+	// required: true
+	// example: server
+	Name string `json:"name"`
+
+	// Image name
+	//
+	// required: true
+	// example: radixdev.azurecr.io/radix-api-server:cdgkg
+	Image string `json:"image"`
+}
