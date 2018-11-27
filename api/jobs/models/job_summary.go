@@ -57,5 +57,5 @@ type JobSummary struct {
 	//
 	// required: false
 	// example: dev,qa
-	Environments []string
+	Environments []string `json:"environments,omitempty"`
 }
