@@ -79,22 +79,27 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	for i, rd := range rds {
 		envName := rd.Spec.Environment
 
-		builder := NewBuilder().withRadixDeployment(rd)
+		builder := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
 
 		lastIndex := envsLastIndexMap[envName]
 		if lastIndex >= 0 {
-			builder.withActiveTo(rds[lastIndex].CreationTimestamp.Time)
+			builder.WithActiveTo(rds[lastIndex].CreationTimestamp.Time)
 		}
 		envsLastIndexMap[envName] = i
 
-		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
+		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
 	}
 
 	return postFiltering(radixDeployments, latest), nil
 }
 
+// HandleGetDeployment Handler for GetDeployment
+func (deploy DeployHandler) HandleGetDeployment(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+	return nil, nil
+}
+
 // GetDeploymentsForJob Lists deployments for job name
-func (deploy DeployHandler) GetDeploymentsForJob(radixclient radixclient.Interface, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	deployments, err := deploy.HandleGetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
@@ -102,7 +107,7 @@ func (deploy DeployHandler) GetDeploymentsForJob(radixclient radixclient.Interfa
 
 	deploymentsForJob := []*deploymentModels.DeploymentSummary{}
 	for _, deployment := range deployments {
-		if deployment.JobName == jobName {
+		if deployment.CreatedByJob == jobName {
 			deploymentsForJob = append(deploymentsForJob, deployment)
 		}
 	}
@@ -155,8 +160,7 @@ func isLatest(theOne *deploymentModels.DeploymentSummary, all []*deploymentModel
 			continue
 		}
 
-		if rd.AppName == theOne.AppName &&
-			rd.Environment == theOne.Environment &&
+		if rd.Environment == theOne.Environment &&
 			rd.Name != theOne.Name &&
 			rdActiveFrom.After(theOneActiveFrom) {
 			return false

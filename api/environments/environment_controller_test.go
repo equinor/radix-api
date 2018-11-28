@@ -227,7 +227,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 }
 
 func executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
-	parameters := environmentModels.ComponentSecret{
+	parameters := environmentModels.SecretParameters{
 		SecretValue: updateSecretValue,
 	}
 
@@ -269,7 +269,7 @@ func TestUpdateSecret_OK(t *testing.T) {
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
 
-	returnedSecret := environmentModels.ComponentSecret{}
+	returnedSecret := environmentModels.SecretParameters{}
 	controllertest.GetResponseBody(response, &returnedSecret)
 
 	assert.Equal(t, http.StatusOK, response.Code)

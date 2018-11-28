@@ -120,6 +120,47 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	utils.JSONResponse(w, r, appDeployments)
 }
 
+// GetDeployment Get deployment details
+func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName} deployment getDeployment
+	// ---
+	// summary: Get deployment details
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: name of deployment
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/Deployment"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	deploymentName := mux.Vars(r)["deploymentName"]
+
+	deployHandler := Init(client, radixclient)
+	appDeployment, err := deployHandler.HandleGetDeployment(appName, deploymentName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, appDeployment)
+}
+
 // GetComponents for a deployment
 func GetComponents(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components component components

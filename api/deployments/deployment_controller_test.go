@@ -415,6 +415,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
 	deployHandler := Init(kubeclient, radixclient)
+	anyAppName := "any-app-2"
 	deploymentName := "abcdef"
 
 	// Setup
@@ -430,7 +431,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
-		WithAppName("any-app-2").
+		WithAppName(anyAppName).
 		WithComponents(
 			builders.
 				NewApplicationComponentBuilder().
@@ -442,7 +443,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithDeploymentName(deploymentName).
-		WithAppName("any-app-2").
+		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithImageTag("abcdef").
 		WithComponent(
@@ -450,19 +451,19 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 				WithName("app")))
 
 	// Create prod environment without any deployments
-	createEnvNamespace(kubeclient, "any-app-2", "prod")
+	createEnvNamespace(kubeclient, anyAppName, "prod")
 
 	// Scenario
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", "any-app-2", deploymentName), deploymentModels.PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", anyAppName, deploymentName), deploymentModels.PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	deployments, _ := deployHandler.HandleGetDeployments("any-app-2", "prod", false)
+	deployments, _ := deployHandler.HandleGetDeployments(anyAppName, "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
-	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(builders.GetEnvironmentNamespace(deployments[0].AppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
+	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(builders.GetEnvironmentNamespace(anyAppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
 	assert.Equal(t, 1, len(radixDeployment.Spec.Components[0].EnvironmentVariables), "HandlePromoteToEnvironment - Was not promoted as expected")
 	assert.Equal(t, "useless-prod", radixDeployment.Spec.Components[0].EnvironmentVariables["DB_HOST"], "HandlePromoteToEnvironment - Was not promoted as expected")
 
