@@ -221,7 +221,7 @@ func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {
 
 	} else if containerStatus.State.Running != nil {
 		startedAt = containerStatus.State.Running.StartedAt
-		status = jobModels.Active
+		status = jobModels.Running
 
 	} else if containerStatus.State.Waiting != nil {
 		status = jobModels.Waiting
