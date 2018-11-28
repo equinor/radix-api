@@ -5,7 +5,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,23 +44,10 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 			}
 		}
 
-		secrets := component.Secrets
-		if secrets == nil {
-			secrets = []string{}
-		}
-		variables := component.EnvironmentVariables
-		if variables == nil {
-			variables = v1.EnvVarsMap{}
-		}
+		deploymentComponent := deploymentModels.NewComponentBuilder().
+			WithComponent(component).
+			WithPodNames(podNames).BuildComponentDeployment()
 
-		deploymentComponent := &deploymentModels.ComponentDeployment{
-			Name:      component.Name,
-			Image:     component.Image,
-			Ports:     component.Ports,
-			Secrets:   secrets,
-			Variables: variables,
-			Replicas:  podNames,
-		}
 		components = append(components, deploymentComponent)
 	}
 	return components, nil

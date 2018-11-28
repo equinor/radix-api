@@ -6,6 +6,7 @@ import (
 
 // ComponentBuilder Builds DTOs
 type ComponentBuilder interface {
+	WithPodNames([]string) ComponentBuilder
 	WithComponent(v1.RadixDeployComponent) ComponentBuilder
 	BuildComponentSummary() *ComponentSummary
 	BuildComponentDeployment() *ComponentDeployment
