@@ -10,8 +10,8 @@ import (
 type ProgressStatus int
 
 const (
-	// Active Started
-	Active ProgressStatus = iota
+	// Running Active
+	Running ProgressStatus = iota
 
 	// Succeeded Job/step succeeded
 	Succeeded
@@ -26,12 +26,12 @@ const (
 )
 
 func (p ProgressStatus) String() string {
-	return [...]string{"Active", "Succeeded", "Failed", "Waiting"}[p]
+	return [...]string{"Running", "Succeeded", "Failed", "Waiting"}[p]
 }
 
 // GetStatusFromName Gets status from name
 func GetStatusFromName(name string) (ProgressStatus, error) {
-	for status := Active; status < numStatuses; status++ {
+	for status := Running; status < numStatuses; status++ {
 		if status.String() == name {
 			return status, nil
 		}
@@ -44,7 +44,7 @@ func GetStatusFromName(name string) (ProgressStatus, error) {
 func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
 	var status ProgressStatus
 	if jobStatus.Active > 0 {
-		status = Active
+		status = Running
 
 	} else if jobStatus.Succeeded > 0 {
 		status = Succeeded
