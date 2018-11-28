@@ -4,9 +4,9 @@ import (
 	deployModels "github.com/statoil/radix-api/api/deployments/models"
 )
 
-// EnvironmentSummary holds general information about environment
-// swagger:model EnvironmentSummary
-type EnvironmentSummary struct {
+// Environment holds detail information about environment
+// swagger:model Environment
+type Environment struct {
 	// Name of the environment
 	//
 	// required: false
@@ -23,13 +23,24 @@ type EnvironmentSummary struct {
 	// example: Consistent
 	Status string `json:"status"`
 
+	// Deployments All deployments in environment
+	//
+	// required: false
+	Deployments []*deployModels.DeploymentSummary `json:"deployments,omitempty"`
+
+	// Secrets All secrets in environment
+	//
+	// required: false
+	Secrets []*Secret `json:"secrets,omitempty"`
+
 	// ActiveDeployment The latest deployment in the environment
 	//
 	// required: false
-	ActiveDeployment *deployModels.DeploymentSummary `json:"activeDeployment,omitempty"`
+	ActiveDeployment *deployModels.ComponentDeployment `json:"activeDeployment,omitempty"`
 
 	// BranchMapping The branch mapped to this environment
 	//
 	// required: false
+	// example: master
 	BranchMapping string `json:"branchMapping,omitempty"`
 }

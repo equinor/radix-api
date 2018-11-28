@@ -21,14 +21,14 @@ func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([
 		if deployment.Name != deploymentID {
 			continue
 		}
-		return deploy.getComponents(deployment)
+		return deploy.getComponents(appName, deployment)
 	}
 
 	return nil, nonExistingDeployment(nil, deploymentID)
 }
 
-func (deploy DeployHandler) getComponents(deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {
-	envNs := crdUtils.GetEnvironmentNamespace(deployment.AppName, deployment.Environment)
+func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {
+	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err

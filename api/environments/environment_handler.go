@@ -72,7 +72,7 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 }
 
 // HandleChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
-func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.ComponentSecret) (*environmentModels.ComponentSecret, error) {
+func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.SecretParameters) (*environmentModels.SecretParameters, error) {
 	newSecretValue := componentSecret.SecretValue
 	if strings.TrimSpace(newSecretValue) == "" {
 		return nil, utils.ValidationError("Secret", "New secret value is empty")

@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	deployments "github.com/statoil/radix-api/api/deployments"
-	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/utils"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -67,7 +66,7 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	deploy := deployments.Init(jh.client, jh.radixclient)
 	for i, job := range jobList.Items {
 		jobSummary := GetJobSummary(&job)
-		jobDeployments, err := deploy.GetDeploymentsForJob(jh.radixclient, appName, jobSummary.Name)
+		jobDeployments, err := deploy.GetDeploymentsForJob(appName, jobSummary.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -100,13 +99,9 @@ func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModel
 		return nil, err
 	}
 	deploy := deployments.Init(jh.client, jh.radixclient)
-	jobDeployments, err := deploy.GetDeploymentsForJob(jh.radixclient, appName, jobName)
+	jobDeployments, err := deploy.GetDeploymentsForJob(appName, jobName)
 	if err != nil {
 		return nil, err
-	}
-	components := []*deploymentModels.ComponentSummary{}
-	if len(jobDeployments) > 0 {
-		components = jobDeployments[0].Components
 	}
 
 	jobStatus := jobModels.GetStatusFromJobStatus(job.Status)
@@ -126,7 +121,6 @@ func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModel
 		Pipeline:    job.Labels["radix-pipeline"],
 		Steps:       steps,
 		Deployments: jobDeployments,
-		Components:  components,
 	}, nil
 }
 
