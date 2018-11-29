@@ -31,4 +31,6 @@ type DeploymentSummary struct {
 	// required: false
 	// example: 2006-01-02T15:04:05-0700
 	ActiveTo string `json:"activeTo,omitempty"`
+	// items:
+	//    "$ref": "#/definitions/ComponentSummary"
 }
