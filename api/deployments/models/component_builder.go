@@ -9,12 +9,13 @@ type ComponentBuilder interface {
 	WithPodNames([]string) ComponentBuilder
 	WithComponent(v1.RadixDeployComponent) ComponentBuilder
 	BuildComponentSummary() *ComponentSummary
-	BuildComponentDeployment() *ComponentDeployment
+	BuildComponent() *Component
 }
 
 type componentBuilder struct {
 	component v1.RadixDeployComponent
 	podNames  []string
+	ports     []Port
 }
 
 func (b *componentBuilder) WithPodNames(podNames []string) ComponentBuilder {
@@ -24,6 +25,18 @@ func (b *componentBuilder) WithPodNames(podNames []string) ComponentBuilder {
 
 func (b *componentBuilder) WithComponent(component v1.RadixDeployComponent) ComponentBuilder {
 	b.component = component
+
+	ports := []Port{}
+	if component.Ports != nil {
+		for _, port := range component.Ports {
+			ports = append(ports, Port{
+				Name: port.Name,
+				Port: port.Port,
+			})
+		}
+	}
+
+	b.ports = ports
 	return b
 }
 
@@ -34,7 +47,7 @@ func (b *componentBuilder) BuildComponentSummary() *ComponentSummary {
 	}
 }
 
-func (b *componentBuilder) BuildComponentDeployment() *ComponentDeployment {
+func (b *componentBuilder) BuildComponent() *Component {
 	secrets := b.component.Secrets
 	if secrets == nil {
 		secrets = []string{}
@@ -44,10 +57,10 @@ func (b *componentBuilder) BuildComponentDeployment() *ComponentDeployment {
 		variables = v1.EnvVarsMap{}
 	}
 
-	return &ComponentDeployment{
+	return &Component{
 		Name:      b.component.Name,
 		Image:     b.component.Image,
-		Ports:     b.component.Ports,
+		Ports:     b.ports,
 		Secrets:   secrets,
 		Variables: variables,
 		Replicas:  b.podNames,

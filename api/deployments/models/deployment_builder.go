@@ -96,9 +96,9 @@ func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 }
 
 func (b *deploymentBuilder) BuildDeployment() *Deployment {
-	components := make([]*ComponentDeployment, len(b.components))
+	components := make([]*Component, len(b.components))
 	for i, component := range b.components {
-		components[i] = component.BuildComponentDeployment()
+		components[i] = component.BuildComponent()
 	}
 
 	return &Deployment{

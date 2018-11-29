@@ -36,7 +36,7 @@ type Environment struct {
 	// ActiveDeployment The latest deployment in the environment
 	//
 	// required: false
-	ActiveDeployment *deployModels.ComponentDeployment `json:"activeDeployment,omitempty"`
+	ActiveDeployment *deployModels.Component `json:"activeDeployment,omitempty"`
 
 	// BranchMapping The branch mapped to this environment
 	//

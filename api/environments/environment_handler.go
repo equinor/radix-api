@@ -82,13 +82,13 @@ func (eh EnvironmentHandler) HandleGetEnvironment(appName, envName string) (*env
 	var theEnvironment *v1.Environment
 	for _, environment := range radixApplication.Spec.Environments {
 		if strings.EqualFold(environment.Name, envName) {
-			theEnvironment = environment
+			theEnvironment = &environment
 			break
 		}
 	}
 
 	if theEnvironment == nil {
-		return nil, environmentModels.NonExistingEnvionment(nil, envName)
+		return nil, environmentModels.NonExistingEnvironment(nil, appName, envName)
 	}
 
 	return nil, nil
