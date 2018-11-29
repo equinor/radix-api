@@ -10,7 +10,7 @@ import (
 )
 
 // HandleGetComponents handler for GetDeployments
-func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([]*deploymentModels.ComponentDeployment, error) {
+func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([]*deploymentModels.Component, error) {
 	deployments, err := deploy.HandleGetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
@@ -26,14 +26,14 @@ func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([
 	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
 }
 
-func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {
+func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	components := []*deploymentModels.ComponentDeployment{}
+	components := []*deploymentModels.Component{}
 	for _, component := range rd.Spec.Components {
 		podNames := []string{}
 		if deployment.ActiveTo == "" {
@@ -46,9 +46,20 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 
 		deploymentComponent := deploymentModels.NewComponentBuilder().
 			WithComponent(component).
-			WithPodNames(podNames).BuildComponentDeployment()
+			WithPodNames(podNames).
+			WithPorts(ports).
+			BuildComponentDeployment()
+		ports := []deploymentModels.Port{}
+		if component.Ports != nil {
+			for _, port := range component.Ports {
+				ports = append(ports, deploymentModels.Port{
+					Name: port.Name,
+					Port: port.Port,
+				})
+			}
+		}
 
-		components = append(components, deploymentComponent)
+		components = append(components, component)
 	}
 	return components, nil
 }

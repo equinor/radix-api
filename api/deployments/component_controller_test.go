@@ -70,7 +70,7 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 	assert.Equal(t, 200, response.Code)
 
-	var components []deploymentModels.ComponentDeployment
+	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))
@@ -108,7 +108,7 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 
 	assert.Equal(t, 200, response.Code)
 
-	var components []deploymentModels.ComponentDeployment
+	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))
@@ -143,7 +143,7 @@ func TestGetComponents_success(t *testing.T) {
 
 	assert.Equal(t, 200, response.Code)
 
-	var components []deploymentModels.ComponentDeployment
+	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))

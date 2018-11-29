@@ -188,7 +188,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ComponentDeployment"
+	//           "$ref": "#/definitions/Component"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
