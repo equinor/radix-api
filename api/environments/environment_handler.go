@@ -43,7 +43,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 			BranchMapping: environment.Build.From,
 		}
 
-		deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment.Name, latestDeployment)
+		deploymentSummaries, err := deployHandler.GetDeployments(appName, environment.Name, latestDeployment)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	}
 
 	deployHandler := deployments.Init(eh.client, eh.radixclient)
-	deployments, err := deployHandler.HandleGetDeployments(appName, envName, false)
+	deployments, err := deployHandler.GetDeployments(appName, envName, false)
 
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	}
 
 	if len(deployments) > 0 {
-		deployment, err := deployHandler.HandleGetDeployment(appName, deployments[0].Name)
+		deployment, err := deployHandler.GetDeployment(appName, deployments[0].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 			// Orphaned namespace
 			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
-			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
+			deploymentSummaries, err := deployHandler.GetDeployments(appName, environmentName, latestDeployment)
 			if err != nil {
 				return nil, err
 			}

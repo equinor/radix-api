@@ -75,7 +75,7 @@ func (ah ApplicationHandler) HandleGetApplication(appName string) (*applicationM
 	}
 
 	environmentHandler := environments.Init(ah.client, ah.radixclient)
-	environments, err := environmentHandler.HandleGetEnvironmentSummary(appName)
+	environments, err := environmentHandler.GetEnvironmentSummary(appName)
 	if err != nil {
 		return nil, err
 	}

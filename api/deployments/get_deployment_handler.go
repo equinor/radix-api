@@ -32,8 +32,8 @@ func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) De
 	}
 }
 
-// HandleGetLogs handler for GetLogs
-func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, error) {
+// GetLogs handler for GetLogs
+func (deploy DeployHandler) GetLogs(appName, podName string) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
@@ -54,8 +54,8 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
-// HandleGetDeployments handler for GetDeployments
-func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+// GetDeployments handler for GetDeployments
+func (deploy DeployHandler) GetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -93,10 +93,10 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	return postFiltering(radixDeployments, latest), nil
 }
 
-// HandleGetDeployment Handler for GetDeployment
-func (deploy DeployHandler) HandleGetDeployment(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+// GetDeployment Handler for GetDeployment
+func (deploy DeployHandler) GetDeployment(appName, deploymentName string) (*deploymentModels.Deployment, error) {
 	// Need to list all deployments to find active to of deployment
-	allDeployments, err := deploy.HandleGetDeployments(appName, "", false)
+	allDeployments, err := deploy.GetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (deploy DeployHandler) HandleGetDeployment(appName, deploymentName string) 
 
 // GetDeploymentsForJob Lists deployments for job name
 func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
-	deployments, err := deploy.HandleGetDeployments(appName, "", false)
+	deployments, err := deploy.GetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
 	}
