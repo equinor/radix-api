@@ -12,7 +12,7 @@ type Deployment struct {
 	// Array of components
 	//
 	// required: false
-	Components []*ComponentDeployment `json:"components,omitempty"`
+	Components []*Component `json:"components,omitempty"`
 
 	// Name of job creating deployment
 	//

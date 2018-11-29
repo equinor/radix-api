@@ -47,19 +47,9 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 		deploymentComponent := deploymentModels.NewComponentBuilder().
 			WithComponent(component).
 			WithPodNames(podNames).
-			WithPorts(ports).
-			BuildComponentDeployment()
-		ports := []deploymentModels.Port{}
-		if component.Ports != nil {
-			for _, port := range component.Ports {
-				ports = append(ports, deploymentModels.Port{
-					Name: port.Name,
-					Port: port.Port,
-				})
-			}
-		}
+			BuildComponent()
 
-		components = append(components, component)
+		components = append(components, deploymentComponent)
 	}
 	return components, nil
 }

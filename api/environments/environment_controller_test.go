@@ -268,12 +268,7 @@ func TestUpdateSecret_OK(t *testing.T) {
 	updateSecretValue := "newvalue"
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
-
-	returnedSecret := environmentModels.SecretParameters{}
-	controllertest.GetResponseBody(response, &returnedSecret)
-
 	assert.Equal(t, http.StatusOK, response.Code)
-	assert.Equal(t, updateSecretValue, returnedSecret.SecretValue)
 }
 
 func TestUpdateSecret_SecretName_Missing(t *testing.T) {
