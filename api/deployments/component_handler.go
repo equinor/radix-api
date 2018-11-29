@@ -9,9 +9,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// HandleGetComponents handler for GetDeployments
-func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([]*deploymentModels.Component, error) {
-	deployments, err := deploy.HandleGetDeployments(appName, "", false)
+// GetComponents handler for GetDeployments
+func (deploy DeployHandler) GetComponents(appName, deploymentID string) ([]*deploymentModels.Component, error) {
+	deployments, err := deploy.GetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
 	}

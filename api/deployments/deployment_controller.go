@@ -115,7 +115,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	}
 
 	deployHandler := Init(client, radixclient)
-	appDeployments, err := deployHandler.HandleGetDeployments(appName, environment, useLatest)
+	appDeployments, err := deployHandler.GetDeployments(appName, environment, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -156,7 +156,7 @@ func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interfac
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(client, radixclient)
-	appDeployment, err := deployHandler.HandleGetDeployment(appName, deploymentName)
+	appDeployment, err := deployHandler.GetDeployment(appName, deploymentName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -195,7 +195,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(client, radixclient)
-	components, err := deployHandler.HandleGetComponents(appName, deploymentName)
+	components, err := deployHandler.GetComponents(appName, deploymentName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -241,7 +241,7 @@ func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w
 	podName := mux.Vars(r)["podName"]
 
 	deployHandler := Init(client, radixclient)
-	log, err := deployHandler.HandleGetLogs(appName, podName)
+	log, err := deployHandler.GetLogs(appName, podName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
