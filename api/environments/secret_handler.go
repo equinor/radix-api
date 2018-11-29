@@ -47,3 +47,8 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 
 	return &componentSecret, nil
 }
+
+// GetEnvironmentSecrets Lists environment secrets for application
+func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]environmentModels.Secret, error) {
+	return nil, nil
+}
