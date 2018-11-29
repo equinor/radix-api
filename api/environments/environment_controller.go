@@ -142,18 +142,18 @@ func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interfa
 	//   "404":
 	//     description: "Not found"
 
-	//appName := mux.Vars(r)["appName"]
-	//envName := mux.Vars(r)["envName"]
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
 
-	//environmentHandler := Init(client, radixclient)
-	//appEnvironment, err := environmentHandler.HandleGetEnvironment(appName, envName)
+	environmentHandler := Init(client, radixclient)
+	appEnvironment, err := environmentHandler.HandleGetEnvironment(appName, envName)
 
-	//if err != nil {
-	//	utils.ErrorResponse(w, r, err)
-	//	return
-	//}
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
 
-	//utils.JSONResponse(w, r, appEnvironment)
+	utils.JSONResponse(w, r, appEnvironment)
 
 }
 
@@ -226,7 +226,7 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 	//       "$ref": "#/definitions/SecretParameters"
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/SecretParameters"
+	// 	   description: "Success"
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -248,11 +248,11 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 
 	environmentHandler := Init(client, radixclient)
 
-	newSecret, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
+	_, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &newSecret)
+	utils.JSONResponse(w, r, "Success")
 }
