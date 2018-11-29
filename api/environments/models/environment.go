@@ -31,7 +31,7 @@ type Environment struct {
 	// Secrets All secrets in environment
 	//
 	// required: false
-	Secrets []*Secret `json:"secrets,omitempty"`
+	Secrets []Secret `json:"secrets,omitempty"`
 
 	// ActiveDeployment The latest deployment in the environment
 	//

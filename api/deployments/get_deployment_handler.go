@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/statoil/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -120,9 +121,12 @@ func (deploy DeployHandler) GetDeployment(appName, deploymentName string) (*depl
 		return nil, err
 	}
 
-	activeTo, err := utils.ParseTimestamp(theDeployment.ActiveTo)
-	if err != nil {
-		return nil, err
+	var activeTo time.Time
+	if !strings.EqualFold(theDeployment.ActiveTo, "") {
+		activeTo, err = utils.ParseTimestamp(theDeployment.ActiveTo)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return deploymentModels.NewDeploymentBuilder().
