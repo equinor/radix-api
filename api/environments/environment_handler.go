@@ -71,6 +71,29 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 	return environments, nil
 }
 
+// HandleGetEnvironment Handler for GetEnvironmentSummary
+func (eh EnvironmentHandler) HandleGetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the environment
+	var theEnvironment *v1.Environment
+	for _, environment := range radixApplication.Spec.Environments {
+		if strings.EqualFold(environment.Name, envName) {
+			theEnvironment = environment
+			break
+		}
+	}
+
+	if theEnvironment == nil {
+		return nil, environmentModels.NonExistingEnvionment(nil, envName)
+	}
+
+	return nil, nil
+}
+
 // HandleChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
 func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.SecretParameters) (*environmentModels.SecretParameters, error) {
 	newSecretValue := componentSecret.SecretValue
