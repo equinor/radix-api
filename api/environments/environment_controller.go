@@ -41,6 +41,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: GetEnvironmentSummary,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}",
+			Method:      "GET",
+			HandlerFunc: GetEnvironment,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
 			Method:      "PUT",
 			HandlerFunc: ChangeEnvironmentComponentSecret,
