@@ -11,7 +11,7 @@ import (
 )
 
 // HandleGetComponents handler for GetDeployments
-func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([]*deploymentModels.ComponentDeployment, error) {
+func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([]*deploymentModels.Component, error) {
 	deployments, err := deploy.HandleGetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
@@ -27,14 +27,14 @@ func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([
 	return nil, nonExistingDeployment(nil, deploymentID)
 }
 
-func (deploy DeployHandler) getComponents(deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {
+func (deploy DeployHandler) getComponents(deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(deployment.AppName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	components := []*deploymentModels.ComponentDeployment{}
+	components := []*deploymentModels.Component{}
 	for _, component := range rd.Spec.Components {
 		podNames := []string{}
 		if deployment.ActiveTo == "" {
@@ -53,16 +53,25 @@ func (deploy DeployHandler) getComponents(deployment *deploymentModels.Deploymen
 		if variables == nil {
 			variables = v1.EnvVarsMap{}
 		}
+		ports := []deploymentModels.Port{}
+		if component.Ports != nil {
+			for _, port := range component.Ports {
+				ports = append(ports, deploymentModels.Port{
+					Name: port.Name,
+					Port: port.Port,
+				})
+			}
+		}
 
-		deploymentComponent := &deploymentModels.ComponentDeployment{
+		component := &deploymentModels.Component{
 			Name:      component.Name,
 			Image:     component.Image,
-			Ports:     component.Ports,
+			Ports:     ports,
 			Secrets:   secrets,
 			Variables: variables,
 			Replicas:  podNames,
 		}
-		components = append(components, deploymentComponent)
+		components = append(components, component)
 	}
 	return components, nil
 }

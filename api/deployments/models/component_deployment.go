@@ -1,12 +1,8 @@
 package models
 
-import (
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
-)
-
-// ComponentDeployment describe an component part of an deployment
-// swagger:model ComponentDeployment
-type ComponentDeployment struct {
+// Component describe an component part of an deployment
+// swagger:model Component
+type Component struct {
 	// Name the component
 	//
 	// required: true
@@ -19,17 +15,21 @@ type ComponentDeployment struct {
 	// example: radixdev.azurecr.io/radix-api-server:cdgkg
 	Image string `json:"image"`
 
-	// ComponentPort defines the port number, protocol and port for a service
+	// Ports defines the port number and protocol that a component is exposed for internally in environment
 	//
 	// required: false
-	Ports []v1.ComponentPort `json:"ports"`
+	// type: "array"
+	// items:
+	//    "$ref": "#/definitions/Port"
+	Ports []Port `json:"ports"`
 
-	// Secret names that will be mapped from the environment
+	// Component secret names. From radixconfig.yaml
 	//
 	// required: false
+	// example: DB_CON,A_SECRET
 	Secrets []string `json:"secrets"`
 
-	// Variable names map to values)
+	// Variable names map to values. From radixconfig.yaml
 	//
 	// required: false
 	Variables map[string]string `json:"variables"`
@@ -37,7 +37,24 @@ type ComponentDeployment struct {
 	// Array of pod names
 	//
 	// required: false
+	// example: server-78fc8857c4-hm76l,server-78fc8857c4-asfa2
 	Replicas []string `json:"replicas"`
+}
+
+// Port describe an component part of an deployment
+// swagger:model Port
+type Port struct {
+	// Component port name. From radixconfig.yaml
+	//
+	// required: true
+	// example: http
+	Name string `json:"name"`
+
+	// Component port number. From radixconfig.yaml
+	//
+	// required: false
+	// example: 8080
+	Port int32 `json:"port"`
 }
 
 // ComponentSummary describe an component part of an deployment

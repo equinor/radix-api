@@ -36,6 +36,8 @@ type DeploymentSummary struct {
 	// Array of components
 	//
 	// required: false
+	// items:
+	//    "$ref": "#/definitions/ComponentSummary"
 	Components []*ComponentSummary `json:"-"`
 
 	// Name of job creating deployment
