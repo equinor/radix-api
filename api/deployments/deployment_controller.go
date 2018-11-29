@@ -37,6 +37,11 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			HandlerFunc: GetDeployments,
 		},
 		models.Route{
+			Path:        rootPath + "/deployments/{deploymentName}",
+			Method:      "GET",
+			HandlerFunc: GetDeployment,
+		},
+		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetPodLog,
