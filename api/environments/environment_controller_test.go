@@ -200,6 +200,52 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	}
 }
 
+func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	anyNonExistingEnvironment := "non-existing-environment"
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyNonExistingEnvironment))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := environmentModels.NonExistingEnvironment(nil, anyAppName, anyNonExistingEnvironment)
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+}
+
+func TestGetEnvironment_ExistingEnvironmentInCluster_ReturnsAConsistentEnvironment(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	environment := environmentModels.Environment{}
+	controllertest.GetResponseBody(response, &environment)
+	assert.Equal(t, "dev", environment.Name)
+
+}
+
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
