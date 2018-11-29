@@ -3,11 +3,8 @@ package environments
 import (
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/statoil/radix-api/api/deployments"
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
-	"github.com/statoil/radix-api/api/utils"
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +26,8 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) Enviro
 	return EnvironmentHandler{client, radixclient}
 }
 
-// HandleGetEnvironmentSummary Handler for GetEnvironmentSummary
-func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
+// GetEnvironmentSummary GetEnvironmentSummary
+func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		// This is no error, as the application may only have been just registered
@@ -67,8 +64,8 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 	return environments, nil
 }
 
-// HandleGetEnvironment Handler for GetEnvironmentSummary
-func (eh EnvironmentHandler) HandleGetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
+// GetEnvironment Handler for GetEnvironmentSummary
+func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -118,43 +115,6 @@ func (eh EnvironmentHandler) HandleGetEnvironment(appName, envName string) (*env
 	}
 
 	return environment, nil
-}
-
-// HandleChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
-func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.SecretParameters) (*environmentModels.SecretParameters, error) {
-	newSecretValue := componentSecret.SecretValue
-	if strings.TrimSpace(newSecretValue) == "" {
-		return nil, utils.ValidationError("Secret", "New secret value is empty")
-	}
-
-	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(componentName, metav1.GetOptions{})
-	if err != nil && errors.IsNotFound(err) {
-		return nil, utils.TypeMissingError("Secret object does not exist", err)
-	}
-	if err != nil {
-		return nil, utils.UnexpectedError("Failed getting secret object", err)
-	}
-
-	oldSecretValue, exists := secretObject.Data[secretName]
-	if !exists {
-		return nil, utils.ValidationError("Secret", "Secret name does not exist")
-	}
-
-	if string(oldSecretValue) == newSecretValue {
-		return nil, utils.ValidationError("Secret", "No change in secret value")
-	}
-
-	secretObject.Data[secretName] = []byte(newSecretValue)
-
-	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(secretObject)
-	if err != nil {
-		return nil, err
-	}
-
-	componentSecret.SecretValue = string(updatedSecret.Data[secretName])
-
-	return &componentSecret, nil
 }
 
 func (eh EnvironmentHandler) getConfigurationStatusOfNamespace(namespace string) environmentModels.ConfigurationStatus {

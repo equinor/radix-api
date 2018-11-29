@@ -151,7 +151,7 @@ func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interfa
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(client, radixclient)
-	appEnvironment, err := environmentHandler.HandleGetEnvironment(appName, envName)
+	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -187,7 +187,7 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(client, radixclient)
-	appEnvironments, err := environmentHandler.HandleGetEnvironmentSummary(appName)
+	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -253,7 +253,7 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 
 	environmentHandler := Init(client, radixclient)
 
-	_, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
+	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
