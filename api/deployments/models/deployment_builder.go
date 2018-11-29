@@ -34,9 +34,9 @@ type deploymentBuilder struct {
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels["radix-job-name"]
 
-	components := make([]ComponentBuilder, 0)
-	for _, component := range rd.Spec.Components {
-		components = append(components, NewComponentBuilder().WithComponent(component))
+	components := make([]ComponentBuilder, len(rd.Spec.Components))
+	for i, component := range rd.Spec.Components {
+		components[i] = NewComponentBuilder().WithComponent(component)
 	}
 
 	b.
@@ -97,8 +97,8 @@ func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 
 func (b *deploymentBuilder) BuildDeployment() *Deployment {
 	components := make([]*ComponentDeployment, len(b.components))
-	for _, component := range b.components {
-		components = append(components, component.BuildComponentDeployment())
+	for i, component := range b.components {
+		components[i] = component.BuildComponentDeployment()
 	}
 
 	return &Deployment{

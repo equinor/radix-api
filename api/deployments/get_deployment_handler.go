@@ -38,7 +38,7 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return "", nonExistingApplication(err, appName)
+		return "", deploymentModels.NonExistingApplication(err, appName)
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.kubeClient)
@@ -51,7 +51,7 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 
 		return log, nil
 	}
-	return "", nonExistingPod(appName, podName)
+	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
 // HandleGetDeployments handler for GetDeployments
@@ -95,7 +95,40 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 
 // HandleGetDeployment Handler for GetDeployment
 func (deploy DeployHandler) HandleGetDeployment(appName, deploymentName string) (*deploymentModels.Deployment, error) {
-	return nil, nil
+	// Need to list all deployments to find active to of deployment
+	allDeployments, err := deploy.HandleGetDeployments(appName, "", false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the deployment summary
+	var theDeployment *deploymentModels.DeploymentSummary
+	for _, deployment := range allDeployments {
+		if strings.EqualFold(deployment.Name, deploymentName) {
+			theDeployment = deployment
+			break
+		}
+	}
+
+	if theDeployment == nil {
+		return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
+	}
+
+	namespace := crdUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	activeTo, err := utils.ParseTimestamp(theDeployment.ActiveTo)
+	if err != nil {
+		return nil, err
+	}
+
+	return deploymentModels.NewDeploymentBuilder().
+		WithRadixDeployment(*rd).
+		WithActiveTo(activeTo).
+		BuildDeployment(), nil
 }
 
 // GetDeploymentsForJob Lists deployments for job name

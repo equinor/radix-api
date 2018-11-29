@@ -23,7 +23,7 @@ func (deploy DeployHandler) HandleGetComponents(appName, deploymentID string) ([
 		return deploy.getComponents(appName, deployment)
 	}
 
-	return nil, nonExistingDeployment(nil, deploymentID)
+	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
 }
 
 func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentDeployment, error) {

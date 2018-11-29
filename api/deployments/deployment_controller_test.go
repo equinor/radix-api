@@ -60,7 +60,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := nonExistingApplication(nil, anyAppName)
+	expectedError := deploymentModels.NonExistingApplication(nil, anyAppName)
 
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
@@ -79,7 +79,7 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := nonExistingPod(anyAppName, anyPodName)
+	expectedError := deploymentModels.NonExistingPod(anyAppName, anyPodName)
 
 	assert.Equal(t, (expectedError.(*utils.Error)).Error(), errorResponse.Error())
 
@@ -341,10 +341,10 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 		excectedReturnCode int
 		expectedError      error
 	}{
-		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, nonExistingApplication(irrellevantUnderlyingError, "noapp")},
-		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", "2", http.StatusNotFound, nonExistingFromEnvironment(irrellevantUnderlyingError)},
-		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", "2", http.StatusNotFound, nonExistingToEnvironment(irrellevantUnderlyingError)},
-		{"promote non-existing deployment", "any-app-2", "dev", "nopqrst", "prod", "non-existing", http.StatusNotFound, nonExistingDeployment(irrellevantUnderlyingError, "non-existing")},
+		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingApplication(irrellevantUnderlyingError, "noapp")},
+		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingFromEnvironment(irrellevantUnderlyingError)},
+		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", "2", http.StatusNotFound, deploymentModels.NonExistingToEnvironment(irrellevantUnderlyingError)},
+		{"promote non-existing deployment", "any-app-2", "dev", "nopqrst", "prod", "non-existing", http.StatusNotFound, deploymentModels.NonExistingDeployment(irrellevantUnderlyingError, "non-existing")},
 		{"promote an deployment into environment having already that deployment", "any-app-3", "dev", "abcdef", "prod", "5", http.StatusConflict, nil}, // Error comes from kubernetes API
 	}
 
@@ -409,6 +409,66 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	anyAppName := "any-app"
+	anyEnvironment := "dev"
+	anyDeployment1Name := "abcdef"
+	anyDeployment2Name := "ghijkl"
+	appDeployment1Created, _ := utils.ParseTimestamp("2018-11-12T12:00:00-0000")
+	appDeployment2Created, _ := utils.ParseTimestamp("2018-11-14T12:00:00-0000")
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithDeploymentName(anyDeployment1Name).
+		WithCreated(appDeployment1Created).
+		WithEnvironment(anyEnvironment).
+		WithImageTag(anyDeployment1Name).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithImage("radixdev.azurecr.io/some-image:imagetag").
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublic(true).
+				WithReplicas(1),
+			builders.NewDeployComponentBuilder().
+				WithImage("radixdev.azurecr.io/another-image:imagetag").
+				WithName("backend").
+				WithPublic(false).
+				WithReplicas(1)))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithDeploymentName(anyDeployment2Name).
+		WithCreated(appDeployment2Created).
+		WithEnvironment(anyEnvironment).
+		WithImageTag(anyDeployment2Name).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithImage("radixdev.azurecr.io/another-second-image:imagetag").
+				WithName("backend").
+				WithPublic(false).
+				WithReplicas(1)))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployment1Name))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	deployment := deploymentModels.Deployment{}
+	controllertest.GetResponseBody(response, &deployment)
+
+	assert.Equal(t, anyDeployment1Name, deployment.Name)
+	assert.Equal(t, utils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
+	assert.Equal(t, utils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
+	assert.Equal(t, 2, len(deployment.Components))
+
 }
 
 func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
