@@ -24,11 +24,13 @@ import (
 type ApplicationHandler struct {
 	client      kubernetes.Interface
 	radixclient radixclient.Interface
+	jobHandler  job.JobHandler
 }
 
 // Init Constructor
 func Init(client kubernetes.Interface, radixclient radixclient.Interface) ApplicationHandler {
-	return ApplicationHandler{client, radixclient}
+	jobHandler := job.Init(client, radixclient)
+	return ApplicationHandler{client, radixclient, jobHandler}
 }
 
 // GetApplications handler for ShowApplications
@@ -38,14 +40,19 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 		return nil, err
 	}
 
+	/*
+		applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
+		if err != nil {
+			return nil, err
+		}*/
+
 	applications := make([]*applicationModels.ApplicationSummary, 0)
 	for _, rr := range radixRegistationList.Items {
 		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
 		}
 
-		jobHandler := job.Init(ah.client, ah.radixclient)
-		jobSummary, err := jobHandler.GetLatestApplicationJob(rr.Name)
+		jobSummary, err := ah.jobHandler.GetLatestApplicationJob(rr.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -68,8 +75,7 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		withRadixRegistration(radixRegistration).
 		Build()
 
-	jobHandler := job.Init(ah.client, ah.radixclient)
-	jobs, err := jobHandler.GetApplicationJobs(appName)
+	jobs, err := ah.jobHandler.GetApplicationJobs(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +205,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 		CommitID: commitID,
 	}
 
-	jobHandler := job.Init(ah.client, ah.radixclient)
-	jobSummary, err := jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
