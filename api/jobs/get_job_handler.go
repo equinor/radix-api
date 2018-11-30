@@ -3,6 +3,8 @@ package jobs
 import (
 	"sort"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,6 +118,9 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 // GetApplicationJob Handler for GetApplicationJob
 func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil, jobModels.PipelineNotFoundError(appName, jobName)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -160,15 +165,33 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 }
 
 func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
+	steps := []jobModels.Step{}
+	jobName := job.GetName()
+
+	pipelinePod, err := jh.getPipelinePod(appName, jobName)
+	if err != nil {
+		return nil, err
+	} else if pipelinePod == nil {
+		return steps, nil
+	}
+
+	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 2)
+	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 1)
+
 	labelSelector := fmt.Sprintf("radix-image-tag=%s, radix-job-type!=%s", job.Labels["radix-image-tag"], "job")
 	jobStepList, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
+
 	if err != nil {
 		return nil, err
+	} else if len(jobStepList.Items) <= 0 {
+		// no build jobs - use clone step from pipelinejob
+		return append(steps, pipelineCloneStep, pipelineJobStep), nil
 	}
 
-	steps := make([]jobModels.Step, 0)
+	// pipeline coordinator
+	steps = append(steps, pipelineJobStep)
 	for _, jobStep := range jobStepList.Items {
 		jobStepPod, err := jh.client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("job-name=%s", jobStep.Name),
@@ -184,13 +207,14 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 
 		pod := jobStepPod.Items[0]
 		for _, containerStatus := range pod.Status.InitContainerStatuses {
-			steps = append(steps, getJobStep(&containerStatus))
+			steps = append(steps, getJobStep(pod.GetName(), &containerStatus, 1))
 		}
 
 		for _, containerStatus := range pod.Status.ContainerStatuses {
-			steps = append(steps, getJobStep(&containerStatus))
+			steps = append(steps, getJobStep(pod.GetName(), &containerStatus, 3))
 		}
 	}
+	sort.Slice(steps, func(i, j int) bool { return steps[i].Sort < steps[j].Sort })
 	return steps, nil
 }
 
@@ -209,6 +233,23 @@ func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Jo
 
 	jobSummary.Environments = environments
 	return jobSummary, nil
+}
+
+func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error) {
+	ns := crdUtils.GetAppNamespace(appName)
+	pods, err := jh.client.CoreV1().Pods(ns).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	if len(pods.Items) == 0 {
+		// pipeline pod not found
+		return nil, nil
+	}
+
+	return &pods.Items[0], nil
 }
 
 // GetJobSummary Used to get job summary from a kubernetes job
@@ -259,7 +300,7 @@ func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, err
 	return jobList, nil
 }
 
-func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {
+func getJobStep(podName string, containerStatus *corev1.ContainerStatus, sort int32) jobModels.Step {
 	var startedAt metav1.Time
 	var finishedAt metav1.Time
 
@@ -287,5 +328,7 @@ func getJobStep(containerStatus *corev1.ContainerStatus) jobModels.Step {
 		Started: utils.FormatTime(&startedAt),
 		Ended:   utils.FormatTime(&finishedAt),
 		Status:  status.String(),
+		PodName: podName,
+		Sort:    sort,
 	}
 }
