@@ -220,10 +220,10 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 	for _, application := range applications {
 		if strings.EqualFold(application.Name, "app-1") {
-			assert.NotNil(t, 1, application.LatestJob)
+			assert.NotNil(t, application.LatestJob)
 			assert.Equal(t, "app-1-job-1", application.LatestJob.Name)
 		} else if strings.EqualFold(application.Name, "app-2") {
-			assert.NotNil(t, 1, application.LatestJob)
+			assert.NotNil(t, application.LatestJob)
 			assert.Equal(t, "app-2-job-3", application.LatestJob.Name)
 		} else if strings.EqualFold(application.Name, "app-3") {
 			assert.Nil(t, application.LatestJob)
@@ -547,6 +547,7 @@ func createRadixJob(kubeclient *kubefake.Clientset, appName, jobName string, sta
 		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
+				"radix-app-name": appName,
 				"radix-job-type": "job"}},
 			Status: batchv1.JobStatus{
 				StartTime: &metav1.Time{
