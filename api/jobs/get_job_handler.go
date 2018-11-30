@@ -26,20 +26,57 @@ const dockerRegistry = "radixdev.azurecr.io"
 type JobHandler struct {
 	client      kubernetes.Interface
 	radixclient radixclient.Interface
+	deploy      deployments.DeployHandler
 }
 
 // Init Constructor
 func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHandler {
-	return JobHandler{client, radixclient}
+	deploy := deployments.Init(client, radixclient)
+	return JobHandler{client, radixclient, deploy}
 }
 
-// HandleGetApplicationJobs Handler for GetApplicationJobs
-func (jh JobHandler) HandleGetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
+// GetLatestJobPerApplication Handler for GetApplicationJobs
+func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSummary, error) {
+	jobList, err := jh.getAllJobs()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(jobList.Items, func(i, j int) bool {
+		switch strings.Compare(jobList.Items[i].Labels["radix-app-name"], jobList.Items[j].Labels["radix-app-name"]) {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
+	})
+
+	applicationJob := make(map[string]*jobModels.JobSummary)
+	for _, job := range jobList.Items {
+		appName := job.Labels["radix-app-name"]
+		if applicationJob[appName] != nil {
+			continue
+		}
+
+		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job)
+		if err != nil {
+			return nil, err
+		}
+
+		applicationJob[appName] = jobSummary
+	}
+
+	return applicationJob, nil
+}
+
+// GetApplicationJobs Handler for GetApplicationJobs
+func (jh JobHandler) GetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
 	return jh.getApplicationJobs(appName)
 }
 
-// HandleGetLatestApplicationJob Get last run application job
-func (jh JobHandler) HandleGetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
+// GetLatestApplicationJob Get last run application job
+func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
 	jobs, err := jh.getApplicationJobs(appName)
 	if err != nil {
 		return nil, err
@@ -53,7 +90,7 @@ func (jh JobHandler) HandleGetLatestApplicationJob(appName string) (*jobModels.J
 }
 
 func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
-	jobList, err := getJobs(jh.client, appName)
+	jobList, err := jh.getJobs(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -64,28 +101,20 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	})
 
 	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
-	deploy := deployments.Init(jh.client, jh.radixclient)
 	for i, job := range jobList.Items {
-		jobSummary := GetJobSummary(&job)
-		jobDeployments, err := deploy.GetDeploymentsForJob(jh.radixclient, appName, jobSummary.Name)
+		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job)
 		if err != nil {
 			return nil, err
 		}
 
-		environments := make([]string, len(jobDeployments))
-		for num, jobDeployment := range jobDeployments {
-			environments[num] = jobDeployment.Environment
-		}
-
-		jobSummary.Environments = environments
 		jobs[i] = jobSummary
 	}
 
 	return jobs, nil
 }
 
-// HandleGetApplicationJob Handler for GetApplicationJob
-func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
+// GetApplicationJob Handler for GetApplicationJob
+func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -99,8 +128,8 @@ func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModel
 	if err != nil {
 		return nil, err
 	}
-	deploy := deployments.Init(jh.client, jh.radixclient)
-	jobDeployments, err := deploy.GetDeploymentsForJob(jh.radixclient, appName, jobName)
+
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(jh.radixclient, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +194,23 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	return steps, nil
 }
 
+// GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
+func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job) (*jobModels.JobSummary, error) {
+	jobSummary := GetJobSummary(job)
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(jh.radixclient, appName, jobSummary.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	environments := make([]string, len(jobDeployments))
+	for num, jobDeployment := range jobDeployments {
+		environments[num] = jobDeployment.Environment
+	}
+
+	jobSummary.Environments = environments
+	return jobSummary, nil
+}
+
 // GetJobSummary Used to get job summary from a kubernetes job
 func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 	appName := job.Labels["radix-app-name"]
@@ -193,8 +239,16 @@ func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
 	return pipelineJob
 }
 
-func getJobs(client kubernetes.Interface, appName string) (*batchv1.JobList, error) {
-	jobList, err := client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+func (jh JobHandler) getAllJobs() (*batchv1.JobList, error) {
+	return jh.getJobsInNamespace(corev1.NamespaceAll)
+}
+
+func (jh JobHandler) getJobs(appName string) (*batchv1.JobList, error) {
+	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
+}
+
+func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, error) {
+	jobList, err := jh.client.BatchV1().Jobs(namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-job-type=%s", "job"),
 	})
 

@@ -161,7 +161,7 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 	sshRepo := r.FormValue("sshRepo")
 
 	handler := Init(client, radixclient)
-	appRegistrations, err := handler.HandleGetApplications(sshRepo)
+	appRegistrations, err := handler.GetApplications(sshRepo)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -192,7 +192,7 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	appName := mux.Vars(r)["appName"]
 
 	handler := Init(client, radixclient)
-	application, err := handler.HandleGetApplication(appName)
+	application, err := handler.GetApplication(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -259,7 +259,7 @@ func RegisterApplication(client kubernetes.Interface, radixclient radixclient.In
 	}
 
 	handler := Init(client, radixclient)
-	appRegistration, err := handler.HandleRegisterApplication(application)
+	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -305,7 +305,7 @@ func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixcli
 	}
 
 	handler := Init(client, radixclient)
-	appRegistration, err := handler.HandleChangeRegistrationDetails(appName, application)
+	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
@@ -335,7 +335,7 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 	appName := mux.Vars(r)["appName"]
 
 	handler := Init(client, radixclient)
-	err := handler.HandleDeleteApplication(appName)
+	err := handler.DeleteApplication(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -384,7 +384,7 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 	}
 
 	handler := Init(client, radixclient)
-	jobSummary, err := handler.HandleTriggerPipeline(appName, pipelineName, pipelineParameters)
+	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, pipelineParameters)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

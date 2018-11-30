@@ -169,7 +169,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 		}
 
 		handler := Init(client, radixclient)
-		radixJob, err := handler.HandleGetApplicationJob(appNameToWatch, jobNameToWatch)
+		radixJob, err := handler.GetApplicationJob(appNameToWatch, jobNameToWatch)
 		if err != nil {
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
 			return
@@ -217,7 +217,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	appName := mux.Vars(r)["appName"]
 
 	handler := Init(client, radixclient)
-	jobSummaries, err := handler.HandleGetApplicationJobs(appName)
+	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -258,7 +258,7 @@ func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Inte
 	jobName := mux.Vars(r)["jobName"]
 
 	handler := Init(client, radixclient)
-	jobDetail, err := handler.HandleGetApplicationJob(appName, jobName)
+	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
