@@ -12,7 +12,7 @@ type Step struct {
 	// Status of the step
 	//
 	// required: false
-	// Enum: Waiting,Active,Succeeded,Failed
+	// Enum: Waiting,Running,Succeeded,Failed
 	// example: Waiting
 	Status string `json:"status"`
 
@@ -27,4 +27,14 @@ type Step struct {
 	// required: false
 	// example: 2006-01-02T15:04:05-0700
 	Ended string `json:"ended"`
+
+	// Pod name
+	//
+	// required: false
+	PodName string `json:"-"`
+
+	// sort steps
+	//
+	// required: false
+	Sort int32 `json:"-"`
 }
