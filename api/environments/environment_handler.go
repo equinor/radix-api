@@ -112,7 +112,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	}
 
 	if len(deployments) > 0 {
-		deployment, err := deployHandler.GetDeployment(appName, deployments[0].Name)
+		deployment, err := deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
 		if err != nil {
 			return nil, err
 		}

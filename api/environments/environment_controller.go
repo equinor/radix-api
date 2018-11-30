@@ -231,7 +231,7 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 	//       "$ref": "#/definitions/SecretParameters"
 	// responses:
 	//   "200":
-	// 	   description: "Success"
+	//     description: success
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":

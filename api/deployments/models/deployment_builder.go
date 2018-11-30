@@ -16,7 +16,7 @@ type DeploymentBuilder interface {
 	WithActiveFrom(time.Time) DeploymentBuilder
 	WithActiveTo(time.Time) DeploymentBuilder
 	WithJobName(string) DeploymentBuilder
-	WithComponents(components []ComponentBuilder) DeploymentBuilder
+	WithComponents(components []*Component) DeploymentBuilder
 	BuildDeploymentSummary() *DeploymentSummary
 	BuildDeployment() *Deployment
 }
@@ -28,15 +28,15 @@ type deploymentBuilder struct {
 	activeFrom  time.Time
 	activeTo    time.Time
 	jobName     string
-	components  []ComponentBuilder
+	components  []*Component
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels["radix-job-name"]
 
-	components := make([]ComponentBuilder, len(rd.Spec.Components))
+	components := make([]*Component, len(rd.Spec.Components))
 	for i, component := range rd.Spec.Components {
-		components[i] = NewComponentBuilder().WithComponent(component)
+		components[i] = NewComponentBuilder().WithComponent(component).BuildComponent()
 	}
 
 	b.
@@ -55,7 +55,7 @@ func (b *deploymentBuilder) WithJobName(jobName string) DeploymentBuilder {
 	return b
 }
 
-func (b *deploymentBuilder) WithComponents(components []ComponentBuilder) DeploymentBuilder {
+func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBuilder {
 	b.components = components
 	return b
 }
@@ -96,17 +96,12 @@ func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 }
 
 func (b *deploymentBuilder) BuildDeployment() *Deployment {
-	components := make([]*Component, len(b.components))
-	for i, component := range b.components {
-		components[i] = component.BuildComponent()
-	}
-
 	return &Deployment{
 		Name:         b.name,
 		Environment:  b.environment,
 		ActiveFrom:   utils.FormatTimestamp(b.activeFrom),
 		ActiveTo:     utils.FormatTimestamp(b.activeTo),
-		Components:   components,
+		Components:   b.components,
 		CreatedByJob: b.jobName,
 	}
 }

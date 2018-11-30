@@ -156,7 +156,7 @@ func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interfac
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(client, radixclient)
-	appDeployment, err := deployHandler.GetDeployment(appName, deploymentName)
+	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -195,7 +195,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(client, radixclient)
-	components, err := deployHandler.GetComponents(appName, deploymentName)
+	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return

@@ -94,8 +94,8 @@ func (deploy DeployHandler) GetDeployments(appName, environment string, latest b
 	return postFiltering(radixDeployments, latest), nil
 }
 
-// GetDeployment Handler for GetDeployment
-func (deploy DeployHandler) GetDeployment(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+// GetDeploymentWithName Handler for GetDeploymentWithName
+func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
 	// Need to list all deployments to find active to of deployment
 	allDeployments, err := deploy.GetDeployments(appName, "", false)
 	if err != nil {
@@ -129,9 +129,15 @@ func (deploy DeployHandler) GetDeployment(appName, deploymentName string) (*depl
 		}
 	}
 
+	components, err := deploy.GetComponentsForDeployment(appName, theDeployment)
+	if err != nil {
+		return nil, err
+	}
+
 	return deploymentModels.NewDeploymentBuilder().
 		WithRadixDeployment(*rd).
 		WithActiveTo(activeTo).
+		WithComponents(components).
 		BuildDeployment(), nil
 }
 
