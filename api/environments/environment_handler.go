@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/statoil/radix-api/api/utils"
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -118,9 +120,9 @@ func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixAppli
 }
 
 func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
-	// List all namespaces, as field selector doesn't work in cluster
-	// Should we have had a label called radix-app on the namespace to indicate ownership??
-	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("radix-app=%s", appName),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -131,22 +133,20 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 		namespacesInConfig[environmentNamespace] = true
 	}
 
-	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 	for _, namespace := range namespaces.Items {
-		if isEnvironmentOwnedByApp(namespace.Name, appName) &&
-			!strings.EqualFold(namespace.Name, appNamespace) &&
+		if !isAppNamespace(namespace) &&
 			isOrphaned(namespace.Name, namespacesInConfig) {
 
 			// Orphaned namespace
-			_, environmentName := k8sObjectUtils.GetAppAndTagPairFromName(namespace.Name)
-			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environmentName, latestDeployment)
+			environment := namespace.Labels["radix-env"]
+			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment, latestDeployment)
 			if err != nil {
 				return nil, err
 			}
 
 			environmentSummary := &environmentModels.EnvironmentSummary{
-				Name:   environmentName,
+				Name:   environment,
 				Status: environmentModels.Orphan.String(),
 			}
 
@@ -161,12 +161,13 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 	return orphanedEnvironments, nil
 }
 
-func isEnvironmentOwnedByApp(namespace, appName string) bool {
-	if strings.HasPrefix(namespace, appName) {
-		return true
+func isAppNamespace(namespace corev1.Namespace) bool {
+	environment := namespace.Labels["radix-env"]
+	if !strings.EqualFold(environment, "app") {
+		return false
 	}
 
-	return false
+	return true
 }
 
 func isOrphaned(namespace string, namespacesInConfig map[string]bool) bool {
