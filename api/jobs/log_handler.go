@@ -7,6 +7,7 @@ import (
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/pods"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -14,6 +15,9 @@ import (
 // HandleGetApplicationJobLogs Gets logs for an job of an application
 func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
 	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil, PipelineNotFoundError(appName, jobName)
+	}
 	if err != nil {
 		return nil, err
 	}

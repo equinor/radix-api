@@ -3,6 +3,8 @@ package jobs
 import (
 	"sort"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +37,7 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHan
 
 // PipelineNotFoundError Job not found
 func PipelineNotFoundError(appName, jobName string) error {
-	return fmt.Errorf("Job %s not found for app %s", jobName, appName)
+	return utils.TypeMissingError(fmt.Sprintf("Job %s not found for app %s", jobName, appName), nil)
 }
 
 // HandleGetApplicationJobs Handler for GetApplicationJobs
@@ -92,6 +94,9 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 // HandleGetApplicationJob Handler for GetApplicationJob
 func (jh JobHandler) HandleGetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil, PipelineNotFoundError(appName, jobName)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +147,8 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	pipelinePod, err := jh.getPipelinePod(appName, jobName)
 	if err != nil {
 		return nil, err
+	} else if pipelinePod == nil {
+		return steps, nil
 	}
 
 	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 2)
@@ -197,7 +204,8 @@ func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error
 		return nil, err
 	}
 	if len(pods.Items) == 0 {
-		return nil, PipelineNotFoundError(appName, jobName)
+		// pipeline pod not found
+		return nil, nil
 	}
 
 	return &pods.Items[0], nil
