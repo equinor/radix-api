@@ -87,7 +87,8 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 				"radix-job-name":  jobName,
 				"radix-job-type":  "job",
 				"radix-pipeline":  pipeline.String(),
-				"radix-app-name":  appName,
+				"radix-app-name":  appName, // For backwards compatibility. Remove when cluster is migrated
+				"radix-app":       appName,
 				"radix-branch":    pushBranch,
 				"radix-image-tag": randomStr,
 				"radix-commit":    commitID,
