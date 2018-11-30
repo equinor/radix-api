@@ -547,7 +547,8 @@ func createRadixJob(kubeclient *kubefake.Clientset, appName, jobName string, sta
 		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-app-name": appName,
+				"radix-app-name": appName, // For backwards compatibility. Remove when cluster is migrated
+				"radix-app":      appName,
 				"radix-job-type": "job"}},
 			Status: batchv1.JobStatus{
 				StartTime: &metav1.Time{
