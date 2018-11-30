@@ -121,7 +121,7 @@ func createComponentPod(kubeclient kubernetes.Interface, namespace string) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "any-pod",
 				Labels: map[string]string{
-					"radixComponent": "app",
+					"radix-component": "app",
 				},
 			},
 		},

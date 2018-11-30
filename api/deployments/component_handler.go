@@ -70,7 +70,7 @@ func (deploy DeployHandler) getPodNamesAndEnvironmentVariables(envNs, componentN
 	radixEnvironmentVariables := make(map[string]string)
 
 	pods, err := deploy.kubeClient.CoreV1().Pods(envNs).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("radixComponent=%s", componentName),
+		LabelSelector: fmt.Sprintf("radix-component=%s", componentName),
 	})
 	if err != nil {
 		log.Errorf("error getting pod names: %v", err)
