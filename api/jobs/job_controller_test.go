@@ -77,7 +77,7 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
 		response := <-responseChannel
 
-		pipelineNotFoundError := PipelineNotFoundError(anyAppName, aJobName)
+		pipelineNotFoundError := jobModels.PipelineNotFoundError(anyAppName, aJobName)
 		err, _ := controllertest.GetErrorResponse(response)
 		assert.NotNil(t, err)
 		assert.Equal(t, pipelineNotFoundError.Error(), err.Error())
