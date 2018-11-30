@@ -40,11 +40,10 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 		return nil, err
 	}
 
-	/*
-		applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
-		if err != nil {
-			return nil, err
-		}*/
+	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
+	if err != nil {
+		return nil, err
+	}
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
 	for _, rr := range radixRegistationList.Items {
@@ -52,11 +51,7 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 			continue
 		}
 
-		jobSummary, err := ah.jobHandler.GetLatestApplicationJob(rr.Name)
-		if err != nil {
-			return nil, err
-		}
-
+		jobSummary := applicationJobs[rr.Name]
 		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
 	}
 
