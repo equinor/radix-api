@@ -19,13 +19,15 @@ const latestDeployment = true
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client      kubernetes.Interface
-	radixclient radixclient.Interface
+	client        kubernetes.Interface
+	radixclient   radixclient.Interface
+	deployHandler deployments.DeployHandler
 }
 
 // Init Constructor
 func Init(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
-	return EnvironmentHandler{client, radixclient}
+	deployHandler := deployments.Init(client, radixclient)
+	return EnvironmentHandler{client, radixclient, deployHandler}
 }
 
 // GetEnvironmentSummary GetEnvironmentSummary
@@ -36,8 +38,6 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		return []*environmentModels.EnvironmentSummary{}, nil
 	}
 
-	deployHandler := deployments.Init(eh.client, eh.radixclient)
-
 	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
 	for i, environment := range radixApplication.Spec.Environments {
 		environmentSummary := &environmentModels.EnvironmentSummary{
@@ -45,7 +45,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 			BranchMapping: environment.Build.From,
 		}
 
-		deploymentSummaries, err := deployHandler.GetDeployments(appName, environment.Name, latestDeployment)
+		deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment.Name, latestDeployment)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		environments[i] = environmentSummary
 	}
 
-	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication, deployHandler)
+	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
 	environments = append(environments, orphanedEnvironments...)
 
 	return environments, nil
@@ -93,8 +93,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		buildFrom = theEnvironment.Build.From
 	}
 
-	deployHandler := deployments.Init(eh.client, eh.radixclient)
-	deployments, err := deployHandler.GetDeployments(appName, envName, false)
+	deployments, err := eh.deployHandler.GetDeployments(appName, envName, false)
 
 	if err != nil {
 		return nil, err
@@ -114,7 +113,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	}
 
 	if len(deployments) > 0 {
-		deployment, err := deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
+		deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +153,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 	return environmentModels.Consistent, nil
 }
 
-func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
+func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
 	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-app=%s", appName),
 	})
@@ -171,7 +170,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 			// Orphaned namespace
 			environment := namespace.Labels["radix-env"]
-			deploymentSummaries, err := deployHandler.GetDeployments(appName, environmentName, latestDeployment)
+			deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment, latestDeployment)
 			if err != nil {
 				return nil, err
 			}
