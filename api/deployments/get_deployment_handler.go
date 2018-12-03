@@ -126,7 +126,7 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 
 func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
-	labelSelector := fmt.Sprintf("radixApp=%s, radix-app=%s", appName, appName)
+	labelSelector := fmt.Sprintf("radixApp=%s", appName)
 
 	if strings.TrimSpace(jobName) != "" {
 		labelSelector = fmt.Sprintf(labelSelector+", radix-job-name=%s", jobName)

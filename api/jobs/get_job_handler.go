@@ -60,7 +60,12 @@ func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSumm
 			continue
 		}
 
-		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job)
+		jobEnvironmentsMap, err := jh.getJobEnvironmentMap(appName)
+		if err != nil {
+			return nil, err
+		}
+
+		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, jobEnvironmentsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -101,9 +106,14 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
 	})
 
+	jobEnvironmentsMap, err := jh.getJobEnvironmentMap(appName)
+	if err != nil {
+		return nil, err
+	}
+
 	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
 	for i, job := range jobList.Items {
-		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job)
+		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, jobEnvironmentsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -213,20 +223,32 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 }
 
 // GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
-func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job) (*jobModels.JobSummary, error) {
+func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job, jobEnvironmentsMap map[string][]string) (*jobModels.JobSummary, error) {
 	jobSummary := GetJobSummary(job)
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobSummary.Name)
+	jobSummary.Environments = jobEnvironmentsMap[job.Name]
+	return jobSummary, nil
+}
+
+func (jh JobHandler) getJobEnvironmentMap(appName string) (map[string][]string, error) {
+	allDeployments, err := jh.deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
 		return nil, err
 	}
 
-	environments := make([]string, len(jobDeployments))
-	for num, jobDeployment := range jobDeployments {
-		environments[num] = jobDeployment.Environment
+	jobEnvironmentsMap := make(map[string][]string)
+	for _, deployment := range allDeployments {
+		if jobEnvironmentsMap[deployment.CreatedByJob] == nil {
+			environments := make([]string, 1)
+			environments[0] = deployment.Environment
+			jobEnvironmentsMap[deployment.CreatedByJob] = environments
+		} else {
+			environments := jobEnvironmentsMap[deployment.CreatedByJob]
+			environments = append(environments, deployment.Environment)
+			jobEnvironmentsMap[deployment.CreatedByJob] = environments
+		}
 	}
 
-	jobSummary.Environments = environments
-	return jobSummary, nil
+	return jobEnvironmentsMap, nil
 }
 
 func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error) {
