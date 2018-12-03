@@ -16,7 +16,7 @@ import (
 func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
 	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		return nil, PipelineNotFoundError(appName, jobName)
+		return nil, jobModels.PipelineNotFoundError(appName, jobName)
 	}
 	if err != nil {
 		return nil, err

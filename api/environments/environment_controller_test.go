@@ -200,6 +200,59 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	}
 }
 
+func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	anyOrphanedEnvironment := "feature-1"
+
+	commonTestUtils.ApplyRegistration(builders.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment(anyOrphanedEnvironment, "feature"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithImageTag("someimageindev"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyOrphanedEnvironment).
+		WithImageTag("someimageinfeature"))
+
+	// Remove feature environment from application config
+	commonTestUtils.ApplyApplicationUpdate(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	environmentListed := false
+	for _, environment := range environments {
+		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
+			assert.NotNil(t, environment.ActiveDeployment)
+			environmentListed = true
+		}
+	}
+
+	assert.True(t, environmentListed)
+}
+
 func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
@@ -244,59 +297,6 @@ func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t
 	controllertest.GetResponseBody(response, &environment)
 	assert.Equal(t, "dev", environment.Name)
 	assert.Equal(t, environmentModels.Pending.String(), environment.Status)
-}
-
-func TestGetEnvironment_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyOrphanedEnvironment := "feature"
-
-	commonTestUtils.ApplyRegistration(builders.
-		NewRegistrationBuilder().
-		WithName(anyAppName))
-
-	commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
-		WithEnvironment(anyOrphanedEnvironment, "feature"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
-
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyOrphanedEnvironment))
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
-	assert.Equal(t, anyOrphanedEnvironment, environment.Name)
-	assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
-	assert.NotNil(t, environment.ActiveDeployment)
-	assert.Equal(t, 1, len(environment.Deployments))
-
-	// Currently we don't support branch mapping for orphaned environments
-	assert.Equal(t, "", environment.BranchMapping)
-
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
