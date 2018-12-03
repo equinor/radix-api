@@ -55,49 +55,32 @@ func (deploy DeployHandler) GetLogs(appName, podName string) (string, error) {
 	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
-// GetDeployments handler for GetDeployments
-func (deploy DeployHandler) GetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	var listOptions metav1.ListOptions
-	if strings.TrimSpace(appName) != "" {
-		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
-	}
+// GetDeploymentsForApplication Lists deployments accross environments
+func (deploy DeployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+	namespace := corev1.NamespaceAll
+	return deploy.getDeployments(namespace, appName, "", latest)
+}
 
+// GetDeploymentsForApplicationEnvironment Lists deployments inside environment
+func (deploy DeployHandler) GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var namespace = corev1.NamespaceAll
-	if strings.TrimSpace(appName) != "" && strings.TrimSpace(environment) != "" {
+	if strings.TrimSpace(environment) != "" {
 		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
 	}
 
-	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(listOptions)
+	return deploy.getDeployments(namespace, appName, "", latest)
+}
 
-	if err != nil {
-		return nil, err
-	}
-
-	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
-	envsLastIndexMap := getRdEnvironments(rds)
-
-	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
-	for i, rd := range rds {
-		envName := rd.Spec.Environment
-
-		builder := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
-
-		lastIndex := envsLastIndexMap[envName]
-		if lastIndex >= 0 {
-			builder.WithActiveTo(rds[lastIndex].CreationTimestamp.Time)
-		}
-		envsLastIndexMap[envName] = i
-
-		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
-	}
-
-	return postFiltering(radixDeployments, latest), nil
+// GetDeploymentsForJob Lists deployments for job name
+func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
+	namespace := corev1.NamespaceAll
+	return deploy.getDeployments(namespace, appName, jobName, false)
 }
 
 // GetDeploymentWithName Handler for GetDeploymentWithName
 func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
 	// Need to list all deployments to find active to of deployment
-	allDeployments, err := deploy.GetDeployments(appName, "", false)
+	allDeployments, err := deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -141,21 +124,40 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 		BuildDeployment(), nil
 }
 
-// GetDeploymentsForJob Lists deployments for job name
-func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
-	deployments, err := deploy.GetDeployments(appName, "", false)
+func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+	var listOptions metav1.ListOptions
+	labelSelector := fmt.Sprintf("radixApp=%s, radix-app=%s", appName, appName)
+
+	if strings.TrimSpace(jobName) != "" {
+		labelSelector = fmt.Sprintf(labelSelector+", radix-job-name=%s", jobName)
+	}
+
+	listOptions.LabelSelector = labelSelector
+	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(listOptions)
+
 	if err != nil {
 		return nil, err
 	}
 
-	deploymentsForJob := []*deploymentModels.DeploymentSummary{}
-	for _, deployment := range deployments {
-		if deployment.CreatedByJob == jobName {
-			deploymentsForJob = append(deploymentsForJob, deployment)
+	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
+	envsLastIndexMap := getRdEnvironments(rds)
+
+	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
+	for i, rd := range rds {
+		envName := rd.Spec.Environment
+
+		builder := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
+
+		lastIndex := envsLastIndexMap[envName]
+		if lastIndex >= 0 {
+			builder.WithActiveTo(rds[lastIndex].CreationTimestamp.Time)
 		}
+		envsLastIndexMap[envName] = i
+
+		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
 	}
 
-	return deploymentsForJob, nil
+	return postFiltering(radixDeployments, latest), nil
 }
 
 func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {

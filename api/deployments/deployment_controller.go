@@ -115,7 +115,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 	}
 
 	deployHandler := Init(client, radixclient)
-	appDeployments, err := deployHandler.GetDeployments(appName, environment, useLatest)
+	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

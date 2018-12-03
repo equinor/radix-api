@@ -19,7 +19,7 @@ func (deploy DeployHandler) GetComponentsForDeployment(appName string, deploymen
 
 // GetComponentsForDeploymentName handler for GetDeployments
 func (deploy DeployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
-	deployments, err := deploy.GetDeployments(appName, "", false)
+	deployments, err := deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
 		return nil, err
 	}
