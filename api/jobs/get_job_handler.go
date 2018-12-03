@@ -215,7 +215,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 // GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
 func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job) (*jobModels.JobSummary, error) {
 	jobSummary := GetJobSummary(job)
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(jh.radixclient, appName, jobSummary.Name)
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobSummary.Name)
 	if err != nil {
 		return nil, err
 	}
