@@ -200,6 +200,59 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	}
 }
 
+func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	anyOrphanedEnvironment := "feature-1"
+
+	commonTestUtils.ApplyRegistration(builders.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithEnvironment(anyOrphanedEnvironment, "feature"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithImageTag("someimageindev"))
+
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyOrphanedEnvironment).
+		WithImageTag("someimageinfeature"))
+
+	// Remove feature environment from application config
+	commonTestUtils.ApplyApplicationUpdate(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	response := <-responseChannel
+	environments := make([]*environmentModels.EnvironmentSummary, 0)
+	controllertest.GetResponseBody(response, &environments)
+
+	environmentListed := false
+	for _, environment := range environments {
+		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
+			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
+			assert.NotNil(t, environment.ActiveDeployment)
+			environmentListed = true
+		}
+	}
+
+	assert.True(t, environmentListed)
+}
+
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
