@@ -197,7 +197,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 	}
 
 	// Check if branch is mapped
-	if application.IsMagicBranch(branch) {
+	if !application.IsMagicBranch(branch) {
 		config, err := ah.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
@@ -207,7 +207,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 		branchIsMapped, _ := application.IsBranchMappedToEnvironment(branch)
 
 		if !branchIsMapped {
-			return nil, 
+			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
 	}
 
