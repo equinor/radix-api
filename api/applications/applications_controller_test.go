@@ -84,7 +84,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: app name is required", errorResponse.Message)
+	assert.Equal(t, "Error: app name cannot be empty", errorResponse.Message)
 }
 
 func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T) {
