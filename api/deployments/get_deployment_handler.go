@@ -160,6 +160,53 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 	return postFiltering(radixDeployments, latest), nil
 }
 
+// GetDeploymentWithName Handler for GetDeploymentWithName
+func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+	// Need to list all deployments to find active to of deployment
+	allDeployments, err := deploy.GetDeployments(appName, "", false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the deployment summary
+	var theDeployment *deploymentModels.DeploymentSummary
+	for _, deployment := range allDeployments {
+		if strings.EqualFold(deployment.Name, deploymentName) {
+			theDeployment = deployment
+			break
+		}
+	}
+
+	if theDeployment == nil {
+		return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
+	}
+
+	namespace := crdUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var activeTo time.Time
+	if !strings.EqualFold(theDeployment.ActiveTo, "") {
+		activeTo, err = utils.ParseTimestamp(theDeployment.ActiveTo)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	components, err := deploy.GetComponentsForDeployment(appName, theDeployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return deploymentModels.NewDeploymentBuilder().
+		WithRadixDeployment(*rd).
+		WithActiveTo(activeTo).
+		WithComponents(components).
+		BuildDeployment(), nil
+}
+
 func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {
 	envs := make(map[string]int)
 	for _, rd := range rds {
