@@ -41,6 +41,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: GetEnvironmentSummary,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}",
+			Method:      "GET",
+			HandlerFunc: GetEnvironment,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
 			Method:      "PUT",
 			HandlerFunc: ChangeEnvironmentComponentSecret,
@@ -105,13 +110,56 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 
 	deploymentHandler := deployments.Init(client, radixclient)
 
-	appEnvironmentDeployments, err := deploymentHandler.HandleGetDeployments(appName, envName, useLatest)
+	appEnvironmentDeployments, err := deploymentHandler.GetDeployments(appName, envName, useLatest)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	utils.JSONResponse(w, r, appEnvironmentDeployments)
+}
+
+// GetEnvironment Get details for an application environment
+func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName} environment getEnvironment
+	// ---
+	// summary: Get details for an application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/Environment"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(client, radixclient)
+	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, appEnvironment)
+
 }
 
 // GetEnvironmentSummary Lists the environments for an application
@@ -139,7 +187,7 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(client, radixclient)
-	appEnvironments, err := environmentHandler.HandleGetEnvironmentSummary(appName)
+	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -180,10 +228,10 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 	//   description: New secret value
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/ComponentSecret"
+	//       "$ref": "#/definitions/SecretParameters"
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/ComponentSecret"
+	//     description: success
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -197,19 +245,19 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 	componentName := mux.Vars(r)["componentName"]
 	secretName := mux.Vars(r)["secretName"]
 
-	var componentSecret environmentModels.ComponentSecret
-	if err := json.NewDecoder(r.Body).Decode(&componentSecret); err != nil {
+	var secretParameters environmentModels.SecretParameters
+	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
 	environmentHandler := Init(client, radixclient)
 
-	newSecret, err := environmentHandler.HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, componentSecret)
+	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &newSecret)
+	utils.JSONResponse(w, r, "Success")
 }

@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/statoil/radix-api/api/deployments"
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
-	"github.com/statoil/radix-api/api/utils"
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -22,24 +19,24 @@ const latestDeployment = true
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client      kubernetes.Interface
-	radixclient radixclient.Interface
+	client        kubernetes.Interface
+	radixclient   radixclient.Interface
+	deployHandler deployments.DeployHandler
 }
 
 // Init Constructor
 func Init(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
-	return EnvironmentHandler{client, radixclient}
+	deployHandler := deployments.Init(client, radixclient)
+	return EnvironmentHandler{client, radixclient, deployHandler}
 }
 
-// HandleGetEnvironmentSummary Handler for GetEnvironmentSummary
-func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
+// GetEnvironmentSummary GetEnvironmentSummary
+func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		// This is no error, as the application may only have been just registered
 		return []*environmentModels.EnvironmentSummary{}, nil
 	}
-
-	deployHandler := deployments.Init(eh.client, eh.radixclient)
 
 	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
 	for i, environment := range radixApplication.Spec.Environments {
@@ -48,16 +45,12 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 			BranchMapping: environment.Build.From,
 		}
 
-		configurationStatus := eh.getConfigurationStatus(k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name), radixApplication)
+		deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment.Name, latestDeployment)
 		if err != nil {
 			return nil, err
 		}
 
-		deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment.Name, latestDeployment)
-		if err != nil {
-			return nil, err
-		}
-
+		configurationStatus := eh.getConfigurationStatusOfNamespace(k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name))
 		environmentSummary.Status = configurationStatus.String()
 
 		if len(deploymentSummaries) == 1 {
@@ -67,50 +60,71 @@ func (eh EnvironmentHandler) HandleGetEnvironmentSummary(appName string) ([]*env
 		environments[i] = environmentSummary
 	}
 
-	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication, deployHandler)
+	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
 	environments = append(environments, orphanedEnvironments...)
 
 	return environments, nil
 }
 
-// HandleChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
-func (eh EnvironmentHandler) HandleChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.ComponentSecret) (*environmentModels.ComponentSecret, error) {
-	newSecretValue := componentSecret.SecretValue
-	if strings.TrimSpace(newSecretValue) == "" {
-		return nil, utils.ValidationError("Secret", "New secret value is empty")
-	}
-
-	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(componentName, metav1.GetOptions{})
-	if err != nil && errors.IsNotFound(err) {
-		return nil, utils.TypeMissingError("Secret object does not exist", err)
-	}
-	if err != nil {
-		return nil, utils.UnexpectedError("Failed getting secret object", err)
-	}
-
-	oldSecretValue, exists := secretObject.Data[secretName]
-	if !exists {
-		return nil, utils.ValidationError("Secret", "Secret name does not exist")
-	}
-
-	if string(oldSecretValue) == newSecretValue {
-		return nil, utils.ValidationError("Secret", "No change in secret value")
-	}
-
-	secretObject.Data[secretName] = []byte(newSecretValue)
-
-	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(secretObject)
+// GetEnvironment Handler for GetEnvironmentSummary
+func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	componentSecret.SecretValue = string(updatedSecret.Data[secretName])
+	configurationStatus, err := eh.getConfigurationStatus(envName, radixApplication)
+	if err != nil {
+		return nil, err
+	}
 
-	return &componentSecret, nil
+	buildFrom := ""
+
+	if configurationStatus != environmentModels.Orphan {
+		// Find the environment
+		var theEnvironment *v1.Environment
+		for _, environment := range radixApplication.Spec.Environments {
+			if strings.EqualFold(environment.Name, envName) {
+				theEnvironment = &environment
+				break
+			}
+		}
+
+		buildFrom = theEnvironment.Build.From
+	}
+
+	deployments, err := eh.deployHandler.GetDeployments(appName, envName, false)
+
+	if err != nil {
+		return nil, err
+	}
+
+	secrets, err := eh.GetEnvironmentSecrets(appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
+	environment := &environmentModels.Environment{
+		Name:          envName,
+		BranchMapping: buildFrom,
+		Status:        configurationStatus.String(),
+		Deployments:   deployments,
+		Secrets:       secrets,
+	}
+
+	if len(deployments) > 0 {
+		deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
+		if err != nil {
+			return nil, err
+		}
+
+		environment.ActiveDeployment = deployment
+	}
+
+	return environment, nil
 }
 
-func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixApplication *v1.RadixApplication) environmentModels.ConfigurationStatus {
+func (eh EnvironmentHandler) getConfigurationStatusOfNamespace(namespace string) environmentModels.ConfigurationStatus {
 	_, err := eh.client.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
 	if err != nil {
 		return environmentModels.Pending
@@ -119,7 +133,27 @@ func (eh EnvironmentHandler) getConfigurationStatus(namespace string, radixAppli
 	return environmentModels.Consistent
 }
 
-func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication, deployHandler deployments.DeployHandler) ([]*environmentModels.EnvironmentSummary, error) {
+func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
+	environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
+	namespacesInConfig := getNamespacesInConfig(radixApplication)
+
+	_, err := eh.client.CoreV1().Namespaces().Get(environmentNamespace, metav1.GetOptions{})
+	if namespacesInConfig[environmentNamespace] && err != nil {
+		// Environment is in config, but no namespace exist
+		return environmentModels.Pending, nil
+
+	} else if err != nil {
+		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
+
+	} else if isOrphaned(environmentNamespace, namespacesInConfig) {
+		return environmentModels.Orphan, nil
+
+	}
+
+	return environmentModels.Consistent, nil
+}
+
+func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
 	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-app=%s", appName),
 	})
@@ -127,11 +161,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 		return nil, err
 	}
 
-	namespacesInConfig := make(map[string]bool)
-	for _, environment := range radixApplication.Spec.Environments {
-		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
-		namespacesInConfig[environmentNamespace] = true
-	}
+	namespacesInConfig := getNamespacesInConfig(radixApplication)
 
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 	for _, namespace := range namespaces.Items {
@@ -140,7 +170,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 			// Orphaned namespace
 			environment := namespace.Labels["radix-env"]
-			deploymentSummaries, err := deployHandler.HandleGetDeployments(appName, environment, latestDeployment)
+			deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment, latestDeployment)
 			if err != nil {
 				return nil, err
 			}
@@ -159,6 +189,16 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 	}
 
 	return orphanedEnvironments, nil
+}
+
+func getNamespacesInConfig(radixApplication *v1.RadixApplication) map[string]bool {
+	namespacesInConfig := make(map[string]bool)
+	for _, environment := range radixApplication.Spec.Environments {
+		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, environment.Name)
+		namespacesInConfig[environmentNamespace] = true
+	}
+
+	return namespacesInConfig
 }
 
 func isAppNamespace(namespace corev1.Namespace) bool {

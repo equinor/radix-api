@@ -66,12 +66,4 @@ type Job struct {
 	// items:
 	//    "$ref": "#/definitions/DeploymentSummary"
 	Deployments []*deploymentModels.DeploymentSummary `json:"deployments,omitempty"`
-
-	// Array of components
-	//
-	// required: false
-	// type: "array"
-	// items:
-	//    "$ref": "#/definitions/ComponentSummary"
-	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
 }

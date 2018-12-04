@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/statoil/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,13 +33,13 @@ func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) De
 	}
 }
 
-// HandleGetLogs handler for GetLogs
-func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, error) {
+// GetLogs handler for GetLogs
+func (deploy DeployHandler) GetLogs(appName, podName string) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return "", nonExistingApplication(err, appName)
+		return "", deploymentModels.NonExistingApplication(err, appName)
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.kubeClient)
@@ -51,11 +52,11 @@ func (deploy DeployHandler) HandleGetLogs(appName, podName string) (string, erro
 
 		return log, nil
 	}
-	return "", nonExistingPod(appName, podName)
+	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
-// HandleGetDeployments handler for GetDeployments
-func (deploy DeployHandler) HandleGetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+// GetDeployments handler for GetDeployments
+func (deploy DeployHandler) GetDeployments(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
 	if strings.TrimSpace(appName) != "" {
 		listOptions.LabelSelector = fmt.Sprintf("radixApp=%s", appName)
@@ -79,30 +80,77 @@ func (deploy DeployHandler) HandleGetDeployments(appName, environment string, la
 	for i, rd := range rds {
 		envName := rd.Spec.Environment
 
-		builder := NewBuilder().withRadixDeployment(rd)
+		builder := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
 
 		lastIndex := envsLastIndexMap[envName]
 		if lastIndex >= 0 {
-			builder.withActiveTo(rds[lastIndex].CreationTimestamp.Time)
+			builder.WithActiveTo(rds[lastIndex].CreationTimestamp.Time)
 		}
 		envsLastIndexMap[envName] = i
 
-		radixDeployments = append(radixDeployments, builder.buildDeploymentSummary())
+		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
 	}
 
 	return postFiltering(radixDeployments, latest), nil
 }
 
+// GetDeploymentWithName Handler for GetDeploymentWithName
+func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+	// Need to list all deployments to find active to of deployment
+	allDeployments, err := deploy.GetDeployments(appName, "", false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the deployment summary
+	var theDeployment *deploymentModels.DeploymentSummary
+	for _, deployment := range allDeployments {
+		if strings.EqualFold(deployment.Name, deploymentName) {
+			theDeployment = deployment
+			break
+		}
+	}
+
+	if theDeployment == nil {
+		return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
+	}
+
+	namespace := crdUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var activeTo time.Time
+	if !strings.EqualFold(theDeployment.ActiveTo, "") {
+		activeTo, err = utils.ParseTimestamp(theDeployment.ActiveTo)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	components, err := deploy.GetComponentsForDeployment(appName, theDeployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return deploymentModels.NewDeploymentBuilder().
+		WithRadixDeployment(*rd).
+		WithActiveTo(activeTo).
+		WithComponents(components).
+		BuildDeployment(), nil
+}
+
 // GetDeploymentsForJob Lists deployments for job name
-func (deploy DeployHandler) GetDeploymentsForJob(radixclient radixclient.Interface, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
-	deployments, err := deploy.HandleGetDeployments(appName, "", false)
+func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
+	deployments, err := deploy.GetDeployments(appName, "", false)
 	if err != nil {
 		return nil, err
 	}
 
 	deploymentsForJob := []*deploymentModels.DeploymentSummary{}
 	for _, deployment := range deployments {
-		if deployment.JobName == jobName {
+		if deployment.CreatedByJob == jobName {
 			deploymentsForJob = append(deploymentsForJob, deployment)
 		}
 	}
@@ -155,8 +203,7 @@ func isLatest(theOne *deploymentModels.DeploymentSummary, all []*deploymentModel
 			continue
 		}
 
-		if rd.AppName == theOne.AppName &&
-			rd.Environment == theOne.Environment &&
+		if rd.Environment == theOne.Environment &&
 			rd.Name != theOne.Name &&
 			rdActiveFrom.After(theOneActiveFrom) {
 			return false

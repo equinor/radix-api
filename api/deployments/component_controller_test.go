@@ -29,7 +29,7 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := nonExistingDeployment(nil, anyDeployName)
+	expectedError := deploymentModels.NonExistingDeployment(nil, anyDeployName)
 
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 }
@@ -47,7 +47,7 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := nonExistingDeployment(nil, "any-non-existing-deployment")
+	expectedError := deploymentModels.NonExistingDeployment(nil, "any-non-existing-deployment")
 
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 }
@@ -121,7 +121,7 @@ func createComponentPod(kubeclient kubernetes.Interface, namespace string) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "any-pod",
 				Labels: map[string]string{
-					"radixComponent": "app",
+					"radix-component": "app",
 				},
 			},
 		},
