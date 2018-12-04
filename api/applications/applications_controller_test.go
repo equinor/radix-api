@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/statoil/radix-operator/pkg/apis/application"
+
 	"github.com/stretchr/testify/assert"
 
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
@@ -411,6 +413,44 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, "Any public key", application.PublicKey)
 
+}
+
+func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	anyAppName := "any-app"
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "dev").
+		WithEnvironment("prod", "release"))
+
+	// Test
+	unmappedBranch := "feature"
+
+	parameters := applicationModels.PipelineParameters{Branch: unmappedBranch}
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := applicationModels.UnmatchedBranchToEnvironment(unmappedBranch)
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	// Mapped branch should start job
+	parameters = applicationModels.PipelineParameters{Branch: "dev"}
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	response = <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	// Magic branch should start job, even if it is not mapped
+	parameters = applicationModels.PipelineParameters{Branch: application.MagicBranch}
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	response = <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedForExisting(t *testing.T) {
