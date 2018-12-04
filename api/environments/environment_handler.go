@@ -45,7 +45,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 			BranchMapping: environment.Build.From,
 		}
 
-		deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment.Name, latestDeployment)
+		deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment.Name, latestDeployment)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		buildFrom = theEnvironment.Build.From
 	}
 
-	deployments, err := eh.deployHandler.GetDeployments(appName, envName, false)
+	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
 
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 			// Orphaned namespace
 			environment := namespace.Labels["radix-env"]
-			deploymentSummaries, err := eh.deployHandler.GetDeployments(appName, environment, latestDeployment)
+			deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, latestDeployment)
 			if err != nil {
 				return nil, err
 			}
