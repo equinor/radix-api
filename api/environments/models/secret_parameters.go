@@ -1,8 +1,8 @@
 package models
 
-// ComponentSecret describes a component secret
-// swagger:model ComponentSecret
-type ComponentSecret struct {
+// SecretParameters describes a component secret
+// swagger:model SecretParameters
+type SecretParameters struct {
 	// Name the unique name of the Radix application deployment
 	//
 	// required: true

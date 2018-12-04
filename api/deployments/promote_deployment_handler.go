@@ -20,7 +20,7 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 
 	radixConfig, err := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingApplication(err, appName)
+		return nil, deploymentModels.NonExistingApplication(err, appName)
 	}
 
 	fromNs := crdUtils.GetEnvironmentNamespace(appName, promotionParameters.FromEnvironment)
@@ -28,12 +28,12 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 
 	_, err = deploy.kubeClient.CoreV1().Namespaces().Get(fromNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingFromEnvironment(err)
+		return nil, deploymentModels.NonExistingFromEnvironment(err)
 	}
 
 	_, err = deploy.kubeClient.CoreV1().Namespaces().Get(toNs, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingToEnvironment(err)
+		return nil, deploymentModels.NonExistingToEnvironment(err)
 	}
 
 	log.Infof("Promoting %s from %s to %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment)
@@ -41,7 +41,7 @@ func (deploy DeployHandler) HandlePromoteToEnvironment(appName, deploymentName s
 
 	radixDeployment, err = deploy.radixClient.RadixV1().RadixDeployments(fromNs).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nonExistingDeployment(err, deploymentName)
+		return nil, deploymentModels.NonExistingDeployment(err, deploymentName)
 	}
 
 	radixDeployment.ResourceVersion = ""
@@ -70,7 +70,7 @@ func mergeWithRadixApplication(radixConfig *v1.RadixApplication, radixDeployment
 	for index, comp := range radixDeployment.Spec.Components {
 		raComp := getComponentConfig(radixConfig, comp.Name)
 		if raComp == nil {
-			return nonExistingComponentName(radixConfig.GetName(), comp.Name)
+			return deploymentModels.NonExistingComponentName(radixConfig.GetName(), comp.Name)
 		}
 
 		environmentVariables := getEnvironmentVariables(raComp, environment)

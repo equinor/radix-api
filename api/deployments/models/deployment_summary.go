@@ -9,11 +9,10 @@ type DeploymentSummary struct {
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
 
-	// AppName the name of the Radix application owning this deployment
+	// Name of job creating deployment
 	//
 	// required: false
-	// example: radix-canary-golang
-	AppName string `json:"appName"`
+	CreatedByJob string `json:"createdByJob,omitempty"`
 
 	// Environment the environment this Radix application deployment runs in
 	//
@@ -32,16 +31,4 @@ type DeploymentSummary struct {
 	// required: false
 	// example: 2006-01-02T15:04:05-0700
 	ActiveTo string `json:"activeTo,omitempty"`
-
-	// Array of components
-	//
-	// required: false
-	// items:
-	//    "$ref": "#/definitions/ComponentSummary"
-	Components []*ComponentSummary `json:"-"`
-
-	// Name of job creating deployment
-	//
-	// required: false
-	JobName string `json:"-"`
 }
