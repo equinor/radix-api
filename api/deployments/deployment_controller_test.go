@@ -403,7 +403,7 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 			assert.Equal(t, http.StatusOK, response.Code)
 
 			if scenario.imageExpected != "" {
-				deployments, _ := deployHandler.GetDeployments(scenario.appName, scenario.toEnvironment, false)
+				deployments, _ := deployHandler.GetDeploymentsForApplicationEnvironment(scenario.appName, scenario.toEnvironment, false)
 				assert.Equal(t, 1, len(deployments))
 				assert.Equal(t, deploymentName, deployments[0].Name)
 			}
@@ -519,7 +519,7 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	deployments, _ := deployHandler.GetDeployments(anyAppName, "prod", false)
+	deployments, _ := deployHandler.GetDeploymentsForApplicationEnvironment(anyAppName, "prod", false)
 	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
 
 	// Get the RD to see if it has merged ok with the RA
