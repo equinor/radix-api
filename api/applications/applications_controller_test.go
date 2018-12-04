@@ -429,7 +429,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "App name and branch are required", errorResponse.Message)
+	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
@@ -437,7 +438,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
-	assert.Equal(t, "App name and branch are required", errorResponse.Message)
+	expectedError = applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
