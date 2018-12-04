@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/statoil/radix-operator/pkg/apis/application"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
@@ -186,13 +187,28 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 	commitID := pipelineParameters.CommitID
 
 	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
-		return nil, utils.ValidationError("Radix Application Pipeline", "App name and branch are required")
+		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	}
 
 	log.Infof("Creating pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
-	application, err := ah.GetApplication(appName)
+	app, err := ah.GetApplication(appName)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if branch is mapped
+	if !application.IsMagicBranch(branch) {
+		config, err := ah.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		application := application.NewApplication(config)
+		branchIsMapped, _ := application.IsBranchMappedToEnvironment(branch)
+
+		if !branchIsMapped {
+			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
+		}
 	}
 
 	jobParameters := &jobModels.JobParameters{
@@ -200,7 +216,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 		CommitID: commitID,
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(application.Registration.Repository), pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
