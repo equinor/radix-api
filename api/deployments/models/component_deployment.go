@@ -34,11 +34,10 @@ type Component struct {
 	// required: false
 	Variables map[string]string `json:"variables"`
 
-	// Array of pod names
+	// Array of ReplicaSummary
 	//
 	// required: false
-	// example: server-78fc8857c4-hm76l,server-78fc8857c4-asfa2
-	Replicas []string `json:"replicas"`
+	Replicas []ReplicaSummary `json:"replicas"`
 }
 
 // Port describe an component part of an deployment
@@ -71,4 +70,37 @@ type ComponentSummary struct {
 	// required: true
 	// example: radixdev.azurecr.io/radix-api-server:cdgkg
 	Image string `json:"image"`
+}
+
+// ReplicaSummary describes condition of a pod
+// swagger:model ReplicaSummary
+type ReplicaSummary struct {
+	// Pod name
+	//
+	// required: true
+	// example: server-78fc8857c4-hm76l
+	Name string `json:"name"`
+
+	// Status describes the component container status
+	//
+	// required: false
+	Status ReplicaStatus `json:"replicaStatus"`
+
+	// StatusMessage provides message describing the status of a component container inside a pod
+	//
+	// required: false
+	StatusMessage string `json:"statusMessage"`
+}
+
+// ReplicaStatus describes the status of a component container inside a pod
+type ReplicaStatus struct {
+	// Status of the container
+	// - Pending = Container in Waiting state and the reason is ContainerCreating
+	// - Failing = Container in Waiting state and the reason is anything else but ContainerCreating
+	// - Running = Container in Running state
+	// - Terminated = Container in Terminated state
+	//
+	// required: true
+	// example: Pending, Failing, Running, Terminated
+	Status string `json:"status"`
 }

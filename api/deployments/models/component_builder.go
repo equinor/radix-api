@@ -6,7 +6,7 @@ import (
 
 // ComponentBuilder Builds DTOs
 type ComponentBuilder interface {
-	WithPodNames([]string) ComponentBuilder
+	WithReplicaSummaryList([]ReplicaSummary) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixDeployComponent) ComponentBuilder
 	BuildComponentSummary() *ComponentSummary
@@ -15,13 +15,13 @@ type ComponentBuilder interface {
 
 type componentBuilder struct {
 	component                 v1.RadixDeployComponent
-	podNames                  []string
+	replicaSummaryList        []ReplicaSummary
 	radixEnvironmentVariables map[string]string
 	ports                     []Port
 }
 
-func (b *componentBuilder) WithPodNames(podNames []string) ComponentBuilder {
-	b.podNames = podNames
+func (b *componentBuilder) WithReplicaSummaryList(replicaSummaryList []ReplicaSummary) ComponentBuilder {
+	b.replicaSummaryList = replicaSummaryList
 	return b
 }
 
@@ -75,7 +75,7 @@ func (b *componentBuilder) BuildComponent() *Component {
 		Ports:     b.ports,
 		Secrets:   secrets,
 		Variables: variables,
-		Replicas:  b.podNames,
+		Replicas:  b.replicaSummaryList,
 	}
 }
 
