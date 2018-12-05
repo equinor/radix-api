@@ -19,13 +19,13 @@ type Step struct {
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05-0700
+	// example: 2006-01-02T15:04:05Z
 	Started string `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05-0700
+	// example: 2006-01-02T15:04:05Z
 	Ended string `json:"ended"`
 
 	// Pod name

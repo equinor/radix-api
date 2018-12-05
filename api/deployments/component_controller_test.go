@@ -81,8 +81,8 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
 
-	initialDeploymentCreated, _ := utils.ParseTimestamp("2018-11-12T11:45:26-0000")
-	activeDeploymentCreated, _ := utils.ParseTimestamp("2018-11-14T11:45:26-0000")
+	initialDeploymentCreated, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
+	activeDeploymentCreated, _ := utils.ParseTimestamp("2018-11-14T11:45:26Z")
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().

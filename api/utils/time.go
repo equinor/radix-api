@@ -6,11 +6,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const timestampFormat = "2006-01-02T15:04:05-0700"
-
 // ParseTimestamp Converts timestamp to time
 func ParseTimestamp(timestamp string) (time.Time, error) {
-	return time.Parse(timestampFormat, timestamp)
+	return time.Parse(time.RFC3339, timestamp)
 }
 
 // FormatTimestamp Converts time to formatted timestamp
@@ -18,7 +16,7 @@ func FormatTimestamp(timestamp time.Time) string {
 	emptyTime := time.Time{}
 
 	if timestamp != emptyTime {
-		return timestamp.Format(timestampFormat)
+		return timestamp.Format(time.RFC3339)
 	}
 
 	return ""
