@@ -23,7 +23,7 @@ spec:
     environmentVariables:
     - environment: qa
       variables:
-        PIPELINE_IMG_TAG: "latest"
+        PIPELINE_IMG_TAG: "master-latest"
     - environment: prod
       variables:
-        PIPELINE_IMG_TAG: "prod"
+        PIPELINE_IMG_TAG: "release-latest"
