@@ -6,7 +6,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	podModels "github.com/statoil/radix-api/api/pods/models"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 
 	"k8s.io/client-go/kubernetes"
@@ -21,21 +20,6 @@ type PodHandler struct {
 // Init Constructor
 func Init(client kubernetes.Interface) PodHandler {
 	return PodHandler{client}
-}
-
-// HandleGetPods handler for GetPods
-func (ph PodHandler) HandleGetPods(appName string, envName string) ([]podModels.Pod, error) {
-	podList, err := ph.client.CoreV1().Pods(crdUtils.GetEnvironmentNamespace(appName, envName)).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	pods := make([]podModels.Pod, len(podList.Items))
-	for i, pod := range podList.Items {
-		pods[i] = podModels.Pod{Name: pod.Name}
-	}
-
-	return pods, nil
 }
 
 // HandleGetAppPodLog Get logs from pod in app namespace
