@@ -23,12 +23,12 @@ type DeploymentSummary struct {
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05-0700
+	// example: 2006-01-02T15:04:05Z
 	ActiveFrom string `json:"activeFrom"`
 
 	// ActiveTo Timestamp when the deployment ends
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05-0700
+	// example: 2006-01-02T15:04:05Z
 	ActiveTo string `json:"activeTo,omitempty"`
 }
