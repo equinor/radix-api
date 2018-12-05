@@ -203,10 +203,10 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	commontest.CreateAppNamespace(kubeclient, "app-2")
 	commontest.CreateAppNamespace(kubeclient, "app-3")
 
-	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26-0000")
-	app2Job1Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14-0000")
-	app2Job2Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00-0000")
-	app2Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:01-0000")
+	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
+	app2Job1Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14Z")
+	app2Job2Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
+	app2Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:01Z")
 
 	createRadixJob(kubeclient, "app-1", "app-1-job-1", app1Job1Started)
 	createRadixJob(kubeclient, "app-2", "app-2-job-1", app2Job1Started)
@@ -240,9 +240,9 @@ func TestGetApplication_WithJobs(t *testing.T) {
 		WithName("any-name"))
 
 	commontest.CreateAppNamespace(kubeclient, "any-name")
-	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26-0000")
-	app1Job2Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14-0000")
-	app1Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00-0000")
+	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
+	app1Job2Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14Z")
+	app1Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
 
 	createRadixJob(kubeclient, "any-name", "any-name-job-1", app1Job1Started)
 	createRadixJob(kubeclient, "any-name", "any-name-job-2", app1Job2Started)
