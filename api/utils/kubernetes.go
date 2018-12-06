@@ -46,7 +46,6 @@ func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixc
 }
 
 func getOutClusterClientConfig(token string) *restclient.Config {
-	log.Info("Using out of cluster config")
 	kubeConfig := &restclient.Config{
 		Host:        "https://kubernetes.default.svc",
 		BearerToken: token,
@@ -59,7 +58,6 @@ func getOutClusterClientConfig(token string) *restclient.Config {
 }
 
 func getInClusterClientConfig() *restclient.Config {
-	log.Info("Using in cluster config")
 	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
