@@ -37,7 +37,6 @@ import (
 	"github.com/statoil/radix-api/api/deployments"
 	"github.com/statoil/radix-api/api/environments"
 	"github.com/statoil/radix-api/api/jobs"
-	"github.com/statoil/radix-api/api/pods"
 
 	router "github.com/statoil/radix-api/api/router"
 	"github.com/statoil/radix-api/models"
@@ -92,7 +91,6 @@ func getControllers() []models.Controller {
 		applications.NewApplicationController(),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
-		pods.NewPodController(),
 		environments.NewEnvironmentController(),
 	}
 }
