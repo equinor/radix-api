@@ -115,7 +115,7 @@ func ValidationError(kind, message string) error {
 // CoverAllError Cover all other errors
 func CoverAllError(err error) *Error {
 	return &Error{
-		Type:    Server,
+		Type:    User,
 		Err:     err,
 		Message: `Error: ` + err.Error(),
 	}
