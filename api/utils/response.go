@@ -121,7 +121,7 @@ func CoverAllError(err error) *Error {
 	}
 }
 
-func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err error) {
+func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err *Error) {
 	// An Accept header with "application/json" is sent by clients
 	// understanding how to decode JSON errors. Older clients don't
 	// send an Accept header, so we just give them the error text.
@@ -142,12 +142,7 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err er
 		case "text/plain":
 			w.Header().Set(http.CanonicalHeaderKey("Content-Type"), "text/plain; charset=utf-8")
 			w.WriteHeader(code)
-			switch err := err.(type) {
-			case *Error:
-				fmt.Fprint(w, err.Message)
-			default:
-				fmt.Fprint(w, err.Error())
-			}
+			fmt.Fprint(w, err.Message)
 			return
 		}
 	}
@@ -181,23 +176,24 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 	var code int
 	var ok bool
 
-	log.Error(apiError.Error())
+	err := errors.Cause(apiError)
+	if outErr, ok = err.(*Error); !ok {
+		outErr = CoverAllError(apiError)
+	}
+
+	log.Error(outErr.Message)
 
 	switch apiError.(type) {
 	case *url.Error:
 		// Reflect any underlying network error
-		writeErrorWithCode(w, r, http.StatusInternalServerError, apiError)
+		writeErrorWithCode(w, r, http.StatusInternalServerError, outErr)
 
 	case *apierrors.StatusError:
 		// Reflect any underlying error from Kubernetes API
 		se := apiError.(*apierrors.StatusError)
-		writeErrorWithCode(w, r, int(se.ErrStatus.Code), apiError)
+		writeErrorWithCode(w, r, int(se.ErrStatus.Code), outErr)
 
 	default:
-		err := errors.Cause(apiError)
-		if outErr, ok = err.(*Error); !ok {
-			outErr = CoverAllError(apiError)
-		}
 		switch outErr.Type {
 		case Missing:
 			code = http.StatusNotFound
