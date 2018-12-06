@@ -61,6 +61,10 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 	// Secrets from config
 	raComponentSecretsMap := make(map[string]map[string]bool)
 	for _, raComponent := range ra.Spec.Components {
+		if len(raComponent.Secrets) <= 0 {
+			continue
+		}
+
 		raSecretNamesMap := make(map[string]bool)
 		raComponentSecrets := raComponent.Secrets
 		for _, raComponentSecretName := range raComponentSecrets {
