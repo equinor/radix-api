@@ -175,9 +175,9 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))
-	assert.Equal(t, 1, len(components[0].Replicas))
-	assert.Equal(t, deploymentModels.Failing.String(), components[0].Replicas[0].Status.Status)
-	assert.Equal(t, message, components[0].Replicas[0].StatusMessage)
+	assert.Equal(t, 1, len(components[0].ReplicaList))
+	assert.Equal(t, deploymentModels.Failing.String(), components[0].ReplicaList[0].Status.Status)
+	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
 }
 
 func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
@@ -203,9 +203,9 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))
-	assert.Equal(t, 1, len(components[0].Replicas))
-	assert.Equal(t, deploymentModels.Running.String(), components[0].Replicas[0].Status.Status)
-	assert.Equal(t, message, components[0].Replicas[0].StatusMessage)
+	assert.Equal(t, 1, len(components[0].ReplicaList))
+	assert.Equal(t, deploymentModels.Running.String(), components[0].ReplicaList[0].Status.Status)
+	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
 }
 
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
@@ -232,8 +232,8 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 
 	assert.Equal(t, 1, len(components))
 	assert.Equal(t, 1, len(components[0].Replicas))
-	assert.Equal(t, deploymentModels.Pending.String(), components[0].Replicas[0].Status.Status)
-	assert.Equal(t, message, components[0].Replicas[0].StatusMessage)
+	assert.Equal(t, deploymentModels.Pending.String(), components[0].ReplicaList[0].Status.Status)
+	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
 }
 
 func createComponentPodWithContainerState(kubeclient kubernetes.Interface, namespace, message string, status deploymentModels.ContainerStatus) {

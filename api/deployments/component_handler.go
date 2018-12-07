@@ -44,11 +44,12 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 	components := []*deploymentModels.Component{}
 	for _, component := range rd.Spec.Components {
 		var environmentVariables map[string]string
+		podNames := []string{}
 		replicaSummaryList := []deploymentModels.ReplicaSummary{}
 
 		if deployment.ActiveTo == "" {
 			// current active deployment - we get existing pods
-			replicaSummaryList, environmentVariables, err = deploy.getReplicaSummaryAndEnvironmentVariables(envNs, component.Name)
+			podNames, replicaSummaryList, environmentVariables, err = deploy.getReplicaSummaryAndEnvironmentVariables(envNs, component.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -56,6 +57,7 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 
 		deploymentComponent := deploymentModels.NewComponentBuilder().
 			WithComponent(component).
+			WithPodNames(podNames).
 			WithReplicaSummaryList(replicaSummaryList).
 			WithRadixEnvironmentVariables(environmentVariables).
 			BuildComponent()
@@ -65,7 +67,8 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 	return components, nil
 }
 
-func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, componentName string) ([]deploymentModels.ReplicaSummary, map[string]string, error) {
+func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, componentName string) ([]string, []deploymentModels.ReplicaSummary, map[string]string, error) {
+	podNames := []string{}
 	replicaSummaryList := []deploymentModels.ReplicaSummary{}
 	radixEnvironmentVariables := make(map[string]string)
 
@@ -73,8 +76,9 @@ func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, comp
 		LabelSelector: fmt.Sprintf("radix-component=%s", componentName),
 	})
 	if err != nil {
+		log.Errorf("error getting pod names: %v", err)
 		log.Errorf("error getting pods: %v", err)
-		return replicaSummaryList, radixEnvironmentVariables, err
+		return podNames, replicaSummaryList, radixEnvironmentVariables, err
 	}
 
 	for _, pod := range pods.Items {
@@ -100,6 +104,7 @@ func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, comp
 			}
 		}
 
+		podNames = append(podNames, pod.GetName())
 		replicaSummaryList = append(replicaSummaryList, replicaSummary)
 
 		for _, container := range pod.Spec.Containers {
@@ -110,5 +115,5 @@ func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, comp
 			}
 		}
 	}
-	return replicaSummaryList, radixEnvironmentVariables, nil
+	return podNames, replicaSummaryList, radixEnvironmentVariables, nil
 }

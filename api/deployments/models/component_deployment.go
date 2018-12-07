@@ -34,10 +34,18 @@ type Component struct {
 	// required: false
 	Variables map[string]string `json:"variables"`
 
+	// Array of pod names
+	//
+	// required: false
+	// deprecated: true
+	// example: server-78fc8857c4-hm76l,server-78fc8857c4-asfa2
+	// Deprecated: Use ReplicaList instead.
+	Replicas []string `json:"replicas"`
+
 	// Array of ReplicaSummary
 	//
 	// required: false
-	Replicas []ReplicaSummary `json:"replicas"`
+	ReplicaList []ReplicaSummary `json:"replicaList"`
 }
 
 // Port describe an component part of an deployment
