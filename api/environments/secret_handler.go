@@ -28,13 +28,8 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		return nil, utils.UnexpectedError("Failed getting secret object", err)
 	}
 
-	oldSecretValue, exists := secretObject.Data[secretName]
-	if !exists {
-		return nil, utils.ValidationError("Secret", "Secret name does not exist")
-	}
-
-	if string(oldSecretValue) == newSecretValue {
-		return nil, utils.ValidationError("Secret", "No change in secret value")
+	if secretObject.Data == nil {
+		secretObject.Data = make(map[string][]byte)
 	}
 
 	secretObject.Data[secretName] = []byte(newSecretValue)
@@ -61,6 +56,10 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 	// Secrets from config
 	raComponentSecretsMap := make(map[string]map[string]bool)
 	for _, raComponent := range ra.Spec.Components {
+		if len(raComponent.Secrets) <= 0 {
+			continue
+		}
+
 		raSecretNamesMap := make(map[string]bool)
 		raComponentSecrets := raComponent.Secrets
 		for _, raComponentSecretName := range raComponentSecrets {
