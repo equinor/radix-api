@@ -28,13 +28,8 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		return nil, utils.UnexpectedError("Failed getting secret object", err)
 	}
 
-	oldSecretValue, exists := secretObject.Data[secretName]
-	if !exists {
-		return nil, utils.ValidationError("Secret", "Secret name does not exist")
-	}
-
-	if string(oldSecretValue) == newSecretValue {
-		return nil, utils.ValidationError("Secret", "No change in secret value")
+	if secretObject.Data == nil {
+		secretObject.Data = make(map[string][]byte)
 	}
 
 	secretObject.Data[secretName] = []byte(newSecretValue)

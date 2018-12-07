@@ -382,11 +382,7 @@ func TestUpdateSecret_SecretName_Missing(t *testing.T) {
 	updateSecretValue := "newvalue"
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
-	assert.Equal(t, "Secret name does not exist", errorResponse.Message)
-	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestUpdateSecret_SecretValue_Empty(t *testing.T) {
@@ -420,11 +416,7 @@ func TestUpdateSecret_SecretValue_NoChange(t *testing.T) {
 	updateSecretValue := "oldvalue"
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
-	assert.Equal(t, "No change in secret value", errorResponse.Message)
-	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestUpdateSecret_SecretObject_Missing(t *testing.T) {
