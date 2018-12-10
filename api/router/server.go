@@ -90,7 +90,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			// 1. "https://*.radix.equinor.com"
 			// 2. Keep cors rules in ingresses
 			"https://console.dev.radix.equinor.com",
-			getHostName("web", "radix-web-console-dev", apiRouter.clusterName),
+			getHostName("web", "radix-web-console-qa", apiRouter.clusterName),
 			getHostName("web", "radix-web-console-prod", apiRouter.clusterName),
 		},
 		AllowCredentials: true, // Needed for sockets
