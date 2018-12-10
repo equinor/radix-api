@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,10 +50,13 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 
 		if deployment.ActiveTo == "" {
 			// current active deployment - we get existing pods
-			podNames, replicaSummaryList, environmentVariables, err = deploy.getReplicaSummaryAndEnvironmentVariables(envNs, component.Name)
+			pods, err := deploy.getComponentPodsByNamespace(envNs, component.Name)
 			if err != nil {
 				return nil, err
 			}
+			podNames = getPodNames(pods)
+			environmentVariables = getRadixEnvironmentVariables(pods)
+			replicaSummaryList = getReplicaSummaryList(pods)
 		}
 
 		deploymentComponent := deploymentModels.NewComponentBuilder().
@@ -67,21 +71,48 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 	return components, nil
 }
 
-func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, componentName string) ([]string, []deploymentModels.ReplicaSummary, map[string]string, error) {
-	podNames := []string{}
-	replicaSummaryList := []deploymentModels.ReplicaSummary{}
-	radixEnvironmentVariables := make(map[string]string)
-
+func (deploy DeployHandler) getComponentPodsByNamespace(envNs, componentName string) ([]corev1.Pod, error) {
 	pods, err := deploy.kubeClient.CoreV1().Pods(envNs).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("radix-component=%s", componentName),
 	})
 	if err != nil {
-		log.Errorf("error getting pod names: %v", err)
 		log.Errorf("error getting pods: %v", err)
-		return podNames, replicaSummaryList, radixEnvironmentVariables, err
+		return nil, err
 	}
 
-	for _, pod := range pods.Items {
+	return pods.Items, nil
+}
+
+func getPodNames(pods []corev1.Pod) []string {
+	podNames := []string{}
+
+	for _, pod := range pods {
+		podNames = append(podNames, pod.GetName())
+	}
+
+	return podNames
+}
+
+func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
+	radixEnvironmentVariables := make(map[string]string)
+
+	for _, pod := range pods {
+		for _, container := range pod.Spec.Containers {
+			for _, envVariable := range container.Env {
+				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
+					radixEnvironmentVariables[envVariable.Name] = envVariable.Value
+				}
+			}
+		}
+	}
+
+	return radixEnvironmentVariables
+}
+
+func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary {
+	replicaSummaryList := []deploymentModels.ReplicaSummary{}
+
+	for _, pod := range pods {
 		replicaSummary := deploymentModels.ReplicaSummary{}
 		replicaSummary.Name = pod.GetName()
 		if len(pod.Status.ContainerStatuses) > 0 {
@@ -103,17 +134,8 @@ func (deploy DeployHandler) getReplicaSummaryAndEnvironmentVariables(envNs, comp
 				replicaSummary.StatusMessage = containerState.Terminated.Message
 			}
 		}
-
-		podNames = append(podNames, pod.GetName())
 		replicaSummaryList = append(replicaSummaryList, replicaSummary)
-
-		for _, container := range pod.Spec.Containers {
-			for _, envVariable := range container.Env {
-				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
-					radixEnvironmentVariables[envVariable.Name] = envVariable.Value
-				}
-			}
-		}
 	}
-	return podNames, replicaSummaryList, radixEnvironmentVariables, nil
+
+	return replicaSummaryList
 }
