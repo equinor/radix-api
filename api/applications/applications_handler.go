@@ -172,7 +172,17 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
-	log.Infof("Deleting app with name %s", appName)
+	// Make check that this is an existing application
+	_, err := ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	err = ah.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Delete(appName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
