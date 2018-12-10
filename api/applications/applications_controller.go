@@ -342,7 +342,7 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 		return
 	}
 
-	utils.JSONResponse(w, r, "ok")
+	w.WriteHeader(http.StatusOK)
 }
 
 // TriggerPipeline creates a pipeline job for the application
