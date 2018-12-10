@@ -558,6 +558,31 @@ func TestIsDeployKeyValid(t *testing.T) {
 	})
 }
 
+func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	parameters := AnApplicationRegistration().
+		withName("any-name").Build()
+
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	// Test
+	responseChannel = controllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s", "any-non-existing"))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	// Application should no longer exist
+	responseChannel = controllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+}
+
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
