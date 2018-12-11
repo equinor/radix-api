@@ -344,7 +344,7 @@ func executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingC
 	secretObject := v1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
-			Name: existingComponentName,
+			Name: k8sObjectUtils.GetComponentSecretName(existingComponentName),
 		},
 		Data: map[string][]byte{oldSecretName: []byte(oldSecretValue)},
 	}
@@ -429,13 +429,14 @@ func TestUpdateSecret_SecretObject_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
+	secretObjName := k8sObjectUtils.GetComponentSecretName(requestComponentName)
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
-	assert.Equal(t, "secrets \"frontend\" not found", errorResponse.Err.Error())
+	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
 
 func TestUpdateSecret_Namespace_Missing(t *testing.T) {
@@ -448,13 +449,14 @@ func TestUpdateSecret_Namespace_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
+	secretObjName := k8sObjectUtils.GetComponentSecretName(existingComponentName)
 
 	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
-	assert.Equal(t, "secrets \"backend\" not found", errorResponse.Err.Error())
+	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
 
 func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, raComponentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
@@ -485,7 +487,7 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 		secretObject := v1.Secret{
 			Type: "Opaque",
 			ObjectMeta: metav1.ObjectMeta{
-				Name: componentName,
+				Name: k8sObjectUtils.GetComponentSecretName(componentName),
 			},
 			Data: clusterComponentSecrets,
 		}
