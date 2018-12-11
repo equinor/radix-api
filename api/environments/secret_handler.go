@@ -20,7 +20,8 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 	}
 
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(componentName, metav1.GetOptions{})
+	secretObjName := k8sObjectUtils.GetComponentSecretName(componentName)
+	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(secretObjName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Secret object does not exist", err)
 	}
@@ -70,7 +71,9 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 
 	secretDTOsMap := make(map[string]environmentModels.Secret)
 	for raComponentName, raSecretNamesMap := range raComponentSecretsMap {
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(raComponentName, metav1.GetOptions{})
+		secretObjectName := k8sObjectUtils.GetComponentSecretName(raComponentName)
+
+		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretObjectName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for raSecretName := range raSecretNamesMap {
