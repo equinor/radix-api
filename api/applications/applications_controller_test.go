@@ -10,16 +10,16 @@ import (
 
 	"github.com/statoil/radix-operator/pkg/apis/application"
 
-	"github.com/stretchr/testify/assert"
-
 	applicationModels "github.com/statoil/radix-api/api/applications/models"
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
 	builders "github.com/statoil/radix-operator/pkg/apis/utils"
 	"github.com/statoil/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/stretchr/testify/assert"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -614,9 +614,9 @@ func createRadixJob(kubeclient *kubefake.Clientset, appName, jobName string, sta
 		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-app-name": appName, // For backwards compatibility. Remove when cluster is migrated
-				"radix-app":      appName,
-				"radix-job-type": "job"}},
+				"radix-app-name":       appName, // For backwards compatibility. Remove when cluster is migrated
+				kube.RadixAppLabel:     appName,
+				kube.RadixJobTypeLabel: "job"}},
 			Status: batchv1.JobStatus{
 				StartTime: &metav1.Time{
 					Time: started,

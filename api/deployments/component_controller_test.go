@@ -7,6 +7,7 @@ import (
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	controllertest "github.com/statoil/radix-api/api/test"
 	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	builders "github.com/statoil/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -125,7 +126,7 @@ func getPodSpec() *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "any-pod",
 			Labels: map[string]string{
-				"radix-component": "app",
+				kube.RadixComponentLabel: "app",
 			},
 		},
 	}

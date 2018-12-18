@@ -6,6 +6,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +74,7 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 
 func (deploy DeployHandler) getComponentPodsByNamespace(envNs, componentName string) ([]corev1.Pod, error) {
 	pods, err := deploy.kubeClient.CoreV1().Pods(envNs).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("radix-component=%s", componentName),
+		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
 		log.Errorf("error getting pods: %v", err)

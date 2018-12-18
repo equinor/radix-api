@@ -16,12 +16,16 @@ import (
 	deployments "github.com/statoil/radix-api/api/deployments"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
 
 const workerImage = "radix-pipeline"
 const dockerRegistry = "radixdev.azurecr.io"
+
+// TODO: Move this into kube, or another central location
+const RadixJobTypeJob = "job"
 
 // JobHandler Instance variables
 type JobHandler struct {
@@ -44,7 +48,7 @@ func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSumm
 	}
 
 	sort.Slice(jobList.Items, func(i, j int) bool {
-		switch strings.Compare(jobList.Items[i].Labels["radix-app-name"], jobList.Items[j].Labels["radix-app-name"]) {
+		switch strings.Compare(jobList.Items[i].Labels[kube.RadixAppLabel], jobList.Items[j].Labels[kube.RadixAppLabel]) {
 		case -1:
 			return true
 		case 1:
@@ -55,7 +59,7 @@ func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSumm
 
 	applicationJob := make(map[string]*jobModels.JobSummary)
 	for _, job := range jobList.Items {
-		appName := job.Labels["radix-app-name"]
+		appName := job.Labels[kube.RadixAppLabel]
 		if applicationJob[appName] != nil {
 			continue
 		}
@@ -134,7 +138,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	if !strings.EqualFold(job.Labels["radix-job-type"], "job") {
+	if !strings.EqualFold(job.Labels[kube.RadixJobTypeLabel], RadixJobTypeJob) {
 		return nil, utils.ValidationError("Radix Application Job", "Job was not of expected type")
 	}
 
@@ -157,8 +161,8 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 
 	return &jobModels.Job{
 		Name:        job.Name,
-		Branch:      job.Labels["radix-branch"],
-		CommitID:    job.Labels["radix-commit"],
+		Branch:      job.Labels[kube.RadixBranchLabel],
+		CommitID:    job.Labels[kube.RadixCommitLabel],
 		Started:     utils.FormatTime(job.Status.StartTime),
 		Ended:       utils.FormatTime(&jobEnded),
 		Status:      jobStatus.String(),
@@ -182,7 +186,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 2)
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 1)
 
-	labelSelector := fmt.Sprintf("radix-image-tag=%s, radix-job-type!=%s", job.Labels["radix-image-tag"], "job")
+	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
 	jobStepList, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
@@ -198,7 +202,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	steps = append(steps, pipelineJobStep)
 	for _, jobStep := range jobStepList.Items {
 		jobStepPod, err := jh.client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("job-name=%s", jobStep.Name),
+			LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobStep.Name),
 		})
 
 		if err != nil {
@@ -254,7 +258,7 @@ func (jh JobHandler) getJobEnvironmentMap(appName string) (map[string][]string, 
 func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	pods, err := jh.client.CoreV1().Pods(ns).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobName),
 	})
 
 	if err != nil {
@@ -270,9 +274,11 @@ func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error
 
 // GetJobSummary Used to get job summary from a kubernetes job
 func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
-	appName := job.Labels["radix-app-name"]
-	branch := job.Labels["radix-branch"]
-	commit := job.Labels["radix-commit"]
+	appName := job.Labels[kube.RadixAppLabel]
+	branch := job.Labels[kube.RadixBranchLabel]
+	commit := job.Labels[kube.RadixCommitLabel]
+
+	// TODO: Move string into constant
 	pipeline := job.Labels["radix-pipeline"]
 
 	status := job.Status
@@ -306,7 +312,7 @@ func (jh JobHandler) getJobs(appName string) (*batchv1.JobList, error) {
 
 func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, error) {
 	jobList, err := jh.client.BatchV1().Jobs(namespace).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("radix-job-type=%s", "job"),
+		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobTypeLabel, RadixJobTypeJob),
 	})
 
 	if err != nil {
