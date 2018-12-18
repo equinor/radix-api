@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-
 	log "github.com/Sirupsen/logrus"
 	radixjob "github.com/statoil/radix-api/api/jobs"
 	radixerr "github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	"github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -39,7 +38,7 @@ func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Inter
 }
 
 func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) error {
-	namespace := kube.GetCiCdNamespace(rr)
+	namespace := utils.GetAppNamespace(rr.Name)
 	jobApplied, err := createCloneJob(client, rr)
 
 	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(metav1.ListOptions{
@@ -80,7 +79,7 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 
 func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
 	jobName := strings.ToLower(fmt.Sprintf("%s-%s", rr.Name, utils.RandString(5)))
-	namespace := kube.GetCiCdNamespace(rr)
+	namespace := utils.GetAppNamespace(rr.Name)
 	backOffLimit := int32(1)
 
 	cloneContainer, volume := radixjob.CloneContainer(rr.Spec.CloneURL, "master")
@@ -89,8 +88,8 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-job-name": jobName,
-				"radix-job-type": "validate-clone-url",
+				kube.RadixJobNameLabel: jobName,
+				kube.RadixJobTypeLabel: "validate-clone-url",
 			},
 		},
 		Spec: batchv1.JobSpec{

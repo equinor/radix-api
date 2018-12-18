@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
@@ -154,11 +155,11 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 		switch obj.(type) {
 		case *batchv1.Job:
 			job := obj.(*batchv1.Job)
-			jobName = job.Labels["radix-job-name"]
+			jobName = job.Labels[kube.RadixJobNameLabel]
 
 		case *corev1.Pod:
 			pod := obj.(*corev1.Pod)
-			jobName = pod.Labels["radix-job-name"]
+			jobName = pod.Labels[kube.RadixJobNameLabel]
 
 		default:
 			return
