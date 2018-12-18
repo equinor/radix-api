@@ -107,7 +107,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = radixvalidators.CanRadixRegistrationBeInserted(ah.radixclient, radixRegistration)
+	err = isValidRegistration(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 
-	_, err = radixvalidators.CanRadixRegistrationBeUpdated(ah.radixclient, radixRegistration)
+	err = isValidUpdate(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +232,34 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 	}
 
 	return jobSummary, nil
+}
+
+func isValidRegistration(radixRegistration *v1.RadixRegistration) error {
+	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
+	// to run a full validation
+	kubeUtil := utils.NewKubeUtil(false)
+	_, inClusterRadixClient := kubeUtil.GetInClusterKubernetesClient()
+
+	_, err := radixvalidators.CanRadixRegistrationBeInserted(inClusterRadixClient, radixRegistration)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func isValidUpdate(radixRegistration *v1.RadixRegistration) error {
+	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
+	// to run a full validation
+	kubeUtil := utils.NewKubeUtil(false)
+	_, inClusterRadixClient := kubeUtil.GetInClusterKubernetesClient()
+
+	_, err := radixvalidators.CanRadixRegistrationBeUpdated(inClusterRadixClient, radixRegistration)
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 // Builder Handles construction of DTO
