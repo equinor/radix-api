@@ -18,7 +18,6 @@ import (
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
 
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -47,10 +46,9 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
-			Path:                   rootPath + "/applications",
-			Method:                 "GET",
-			RunInClusterKubeClient: true,
-			HandlerFunc:            ShowApplications,
+			Path:        rootPath + "/applications",
+			Method:      "GET",
+			HandlerFunc: ShowApplications,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}",
@@ -91,33 +89,33 @@ func (ac *applicationController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetApplicationStream Gets stream of applications
-func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+func GetApplicationStream(clients models.Clients, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
 	arg := `{
 			name
 			repository
 			description
 		}`
 
-	factory := informers.NewSharedInformerFactory(radixclient, 0)
+	factory := informers.NewSharedInformerFactory(clients.OutClusterRadixClient, 0)
 	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()
 	raInformer := factory.Radix().V1().RadixApplications().Informer()
 	rdInformer := factory.Radix().V1().RadixDeployments().Informer()
 
 	handleRR := func(obj interface{}, event string) {
 		rr := obj.(*v1.RadixRegistration)
-		body, _ := getSubscriptionData(radixclient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
+		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
 		data <- body
 	}
 
 	handleRA := func(obj interface{}, event string) {
 		ra := obj.(*v1.RadixApplication)
-		body, _ := getSubscriptionData(radixclient, arg, ra.Name, "", event)
+		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, ra.Name, "", event)
 		data <- body
 	}
 
 	handleRD := func(obj interface{}, event string) {
 		rd := obj.(*v1.RadixDeployment)
-		body, _ := getSubscriptionData(radixclient, arg, rd.Name, "", event)
+		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, rd.Name, "", event)
 		data <- body
 	}
 
@@ -137,7 +135,7 @@ func GetApplicationStream(client kubernetes.Interface, radixclient radixclient.I
 }
 
 // ShowApplications Lists applications
-func ShowApplications(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications platform showApplications
 	// ---
 	// summary: Lists the applications
@@ -160,7 +158,7 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistrations, err := handler.GetApplications(sshRepo)
 
 	if err != nil {
@@ -172,7 +170,7 @@ func ShowApplications(client kubernetes.Interface, radixclient radixclient.Inter
 }
 
 // GetApplication Gets application by application name
-func GetApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName} application getApplication
 	// ---
 	// summary: Gets the application application by name
@@ -191,7 +189,7 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
@@ -203,7 +201,7 @@ func GetApplication(client kubernetes.Interface, radixclient radixclient.Interfa
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name
-func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func IsDeployKeyValidHandler(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deploykey-valid application isDeployKeyValid
 	// ---
 	// summary: Checks if the deploy key is correctly setup for application by cloning the repository
@@ -221,7 +219,7 @@ func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclien
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	isDeployKeyValid, err := IsDeployKeyValid(client, radixclient, appName)
+	isDeployKeyValid, err := IsDeployKeyValid(clients.OutClusterClient, clients.OutClusterRadixClient, appName)
 
 	if isDeployKeyValid {
 		utils.JSONResponse(w, r, &isDeployKeyValid)
@@ -232,7 +230,7 @@ func IsDeployKeyValidHandler(client kubernetes.Interface, radixclient radixclien
 }
 
 // RegisterApplication Creates new application registation
-func RegisterApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications platform registerApplication
 	// ---
 	// summary: Create an application registration
@@ -258,7 +256,7 @@ func RegisterApplication(client kubernetes.Interface, radixclient radixclient.In
 		return
 	}
 
-	handler := Init(client, radixclient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -269,7 +267,7 @@ func RegisterApplication(client kubernetes.Interface, radixclient radixclient.In
 }
 
 // ChangeRegistrationDetails Updates application registration
-func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName} application changeRegistrationDetails
 	// ---
 	// summary: Update application registration
@@ -304,7 +302,7 @@ func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixcli
 		return
 	}
 
-	handler := Init(client, radixclient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -315,7 +313,7 @@ func ChangeRegistrationDetails(client kubernetes.Interface, radixclient radixcli
 }
 
 // DeleteApplication Deletes application
-func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName} application deleteApplication
 	// ---
 	// summary: Delete application
@@ -334,7 +332,7 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
@@ -346,7 +344,7 @@ func DeleteApplication(client kubernetes.Interface, radixclient radixclient.Inte
 }
 
 // TriggerPipeline creates a pipeline job for the application
-func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/{pipelineName} application triggerPipeline
 	// ---
 	// summary: Run a pipeline for a given application and branch
@@ -383,7 +381,7 @@ func TriggerPipeline(client kubernetes.Interface, radixclient radixclient.Interf
 		return
 	}
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, pipelineParameters)
 
 	if err != nil {

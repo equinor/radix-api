@@ -15,9 +15,7 @@ import (
 	_ "github.com/statoil/radix-api/swaggerui" // statik files
 	"github.com/urfave/negroni"
 
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 const apiVersionRoute = "/api/v1"
@@ -107,13 +105,8 @@ func getHostName(componentName, namespace, clustername string) string {
 
 func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
 	for _, controller := range controllers {
-		useInClusterConfig := controller.UseInClusterConfig()
 		for _, route := range controller.GetRoutes() {
-			if useInClusterConfig || route.RunInClusterKubeClient {
-				addHandlerRouteInClusterKubeClient(kubeUtil, router, route)
-			} else {
-				addHandlerRoute(kubeUtil, router, route)
-			}
+			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
 }
@@ -121,15 +114,6 @@ func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controller
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
 	router.HandleFunc(apiVersionRoute+route.Path,
 		utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc).Handle).Methods(route.Method)
-}
-
-// routes which should be run under radix-api service account, instead of using incomming access token
-func addHandlerRouteInClusterKubeClient(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
-	router.HandleFunc(apiVersionRoute+route.Path,
-		func(w http.ResponseWriter, r *http.Request) {
-			client, radixclient := kubeUtil.GetInClusterKubernetesClient()
-			route.HandlerFunc(client, radixclient, w, r)
-		}).Methods(route.Method)
 }
 
 func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
@@ -144,10 +128,19 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 
 	socketServer.On("connection", func(so socketio.Socket) {
 		token := utils.GetTokenFromQuery(so.Request())
-		client, radixclient := kubeUtil.GetOutClusterKubernetesClient(token)
+
+		inClusterClient, inClusterRadixClient := kubeUtil.GetInClusterKubernetesClient()
+		outClusterClient, outClusterRadixClient := kubeUtil.GetOutClusterKubernetesClient(token)
+
+		clients := models.Clients{
+			InClusterClient:       inClusterClient,
+			InClusterRadixClient:  inClusterRadixClient,
+			OutClusterClient:      outClusterClient,
+			OutClusterRadixClient: outClusterRadixClient,
+		}
 
 		// Make an extra check that the user has the correct access
-		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		_, err := outClusterClient.CoreV1().Namespaces().List(metav1.ListOptions{})
 		if err != nil {
 			log.Errorf("Socket connection refused, due to error %v", err)
 
@@ -158,7 +151,7 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 		disconnect := make(chan struct{})
 
 		allSubscriptionChannels := make(map[string]chan struct{})
-		addSubscriptions(so, disconnect, allAvailableResourceSubscriptions, allSubscriptionChannels, client, radixclient)
+		addSubscriptions(so, disconnect, allAvailableResourceSubscriptions, allSubscriptionChannels, clients)
 
 		so.On("disconnection", func() {
 			if disconnect != nil {
@@ -180,7 +173,7 @@ func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, control
 	router.Handle("/socket.io/", socketServer)
 }
 
-func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailableResourceSubscriptions map[string]*models.Subscription, allSubscriptionChannels map[string]chan struct{}, client kubernetes.Interface, radixclient radixclient.Interface) {
+func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailableResourceSubscriptions map[string]*models.Subscription, allSubscriptionChannels map[string]chan struct{}, clients models.Clients) {
 	so.On("watch", func(so socketio.Socket, resource string) {
 		sub := utils.FindMatchingSubscription(resource, allAvailableResourceSubscriptions)
 		if sub == nil {
@@ -194,7 +187,7 @@ func addSubscriptions(so socketio.Socket, disconnect chan struct{}, allAvailable
 		subscription := make(chan struct{})
 		allSubscriptionChannels[resource] = subscription
 
-		go sub.HandlerFunc(client, radixclient, resource, resourceIdentifiers, data, subscription)
+		go sub.HandlerFunc(clients, resource, resourceIdentifiers, data, subscription)
 		go writeEventToSocket(so, sub.DataType, disconnect, data)
 
 		log.Infof("Subscribing to %s", resource)
