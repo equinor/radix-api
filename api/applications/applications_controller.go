@@ -256,6 +256,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Need in cluster Radix client in order to validate registration using sufficient priviledges
 	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
@@ -302,6 +303,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 		return
 	}
 
+	// Need in cluster Radix client in order to validate registration using sufficient priviledges
 	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
