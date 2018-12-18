@@ -18,8 +18,6 @@ import (
 	"github.com/statoil/radix-api/models"
 	"github.com/statoil/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
-	"k8s.io/client-go/kubernetes"
 )
 
 const rootPath = "/applications/{appName}"
@@ -75,7 +73,7 @@ func (jc *jobController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetPipelineJobLogs Get logs of a job for an application
-func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs job getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
@@ -104,7 +102,7 @@ func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Int
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName)
 
 	if err != nil {
@@ -117,8 +115,8 @@ func GetPipelineJobLogs(client kubernetes.Interface, radixclient radixclient.Int
 }
 
 // GetApplicationJobsStream Lists starting pipeline and build jobs
-func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
-	factory := informers.NewSharedInformerFactoryWithOptions(client, 0)
+func GetApplicationJobsStream(clients models.Clients, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+	factory := informers.NewSharedInformerFactoryWithOptions(clients.OutClusterClient, 0)
 	jobsInformer := factory.Batch().V1().Jobs().Informer()
 
 	handleJobApplied := func(obj interface{}) {
@@ -140,12 +138,12 @@ func GetApplicationJobsStream(client kubernetes.Interface, radixclient radixclie
 }
 
 // GetApplicationJobStream Lists starting pipeline and build jobs
-func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclient.Interface, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
+func GetApplicationJobStream(clients models.Clients, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
 	appNameToWatch := resourceIdentifiers[0]
 	jobNameToWatch := resourceIdentifiers[1]
 	namespaceToWatch := crdUtils.GetAppNamespace(appNameToWatch)
 
-	factory := informers.NewSharedInformerFactoryWithOptions(client, 0, informers.WithNamespace(namespaceToWatch))
+	factory := informers.NewSharedInformerFactoryWithOptions(clients.OutClusterClient, 0, informers.WithNamespace(namespaceToWatch))
 	jobsInformer := factory.Batch().V1().Jobs().Informer()
 	podsInformer := factory.Core().V1().Pods().Informer()
 
@@ -169,7 +167,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 			return
 		}
 
-		handler := Init(client, radixclient)
+		handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 		radixJob, err := handler.GetApplicationJob(appNameToWatch, jobNameToWatch)
 		if err != nil {
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
@@ -194,7 +192,7 @@ func GetApplicationJobStream(client kubernetes.Interface, radixclient radixclien
 }
 
 // GetApplicationJobs gets job summaries
-func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs job getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
@@ -217,7 +215,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
@@ -229,7 +227,7 @@ func GetApplicationJobs(client kubernetes.Interface, radixclient radixclient.Int
 }
 
 // GetApplicationJob gets specific job details
-func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName} job getApplicationJob
 	// ---
 	// summary: Gets the detail of a given job for a given application
@@ -258,7 +256,7 @@ func GetApplicationJob(client kubernetes.Interface, radixclient radixclient.Inte
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(client, radixclient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
