@@ -12,6 +12,7 @@ import (
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
 	"github.com/statoil/radix-api/api/pods"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -129,7 +130,7 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 	labelSelector := fmt.Sprintf("radixApp=%s", appName)
 
 	if strings.TrimSpace(jobName) != "" {
-		labelSelector = fmt.Sprintf(labelSelector+", radix-job-name=%s", jobName)
+		labelSelector = fmt.Sprintf(labelSelector+", %s=%s", kube.RadixJobNameLabel, jobName)
 	}
 
 	listOptions.LabelSelector = labelSelector

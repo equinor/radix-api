@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/statoil/radix-operator/pkg/apis/utils"
-
 	log "github.com/Sirupsen/logrus"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
+	"github.com/statoil/radix-operator/pkg/apis/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,14 +84,14 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				"radix-job-name":  jobName,
-				"radix-job-type":  "job",
-				"radix-pipeline":  pipeline.String(),
-				"radix-app-name":  appName, // For backwards compatibility. Remove when cluster is migrated
-				"radix-app":       appName,
-				"radix-branch":    pushBranch,
-				"radix-image-tag": randomStr,
-				"radix-commit":    commitID,
+				kube.RadixJobNameLabel:  jobName,
+				kube.RadixJobTypeLabel:  RadixJobTypeJob,
+				"radix-pipeline":        pipeline.String(),
+				"radix-app-name":        appName, // For backwards compatibility. Remove when cluster is migrated
+				kube.RadixAppLabel:      appName,
+				kube.RadixBranchLabel:   pushBranch,
+				kube.RadixImageTagLabel: randomStr,
+				kube.RadixCommitLabel:   commitID,
 			},
 		},
 		Spec: batchv1.JobSpec{

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/statoil/radix-api/api/utils"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -32,7 +33,7 @@ type deploymentBuilder struct {
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
-	jobName := rd.Labels["radix-job-name"]
+	jobName := rd.Labels[kube.RadixJobNameLabel]
 
 	components := make([]*Component, len(rd.Spec.Components))
 	for i, component := range rd.Spec.Components {
