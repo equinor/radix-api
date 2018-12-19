@@ -31,8 +31,17 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, radixclient := handler.kubeUtil.GetOutClusterKubernetesClient(token)
-	handler.next(client, radixclient, w, r)
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
+	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClient(token)
+
+	clients := models.Clients{
+		InClusterClient:       inClusterClient,
+		InClusterRadixClient:  inClusterRadixClient,
+		OutClusterClient:      outClusterClient,
+		OutClusterRadixClient: outClusterRadixClient,
+	}
+
+	handler.next(clients, w, r)
 }
 
 // BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header

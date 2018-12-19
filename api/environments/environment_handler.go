@@ -6,6 +6,7 @@ import (
 
 	"github.com/statoil/radix-api/api/deployments"
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
+	"github.com/statoil/radix-operator/pkg/apis/kube"
 	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -155,7 +156,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 
 func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
 	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("radix-app=%s", appName),
+		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixAppLabel, appName),
 	})
 	if err != nil {
 		return nil, err
@@ -169,7 +170,7 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 			isOrphaned(namespace.Name, namespacesInConfig) {
 
 			// Orphaned namespace
-			environment := namespace.Labels["radix-env"]
+			environment := namespace.Labels[kube.RadixEnvLabel]
 			deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, latestDeployment)
 			if err != nil {
 				return nil, err
@@ -202,7 +203,7 @@ func getNamespacesInConfig(radixApplication *v1.RadixApplication) map[string]boo
 }
 
 func isAppNamespace(namespace corev1.Namespace) bool {
-	environment := namespace.Labels["radix-env"]
+	environment := namespace.Labels[kube.RadixEnvLabel]
 	if !strings.EqualFold(environment, "app") {
 		return false
 	}

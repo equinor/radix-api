@@ -7,26 +7,31 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// Clients Holds both in cluster clients and out of cluster clients
+type Clients struct {
+	// Clients running with authorization of the API server
+	InClusterClient      kubernetes.Interface
+	InClusterRadixClient radixclient.Interface
+
+	// Clients using the authorization of the user
+	OutClusterClient      kubernetes.Interface
+	OutClusterRadixClient radixclient.Interface
+}
+
 // RadixHandlerFunc Pattern for handler functions
-type RadixHandlerFunc func(kubernetes.Interface, radixclient.Interface, http.ResponseWriter, *http.Request)
+type RadixHandlerFunc func(Clients, http.ResponseWriter, *http.Request)
 
 // RadixStreamerFunc Pattern for watcher functions
-type RadixStreamerFunc func(kubernetes.Interface, radixclient.Interface, string, []string, chan []byte, chan struct{})
+type RadixStreamerFunc func(Clients, string, []string, chan []byte, chan struct{})
 
 // Controller Pattern of an rest/stream controller
 type Controller interface {
 	GetRoutes() Routes
 	GetSubscriptions() Subscriptions
-	UseInClusterConfig() bool
 }
 
 // DefaultController Default implementation
 type DefaultController struct {
-}
-
-// UseInClusterConfig Default implementation
-func (d *DefaultController) UseInClusterConfig() bool {
-	return false
 }
 
 // Routes Holder of all routes
@@ -34,10 +39,9 @@ type Routes []Route
 
 // Route Describe route
 type Route struct {
-	Path                   string
-	Method                 string
-	RunInClusterKubeClient bool // kube client will be run under radix-api service account, instead of using users access token
-	HandlerFunc            RadixHandlerFunc
+	Path        string
+	Method      string
+	HandlerFunc RadixHandlerFunc
 }
 
 // Subscriptions Holder of all subscriptions

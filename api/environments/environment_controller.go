@@ -11,9 +11,6 @@ import (
 	environmentModels "github.com/statoil/radix-api/api/environments/models"
 	"github.com/statoil/radix-api/api/utils"
 	"github.com/statoil/radix-api/models"
-	"k8s.io/client-go/kubernetes"
-
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
 )
 
 const rootPath = "/applications/{appName}"
@@ -63,7 +60,7 @@ func (ec *environmentController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
-func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetApplicationEnvironmentDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments
 	// ---
 	// summary: Lists the application environment deployments
@@ -108,7 +105,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 		}
 	}
 
-	deploymentHandler := deployments.Init(client, radixclient)
+	deploymentHandler := deployments.Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 
 	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(appName, envName, useLatest)
 	if err != nil {
@@ -120,7 +117,7 @@ func GetApplicationEnvironmentDeployments(client kubernetes.Interface, radixclie
 }
 
 // GetEnvironment Get details for an application environment
-func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName} environment getEnvironment
 	// ---
 	// summary: Get details for an application environment
@@ -150,7 +147,7 @@ func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interfa
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(client, radixclient)
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
@@ -163,7 +160,7 @@ func GetEnvironment(client kubernetes.Interface, radixclient radixclient.Interfa
 }
 
 // GetEnvironmentSummary Lists the environments for an application
-func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments environment getEnvironmentSummary
 	// ---
 	// summary: Lists the environments for an application
@@ -186,7 +183,7 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(client, radixclient)
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
@@ -198,7 +195,7 @@ func GetEnvironmentSummary(client kubernetes.Interface, radixclient radixclient.
 }
 
 // ChangeEnvironmentComponentSecret Modifies an application environment component secret
-func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeEnvironmentComponentSecret
 	// ---
 	// summary: Update an application environment component secret
@@ -251,7 +248,7 @@ func ChangeEnvironmentComponentSecret(client kubernetes.Interface, radixclient r
 		return
 	}
 
-	environmentHandler := Init(client, radixclient)
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 
 	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
