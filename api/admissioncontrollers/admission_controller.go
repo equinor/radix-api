@@ -33,15 +33,15 @@ func (ac *admissionController) GetRoutes() models.Routes {
 		models.Route{
 			Path:   RootPath + "/registrations",
 			Method: "POST",
-			HandlerFunc: func(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-				serve(client, radixclient, w, r, ValidateRegistrationChange)
+			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRegistrationChange)
 			},
 		},
 		models.Route{
 			Path:   RootPath + "/applications",
 			Method: "POST",
-			HandlerFunc: func(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
-				serve(client, radixclient, w, r, ValidateRadixConfigurationChange)
+			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRadixConfigurationChange)
 			},
 		},
 	}
@@ -54,11 +54,6 @@ func (ac *admissionController) GetSubscriptions() models.Subscriptions {
 	subscriptions := models.Subscriptions{}
 
 	return subscriptions
-}
-
-// UseInClusterConfig Use in cluster role
-func (ac *admissionController) UseInClusterConfig() bool {
-	return true
 }
 
 type admitFunc func(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error)
