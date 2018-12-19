@@ -12,9 +12,6 @@ import (
 	"github.com/statoil/radix-api/models"
 
 	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 const rootPath = "/applications/{appName}"
@@ -69,7 +66,7 @@ func (dc *deploymentController) GetSubscriptions() models.Subscriptions {
 }
 
 // GetDeployments Lists deployments
-func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments application getDeployments
 	// ---
 	// summary: Lists the application deployments
@@ -114,7 +111,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 		}
 	}
 
-	deployHandler := Init(client, radixclient)
+	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
 
 	if err != nil {
@@ -126,7 +123,7 @@ func GetDeployments(client kubernetes.Interface, radixclient radixclient.Interfa
 }
 
 // GetDeployment Get deployment details
-func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName} deployment getDeployment
 	// ---
 	// summary: Get deployment details
@@ -155,7 +152,7 @@ func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interfac
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deployHandler := Init(client, radixclient)
+	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
 
 	if err != nil {
@@ -167,7 +164,7 @@ func GetDeployment(client kubernetes.Interface, radixclient radixclient.Interfac
 }
 
 // GetComponents for a deployment
-func GetComponents(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components component components
 	// ---
 	// summary: Get components for a deployment
@@ -194,7 +191,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deployHandler := Init(client, radixclient)
+	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -205,7 +202,7 @@ func GetComponents(client kubernetes.Interface, radixclient radixclient.Interfac
 }
 
 // GetPodLog Get logs of a single pod
-func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs component log
 	// ---
 	// summary: Get logs from a deployed pod
@@ -240,7 +237,7 @@ func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	deployHandler := Init(client, radixclient)
+	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	log, err := deployHandler.GetLogs(appName, podName)
 
 	if err != nil {
@@ -252,7 +249,7 @@ func GetPodLog(client kubernetes.Interface, radixclient radixclient.Interface, w
 }
 
 // PromoteToEnvironment promote an environment from another environment
-func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request) {
+func PromoteToEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/deployments/{deploymentName}/promote deployment promoteToEnvironment
 	// ---
 	// summary: Promote an environment from another environment
@@ -287,7 +284,7 @@ func PromoteToEnvironment(client kubernetes.Interface, radixclient radixclient.I
 		return
 	}
 
-	deployHandler := Init(client, radixclient)
+	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	_, err := deployHandler.HandlePromoteToEnvironment(appName, deploymentName, promotionParameters)
 
 	if err != nil {
