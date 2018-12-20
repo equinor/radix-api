@@ -206,7 +206,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	steps = append(steps, pipelineJobStep)
 	for _, jobStep := range jobStepList.Items {
 		jobStepPod, err := jh.client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobStep.Name),
+			LabelSelector: fmt.Sprintf("%s=%s", "job-name", jobStep.Name),
 		})
 
 		if err != nil {
@@ -262,7 +262,7 @@ func (jh JobHandler) getJobEnvironmentMap(appName string) (map[string][]string, 
 func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	pods, err := jh.client.CoreV1().Pods(ns).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobName),
+		LabelSelector: fmt.Sprintf("%s=%s", "job-name", jobName),
 	})
 
 	if err != nil {
