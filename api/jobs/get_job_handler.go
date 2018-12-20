@@ -183,7 +183,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	if len(pipelinePod.Status.ContainerStatuses) == 0 {
+	if len(pipelinePod.Status.ContainerStatuses) == 0 || len(pipelinePod.Status.InitContainerStatuses) == 0 {
 		return steps, nil
 	}
 

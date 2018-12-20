@@ -9,7 +9,6 @@ import (
 	. "github.com/statoil/radix-api/api/jobs"
 	jobModels "github.com/statoil/radix-api/api/jobs/models"
 	controllertest "github.com/statoil/radix-api/api/test"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
 	commontest "github.com/statoil/radix-operator/pkg/apis/test"
 	builders "github.com/statoil/radix-operator/pkg/apis/utils"
 	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
@@ -72,7 +71,11 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Empty(t, job.Steps)
 
 	cloneStep := corev1.ContainerStatus{Name: "clone", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
-	addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, cloneStep)
+	pipelineStep := corev1.ContainerStatus{Name: "radix-pipeline", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+
+	// Emulate a running job with two steps
+	addInitStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, cloneStep)
+	addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response = <-responseChannel
@@ -84,8 +87,10 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyPushCommitID, job.CommitID)
 	assert.Equal(t, anyPipeline.String(), job.Pipeline)
 	assert.NotEmpty(t, job.Steps)
+	assert.Equal(t, 2, len(job.Steps))
 
-	assert.
+	assert.Equal(t, "clone", job.Steps[0].Name)
+	assert.Equal(t, "radix-pipeline", job.Steps[1].Name)
 
 }
 
@@ -109,14 +114,18 @@ func createPipelinePod(kubeclient kubernetes.Interface, namespace, jobName strin
 	kubeclient.CoreV1().Pods(namespace).Create(podSpec)
 }
 
+func addInitStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) {
+	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(jobName, metav1.GetOptions{})
+	podStatus := pipelinePod.Status
+	podStatus.InitContainerStatuses = append(podStatus.InitContainerStatuses, jobStep)
+	pipelinePod.Status = podStatus
+	kubeclient.CoreV1().Pods(namespace).Update(pipelinePod)
+}
+
 func addStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) {
 	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(jobName, metav1.GetOptions{})
-	podStatus := corev1.PodStatus{
-		ContainerStatuses: []corev1.ContainerStatus{
-			jobStep,
-		},
-	}
-
+	podStatus := pipelinePod.Status
+	podStatus.ContainerStatuses = append(podStatus.ContainerStatuses, jobStep)
 	pipelinePod.Status = podStatus
 	kubeclient.CoreV1().Pods(namespace).Update(pipelinePod)
 }
@@ -126,7 +135,7 @@ func getPodSpecForAPipelineJob(jobName string) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
 			Labels: map[string]string{
-				kube.RadixJobNameLabel: jobName,
+				"job-name": jobName,
 			},
 		},
 	}
