@@ -183,6 +183,10 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
+	if len(pipelinePod.Status.ContainerStatuses) == 0 || len(pipelinePod.Status.InitContainerStatuses) == 0 {
+		return steps, nil
+	}
+
 	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 2)
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 1)
 
@@ -328,7 +332,10 @@ func getJobStep(podName string, containerStatus *corev1.ContainerStatus, sort in
 
 	status := jobModels.Succeeded
 
-	if containerStatus.State.Terminated != nil {
+	if containerStatus == nil {
+		status = jobModels.Waiting
+
+	} else if containerStatus.State.Terminated != nil {
 		startedAt = containerStatus.State.Terminated.StartedAt
 		finishedAt = containerStatus.State.Terminated.FinishedAt
 
