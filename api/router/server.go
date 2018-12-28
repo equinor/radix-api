@@ -66,7 +66,11 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 		negroni.Wrap(router),
 	))
 
-	n := negroni.Classic()
+	rec := negroni.NewRecovery()
+	rec.PrintStack = false
+	n := negroni.New(
+		rec,
+	)
 	n.UseHandler(serveMux)
 
 	server := &Server{
