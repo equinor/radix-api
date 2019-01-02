@@ -170,6 +170,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:66d63ec7b6035984dced87ad37066e5f4ad277c60234a9d9925537248e983200"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = ""
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:c2c8666b4836c81a1d247bdf21c6a6fc1ab586538ab56f74437c2e0df5c375e1"
   name = "github.com/gorilla/mux"
   packages = ["."]
@@ -758,6 +766,7 @@
     "github.com/Sirupsen/logrus",
     "github.com/golang/gddo/httputil/header",
     "github.com/googollee/go-socket.io",
+    "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
     "github.com/graphql-go/graphql",
     "github.com/pkg/errors",
