@@ -27,18 +27,19 @@ RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
     mv swagger.json ./swaggerui_src/swagger.json && \
     statik -src=./swaggerui_src/ -p swaggerui
 
+RUN adduser -D -g '' radix-api
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
 # Until cache working together with user command
 # https://github.com/GoogleContainerTools/kaniko/issues/477
-# RUN adduser -D -g '' radix-api
 
-# FROM scratch
-FROM alpine:3.7
+
+FROM scratch
+# FROM alpine:3.7
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/radix-api
-RUN adduser -D -g '' radix-api
+# RUN adduser -D -g '' radix-api
 USER radix-api
 EXPOSE 3001
 ENTRYPOINT ["/usr/local/bin/radix-api"]
