@@ -21,25 +21,26 @@ RUN dep ensure -vendor-only
 COPY . .
 WORKDIR /go/src/github.com/statoil/radix-api/
 
-# Generate swagger
+# Generate swagger + add default user
 RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
     swagger generate spec -o ./swagger.json --scan-models && \
     mv swagger.json ./swaggerui_src/swagger.json && \
-    statik -src=./swaggerui_src/ -p swaggerui
+    statik -src=./swaggerui_src/ -p swaggerui 
+    # && \
+    # adduser -D -g '' radix-api
 
-RUN adduser -D -g '' radix-api
-# Build
+# Build radix api go project
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
 # Until cache working together with user command
 # https://github.com/GoogleContainerTools/kaniko/issues/477
 
 
-FROM scratch
-# FROM alpine:3.7
+# FROM scratch
+FROM alpine:3.7
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/radix-api
-# RUN adduser -D -g '' radix-api
+# COPY --from=builder /etc/passwd /etc/passwd
+RUN adduser -D -g '' radix-api
 USER radix-api
 EXPOSE 3001
 ENTRYPOINT ["/usr/local/bin/radix-api"]
