@@ -36,8 +36,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o 
 FROM alpine:3.7
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/radix-api
-RUN adduser -D -g '' radix-api && \
-    ls /etc/passwd
+RUN adduser -D -g '' radix-api
+RUN ls /etc/passwd
 USER radix-api
 EXPOSE 3001
 ENTRYPOINT ["/usr/local/bin/radix-api"]
