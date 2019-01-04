@@ -4,6 +4,7 @@ BINS	= radix-api
 IMAGES	= radix-api
 
 GIT_TAG		= $(shell git describe --tags --always 2>/dev/null)
+CURRENT_FOLDER = $(shell pwd)
 VERSION		?= ${GIT_TAG}
 IMAGE_TAG 	?= ${VERSION}
 LDFLAGS		+= -s -w
@@ -17,6 +18,9 @@ build: $(BINS)
 .PHONY: test
 test:
 	go test -cover `go list ./...`
+
+build-kaniko:
+	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:v0.7.0 --destination=radixdev.azurecr.io/radix-api-server:3hv6o --snapshotMode=time --cache=true
 
 # This make command is only needed for local testing now
 # we also do make swagger inside Dockerfile
