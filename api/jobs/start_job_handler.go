@@ -78,7 +78,7 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 	log.Infof("Using image: %s", imageTag)
 	cloneContainer, volume := CloneContainer(sshURL, "master")
 
-	backOffLimit := int32(1)
+	backOffLimit := int32(0)
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
