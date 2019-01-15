@@ -2,6 +2,7 @@ package applications
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 )
+
+const containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
 
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
 func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Interface, appName string) (bool, error) {
@@ -78,11 +81,13 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 }
 
 func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
+	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
+
 	jobName := strings.ToLower(fmt.Sprintf("%s-%s", rr.Name, utils.RandString(5)))
 	namespace := utils.GetAppNamespace(rr.Name)
 	backOffLimit := int32(1)
 
-	cloneContainer, volume := radixjob.CloneContainer(rr.Spec.CloneURL, "master")
+	cloneContainer, volume := radixjob.CloneContainer(rr.Spec.CloneURL, "master", dockerRegistry)
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
