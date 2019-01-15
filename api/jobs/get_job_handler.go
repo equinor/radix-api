@@ -22,7 +22,6 @@ import (
 )
 
 const workerImage = "radix-pipeline"
-const dockerRegistry = "radixdev.azurecr.io"
 
 // TODO: Move this into kube, or another central location
 const RadixJobTypeJob = "job"
