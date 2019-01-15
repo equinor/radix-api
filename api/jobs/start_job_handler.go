@@ -15,6 +15,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	pipelineTagEnvironmentVariable       = "PIPELINE_IMG_TAG"
+	containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
+)
+
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	jobName, randomNr := getUniqueJobName(workerImage)
@@ -32,13 +37,13 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 }
 
 // CloneContainer The sidecar for cloning repo
-func CloneContainer(sshURL, branch string) (corev1.Container, corev1.Volume) {
+func CloneContainer(sshURL, branch, dockerRegistry string) (corev1.Container, corev1.Volume) {
 	gitCloneCommand := fmt.Sprintf("git clone %s -b %s --verbose --progress .", sshURL, branch)
 	gitSSHKeyName := "git-ssh-keys"
 	defaultMode := int32(256)
 	container := corev1.Container{
 		Name:    "clone",
-		Image:   "radixdev.azurecr.io/gitclone:latest",
+		Image:   fmt.Sprintf("%s/gitclone:latest", dockerRegistry),
 		Command: []string{"/bin/sh", "-c"},
 		Args:    []string{gitCloneCommand},
 		VolumeMounts: []corev1.VolumeMount{
@@ -66,7 +71,7 @@ func CloneContainer(sshURL, branch string) (corev1.Container, corev1.Volume) {
 }
 
 func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobModels.Pipeline, pushBranch, commitID string) *batchv1.Job {
-	pipelineTag := os.Getenv("PIPELINE_IMG_TAG")
+	pipelineTag := os.Getenv(pipelineTagEnvironmentVariable)
 	if pipelineTag == "" {
 		log.Warning("No pipeline image tag defined. Using latest")
 		pipelineTag = "latest"
@@ -74,9 +79,11 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 		log.Infof("Using %s pipeline image tag", pipelineTag)
 	}
 
+	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
+
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, pipelineTag)
 	log.Infof("Using image: %s", imageTag)
-	cloneContainer, volume := CloneContainer(sshURL, "master")
+	cloneContainer, volume := CloneContainer(sshURL, "master", dockerRegistry)
 
 	backOffLimit := int32(0)
 

@@ -1,4 +1,7 @@
-DOCKER_REGISTRY	?= radixdev.azurecr.io
+ENVIRONMENT ?= dev
+
+CONTAINER_REPO ?= radix$(ENVIRONMENT)
+DOCKER_REGISTRY	?= $(CONTAINER_REPO).azurecr.io
 
 BINS	= radix-api
 IMAGES	= radix-api
@@ -20,7 +23,7 @@ test:
 	go test -cover `go list ./...`
 
 build-kaniko:
-	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:v0.7.0 --destination=radixdev.azurecr.io/radix-api-server:3hv6o --snapshotMode=time --cache=true
+	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:v0.7.0 --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
 
 # This make command is only needed for local testing now
 # we also do make swagger inside Dockerfile
@@ -32,8 +35,8 @@ swagger:
 	statik -src=./swaggerui_src/ -p swaggerui
 
 deploy-gitclone:
-	docker build -t radixdev.azurecr.io/gitclone:$(IMAGE_TAG) -f gitclone.Dockerfile .
-	docker push radixdev.azurecr.io/gitclone:$(IMAGE_TAG)
+	docker build -t $(DOCKER_REGISTRY)/gitclone:$(IMAGE_TAG) -f gitclone.Dockerfile .
+	docker push $(DOCKER_REGISTRY)/gitclone:$(IMAGE_TAG)
 
 deploy-api:
 	draft up
@@ -41,13 +44,13 @@ deploy-api:
 .PHONY: deploy
 deploy:
 	# Add and update ACR Helm repo
-	az acr helm repo add --name radixdev && helm repo update
+	az acr helm repo add --name $(CONTAINER_REPO) && helm repo update
 
 	# Download deploy key and other secrets
 	az keyvault secret download -f radix-api-radixregistration-values.yaml -n radix-api-radixregistration-values --vault-name radix-boot-dev-vault
 
 	# Install RR
-	helm upgrade --install radix-api -f radix-api-radixregistration-values.yaml radixdev/radix-registration
+	helm upgrade --install radix-api -f radix-api-radixregistration-values.yaml $(CONTAINER_REPO)/radix-registration
 	# Delete secret file to avvoid being checked in
 	rm radix-api-radixregistration-values.yaml
 	
@@ -55,7 +58,7 @@ deploy:
 	sleep 5	
 	
 	# Create pipeline
-	helm upgrade --install radix-pipeline-api radixdev/radix-pipeline-invocation --set name="radix-api" --set cloneURL="git@github.com:Statoil/radix-api.git" --set cloneBranch="master"
+	helm upgrade --install radix-pipeline-api $(CONTAINER_REPO)/radix-pipeline-invocation --set name="radix-api" --set cloneURL="git@github.com:Statoil/radix-api.git" --set cloneBranch="master"
 
 .PHONY: undeploy
 undeploy:
