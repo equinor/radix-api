@@ -1,7 +1,7 @@
 package models
 
 import (
-	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 )
 
 // Job holds general information about job

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // ComponentBuilder Builds DTOs

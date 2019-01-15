@@ -5,20 +5,20 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	applicationModels "github.com/statoil/radix-api/api/applications/models"
-	"github.com/statoil/radix-api/api/environments"
-	job "github.com/statoil/radix-api/api/jobs"
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
-	"github.com/statoil/radix-api/api/utils"
+	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/environments"
+	job "github.com/equinor/radix-api/api/jobs"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/statoil/radix-operator/pkg/apis/application"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
-	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-operator/pkg/apis/application"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
 // ApplicationHandler Instance variables

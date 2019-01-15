@@ -6,16 +6,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/statoil/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
-	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
-	"github.com/statoil/radix-api/api/pods"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

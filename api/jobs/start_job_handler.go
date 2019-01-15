@@ -7,9 +7,9 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	"github.com/statoil/radix-operator/pkg/apis/utils"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

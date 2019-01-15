@@ -10,10 +10,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/statoil/radix-api/api/router"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-api/api/router"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	kubernetes "k8s.io/client-go/kubernetes"
 )
 
