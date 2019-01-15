@@ -14,10 +14,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 const rootPath = "/applications/{appName}"

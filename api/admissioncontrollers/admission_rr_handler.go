@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
-	"github.com/statoil/radix-operator/pkg/apis/radixvalidators"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

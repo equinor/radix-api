@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/statoil/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/statoil/radix-api/models"
+	"github.com/equinor/radix-api/models"
 
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

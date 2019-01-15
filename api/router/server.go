@@ -10,9 +10,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
-	_ "github.com/statoil/radix-api/swaggerui" // statik files
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	_ "github.com/equinor/radix-api/swaggerui" // statik files
 	"github.com/urfave/negroni"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
