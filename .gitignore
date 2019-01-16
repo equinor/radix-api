@@ -18,6 +18,8 @@
 /vendor/gopkg.in/*
 /vendor/k8s.io/*
 
+/.vendor-new/*
+
 !/vendor/github.com/equinor
 
 debug
