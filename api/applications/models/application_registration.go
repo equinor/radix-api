@@ -12,7 +12,7 @@ type ApplicationRegistration struct {
 	// Repository the github repository
 	//
 	// required: true
-	// example: https://github.com/Statoil/radix-canary-golang
+	// example: https://github.com/equinor/radix-canary-golang
 	Repository string `json:"repository"`
 
 	// SharedSecret the shared secret of the webhook

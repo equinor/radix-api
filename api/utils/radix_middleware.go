@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/statoil/radix-api/models"
+	"github.com/equinor/radix-api/models"
 )
 
 // RadixMiddleware The middleware beween router and radix handler functions

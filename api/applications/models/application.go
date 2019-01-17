@@ -1,8 +1,8 @@
 package models
 
 import (
-	environmentModels "github.com/statoil/radix-api/api/environments/models"
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
 )
 
 // Application details of an application

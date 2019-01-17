@@ -1,7 +1,7 @@
 package models
 
 import (
-	deployModels "github.com/statoil/radix-api/api/deployments/models"
+	deployModels "github.com/equinor/radix-api/api/deployments/models"
 )
 
 // Environment holds detail information about environment

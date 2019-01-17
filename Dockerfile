@@ -3,23 +3,23 @@ RUN apk update && \
     apk add bash alpine-sdk sed gawk git ca-certificates curl && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh && \
     go get -u github.com/go-swagger/go-swagger/cmd/swagger github.com/rakyll/statik && \
-    mkdir -p /go/src/github.com/statoil/radix-api/vendor/github.com/statoil/radix-operator/pkg \
-    /go/src/github.com/statoil/radix-api/hack
+    mkdir -p /go/src/github.com/equinor/radix-api/vendor/github.com/equinor/radix-operator/pkg \
+    /go/src/github.com/equinor/radix-api/hack
 
-WORKDIR /go/src/github.com/statoil/radix-api/
+WORKDIR /go/src/github.com/equinor/radix-api/
 COPY Gopkg.toml Gopkg.lock ./
 COPY ./hack/removeDependencyToPrivateRepo.sh ./hack/
 
 # Remove dependeny on operator which is manually added to vendor folder
 RUN chmod +x ./hack/removeDependencyToPrivateRepo.sh && \
     sed -ri '/### REMOVE IN DOCKERFILE/,/### END REMOVE/d' ./Gopkg.toml && \
-    ./hack/removeDependencyToPrivateRepo.sh "github.com/statoil/radix-operator" "[[projects]]" "./Gopkg.lock"
+    ./hack/removeDependencyToPrivateRepo.sh "github.com/equinor/radix-operator" "[[projects]]" "./Gopkg.lock"
 
-ADD ./vendor/github.com/statoil/radix-operator/pkg/ /vendor/github.com/statoil/radix-operator/pkg
+ADD ./vendor/github.com/equinor/radix-operator/pkg/ /vendor/github.com/equinor/radix-operator/pkg
 RUN dep ensure -vendor-only
 
 COPY . .
-WORKDIR /go/src/github.com/statoil/radix-api/
+WORKDIR /go/src/github.com/equinor/radix-api/
 
 # Generate swagger + add default user
 RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
