@@ -3,23 +3,27 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	_ "github.com/equinor/radix-api/swaggerui" // statik files
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
-	_ "github.com/statoil/radix-api/swaggerui" // statik files
 	"github.com/urfave/negroni"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const apiVersionRoute = "/api/v1"
-const admissionControllerRootPath = "/admissioncontrollers"
+const (
+	apiVersionRoute                 = "/api/v1"
+	admissionControllerRootPath     = "/admissioncontrollers"
+	radixDnsZoneEnvironmentVariable = "RADIX_DNS_ZONE"
+)
 
 // Server Holds instance variables
 type Server struct {
@@ -83,6 +87,8 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 }
 
 func getCORSHandler(apiRouter *Server) http.Handler {
+	radixDnsZone := os.Getenv(radixDnsZoneEnvironmentVariable)
+
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:3000", // For socket.io testing
@@ -91,9 +97,9 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
 			// 2. Keep cors rules in ingresses
-			"https://console.dev.radix.equinor.com",
-			getHostName("web", "radix-web-console-qa", apiRouter.clusterName),
-			getHostName("web", "radix-web-console-prod", apiRouter.clusterName),
+			fmt.Sprintf("https://console.%s", radixDnsZone),
+			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDnsZone),
+			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDnsZone),
 		},
 		AllowCredentials: true, // Needed for sockets
 		MaxAge:           600,
@@ -103,8 +109,8 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 	return c.Handler(apiRouter.Middleware)
 }
 
-func getHostName(componentName, namespace, clustername string) string {
-	return fmt.Sprintf("https://%s-%s.%s.dev.radix.equinor.com", componentName, namespace, clustername)
+func getHostName(componentName, namespace, clustername, radixDnsZone string) string {
+	return fmt.Sprintf("https://%s-%s.%s.%s", componentName, namespace, clustername, radixDnsZone)
 }
 
 func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {

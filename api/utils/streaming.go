@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/statoil/radix-api/models"
+	"github.com/equinor/radix-api/models"
 	"k8s.io/client-go/tools/cache"
 )
 
