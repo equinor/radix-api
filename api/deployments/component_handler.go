@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

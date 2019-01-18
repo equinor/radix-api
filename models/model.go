@@ -3,7 +3,7 @@ package models
 import (
 	"net/http"
 
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
 

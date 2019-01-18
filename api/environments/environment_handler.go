@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/statoil/radix-api/api/deployments"
-	environmentModels "github.com/statoil/radix-api/api/environments/models"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-api/api/deployments"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 const latestDeployment = true

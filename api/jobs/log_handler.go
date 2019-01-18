@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
-	"github.com/statoil/radix-api/api/pods"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/pods"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

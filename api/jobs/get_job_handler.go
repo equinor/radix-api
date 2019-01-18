@@ -13,16 +13,15 @@ import (
 	"fmt"
 	"strings"
 
-	deployments "github.com/statoil/radix-api/api/deployments"
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
+	deployments "github.com/equinor/radix-api/api/deployments"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
 const workerImage = "radix-pipeline"
-const dockerRegistry = "radixdev.azurecr.io"
 
 // TODO: Move this into kube, or another central location
 const RadixJobTypeJob = "job"

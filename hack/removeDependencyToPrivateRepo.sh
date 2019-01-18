@@ -3,7 +3,7 @@
 # TODO Make this generic for both toml and lock file
 function removeDependency()
 {
-    local dependencyString # Input 1. Ex "github.com/statoil/radix-operator"
+    local dependencyString # Input 1. Ex "github.com/equinor/radix-operator"
     local cutFromString # Input 2. Ex "[[projects]]""
     local targetFilepath # Input 2. Ex "./Gopkg.lock"    
     local lineNumOfDependency

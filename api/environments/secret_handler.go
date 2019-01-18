@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	environmentModels "github.com/statoil/radix-api/api/environments/models"
-	k8sObjectUtils "github.com/statoil/radix-operator/pkg/apis/utils"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
-	"github.com/statoil/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -1,7 +1,7 @@
 package models
 
 import (
-	jobModels "github.com/statoil/radix-api/api/jobs/models"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
 )
 
 // ApplicationSummary describe an application
