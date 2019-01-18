@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
 
-	deploymentModels "github.com/statoil/radix-api/api/deployments/models"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 )
 
 const rootPath = "/applications/{appName}"

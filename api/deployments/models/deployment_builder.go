@@ -3,9 +3,9 @@ package models
 import (
 	"time"
 
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-operator/pkg/apis/kube"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // DeploymentBuilder Builds DTOs

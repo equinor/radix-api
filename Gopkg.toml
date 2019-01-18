@@ -1,6 +1,6 @@
 ### REMOVE IN DOCKERFILE
 [[constraint]]
-  name = "github.com/statoil/radix-operator"
+  name = "github.com/equinor/radix-operator"
   branch = "master"
 ### END REMOVE
 [[constraint]]

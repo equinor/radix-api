@@ -10,7 +10,7 @@ docs
 /vendor/gopkg.in/*
 /vendor/k8s.io/*
 
-!/vendor/github.com/statoil
+!/vendor/github.com/equinor
 
 .git
 bin

@@ -7,16 +7,16 @@ import (
 	"reflect"
 
 	log "github.com/Sirupsen/logrus"
+	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
-	applicationModels "github.com/statoil/radix-api/api/applications/models"
-	"github.com/statoil/radix-api/api/utils"
-	"github.com/statoil/radix-api/models"
-	"github.com/statoil/radix-operator/pkg/apis/radix/v1"
 
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	informers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
 	"github.com/graphql-go/graphql"
-	crdUtils "github.com/statoil/radix-operator/pkg/apis/utils"
-	radixclient "github.com/statoil/radix-operator/pkg/client/clientset/versioned"
-	informers "github.com/statoil/radix-operator/pkg/client/informers/externalversions"
 
 	"k8s.io/client-go/tools/cache"
 )

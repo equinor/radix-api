@@ -3,7 +3,7 @@ package models
 import (
 	"fmt"
 
-	"github.com/statoil/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils"
 )
 
 // AppNameAndBranchAreRequiredForStartingPipeline Cannot start pipeline when appname and branch are missing
