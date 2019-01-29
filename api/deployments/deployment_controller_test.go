@@ -60,7 +60,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := deploymentModels.NonExistingApplication(nil, anyAppName)
+	expectedError := deploymentModels.NonExistingRegistration(nil, anyAppName)
 
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
@@ -159,6 +159,17 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 			assert.Equal(t, scenario.numDeploymentsExpected, len(deployments))
 		})
 	}
+}
+
+func TestGetDeployments_NoApplicationRegistered(t *testing.T) {
+	_, controllerTestUtils, _, _ := setupTest()
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
+	response := <-responseChannel
+
+	assert.Equal(t, 404, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := deploymentModels.NonExistingRegistration(nil, anyAppName)
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 }
 
 func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
@@ -341,7 +352,7 @@ func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
 		excectedReturnCode int
 		expectedError      error
 	}{
-		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingApplication(irrellevantUnderlyingError, "noapp")},
+		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingRegistration(irrellevantUnderlyingError, "noapp")},
 		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingFromEnvironment(irrellevantUnderlyingError)},
 		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", "2", http.StatusNotFound, deploymentModels.NonExistingToEnvironment(irrellevantUnderlyingError)},
 		{"promote non-existing deployment", "any-app-2", "dev", "nopqrst", "prod", "non-existing", http.StatusNotFound, deploymentModels.NonExistingDeployment(irrellevantUnderlyingError, "non-existing")},
@@ -411,6 +422,17 @@ func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
 	}
 }
 
+func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
+	_, controllerTestUtils, _, _ := setupTest()
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployName))
+	response := <-responseChannel
+
+	assert.Equal(t, 404, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := deploymentModels.NonExistingRegistration(nil, anyAppName)
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+}
+
 func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
@@ -423,6 +445,9 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
+		WithRadixApplication(
+			builders.ARadixApplication().
+				WithAppName(anyAppName)).
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployment1Name).
 		WithCreated(appDeployment1Created).
@@ -443,6 +468,9 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
+		WithRadixApplication(
+			builders.ARadixApplication().
+				WithAppName(anyAppName)).
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployment2Name).
 		WithCreated(appDeployment2Created).
