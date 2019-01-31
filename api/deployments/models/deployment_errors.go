@@ -7,11 +7,6 @@ import (
 )
 
 // NonExistingApplication No application found by name
-func NonExistingRegistration(underlyingError error, appName string) error {
-	return utils.TypeMissingError(fmt.Sprintf("Unable to get registration for app %s", appName), underlyingError)
-}
-
-// NonExistingApplication No application found by name
 func NonExistingApplication(underlyingError error, appName string) error {
 	return utils.TypeMissingError(fmt.Sprintf("Unable to get application for app %s", appName), underlyingError)
 }

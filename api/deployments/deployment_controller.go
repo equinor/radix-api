@@ -10,10 +10,8 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const rootPath = "/applications/{appName}"
@@ -113,11 +111,6 @@ func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	if _, err = clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
-		utils.ErrorResponse(w, r, deploymentModels.NonExistingRegistration(err, appName))
-		return
-	}
-
 	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
 
@@ -159,11 +152,6 @@ func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
-		utils.ErrorResponse(w, r, deploymentModels.NonExistingRegistration(err, appName))
-		return
-	}
-
 	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
 
@@ -202,11 +190,6 @@ func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
-
-	if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
-		utils.ErrorResponse(w, r, deploymentModels.NonExistingRegistration(err, appName))
-		return
-	}
 
 	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
@@ -254,11 +237,6 @@ func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
-		utils.ErrorResponse(w, r, deploymentModels.NonExistingRegistration(err, appName))
-		return
-	}
-
 	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 	log, err := deployHandler.GetLogs(appName, podName)
 
@@ -299,11 +277,6 @@ func PromoteToEnvironment(clients models.Clients, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
-
-	if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
-		utils.ErrorResponse(w, r, deploymentModels.NonExistingRegistration(err, appName))
-		return
-	}
 
 	var promotionParameters deploymentModels.PromotionParameters
 	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {

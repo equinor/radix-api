@@ -364,9 +364,17 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusNotFound, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "App name another-name does not correspond with application name any-name", errorResponse.Message)
+	assert.Equal(t, "Unable to get registration for app another-name", errorResponse.Message)
+
+	parameters = AnApplicationRegistration().withName("another-name").Build()
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), parameters)
+	response = <-responseChannel
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	assert.Equal(t, "App name any-name does not correspond with application name another-name", errorResponse.Message)
 
 	parameters = AnApplicationRegistration().withName("another-name").Build()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
@@ -464,13 +472,12 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
 
 	parameters := applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", " ", jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "another-app", jobModels.BuildDeploy.String()), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusNotFound, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, "Unable to get registration for app another-app", errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
@@ -478,7 +485,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
-	expectedError = applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
+	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
