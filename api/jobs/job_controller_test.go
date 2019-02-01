@@ -95,15 +95,25 @@ func TestGetApplicationJob(t *testing.T) {
 }
 
 func TestGetPipelineJobLogsError(t *testing.T) {
-	_, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
 	t.Run("job doesn't exist", func(t *testing.T) {
 		aJobName := "aJobName"
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
 		response := <-responseChannel
 
-		pipelineNotFoundError := jobModels.PipelineNotFoundError(anyAppName, aJobName)
 		err, _ := controllertest.GetErrorResponse(response)
+		assert.NotNil(t, err)
+		assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), err.Message)
+
+		commonTestUtils.ApplyApplication(builders.ARadixApplication().
+			WithAppName(anyAppName))
+
+		responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
+		response = <-responseChannel
+
+		pipelineNotFoundError := jobModels.PipelineNotFoundError(anyAppName, aJobName)
+		err, _ = controllertest.GetErrorResponse(response)
 		assert.NotNil(t, err)
 		assert.Equal(t, pipelineNotFoundError.Error(), err.Error())
 	})

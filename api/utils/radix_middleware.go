@@ -2,9 +2,13 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/equinor/radix-api/models"
+	"github.com/gorilla/mux"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // RadixMiddleware The middleware beween router and radix handler functions
@@ -39,6 +43,14 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		InClusterRadixClient:  inClusterRadixClient,
 		OutClusterClient:      outClusterClient,
 		OutClusterRadixClient: outClusterRadixClient,
+	}
+
+	// Check if registration of application exists for application-specific requests
+	if appName, exists := mux.Vars(r)["appName"]; exists {
+		if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
+			ErrorResponse(w, r, TypeMissingError(fmt.Sprintf("Unable to get registration for app %s", appName), err))
+			return
+		}
 	}
 
 	handler.next(clients, w, r)
