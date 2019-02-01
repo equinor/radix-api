@@ -330,7 +330,11 @@ func executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingC
 		SecretValue: updateSecretValue,
 	}
 
-	_, controllerTestUtils, kubeclient, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName))
 
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, existingEnvName)
 

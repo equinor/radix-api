@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	"github.com/gorilla/mux"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 )
