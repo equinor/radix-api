@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	"github.com/gorilla/mux"
 )
 
 const rootPath = "/applications/{appName}"
@@ -41,6 +41,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "GET",
 			HandlerFunc: GetEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}",
+			Method:      "DELETE",
+			HandlerFunc: DeleteEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
@@ -157,6 +162,44 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 
 	utils.JSONResponse(w, r, appEnvironment)
 
+}
+
+// DeleteEnvironment Deletes environment
+func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation DELETE /applications/{appName}/environments/{envName} environment deleteEnvironment
+	// ---
+	// summary: Deletes application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Environment deleted ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	err := environmentHandler.DeleteEnvironment(appName, envName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // GetEnvironmentSummary Lists the environments for an application
