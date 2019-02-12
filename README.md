@@ -4,15 +4,15 @@ The Radix API Server for accessing functionality on the Radix platform. Please s
 
 ## Common errors running locally
 
-problem: panic: statik/fs: no zip data registered
+**Problem**: `panic: statik/fs: no zip data registered`
 
-solution: make swagger
+**Solution**: `make swagger`
 
 ## Deployment
 
-Radix api follow the [standard procedure](https://github.com/equinor/radix-private/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in how we work.
+Radix API follows the [standard procedure](https://github.com/equinor/radix-private/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in *how we work*.
 
-Radix api is installed as a radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup api environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a webhook so that changes to this repository will be reflected in radix platform. 
+Radix API is installed as a Radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup API environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a Webhook so that changes to this repository will be reflected in Radix platform. 
 
 ## Manual redeployment on existing cluster
 
