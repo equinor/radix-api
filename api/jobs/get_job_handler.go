@@ -186,7 +186,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	pipelineJobStep := getPipelineJobStep(pipelinePod)
+	pipelineJobStep := getPipelineJobStep(pipelinePod, 1)
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 2)
 
 	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
@@ -325,15 +325,15 @@ func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, err
 	return jobList, nil
 }
 
-func getPipelineJobStep(pipelinePod *corev1.Pod) jobModels.Step {
+func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) jobModels.Step {
 	var pipelineJobStep jobModels.Step
 
 	initcontainerStatus := &pipelinePod.Status.InitContainerStatuses[0]
 	if initcontainerStatus.State.Terminated != nil {
 		pipelineJobStep = getJobStepWithContainerName(pipelinePod.GetName(),
-			pipelinePod.Status.ContainerStatuses[0].Name, initcontainerStatus, 1)
+			pipelinePod.Status.ContainerStatuses[0].Name, initcontainerStatus, sort)
 	} else {
-		pipelineJobStep = getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 1)
+		pipelineJobStep = getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], sort)
 	}
 
 	return pipelineJobStep
