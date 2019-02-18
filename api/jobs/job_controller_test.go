@@ -89,8 +89,8 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.NotEmpty(t, job.Steps)
 	assert.Equal(t, 2, len(job.Steps))
 
-	assert.Equal(t, "clone", job.Steps[0].Name)
-	assert.Equal(t, "radix-pipeline", job.Steps[1].Name)
+	assert.Equal(t, "radix-pipeline", job.Steps[0].Name)
+	assert.Equal(t, "clone", job.Steps[1].Name)
 
 }
 

@@ -186,8 +186,8 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 2)
-	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 1)
+	pipelineJobStep := getPipelineJobStep(pipelinePod, 1)
+	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 2)
 
 	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
 	jobStepList, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
@@ -198,7 +198,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return nil, err
 	} else if len(jobStepList.Items) <= 0 {
 		// no build jobs - use clone step from pipelinejob
-		return append(steps, pipelineCloneStep, pipelineJobStep), nil
+		return append(steps, pipelineJobStep, pipelineCloneStep), nil
 	}
 
 	// pipeline coordinator
@@ -325,7 +325,25 @@ func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, err
 	return jobList, nil
 }
 
+func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) jobModels.Step {
+	var pipelineJobStep jobModels.Step
+
+	initcontainerStatus := &pipelinePod.Status.InitContainerStatuses[0]
+	if initcontainerStatus.State.Terminated != nil {
+		pipelineJobStep = getJobStepWithContainerName(pipelinePod.GetName(),
+			pipelinePod.Status.ContainerStatuses[0].Name, initcontainerStatus, sort)
+	} else {
+		pipelineJobStep = getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], sort)
+	}
+
+	return pipelineJobStep
+}
+
 func getJobStep(podName string, containerStatus *corev1.ContainerStatus, sort int32) jobModels.Step {
+	return getJobStepWithContainerName(podName, containerStatus.Name, containerStatus, sort)
+}
+
+func getJobStepWithContainerName(podName, containerName string, containerStatus *corev1.ContainerStatus, sort int32) jobModels.Step {
 	var startedAt metav1.Time
 	var finishedAt metav1.Time
 
@@ -352,7 +370,7 @@ func getJobStep(podName string, containerStatus *corev1.ContainerStatus, sort in
 	}
 
 	return jobModels.Step{
-		Name:    containerStatus.Name,
+		Name:    containerName,
 		Started: utils.FormatTime(&startedAt),
 		Ended:   utils.FormatTime(&finishedAt),
 		Status:  status.String(),
