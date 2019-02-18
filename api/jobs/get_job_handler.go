@@ -329,7 +329,8 @@ func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) jobModels.Step {
 	var pipelineJobStep jobModels.Step
 
 	initcontainerStatus := &pipelinePod.Status.InitContainerStatuses[0]
-	if initcontainerStatus.State.Terminated != nil {
+	if initcontainerStatus.State.Terminated != nil &&
+		initcontainerStatus.State.Terminated.ExitCode > 0 {
 		pipelineJobStep = getJobStepWithContainerName(pipelinePod.GetName(),
 			pipelinePod.Status.ContainerStatuses[0].Name, initcontainerStatus, sort)
 	} else {
