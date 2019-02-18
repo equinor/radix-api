@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 const latestDeployment = true
@@ -123,6 +123,31 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	}
 
 	return environment, nil
+}
+
+// DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
+func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	configurationStatus, err := eh.getConfigurationStatus(envName, radixApplication)
+	if err != nil {
+		return err
+	}
+
+	if configurationStatus != environmentModels.Orphan {
+		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, envName)
+	}
+
+	environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
+	err = eh.client.CoreV1().Namespaces().Delete(environmentNamespace, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (eh EnvironmentHandler) getConfigurationStatusOfNamespace(namespace string) environmentModels.ConfigurationStatus {

@@ -1,16 +1,18 @@
 # radix-api
 
-The Radix API Server for accessing functionality on the Radix platform. For now the project has to be built locally. In order to build run 'make docker-build' command. If swagger annotation has been updated, run 'make swagger' to ensure it is following the code (you may need to delete ./swaggger_src/swagger.json and ./swagger/statik.go before you do that) 
+The Radix API Server for accessing functionality on the Radix platform. Please see [Development practices](./development-practices.md) for more information on the release process.
 
 ## Common errors running locally
 
-problem: panic: statik/fs: no zip data registered
+**Problem**: `panic: statik/fs: no zip data registered`
 
-solution: make swagger
+**Solution**: `make swagger`
 
-problem: the version running in cluster is not the one you  expected
+## Deployment
 
-solution: you may have forgotten to build and pushed the latest changes
+Radix API follows the [standard procedure](https://github.com/equinor/radix-private/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in *how we work*.
+
+Radix API is installed as a Radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup API environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a Webhook so that changes to this repository will be reflected in Radix platform. 
 
 ## Manual redeployment on existing cluster
 
@@ -21,8 +23,7 @@ solution: you may have forgotten to build and pushed the latest changes
 4. `az acr login --name radixdev`
 
 ### Process 
-1. Make sure that the `kubernetes.go` in utils is not changed before you build
-2. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
+1. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
 3. Execute `draft up` to install to dev environment of radix-api
 4. Wait for pods to start
 5. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header
