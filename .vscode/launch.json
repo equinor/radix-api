@@ -12,7 +12,9 @@
             "program": "${workspaceFolder}/main.go",
             "env": {
                 "server_cert_path":"${workspaceFolder}/certs/cert.pem",
-                "server_key_path":"${workspaceFolder}/certs/key.pem"
+                "server_key_path":"${workspaceFolder}/certs/key.pem",
+                "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
+                "PIPELINE_IMG_TAG": "master-latest"
             },
             "args": [
                 "--useOutClusterClient=false"
