@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-operator/pkg/apis/application"
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -454,7 +454,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	// Magic branch should start job, even if it is not mapped
-	parameters = applicationModels.PipelineParameters{Branch: application.MagicBranch}
+	parameters = applicationModels.PipelineParameters{Branch: applicationconfig.MagicBranch}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
