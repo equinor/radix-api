@@ -20,6 +20,7 @@ spec:
     - name: http
       port: 3002
     public: true
+    monitoring: true
     environmentVariables:
     - environment: qa
       variables:
