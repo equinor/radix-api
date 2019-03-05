@@ -1,68 +1,102 @@
 package application
 
 import (
-	"strings"
-
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/kubernetes"
 )
 
-// MagicBranch The branch that radix config lives on
-const MagicBranch = "master"
+var logger *log.Entry
 
 // Application Instance variables
 type Application struct {
-	config *radixv1.RadixApplication
+	kubeclient   kubernetes.Interface
+	radixclient  radixclient.Interface
+	kubeutil     *kube.Kube
+	registration *v1.RadixRegistration
 }
 
 // NewApplication Constructor
-func NewApplication(config *radixv1.RadixApplication) Application {
-	return Application{config}
+func NewApplication(
+	kubeclient kubernetes.Interface,
+	radixclient radixclient.Interface,
+	registration *v1.RadixRegistration) (Application, error) {
+	kubeutil, err := kube.New(kubeclient)
+	if err != nil {
+		return Application{}, err
+	}
+
+	return Application{
+		kubeclient,
+		radixclient,
+		kubeutil,
+		registration}, nil
 }
 
-// IsMagicBranch Checks if given branch is were radix config lives
-func IsMagicBranch(branch string) bool {
-	return strings.EqualFold(branch, MagicBranch)
-}
+// OnSync compares the actual state with the desired, and attempts to
+// converge the two
+func (app Application) OnSync() error {
+	radixRegistration := app.registration
+	logger = log.WithFields(log.Fields{"registrationName": radixRegistration.GetName(), "registrationNamespace": radixRegistration.GetNamespace()})
 
-// IsBranchMappedToEnvironment Checks if given branch has a mapping
-func (app Application) IsBranchMappedToEnvironment(branch string) (bool, map[string]bool) {
-	targetEnvs := getTargetEnvironmentsAsMap(branch, app.config)
-	if isTargetEnvsEmpty(targetEnvs) {
-		return false, targetEnvs
+	err := app.createAppNamespace()
+	if err != nil {
+		logger.Errorf("Failed to create app namespace. %v", err)
+		return err
+	} else {
+		logger.Infof("App namespace created")
 	}
 
-	return true, targetEnvs
-}
-
-func getTargetEnvironmentsAsMap(branch string, radixApplication *radixv1.RadixApplication) map[string]bool {
-	targetEnvs := make(map[string]bool)
-	for _, env := range radixApplication.Spec.Environments {
-		if branch == env.Build.From {
-			// Deploy environment
-			targetEnvs[env.Name] = true
-		} else {
-			// Only create namespace for environment
-			targetEnvs[env.Name] = false
-		}
-	}
-	return targetEnvs
-}
-
-func isTargetEnvsEmpty(targetEnvs map[string]bool) bool {
-	if len(targetEnvs) == 0 {
-		return true
+	err = app.createLimitRangeOnAppNamespace(utils.GetAppNamespace(radixRegistration.Name))
+	if err != nil {
+		logger.Errorf("Failed to create limit range on app namespace. %v", err)
+		return err
+	} else {
+		logger.Infof("Limit range on app namespace created")
 	}
 
-	// Check if all values are false
-	falseCount := 0
-	for _, value := range targetEnvs {
-		if value == false {
-			falseCount++
-		}
-	}
-	if falseCount == len(targetEnvs) {
-		return true
+	err = app.applySecretsForPipelines() // create deploy key in app namespace
+	if err != nil {
+		logger.Errorf("Failed to apply secrets needed by pipeline. %v", err)
+		return err
+	} else {
+		logger.Infof("Applied secrets needed by pipelines")
 	}
 
-	return false
+	pipelineServiceAccount, err := app.applyPipelineServiceAccount()
+	if err != nil {
+		logger.Errorf("Failed to apply service account needed by pipeline. %v", err)
+		return err
+	} else {
+		logger.Infof("Applied service account needed by pipelines")
+	}
+
+	err = app.applyRbacOnPipelineRunner(pipelineServiceAccount)
+	if err != nil {
+		logger.Errorf("Failed to set access permissions needed by pipeline: %v", err)
+		return err
+	} else {
+		logger.Infof("Applied access permissions needed by pipeline")
+	}
+
+	err = app.applyRbacRadixRegistration()
+	if err != nil {
+		logger.Errorf("Failed to set access on RadixRegistration: %v", err)
+		return err
+	} else {
+		logger.Infof("Applied access permissions to RadixRegistration")
+	}
+
+	err = app.grantAccessToCICDLogs()
+	if err != nil {
+		logger.Errorf("Failed to grant access to ci/cd logs: %v", err)
+		return err
+	} else {
+		logger.Infof("Applied access to ci/cd logs")
+	}
+
+	return nil
 }

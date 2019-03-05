@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/equinor/radix-operator/pkg/apis/application"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -214,13 +214,22 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 	}
 
 	// Check if branch is mapped
-	if !application.IsMagicBranch(branch) {
+	if !applicationconfig.IsMagicBranch(branch) {
+		registration, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
 		config, err := ah.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		application := application.NewApplication(config)
+		application, err := applicationconfig.NewApplicationConfig(ah.client, ah.radixClient, registration, config)
+		if err != nil {
+			return nil, err
+		}
+
 		branchIsMapped, _ := application.IsBranchMappedToEnvironment(branch)
 
 		if !branchIsMapped {
