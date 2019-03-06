@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	_ "github.com/equinor/radix-api/swaggerui" // statik files
@@ -44,6 +45,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	staticServer := http.FileServer(statikFS)
 	sh := http.StripPrefix("/swaggerui/", staticServer)
 	router.PathPrefix("/swaggerui/").Handler(sh)
+	router.PathPrefix("/metrics").HandlerFunc(metrics.GetMetrics)
 
 	initializeSocketServer(kubeUtil, router, controllers)
 
@@ -67,6 +69,10 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	// TODO: We should maybe have oauth to stop any non-radix user from beeing
 	// able to see the API
 	serveMux.Handle("/swaggerui/", negroni.New(
+		negroni.Wrap(router),
+	))
+
+	serveMux.Handle("/metrics", negroni.New(
 		negroni.Wrap(router),
 	))
 
