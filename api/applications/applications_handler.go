@@ -6,6 +6,7 @@ import (
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -15,9 +16,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
@@ -89,7 +92,12 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments}, nil
+	appAlias, err := ah.getAppAlias(appName, environments)
+	if err != nil {
+		return nil, err
+	}
+
+	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments, AppAlias: appAlias}, nil
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -270,6 +278,30 @@ func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistrati
 	}
 
 	return err
+}
+
+func (ah ApplicationHandler) getAppAlias(appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
+	for _, environment := range environments {
+		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
+
+		ingresses, err := ah.client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(ingresses.Items) > 0 {
+			// Will only be one alias, if any exists
+			componentName := ingresses.Items[0].Labels[kube.RadixComponentLabel]
+			environmentName := environment.Name
+			url := ingresses.Items[0].Spec.Rules[0].Host
+			return &applicationModels.ApplicationAlias{ComponentName: componentName, EnvironmentName: environmentName, URL: url}, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // Builder Handles construction of DTO
