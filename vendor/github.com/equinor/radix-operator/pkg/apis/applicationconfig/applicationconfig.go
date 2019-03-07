@@ -32,6 +32,7 @@ type ApplicationConfig struct {
 func NewApplicationConfig(kubeclient kubernetes.Interface, radixclient radixclient.Interface, registration *v1.RadixRegistration, config *radixv1.RadixApplication) (*ApplicationConfig, error) {
 	kubeutil, err := kube.New(kubeclient)
 	if err != nil {
+		log.Errorf("Failed initializing ApplicationConfig")
 		return nil, err
 	}
 
@@ -60,7 +61,7 @@ func (app *ApplicationConfig) IsBranchMappedToEnvironment(branch string) (bool, 
 
 // ApplyConfigToApplicationNamespace Will apply the config to app namespace so that the operator can act on it
 func (app *ApplicationConfig) ApplyConfigToApplicationNamespace() error {
-	appNamespace := utils.GetAppNamespace(app.registration.Name)
+	appNamespace := utils.GetAppNamespace(app.config.Name)
 	_, err := app.radixclient.RadixV1().RadixApplications(appNamespace).Create(app.config)
 	if errors.IsAlreadyExists(err) {
 		err = app.radixclient.RadixV1().RadixApplications(appNamespace).Delete(app.config.Name, &metav1.DeleteOptions{})
@@ -73,16 +74,21 @@ func (app *ApplicationConfig) ApplyConfigToApplicationNamespace() error {
 	if err != nil {
 		return fmt.Errorf("failed to apply radix application. %v", err)
 	}
-	log.Infof("RadixApplication %s saved to ns %s", app.config.Name, appNamespace)
+	log.Debugf("RadixApplication %s saved to ns %s", app.config.Name, appNamespace)
 	return nil
 }
 
-// OnConfigApplied called when an application config is applied to application namespace
-func (app *ApplicationConfig) OnConfigApplied() {
+// OnSync is called when an application config is applied to application namespace
+// It compares the actual state with the desired, and attempts to
+// converge the two
+func (app *ApplicationConfig) OnSync() error {
 	err := app.createEnvironments()
 	if err != nil {
-		log.Errorf("Failed to create namespaces for app environments %s. %v", app.registration.Name, err)
+		log.Errorf("Failed to create namespaces for app environments %s. %v", app.config.Name, err)
+		return err
 	}
+
+	return nil
 }
 
 // CreateEnvironments Will create environments defined in the radix config
@@ -90,13 +96,13 @@ func (app *ApplicationConfig) createEnvironments() error {
 	targetEnvs := getTargetEnvironmentsAsMap("", app.config)
 
 	for env := range targetEnvs {
-		namespaceName := utils.GetEnvironmentNamespace(app.registration.Name, env)
+		namespaceName := utils.GetEnvironmentNamespace(app.config.Name, env)
 		ownerRef := application.GetOwnerReferenceOfRegistration(app.registration)
 		labels := map[string]string{
 			"sync":                  "cluster-wildcard-tls-cert",
 			"cluster-wildcard-sync": "cluster-wildcard-tls-cert",
 			"app-wildcard-sync":     "app-wildcard-tls-cert",
-			kube.RadixAppLabel:      app.registration.Name,
+			kube.RadixAppLabel:      app.config.Name,
 			kube.RadixEnvLabel:      env,
 		}
 
