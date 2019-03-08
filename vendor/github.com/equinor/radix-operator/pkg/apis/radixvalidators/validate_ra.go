@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
@@ -44,7 +46,7 @@ func CanRadixApplicationBeInsertedErrors(client radixclient.Interface, app *radi
 		errs = append(errs, err)
 	}
 
-	dnsErrors := validateDnsAppAlias(app)
+	dnsErrors := validateDNSAppAlias(app)
 	if len(dnsErrors) > 0 {
 		errs = append(errs, dnsErrors...)
 	}
@@ -55,7 +57,7 @@ func CanRadixApplicationBeInsertedErrors(client radixclient.Interface, app *radi
 	return false, errs
 }
 
-func validateDnsAppAlias(app *radixv1.RadixApplication) []error {
+func validateDNSAppAlias(app *radixv1.RadixApplication) []error {
 	errs := []error{}
 	alias := app.Spec.DNSAppAlias
 	if alias.Component == "" && alias.Environment == "" {
@@ -79,27 +81,90 @@ func validateComponents(app *radixv1.RadixApplication) []error {
 			errs = append(errs, err)
 		}
 
-		err = validateReplica(component.Replicas)
-		if err != nil {
-			errs = append(errs, err)
+		errList := validatePorts(component)
+		if errList != nil && len(errList) > 0 {
+			errs = append(errs, errList...)
 		}
 
-		for _, port := range component.Ports {
-			err := validateRequiredResourceName("port name", port.Name)
+		for _, environment := range component.EnvironmentConfig {
+			if !doesEnvExist(app, environment.Environment) {
+				err = fmt.Errorf("Env %s refered to by component %s is not defined", environment.Environment, component.Name)
+				errs = append(errs, err)
+			}
+
+			err = validateReplica(environment.Replicas)
 			if err != nil {
 				errs = append(errs, err)
 			}
-		}
 
-		for _, variable := range component.EnvironmentVariables {
-			if !doesEnvExist(app, variable.Environment) {
-				err = fmt.Errorf("Env %s refered to by component variable %s is not defined", variable.Environment, component.Name)
-				errs = append(errs, err)
+			errList = validateResourceRequirements(&environment.Resources)
+			if errList != nil && len(errList) > 0 {
+				errs = append(errs, errList...)
 			}
 		}
 	}
 
 	return errs
+}
+
+func validatePorts(component radixv1.RadixComponent) []error {
+	errs := []error{}
+
+	if component.Ports == nil || len(component.Ports) == 0 {
+		err := fmt.Errorf("Port specification cannot be empty for %s", component.Name)
+		errs = append(errs, err)
+	}
+
+	for _, port := range component.Ports {
+		err := validateRequiredResourceName("port name", port.Name)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs
+}
+
+func validateResourceRequirements(resourceRequirements *radixv1.ResourceRequirements) []error {
+	errs := []error{}
+	if resourceRequirements == nil {
+		return errs
+	}
+
+	for name, value := range resourceRequirements.Requests {
+		err := validateQuantity(name, value)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for name, value := range resourceRequirements.Limits {
+		err := validateQuantity(name, value)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs
+}
+
+func validateQuantity(name, value string) error {
+	if name == "memory" {
+		_, err := resource.ParseQuantity(value)
+		if err != nil {
+			return fmt.Errorf("Format of memory resource requirement %s (value %s) is wrong. Value must be a valid Kubernetes quantity", name, value)
+		}
+	} else if name == "cpu" {
+		regex := "^[0-9]+m$"
+		re := regexp.MustCompile(regex)
+
+		isValid := re.MatchString(value)
+		if !isValid {
+			return fmt.Errorf("Format of cpu resource requirement %s (value %s) is wrong. Must match regex '%s'", name, value, regex)
+		}
+	} else {
+		return fmt.Errorf("Only support resource requirement type 'memory' and 'cpu' (not '%s')", name)
+	}
+
+	return nil
 }
 
 func validateBranchNames(app *radixv1.RadixApplication) error {

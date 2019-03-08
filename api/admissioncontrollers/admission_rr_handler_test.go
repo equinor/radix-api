@@ -6,7 +6,7 @@ import (
 
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	. "github.com/equinor/radix-api/api/admissioncontrollers"
 	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"

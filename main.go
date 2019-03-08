@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.73
+// Version: 0.0.74
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
 	// Controllers

@@ -6,8 +6,8 @@ import (
 
 	"github.com/equinor/radix-api/api/utils"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/equinor/radix-api/models"
+	log "github.com/sirupsen/logrus"
 
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 

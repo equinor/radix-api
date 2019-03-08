@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	apiutils "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
