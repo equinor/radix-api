@@ -3,12 +3,12 @@ package deployments
 import (
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -91,9 +91,9 @@ func getComponentConfig(radixConfig *v1.RadixApplication, componentName string) 
 }
 
 func getEnvironmentVariables(componentConfig *v1.RadixComponent, environment string) v1.EnvVarsMap {
-	for _, environmentVariables := range componentConfig.EnvironmentVariables {
-		if strings.EqualFold(environmentVariables.Environment, environment) {
-			return environmentVariables.Variables
+	for _, environmentConfig := range componentConfig.EnvironmentConfig {
+		if strings.EqualFold(environmentConfig.Environment, environment) {
+			return environmentConfig.Variables
 		}
 	}
 

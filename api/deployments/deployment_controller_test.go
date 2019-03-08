@@ -12,7 +12,6 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -504,15 +503,6 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 
 	// Setup
 	// When we have enviroment specific config the deployment should contain the environment variables defined in the config
-	devVariable := make(map[string]string)
-	prodVariable := make(map[string]string)
-	devVariable["DB_HOST"] = "useless-dev"
-	prodVariable["DB_HOST"] = "useless-prod"
-
-	environmentVariables := []v1.EnvVars{
-		v1.EnvVars{Environment: "dev", Variables: devVariable},
-		v1.EnvVars{Environment: "prod", Variables: prodVariable}}
-
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithAppName(anyAppName).
@@ -520,7 +510,13 @@ func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
 			builders.
 				NewApplicationComponentBuilder().
 				WithName("app").
-				WithEnvironmentVariablesMap(environmentVariables)).
+				WithEnvironmentConfigs(
+					builders.AnEnvironmentConfig().
+						WithEnvironment("dev").
+						WithEnvironmentVariable("DB_HOST", "useless-dev"),
+					builders.AnEnvironmentConfig().
+						WithEnvironment("prod").
+						WithEnvironmentVariable("DB_HOST", "useless-prod"))).
 		WithEnvironment("dev", "master").
 		WithEnvironment("prod", ""))
 
