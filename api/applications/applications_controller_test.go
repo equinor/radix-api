@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 
@@ -602,8 +603,8 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-	commonTestUtils.ApplyDeploymentWithSync(builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	deploymentBuilder := builders.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithComponents(
@@ -613,7 +614,19 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 				WithPublic(true).
 				WithDNSAppAlias(true),
 			builders.NewDeployComponentBuilder().
-				WithName("backend")))
+				WithName("backend"))
+
+	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
+	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
+	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
+
+	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+
+	registration.OnSync()
+	applicationconfig.OnSync()
+	deployment.OnSync()
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
