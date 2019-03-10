@@ -32,5 +32,5 @@ type Application struct {
 	// App alias showing nicer endpoint for application
 	//
 	// required: false
-	AppAlias *ApplicationAlias `json:"appAlias"`
+	AppAlias *ApplicationAlias `json:"appAlias,omitempty"`
 }
