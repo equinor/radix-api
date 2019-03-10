@@ -29,10 +29,12 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-const clusterName = "AnyClusterName"
-const containerRegistry = "any.container.registry"
-const dnsZone = "dev.radix.equinor.com"
-const appAliasDNSZone = ".app.dev.radix.equinor.com"
+const (
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	dnsZone           = "dev.radix.equinor.com"
+	appAliasDNSZone   = ".app.dev.radix.equinor.com"
+)
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset) {
 	// Setup
