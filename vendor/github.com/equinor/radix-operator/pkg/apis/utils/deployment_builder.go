@@ -3,8 +3,9 @@ package utils
 import (
 	"time"
 
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeploymentBuilder Handles construction of RD
@@ -17,6 +18,7 @@ type DeploymentBuilder interface {
 	WithLabel(label, value string) DeploymentBuilder
 	WithEnvironment(string) DeploymentBuilder
 	WithCreated(time.Time) DeploymentBuilder
+	WithUID(types.UID) DeploymentBuilder
 	WithComponent(DeployComponentBuilder) DeploymentBuilder
 	WithComponents(...DeployComponentBuilder) DeploymentBuilder
 	GetApplicationBuilder() ApplicationBuilder
@@ -32,6 +34,7 @@ type DeploymentBuilderStruct struct {
 	ImageTag           string
 	Environment        string
 	Created            time.Time
+	UID                types.UID
 	components         []DeployComponentBuilder
 }
 
@@ -86,6 +89,12 @@ func (db *DeploymentBuilderStruct) WithImageTag(imageTag string) DeploymentBuild
 func (db *DeploymentBuilderStruct) WithEnvironment(environment string) DeploymentBuilder {
 	db.Labels["radix-env"] = environment
 	db.Environment = environment
+	return db
+}
+
+// WithUUID Sets UUID
+func (db *DeploymentBuilderStruct) WithUID(uid types.UID) DeploymentBuilder {
+	db.UID = uid
 	return db
 }
 
@@ -148,6 +157,7 @@ func (db *DeploymentBuilderStruct) BuildRD() *v1.RadixDeployment {
 			Namespace:         GetEnvironmentNamespace(db.AppName, db.Environment),
 			Labels:            db.Labels,
 			CreationTimestamp: metav1.Time{Time: db.Created},
+			UID:               db.UID,
 		},
 		Spec: v1.RadixDeploymentSpec{
 			AppName:     db.AppName,
@@ -192,6 +202,7 @@ type DeployComponentBuilder interface {
 	WithEnvironmentVariables(map[string]string) DeployComponentBuilder
 	WithPublic(bool) DeployComponentBuilder
 	WithReplicas(int) DeployComponentBuilder
+	WithResource(map[string]string, map[string]string) DeployComponentBuilder
 	WithSecrets([]string) DeployComponentBuilder
 	WithDNSAppAlias(bool) DeployComponentBuilder
 	BuildComponent() v1.RadixDeployComponent
@@ -206,6 +217,15 @@ type deployComponentBuilder struct {
 	replicas             int
 	secrets              []string
 	dnsappalias          bool
+	resources            v1.ResourceRequirements
+}
+
+func (dcb *deployComponentBuilder) WithResource(request map[string]string, limit map[string]string) DeployComponentBuilder {
+	dcb.resources = v1.ResourceRequirements{
+		Limits:   limit,
+		Requests: request,
+	}
+	return dcb
 }
 
 func (dcb *deployComponentBuilder) WithName(name string) DeployComponentBuilder {
@@ -268,6 +288,7 @@ func (dcb *deployComponentBuilder) BuildComponent() v1.RadixDeployComponent {
 		Secrets:              dcb.secrets,
 		EnvironmentVariables: dcb.environmentVariables,
 		DNSAppAlias:          dcb.dnsappalias,
+		Resources:            dcb.resources,
 	}
 }
 

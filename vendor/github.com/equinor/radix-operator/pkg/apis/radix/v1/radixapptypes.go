@@ -37,12 +37,6 @@ type SecretsMap map[string]string
 // EnvVarsMap maps environment variable keys to their values
 type EnvVarsMap map[string]string
 
-// EnvVars defines environment and their environment variable values
-type EnvVars struct {
-	Environment string     `json:"environment" yaml:"environment"`
-	Variables   EnvVarsMap `json:"variables" yaml:"variables"`
-}
-
 //Environment defines a Radix application environment
 type Environment struct {
 	Name  string   `json:"name" yaml:"name"`
@@ -66,14 +60,38 @@ type ComponentPort struct {
 	Port int32  `json:"port"`
 }
 
+type ResourceList map[string]string
+
+// ResourceRequirements describes the compute resource requirements.
+type ResourceRequirements struct {
+	// Limits describes the maximum amount of compute resources allowed.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Limits ResourceList `json:"limits,omitempty" yaml:"limits,omitempty"`
+	// Requests describes the minimum amount of compute resources required.
+	// If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+	// otherwise to an implementation-defined value.
+	// More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+	// +optional
+	Requests ResourceList `json:"requests,omitempty" yaml:"requests,omitempty"`
+}
+
 //RadixComponent defines a single component within a RadixApplication - maps to single deployment/service/ingress etc
 type RadixComponent struct {
-	Name                 string          `json:"name" yaml:"name"`
-	SourceFolder         string          `json:"src" yaml:"src"`
-	DockerfileName       string          `json:"dockerfileName" yaml:"dockerfileName"`
-	Ports                []ComponentPort `json:"ports" yaml:"ports"`
-	Public               bool            `json:"public" yaml:"public"`
-	Replicas             int             `json:"replicas" yaml:"replicas"`
-	EnvironmentVariables []EnvVars       `json:"environmentVariables,omitempty" yaml:"environmentVariables,omitempty"`
-	Secrets              []string        `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	Name              string                   `json:"name" yaml:"name"`
+	SourceFolder      string                   `json:"src" yaml:"src"`
+	DockerfileName    string                   `json:"dockerfileName" yaml:"dockerfileName"`
+	Ports             []ComponentPort          `json:"ports" yaml:"ports"`
+	Public            bool                     `json:"public" yaml:"public"`
+	Secrets           []string                 `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	EnvironmentConfig []RadixEnvironmentConfig `json:"environmentConfig,omitempty" yaml:"environmentConfig,omitempty"`
+}
+
+//RadixEnvironmentConfig defines environment specific settings for a single component within a RadixApplication
+type RadixEnvironmentConfig struct {
+	Environment string               `json:"environment" yaml:"environment"`
+	Replicas    int                  `json:"replicas" yaml:"replicas"`
+	Monitoring  bool                 `json:"monitoring" yaml:"monitoring"`
+	Resources   ResourceRequirements `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Variables   EnvVarsMap           `json:"variables" yaml:"variables"`
 }
