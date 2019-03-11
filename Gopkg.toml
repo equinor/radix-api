@@ -7,10 +7,6 @@
   name = "k8s.io/client-go"
   version = "8.0.0"
 
-[[constraint]] # dep client-go 
-  name = "k8s.io/apimachinery"
-  revision = "488889b0007f63ffee90b66a34a2deca9ec58774"
-
 [[constraint]] # dep client-go apimachinery 
   name = "github.com/stretchr/testify"
   revision = "c679ae2cc0cb27ec3293fea7e254e47386f05d69"
@@ -28,5 +24,13 @@
   revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
 
 [[constraint]]
-  name = "github.com/Sirupsen/logrus"
+  name = "github.com/sirupsen/logrus"
   version = "1.0.6"
+
+[[constraint]]
+  name = "github.com/googollee/go-socket.io"
+  revision = "25e1f67559cf5d0e41efbc3e0157bb952596ffc3"
+
+[[override]]
+  name = "github.com/googollee/go-engine.io"
+  revision = "e2f255711dcb2ea41e42c6d9d98c172d7edf6509"

@@ -14,17 +14,19 @@ spec:
   components:
   - name: "server"
     src: "."
-    replicas: 2
     dockerfileName: "Dockerfile"
     ports:
     - name: http
       port: 3002
     public: true
-    monitoring: true
-    environmentVariables:
+    environmentConfig:
     - environment: qa
+      replicas: 2
+      monitoring: true
       variables:
         PIPELINE_IMG_TAG: "master-latest"
     - environment: prod
+      replicas: 2
+      monitoring: true
       variables:
         PIPELINE_IMG_TAG: "release-latest"

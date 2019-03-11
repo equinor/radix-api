@@ -3,7 +3,7 @@ package jobs
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"

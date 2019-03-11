@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -15,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

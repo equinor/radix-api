@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/api/utils"
