@@ -28,4 +28,9 @@ type Application struct {
 	//
 	// required: false
 	Jobs []*jobModels.JobSummary `json:"jobs"`
+
+	// App alias showing nicer endpoint for application
+	//
+	// required: false
+	AppAlias *ApplicationAlias `json:"appAlias,omitempty"`
 }
