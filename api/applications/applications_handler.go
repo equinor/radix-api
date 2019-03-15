@@ -6,18 +6,20 @@ import (
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
@@ -43,7 +45,7 @@ func InitWithInClusterClient(client kubernetes.Interface, radixClient radixclien
 
 // GetApplications handler for ShowApplications
 func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
-	radixRegistationList, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).List(metav1.ListOptions{})
+	radixRegistationList, err := ah.radixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +70,7 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 
 // GetApplication handler for GetApplication
 func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,12 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments}, nil
+	appAlias, err := ah.getAppAlias(appName, environments)
+	if err != nil {
+		return nil, err
+	}
+
+	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments, AppAlias: appAlias}, nil
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -119,7 +126,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Create(radixRegistration)
+	_, err = ah.radixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +141,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +176,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
-	_, err = ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Update(existingRegistration)
+	_, err = ah.radixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +187,12 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
-	_, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	_, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Delete(appName, &metav1.DeleteOptions{})
+	err = ah.radixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -215,7 +222,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		registration, err := ah.radixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+		registration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -270,6 +277,30 @@ func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistrati
 	}
 
 	return err
+}
+
+func (ah ApplicationHandler) getAppAlias(appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
+	for _, environment := range environments {
+		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
+
+		ingresses, err := ah.client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(ingresses.Items) > 0 {
+			// Will only be one alias, if any exists
+			componentName := ingresses.Items[0].Labels[kube.RadixComponentLabel]
+			environmentName := environment.Name
+			url := ingresses.Items[0].Spec.Rules[0].Host
+			return &applicationModels.ApplicationAlias{ComponentName: componentName, EnvironmentName: environmentName, URL: url}, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // Builder Handles construction of DTO

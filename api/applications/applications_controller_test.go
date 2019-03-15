@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -26,6 +29,13 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	dnsZone           = "dev.radix.equinor.com"
+	appAliasDNSZone   = ".app.dev.radix.equinor.com"
+)
+
 func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -33,6 +43,9 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	os.Setenv(deployment.OperatorDNSZoneEnvironmentVariable, dnsZone)
+	os.Setenv(deployment.OperatorAppAliasBaseURLEnvironmentVariable, appAliasDNSZone)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController())
@@ -588,6 +601,46 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 	assert.Equal(t, http.StatusNotFound, response.Code)
+}
+
+func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	deploymentBuilder := builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublic(true).
+				WithDNSAppAlias(true),
+			builders.NewDeployComponentBuilder().
+				WithName("backend"))
+
+	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
+	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
+	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
+
+	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+
+	registration.OnSync()
+	applicationconfig.OnSync()
+	deployment.OnSync()
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+
+	assert.NotNil(t, application.AppAlias)
+	assert.Equal(t, "frontend", application.AppAlias.ComponentName)
+	assert.Equal(t, "prod", application.AppAlias.EnvironmentName)
+	assert.Equal(t, fmt.Sprintf("%s.%s", "any-app", appAliasDNSZone), application.AppAlias.URL)
 }
 
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
