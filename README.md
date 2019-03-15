@@ -26,4 +26,4 @@ Radix API is installed as a Radix application in [script](https://github.com/equ
 1. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
 3. Execute `draft up` to install to dev environment of radix-api
 4. Wait for pods to start
-5. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header
+5. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header.

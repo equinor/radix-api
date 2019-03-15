@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	radixjob "github.com/equinor/radix-api/api/jobs"
 	radixerr "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ const containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
 
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
 func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Interface, appName string) (bool, error) {
-	rr, err := radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{})
+	rr, err := radixclient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
