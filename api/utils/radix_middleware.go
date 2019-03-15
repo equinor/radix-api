@@ -7,7 +7,6 @@ import (
 
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,7 +46,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
-		if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Get(appName, metav1.GetOptions{}); err != nil {
+		if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
 			ErrorResponse(w, r, TypeMissingError(fmt.Sprintf("Unable to get registration for app %s", appName), err))
 			return
 		}
