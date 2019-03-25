@@ -191,7 +191,8 @@ func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	// Need in cluster client in order to delete namespace using sufficient priviledges
+	environmentHandler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient)
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 
 	if err != nil {
