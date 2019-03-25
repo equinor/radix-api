@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"reflect"
 
-	log "github.com/sirupsen/logrus"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -158,6 +158,7 @@ func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Req
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
+	// Use radix-api service account to access applications
 	handler := Init(clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistrations, err := handler.GetApplications(sshRepo)
 
