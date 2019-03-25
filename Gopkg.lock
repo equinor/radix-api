@@ -97,10 +97,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:992281b9afb64fa566d933e39a2b2dd6abbd7a5fcc81be1818b8a16caf491f2b"
+  digest = "1:3d781846306d779a68c4b6274663aaa548bf4a7744fd55c3e37f0cb8684df36d"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
+    "pkg/apis/applicationconfig",
+    "pkg/apis/deployment",
     "pkg/apis/kube",
     "pkg/apis/radix",
     "pkg/apis/radix/v1",
@@ -119,7 +121,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "0441e2a8fe565ed2171f5498fe291f5c096ffb71"
+  revision = "5696504ed2f37a4eec59a1e52ce93c8d0dd7e3bf"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -875,6 +877,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/equinor/radix-operator/pkg/apis/application",
+    "github.com/equinor/radix-operator/pkg/apis/applicationconfig",
+    "github.com/equinor/radix-operator/pkg/apis/deployment",
     "github.com/equinor/radix-operator/pkg/apis/kube",
     "github.com/equinor/radix-operator/pkg/apis/radix/v1",
     "github.com/equinor/radix-operator/pkg/apis/radixvalidators",
