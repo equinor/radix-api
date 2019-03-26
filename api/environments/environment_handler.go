@@ -20,15 +20,22 @@ const latestDeployment = true
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client        kubernetes.Interface
-	radixclient   radixclient.Interface
-	deployHandler deployments.DeployHandler
+	client          kubernetes.Interface
+	radixclient     radixclient.Interface
+	inClusterClient kubernetes.Interface
+	deployHandler   deployments.DeployHandler
 }
 
 // Init Constructor
 func Init(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
 	deployHandler := deployments.Init(client, radixclient)
-	return EnvironmentHandler{client, radixclient, deployHandler}
+	return EnvironmentHandler{client: client, radixclient: radixclient, deployHandler: deployHandler}
+}
+
+// InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
+func InitWithInClusterClient(client kubernetes.Interface, radixclient radixclient.Interface, inClusterClient kubernetes.Interface) EnvironmentHandler {
+	deployHandler := deployments.Init(client, radixclient)
+	return EnvironmentHandler{client, radixclient, inClusterClient, deployHandler}
 }
 
 // GetEnvironmentSummary GetEnvironmentSummary
@@ -142,7 +149,9 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
-	err = eh.client.CoreV1().Namespaces().Delete(environmentNamespace, &metav1.DeleteOptions{})
+
+	// Use radix-api service account session to delete namespace
+	err = eh.inClusterClient.CoreV1().Namespaces().Delete(environmentNamespace, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
