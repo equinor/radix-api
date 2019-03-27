@@ -25,7 +25,9 @@ WORKDIR /go/src/github.com/equinor/radix-api/
 RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
     swagger generate spec -o ./swagger.json --scan-models && \
     mv swagger.json ./swaggerui_src/swagger.json && \
-    statik -src=./swaggerui_src/ -p swaggerui    
+    statik -src=./swaggerui_src/ -p swaggerui
+
+RUN CGO_ENABLED=0 GOOS=linux go test ./...
 
 # Build radix api go project
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
