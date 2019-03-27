@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"reflect"
 
-	log "github.com/sirupsen/logrus"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -158,7 +158,7 @@ func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Req
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	handler := Init(clients.InClusterClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, true)
 	appRegistrations, err := handler.GetApplications(sshRepo)
 
 	if err != nil {
@@ -257,7 +257,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.OutClusterClient, false)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -304,7 +304,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.OutClusterClient, false)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
