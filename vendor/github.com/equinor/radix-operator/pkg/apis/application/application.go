@@ -1,9 +1,6 @@
 package application
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -13,9 +10,6 @@ import (
 )
 
 var logger *log.Entry
-
-// OperatorDefaultUserGroupEnvironmentVariable If users don't provide ad-group, then it should default to this
-const OperatorDefaultUserGroupEnvironmentVariable = "RADIXOPERATOR_DEFAULT_USER_GROUP"
 
 // Application Instance variables
 type Application struct {
@@ -53,7 +47,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to create app namespace. %v", err)
 		return err
 	} else {
-		logger.Debugf("App namespace created")
+		logger.Infof("App namespace created")
 	}
 
 	err = app.createLimitRangeOnAppNamespace(utils.GetAppNamespace(radixRegistration.Name))
@@ -61,7 +55,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to create limit range on app namespace. %v", err)
 		return err
 	} else {
-		logger.Debugf("Limit range on app namespace created")
+		logger.Infof("Limit range on app namespace created")
 	}
 
 	err = app.applySecretsForPipelines() // create deploy key in app namespace
@@ -69,7 +63,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to apply secrets needed by pipeline. %v", err)
 		return err
 	} else {
-		logger.Debugf("Applied secrets needed by pipelines")
+		logger.Infof("Applied secrets needed by pipelines")
 	}
 
 	pipelineServiceAccount, err := app.applyPipelineServiceAccount()
@@ -77,7 +71,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to apply service account needed by pipeline. %v", err)
 		return err
 	} else {
-		logger.Debugf("Applied service account needed by pipelines")
+		logger.Infof("Applied service account needed by pipelines")
 	}
 
 	err = app.applyRbacOnPipelineRunner(pipelineServiceAccount)
@@ -85,7 +79,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to set access permissions needed by pipeline: %v", err)
 		return err
 	} else {
-		logger.Debugf("Applied access permissions needed by pipeline")
+		logger.Infof("Applied access permissions needed by pipeline")
 	}
 
 	err = app.applyRbacRadixRegistration()
@@ -93,7 +87,7 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to set access on RadixRegistration: %v", err)
 		return err
 	} else {
-		logger.Debugf("Applied access permissions to RadixRegistration")
+		logger.Infof("Applied access permissions to RadixRegistration")
 	}
 
 	err = app.grantAccessToCICDLogs()
@@ -101,24 +95,8 @@ func (app Application) OnSync() error {
 		logger.Errorf("Failed to grant access to ci/cd logs: %v", err)
 		return err
 	} else {
-		logger.Debugf("Applied access to ci/cd logs")
+		logger.Infof("Applied access to ci/cd logs")
 	}
 
 	return nil
-}
-
-// GetAdGroups Gets ad-groups from registration. If missing, gives default for cluster
-func GetAdGroups(registration *v1.RadixRegistration) ([]string, error) {
-	if registration.Spec.AdGroups == nil || len(registration.Spec.AdGroups) <= 0 {
-		defaultGroup := os.Getenv(OperatorDefaultUserGroupEnvironmentVariable)
-		if defaultGroup == "" {
-			err := fmt.Errorf("Cannot obtain ad-group as %s has not been set for the operator", OperatorDefaultUserGroupEnvironmentVariable)
-			logger.Error(err)
-			return []string{}, err
-		}
-
-		return []string{defaultGroup}, nil
-	}
-
-	return registration.Spec.AdGroups, nil
 }

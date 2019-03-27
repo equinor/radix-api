@@ -1,8 +1,6 @@
 package test
 
 import (
-	"os"
-
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -31,7 +29,7 @@ func NewTestUtils(client kubernetes.Interface, radixclient radixclient.Interface
 func (tu *Utils) ApplyRegistration(registrationBuilder builders.RegistrationBuilder) error {
 	rr := registrationBuilder.BuildRR()
 
-	_, err := tu.radixclient.RadixV1().RadixRegistrations().Create(rr)
+	_, err := tu.radixclient.RadixV1().RadixRegistrations(corev1.NamespaceDefault).Create(rr)
 	if err != nil {
 		return err
 	}
@@ -75,7 +73,7 @@ func (tu *Utils) ApplyDeployment(deploymentBuilder builders.DeploymentBuilder) (
 	}
 
 	rd := deploymentBuilder.BuildRD()
-	log.Debugf("%s", rd.GetObjectMeta().GetCreationTimestamp())
+	log.Infof("%s", rd.GetObjectMeta().GetCreationTimestamp())
 
 	envNamespace := CreateEnvNamespace(tu.client, rd.Spec.AppName, rd.Spec.Environment)
 	newRd, err := tu.radixclient.RadixV1().RadixDeployments(envNamespace).Create(rd)
@@ -101,8 +99,6 @@ func (tu *Utils) ApplyDeploymentUpdate(deploymentBuilder builders.DeploymentBuil
 
 // CreateClusterPrerequisites Will do the needed setup which is part of radix boot
 func (tu *Utils) CreateClusterPrerequisites(clustername, containerRegistry string) {
-	os.Setenv("RADIXOPERATOR_DEFAULT_USER_GROUP", "1234-5678-91011")
-
 	tu.client.CoreV1().Secrets(corev1.NamespaceDefault).Create(&corev1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{

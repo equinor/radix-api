@@ -6,17 +6,17 @@ import (
 )
 
 func (k *Kube) ApplyRole(namespace string, role *auth.Role) error {
-	logger.Debugf("Apply role %s", role.Name)
+	logger.Infof("Apply role %s", role.Name)
 	_, err := k.kubeClient.RbacV1().Roles(namespace).Create(role)
 	if errors.IsAlreadyExists(err) {
-		logger.Debugf("Role %s already exists. Updating", role.Name)
+		logger.Infof("Role %s already exists. Updating", role.Name)
 		_, err = k.kubeClient.RbacV1().Roles(namespace).Update(role)
 	}
 
 	if err != nil {
-		logger.Debugf("Saving role %s failed: %v", role.Name, err)
+		logger.Infof("Saving role %s failed: %v", role.Name, err)
 		return err
 	}
-	logger.Debugf("Created role %s in %s", role.Name, namespace)
+	logger.Infof("Created role %s in %s", role.Name, namespace)
 	return nil
 }

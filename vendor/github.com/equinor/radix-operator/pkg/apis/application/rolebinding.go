@@ -16,13 +16,7 @@ func (app Application) grantAccessToCICDLogs() error {
 	registration := app.registration
 
 	namespace := utils.GetAppNamespace(registration.Name)
-
-	adGroups, err := GetAdGroups(registration)
-	if err != nil {
-		return err
-	}
-
-	subjects := kube.GetRoleBindingGroups(adGroups)
+	subjects := kube.GetRoleBindingGroups(registration.Spec.AdGroups)
 	clusterRoleName := "radix-app-admin"
 
 	roleBinding := &auth.RoleBinding{
@@ -121,7 +115,7 @@ func (app Application) pipelineClusterRolebinding(serviceAccount *corev1.Service
 	appName := registration.Name
 	roleName := "radix-pipeline-runner"
 	ownerReference := app.getOwnerReference()
-	logger.Debugf("Create cluster rolebinding config %s", roleName)
+	logger.Infof("Create cluster rolebinding config %s", roleName)
 
 	rolebinding := &auth.ClusterRoleBinding{
 		TypeMeta: metav1.TypeMeta{
@@ -155,7 +149,7 @@ func (app Application) pipelineRoleBinding(serviceAccount *corev1.ServiceAccount
 	registration := app.registration
 	appName := registration.Name
 	roleName := "radix-pipeline"
-	logger.Debugf("Create rolebinding config %s", roleName)
+	logger.Infof("Create rolebinding config %s", roleName)
 
 	rolebinding := &auth.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
@@ -189,7 +183,7 @@ func (app Application) rrPipelineRoleBinding(serviceAccount *corev1.ServiceAccou
 	appName := registration.Name
 	roleBindingName := role.Name
 	ownerReference := app.getOwnerReference()
-	logger.Debugf("Create rolebinding config %s", roleBindingName)
+	logger.Infof("Create rolebinding config %s", roleBindingName)
 
 	rolebinding := &auth.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
@@ -223,12 +217,10 @@ func (app Application) rrRoleBinding(role *auth.Role) *auth.RoleBinding {
 	registration := app.registration
 	appName := registration.Name
 	roleBindingName := role.Name
-	logger.Debugf("Create roleBinding config %s", roleBindingName)
+	logger.Infof("Create roleBinding config %s", roleBindingName)
 
 	ownerReference := app.getOwnerReferenceOfRegistrationWithName(roleBindingName)
-
-	adGroups, _ := GetAdGroups(registration)
-	subjects := kube.GetRoleBindingGroups(adGroups)
+	subjects := kube.GetRoleBindingGroups(registration.Spec.AdGroups)
 
 	rolebinding := &auth.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
@@ -250,7 +242,7 @@ func (app Application) rrRoleBinding(role *auth.Role) *auth.RoleBinding {
 		Subjects: subjects,
 	}
 
-	logger.Debugf("Done - create rolebinding config %s", roleBindingName)
+	logger.Infof("Done - create rolebinding config %s", roleBindingName)
 
 	return rolebinding
 }

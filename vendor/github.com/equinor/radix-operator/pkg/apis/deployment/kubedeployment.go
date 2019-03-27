@@ -1,8 +1,6 @@
 package deployment
 
 import (
-	"strings"
-
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +36,7 @@ func (deploy *Deployment) getDeploymentConfig(deployComponent v1.RadixDeployComp
 		commitID = commitIDVal
 	}
 
-	ownerReference := getOwnerReferenceOfDeployment(deploy.radixDeployment)
+	ownerReference := getOwnerReferenceOfDeploymentWithName(componentName, deploy.radixDeployment)
 	securityContext := getSecurityContextForContainer()
 
 	deployment := &v1beta1.Deployment{
@@ -120,34 +118,6 @@ func (deploy *Deployment) getDeploymentConfig(deployComponent v1.RadixDeployComp
 	}
 
 	return deployment
-}
-
-func (deploy *Deployment) garbageCollectDeploymentsNoLongerInSpec() error {
-	deployments, err := deploy.kubeclient.ExtensionsV1beta1().Deployments(deploy.radixDeployment.GetNamespace()).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, exisitingComponent := range deployments.Items {
-		garbageCollect := true
-		exisitingComponentName := exisitingComponent.ObjectMeta.Labels[kube.RadixComponentLabel]
-
-		for _, component := range deploy.radixDeployment.Spec.Components {
-			if strings.EqualFold(component.Name, exisitingComponentName) {
-				garbageCollect = false
-				break
-			}
-		}
-
-		if garbageCollect {
-			err = deploy.kubeclient.ExtensionsV1beta1().Deployments(deploy.radixDeployment.GetNamespace()).Delete(exisitingComponent.Name, &metav1.DeleteOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func getSecurityContextForContainer() *corev1.SecurityContext {

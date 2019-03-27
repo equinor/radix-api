@@ -2,8 +2,10 @@ package applications
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -50,6 +52,8 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 		return nil, err
 	}
 
+	radixRegistrations := ah.filterAppsOnUserADGroups(radixRegistationList.Items)
+
 	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
 	if err != nil {
 		return nil, err
@@ -66,6 +70,14 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 	}
 
 	return applications, nil
+}
+
+func (ah ApplicationHandler) filterAppsOnUserADGroups(radixRegistrations []v1.RadixRegistration) []v1.RadixRegistration {
+	request := http.Client{}
+	authorizer, _ := auth.NewAuthorizerFromEnvironment()
+	pd := authorizer.WithAuthorization()
+	req, _ := pd.Prepare(request)
+
 }
 
 // GetApplication handler for GetApplication

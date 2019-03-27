@@ -2,7 +2,6 @@ package applicationconfig
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/equinor/radix-operator/pkg/apis/application"
@@ -33,7 +32,6 @@ type ApplicationConfig struct {
 func NewApplicationConfig(kubeclient kubernetes.Interface, radixclient radixclient.Interface, registration *v1.RadixRegistration, config *radixv1.RadixApplication) (*ApplicationConfig, error) {
 	kubeutil, err := kube.New(kubeclient)
 	if err != nil {
-		log.Errorf("Failed initializing ApplicationConfig")
 		return nil, err
 	}
 
@@ -62,51 +60,29 @@ func (app *ApplicationConfig) IsBranchMappedToEnvironment(branch string) (bool, 
 
 // ApplyConfigToApplicationNamespace Will apply the config to app namespace so that the operator can act on it
 func (app *ApplicationConfig) ApplyConfigToApplicationNamespace() error {
-	appNamespace := utils.GetAppNamespace(app.config.Name)
-
-	existingRA, err := app.radixclient.RadixV1().RadixApplications(appNamespace).Get(app.config.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Debugf("RadixApplication %s doesn't exist in namespace %s, creating now", app.config.Name, appNamespace)
-			_, err = app.radixclient.RadixV1().RadixApplications(appNamespace).Create(app.config)
-			if err != nil {
-				return fmt.Errorf("failed to create radix application. %v", err)
-			}
-			log.Infof("RadixApplication %s saved to ns %s", app.config.Name, appNamespace)
-			return nil
-		}
-		return fmt.Errorf("failed to get radix application. %v", err)
-	}
-
-	// Update RA if different
-	log.Infof("RadixApplication %s exists in namespace %s", app.config.Name, appNamespace)
-	if !reflect.DeepEqual(app.config.Spec, existingRA.Spec) {
-		log.Debugf("RadixApplication %s in namespace %s has changed, updating now", app.config.Name, appNamespace)
-		// For an update, ResourceVersion of the new object must be the same with the old object
-		app.config.SetResourceVersion(existingRA.GetResourceVersion())
-		_, err = app.radixclient.RadixV1().RadixApplications(appNamespace).Update(app.config)
+	appNamespace := utils.GetAppNamespace(app.registration.Name)
+	_, err := app.radixclient.RadixV1().RadixApplications(appNamespace).Create(app.config)
+	if errors.IsAlreadyExists(err) {
+		err = app.radixclient.RadixV1().RadixApplications(appNamespace).Delete(app.config.Name, &metav1.DeleteOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to update existing radix application. %v", err)
+			return fmt.Errorf("failed to delete radix application. %v", err)
 		}
-		log.Infof("RadixApplication %s updated in namespace %s", app.config.Name, appNamespace)
-	} else {
-		log.Infof("RadixApplication %s exists in namespace %s and no change", app.config.Name, appNamespace)
-	}
 
+		_, err = app.radixclient.RadixV1().RadixApplications(appNamespace).Create(app.config)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to apply radix application. %v", err)
+	}
+	log.Infof("RadixApplication %s saved to ns %s", app.config.Name, appNamespace)
 	return nil
 }
 
-// OnSync is called when an application config is applied to application namespace
-// It compares the actual state with the desired, and attempts to
-// converge the two
-func (app *ApplicationConfig) OnSync() error {
+// OnConfigApplied called when an application config is applied to application namespace
+func (app *ApplicationConfig) OnConfigApplied() {
 	err := app.createEnvironments()
 	if err != nil {
-		log.Errorf("Failed to create namespaces for app environments %s. %v", app.config.Name, err)
-		return err
+		log.Errorf("Failed to create namespaces for app environments %s. %v", app.registration.Name, err)
 	}
-
-	return nil
 }
 
 // CreateEnvironments Will create environments defined in the radix config
@@ -114,13 +90,13 @@ func (app *ApplicationConfig) createEnvironments() error {
 	targetEnvs := getTargetEnvironmentsAsMap("", app.config)
 
 	for env := range targetEnvs {
-		namespaceName := utils.GetEnvironmentNamespace(app.config.Name, env)
+		namespaceName := utils.GetEnvironmentNamespace(app.registration.Name, env)
 		ownerRef := application.GetOwnerReferenceOfRegistration(app.registration)
 		labels := map[string]string{
 			"sync":                  "cluster-wildcard-tls-cert",
 			"cluster-wildcard-sync": "cluster-wildcard-tls-cert",
 			"app-wildcard-sync":     "app-wildcard-tls-cert",
-			kube.RadixAppLabel:      app.config.Name,
+			kube.RadixAppLabel:      app.registration.Name,
 			kube.RadixEnvLabel:      env,
 		}
 

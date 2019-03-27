@@ -34,3 +34,6 @@
 [[override]]
   name = "github.com/googollee/go-engine.io"
   revision = "e2f255711dcb2ea41e42c6d9d98c172d7edf6509"
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "26.7.0"

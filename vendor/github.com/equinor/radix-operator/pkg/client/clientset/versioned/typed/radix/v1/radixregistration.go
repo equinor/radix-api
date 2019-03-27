@@ -30,7 +30,7 @@ import (
 // RadixRegistrationsGetter has a method to return a RadixRegistrationInterface.
 // A group's client should implement this interface.
 type RadixRegistrationsGetter interface {
-	RadixRegistrations() RadixRegistrationInterface
+	RadixRegistrations(namespace string) RadixRegistrationInterface
 }
 
 // RadixRegistrationInterface has methods to work with RadixRegistration resources.
@@ -49,12 +49,14 @@ type RadixRegistrationInterface interface {
 // radixRegistrations implements RadixRegistrationInterface
 type radixRegistrations struct {
 	client rest.Interface
+	ns     string
 }
 
 // newRadixRegistrations returns a RadixRegistrations
-func newRadixRegistrations(c *RadixV1Client) *radixRegistrations {
+func newRadixRegistrations(c *RadixV1Client, namespace string) *radixRegistrations {
 	return &radixRegistrations{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -62,6 +64,7 @@ func newRadixRegistrations(c *RadixV1Client) *radixRegistrations {
 func (c *radixRegistrations) Get(name string, options meta_v1.GetOptions) (result *v1.RadixRegistration, err error) {
 	result = &v1.RadixRegistration{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -74,6 +77,7 @@ func (c *radixRegistrations) Get(name string, options meta_v1.GetOptions) (resul
 func (c *radixRegistrations) List(opts meta_v1.ListOptions) (result *v1.RadixRegistrationList, err error) {
 	result = &v1.RadixRegistrationList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do().
@@ -85,6 +89,7 @@ func (c *radixRegistrations) List(opts meta_v1.ListOptions) (result *v1.RadixReg
 func (c *radixRegistrations) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Watch()
@@ -94,6 +99,7 @@ func (c *radixRegistrations) Watch(opts meta_v1.ListOptions) (watch.Interface, e
 func (c *radixRegistrations) Create(radixRegistration *v1.RadixRegistration) (result *v1.RadixRegistration, err error) {
 	result = &v1.RadixRegistration{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		Body(radixRegistration).
 		Do().
@@ -105,6 +111,7 @@ func (c *radixRegistrations) Create(radixRegistration *v1.RadixRegistration) (re
 func (c *radixRegistrations) Update(radixRegistration *v1.RadixRegistration) (result *v1.RadixRegistration, err error) {
 	result = &v1.RadixRegistration{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		Name(radixRegistration.Name).
 		Body(radixRegistration).
@@ -116,6 +123,7 @@ func (c *radixRegistrations) Update(radixRegistration *v1.RadixRegistration) (re
 // Delete takes name of the radixRegistration and deletes it. Returns an error if one occurs.
 func (c *radixRegistrations) Delete(name string, options *meta_v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		Name(name).
 		Body(options).
@@ -126,6 +134,7 @@ func (c *radixRegistrations) Delete(name string, options *meta_v1.DeleteOptions)
 // DeleteCollection deletes a collection of objects.
 func (c *radixRegistrations) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Body(options).
@@ -137,6 +146,7 @@ func (c *radixRegistrations) DeleteCollection(options *meta_v1.DeleteOptions, li
 func (c *radixRegistrations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.RadixRegistration, err error) {
 	result = &v1.RadixRegistration{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("radixregistrations").
 		SubResource(subresources...).
 		Name(name).

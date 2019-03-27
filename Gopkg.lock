@@ -10,6 +10,14 @@
   version = "v0.36.0"
 
 [[projects]]
+  digest = "1:8a9e66ff707c92b4b75a09fb444dee0dab1df0e21d51bde18e768c770144856c"
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f0ff339f1297d3374fc36bcbfc7d1bbba045d992"
+  version = "v26.7.0"
+
+[[projects]]
   digest = "1:d62e9a41f2e45c103f6c15ffabb3466b3548db41b8cc135a4669794033ee761f"
   name = "github.com/Azure/go-autorest"
   packages = [
@@ -101,6 +109,8 @@
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
+    "pkg/apis/applicationconfig",
+    "pkg/apis/deployment",
     "pkg/apis/kube",
     "pkg/apis/radix",
     "pkg/apis/radix/v1",
@@ -874,7 +884,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Azure/azure-sdk-for-go",
     "github.com/equinor/radix-operator/pkg/apis/application",
+    "github.com/equinor/radix-operator/pkg/apis/applicationconfig",
+    "github.com/equinor/radix-operator/pkg/apis/deployment",
     "github.com/equinor/radix-operator/pkg/apis/kube",
     "github.com/equinor/radix-operator/pkg/apis/radix/v1",
     "github.com/equinor/radix-operator/pkg/apis/radixvalidators",

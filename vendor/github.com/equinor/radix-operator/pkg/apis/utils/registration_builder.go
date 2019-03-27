@@ -3,7 +3,8 @@ package utils
 import (
 	"strings"
 
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -96,8 +97,9 @@ func (rb *RegistrationBuilderStruct) BuildRR() *v1.RadixRegistration {
 			Kind:       "RadixRegistration",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: rb.name,
-			UID:  rb.uid,
+			Name:      rb.name,
+			UID:       rb.uid,
+			Namespace: corev1.NamespaceDefault,
 		},
 		Spec: v1.RadixRegistrationSpec{
 			CloneURL:        cloneURL,

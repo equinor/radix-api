@@ -29,8 +29,8 @@ import (
 type RadixRegistrationLister interface {
 	// List lists all RadixRegistrations in the indexer.
 	List(selector labels.Selector) (ret []*v1.RadixRegistration, err error)
-	// Get retrieves the RadixRegistration from the index for a given name.
-	Get(name string) (*v1.RadixRegistration, error)
+	// RadixRegistrations returns an object that can list and get RadixRegistrations.
+	RadixRegistrations(namespace string) RadixRegistrationNamespaceLister
 	RadixRegistrationListerExpansion
 }
 
@@ -52,9 +52,38 @@ func (s *radixRegistrationLister) List(selector labels.Selector) (ret []*v1.Radi
 	return ret, err
 }
 
-// Get retrieves the RadixRegistration from the index for a given name.
-func (s *radixRegistrationLister) Get(name string) (*v1.RadixRegistration, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// RadixRegistrations returns an object that can list and get RadixRegistrations.
+func (s *radixRegistrationLister) RadixRegistrations(namespace string) RadixRegistrationNamespaceLister {
+	return radixRegistrationNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// RadixRegistrationNamespaceLister helps list and get RadixRegistrations.
+type RadixRegistrationNamespaceLister interface {
+	// List lists all RadixRegistrations in the indexer for a given namespace.
+	List(selector labels.Selector) (ret []*v1.RadixRegistration, err error)
+	// Get retrieves the RadixRegistration from the indexer for a given namespace and name.
+	Get(name string) (*v1.RadixRegistration, error)
+	RadixRegistrationNamespaceListerExpansion
+}
+
+// radixRegistrationNamespaceLister implements the RadixRegistrationNamespaceLister
+// interface.
+type radixRegistrationNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all RadixRegistrations in the indexer for a given namespace.
+func (s radixRegistrationNamespaceLister) List(selector labels.Selector) (ret []*v1.RadixRegistration, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.RadixRegistration))
+	})
+	return ret, err
+}
+
+// Get retrieves the RadixRegistration from the indexer for a given namespace and name.
+func (s radixRegistrationNamespaceLister) Get(name string) (*v1.RadixRegistration, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
