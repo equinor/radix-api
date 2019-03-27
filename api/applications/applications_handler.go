@@ -2,6 +2,7 @@ package applications
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -11,6 +12,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	log "github.com/sirupsen/logrus"
+	authorizationapi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -87,23 +89,25 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 }
 
 func filterRadixRegByAccess(client kubernetes.Interface, radixClient radixclient.Interface, radixregs []v1.RadixRegistration) []v1.RadixRegistration {
+	adGroups := map[string]int{}
 	result := []v1.RadixRegistration{}
-	// wg := sync.WaitGroup{}
-	// wg.Add(len(radixregs))
-	request.UserFrom()
-	for _, rr := range radixregs {
-		if hasAccess(client, radixClient, rr) {
-			result = append(result, rr)
-		}
-		// go func(rr v1.RadixRegistration) {
-		// 	defer wg.Done()
-		// 	if hasAccess(client, rr) {
-		// 		result = append(result, rr)
-		// 	}
-		// }(rr)
-	}
 
-	// wg.Wait()
+	for _, rr := range radixregs {
+		adGroupsForApp := rr.Spec.AdGroups
+		sort.Strings(adGroupsForApp)
+		adGroupsAsKey := strings.Join(adGroupsForApp, ",")
+		if adGroups[adGroupsAsKey] == 1 {
+			result = append(result, rr)
+		} else if adGroups[adGroupsAsKey] == -1 {
+			continue
+		} else if hasAccess(client, radixClient, rr) {
+			adGroups[adGroupsAsKey] = 1
+
+			result = append(result, rr)
+		} else {
+			adGroups[adGroupsAsKey] = -1
+		}
+	}
 
 	return result
 }
