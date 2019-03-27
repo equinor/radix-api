@@ -158,8 +158,7 @@ func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Req
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	// Use radix-api service account to access applications
-	handler := Init(clients.InClusterClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, true)
 	appRegistrations, err := handler.GetApplications(sshRepo)
 
 	if err != nil {
@@ -258,7 +257,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.OutClusterClient, false)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -305,7 +304,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.OutClusterClient, false)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

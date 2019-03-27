@@ -26,6 +26,7 @@ import (
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
 	client               kubernetes.Interface
+	inClusterClient      kubernetes.Interface
 	radixClient          radixclient.Interface
 	inClusterRadixClient radixclient.Interface
 	jobHandler           job.JobHandler
@@ -38,17 +39,34 @@ func Init(client kubernetes.Interface, radixClient radixclient.Interface) Applic
 }
 
 // InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
-func InitWithInClusterClient(client kubernetes.Interface, radixClient radixclient.Interface, inClusterRadixClient radixclient.Interface) ApplicationHandler {
+func InitWithInClusterClient(
+	client kubernetes.Interface,
+	radixClient radixclient.Interface,
+	inClusterRadixClient radixclient.Interface,
+	inClusterClient kubernetes.Interface,
+	initJobHandlerWithInClusterClients bool) ApplicationHandler {
+
 	jobHandler := job.Init(client, radixClient)
-	return ApplicationHandler{client: client, radixClient: radixClient, inClusterRadixClient: inClusterRadixClient, jobHandler: jobHandler}
+	if initJobHandlerWithInClusterClients {
+		jobHandler = job.Init(inClusterClient, inClusterRadixClient)
+	}
+
+	return ApplicationHandler{
+		client:               client,
+		radixClient:          radixClient,
+		inClusterRadixClient: inClusterRadixClient,
+		inClusterClient:      inClusterClient,
+		jobHandler:           jobHandler}
 }
 
 // GetApplications handler for ShowApplications
 func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
-	radixRegistationList, err := ah.radixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
+	radixregs, err := ah.inClusterRadixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
+
+	radixRegistations := filterRadixRegByAccess(ah.client, ah.radixClient, radixregs.Items)
 
 	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
 	if err != nil {
@@ -56,7 +74,7 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 	}
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
-	for _, rr := range radixRegistationList.Items {
+	for _, rr := range radixRegistations {
 		if filterOnSSHRepo(&rr, sshRepo) {
 			continue
 		}
@@ -66,6 +84,50 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 	}
 
 	return applications, nil
+}
+
+func filterRadixRegByAccess(client kubernetes.Interface, radixClient radixclient.Interface, radixregs []v1.RadixRegistration) []v1.RadixRegistration {
+	result := []v1.RadixRegistration{}
+	// wg := sync.WaitGroup{}
+	// wg.Add(len(radixregs))
+	request.UserFrom()
+	for _, rr := range radixregs {
+		if hasAccess(client, radixClient, rr) {
+			result = append(result, rr)
+		}
+		// go func(rr v1.RadixRegistration) {
+		// 	defer wg.Done()
+		// 	if hasAccess(client, rr) {
+		// 		result = append(result, rr)
+		// 	}
+		// }(rr)
+	}
+
+	// wg.Wait()
+
+	return result
+}
+
+// cannot run as test - does not return correct values
+func hasAccess(client kubernetes.Interface, radixClient radixclient.Interface, rr v1.RadixRegistration) bool {
+	sar := authorizationapi.SelfSubjectAccessReview{
+		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationapi.ResourceAttributes{
+				Verb:     "get",
+				Group:    "radix.equinor.com",
+				Resource: "radixregistrations",
+				Version:  "*",
+				Name:     rr.GetName(),
+			},
+		},
+	}
+
+	r, err := client.AuthorizationV1().SelfSubjectAccessReviews().Create(&sar)
+	if err != nil {
+		log.Warnf("failed to verify access: %v", err)
+		return false
+	}
+	return r.Status.Allowed
 }
 
 // GetApplication handler for GetApplication

@@ -17,7 +17,7 @@
                 "PIPELINE_IMG_TAG": "master-latest"
             },
             "args": [
-                "--useOutClusterClient=false"
+                "--useOutClusterClient=true"
             ]
         }
     ]
