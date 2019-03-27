@@ -6,18 +6,19 @@ import (
 )
 
 const (
+	jobsTriggeredMetric = "radix_api_jobs_triggered"
 	appNameLabel        = "app_name"
-	jobsTriggeredMetric = "jobs_triggered"
+	pipelineLabel       = "pipeline"
 )
 
 var (
 	nrJobsTriggered = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "radix_api_jobs_triggered",
+		Name: jobsTriggeredMetric,
 		Help: "The total number of jobs triggered",
-	}, []string{"app_name"})
+	}, []string{appNameLabel, pipelineLabel})
 )
 
 // AddJobTriggered New job triggered for application
-func AddJobTriggered(appName string) {
-	nrJobsTriggered.With(prometheus.Labels{"app_name": appName}).Inc()
+func AddJobTriggered(appName, pipeline string) {
+	nrJobsTriggered.With(prometheus.Labels{appNameLabel: appName, pipelineLabel: pipeline}).Inc()
 }

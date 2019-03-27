@@ -33,7 +33,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 		return nil, err
 	}
 
-	metrics.AddJobTriggered(appName)
+	metrics.AddJobTriggered(appName, pipeline.String())
 
 	log.Infof("Started job: %s, %s", jobName, workerImage)
 	return GetJobSummary(job), nil
