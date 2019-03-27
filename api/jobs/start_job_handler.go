@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	apiutils "github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,8 +33,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 		return nil, err
 	}
 
-	monitor := apiutils.GetMonitor()
-	monitor.AddJobTriggered(appName)
+	metrics.AddJobTriggered(appName)
 
 	log.Infof("Started job: %s, %s", jobName, workerImage)
 	return GetJobSummary(job), nil

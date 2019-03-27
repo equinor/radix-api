@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	_ "github.com/equinor/radix-api/swaggerui" // statik files
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
@@ -45,7 +45,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	staticServer := http.FileServer(statikFS)
 	sh := http.StripPrefix("/swaggerui/", staticServer)
 	router.PathPrefix("/swaggerui/").Handler(sh)
-	router.PathPrefix("/metrics").HandlerFunc(metrics.GetMetrics)
 
 	initializeSocketServer(kubeUtil, router, controllers)
 
@@ -73,7 +72,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	))
 
 	serveMux.Handle("/metrics", negroni.New(
-		negroni.Wrap(router),
+		negroni.Wrap(promhttp.Handler()),
 	))
 
 	rec := negroni.NewRecovery()
