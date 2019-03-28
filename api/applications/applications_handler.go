@@ -63,14 +63,13 @@ func InitWithInClusterClient(
 
 // GetApplications handler for ShowApplications
 func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
-	radixregs, err := ah.inClusterRadixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
+	radixRegistationList, err := ah.inClusterRadixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
+	radixRegistations := filterRadixRegByAccess(ah.client, ah.radixClient, radixRegistationList.Items)
 
-	radixRegistations := filterRadixRegByAccess(ah.client, ah.radixClient, radixregs.Items)
-
-	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
+	applicationJobs, err := ah.getJobsForApplication(radixRegistations)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +85,19 @@ func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationMode
 	}
 
 	return applications, nil
+}
+
+func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {
+	forApplications := map[string]bool{}
+	for _, app := range radixRegistations {
+		forApplications[app.GetName()] = true
+	}
+
+	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication(forApplications)
+	if err != nil {
+		return nil, err
+	}
+	return applicationJobs, nil
 }
 
 func filterRadixRegByAccess(client kubernetes.Interface, radixClient radixclient.Interface, radixregs []v1.RadixRegistration) []v1.RadixRegistration {

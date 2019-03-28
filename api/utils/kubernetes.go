@@ -46,9 +46,13 @@ func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixc
 }
 
 func getOutClusterClientConfig(token string) *restclient.Config {
+	host := os.Getenv("K8S_API_HOST")
+	if host == "" {
+		host = "https://kubernetes.default.svc"
+	}
+
 	kubeConfig := &restclient.Config{
-		// Host: "https://kubernetes.default.svc",
-		Host:        "https://weekly-13-clusters-16ede4-553c9f09.hcp.northeurope.azmk8s.io",
+		Host:        host,
 		BearerToken: token,
 		TLSClientConfig: restclient.TLSClientConfig{
 			Insecure: true,
