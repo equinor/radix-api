@@ -16,6 +16,7 @@ spec:
   - environmentVariables:
       PIPELINE_IMG_TAG: {{ .Values.component.pipelineImage }}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    monitoring: true
     name: {{ .Values.component.name }}
     ports:
     - name: http
