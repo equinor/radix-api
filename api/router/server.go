@@ -127,8 +127,9 @@ func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controller
 }
 
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
-	router.HandleFunc(apiVersionRoute+route.Path,
-		utils.NewRadixMiddleware(kubeUtil, route.HandlerFunc).Handle).Methods(route.Method)
+	path := apiVersionRoute + route.Path
+	router.HandleFunc(path,
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
 }
 
 func initializeSocketServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
