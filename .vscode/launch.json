@@ -18,7 +18,7 @@
                 "K8S_API_HOST": "https://weekly-13-clusters-16ede4-553c9f09.hcp.northeurope.azmk8s.io",
             },
             "args": [
-                "--useOutClusterClient=true"
+                "--useOutClusterClient=false"
             ]
         }
     ]
