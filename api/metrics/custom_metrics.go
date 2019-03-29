@@ -36,7 +36,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    requestDurationBucketMetric,
 			Help:    "Request duration seconds bucket",
-			Buckets: []float64{1, 2, 5, 6, 10},
+			Buckets: []float64{0.5, 1, 2, 3, 5},
 		},
 		[]string{pathLabel, methodLabel},
 	)
