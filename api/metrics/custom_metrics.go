@@ -9,8 +9,8 @@ import (
 
 const (
 	jobsTriggeredMetric         = "radix_api_jobs_triggered"
-	requestDurationMetric       = "radix_api_request_duration_seconds_sum"
-	requestDurationBucketMetric = "radix_api_request_duration_seconds"
+	requestDurationMetric       = "radix_api_request_duration_seconds"
+	requestDurationBucketMetric = "radix_api_request_duration_seconds_hist"
 
 	appNameLabel  = "app_name"
 	pipelineLabel = "pipeline"
@@ -26,8 +26,9 @@ var (
 		}, []string{appNameLabel, pipelineLabel})
 	resTime = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Name: requestDurationMetric,
-			Help: "Request duration seconds",
+			Name:       requestDurationMetric,
+			Help:       "Request duration seconds",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 		[]string{pathLabel, methodLabel},
 	)
@@ -41,6 +42,11 @@ var (
 	)
 )
 
+func init() {
+	prometheus.MustRegister(resTime)
+	prometheus.MustRegister(resTimeBucket)
+}
+
 // AddJobTriggered New job triggered for application
 func AddJobTriggered(appName, pipeline string) {
 	nrJobsTriggered.With(prometheus.Labels{appNameLabel: appName, pipelineLabel: pipeline}).Inc()
@@ -48,6 +54,6 @@ func AddJobTriggered(appName, pipeline string) {
 
 // AddRequestDuration Add request duration for given endpoint
 func AddRequestDuration(path, method string, duration time.Duration) {
-	resTime.With(prometheus.Labels{pathLabel: path, methodLabel: method}).Observe(duration.Seconds())
-	resTimeBucket.With(prometheus.Labels{pathLabel: path, methodLabel: method}).Observe(duration.Seconds())
+	resTime.WithLabelValues(path, method).Observe(duration.Seconds())
+	resTimeBucket.WithLabelValues(path, method).Observe(duration.Seconds())
 }
