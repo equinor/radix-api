@@ -417,14 +417,3 @@ func AnApplicationRegistration() Builder {
 		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
 	}
 }
-
-func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
-	filter := true
-
-	if strings.TrimSpace(sshURL) == "" ||
-		strings.EqualFold(rr.Spec.CloneURL, sshURL) {
-		filter = false
-	}
-
-	return filter
-}

@@ -88,7 +88,7 @@ func main() {
 func getControllers() []models.Controller {
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
-		applications.NewApplicationController(),
+		applications.NewApplicationController(nil),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(),

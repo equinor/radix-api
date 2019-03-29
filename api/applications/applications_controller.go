@@ -25,11 +25,18 @@ const rootPath = ""
 
 type applicationController struct {
 	*models.DefaultController
+	hasAccessToRR
 }
 
 // NewApplicationController Constructor
-func NewApplicationController() models.Controller {
-	return &applicationController{}
+func NewApplicationController(hasAccessTo hasAccessToRR) models.Controller {
+	if hasAccessTo == nil {
+		hasAccessTo = hasAccess
+	}
+
+	return &applicationController{
+		hasAccessToRR: hasAccessTo,
+	}
 }
 
 // GetRoutes List the supported routes of this controller
@@ -48,7 +55,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/applications",
 			Method:      "GET",
-			HandlerFunc: ShowApplications,
+			HandlerFunc: ac.ShowApplications,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}",
@@ -135,7 +142,7 @@ func GetApplicationStream(clients models.Clients, resource string, resourceIdent
 }
 
 // ShowApplications Lists applications
-func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications platform showApplications
 	// ---
 	// summary: Lists the applications
@@ -159,7 +166,7 @@ func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Req
 	sshRepo := r.FormValue("sshRepo")
 
 	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, true)
-	appRegistrations, err := handler.GetApplications(sshRepo)
+	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
