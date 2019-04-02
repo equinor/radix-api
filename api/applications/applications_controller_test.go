@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -48,9 +49,67 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	os.Setenv(deployment.OperatorAppAliasBaseURLEnvironmentVariable, appAliasDNSZone)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }))
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
+
+func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient := setupTest()
+
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithCloneURL("git@github.com:Equinor/my-app.git"))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithCloneURL("git@github.com:Equinor/my-second-app.git").WithAdGroups([]string{"2"}).WithName("my-second-app"))
+
+	t.Run("no access", func(t *testing.T) {
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewApplicationController(
+				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+					return false
+				}))
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 0, len(applications))
+	})
+
+	t.Run("access to single app", func(t *testing.T) {
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewApplicationController(
+				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+					return rr.GetName() == "my-second-app"
+				}))
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		// assert.Equal(t, "my-second-app", applications[0].Name)
+	})
+
+	t.Run("access to all app", func(t *testing.T) {
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewApplicationController(
+				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+					return true
+				}))
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 2, len(applications))
+	})
 }
 
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
