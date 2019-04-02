@@ -40,7 +40,7 @@ func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHan
 }
 
 // GetLatestJobPerApplication Handler for GetApplicationJobs
-func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSummary, error) {
+func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	jobList, err := jh.getAllJobs()
 	if err != nil {
 		return nil, err
@@ -60,6 +60,9 @@ func (jh JobHandler) GetLatestJobPerApplication() (map[string]*jobModels.JobSumm
 	for _, job := range jobList.Items {
 		appName := job.Labels[kube.RadixAppLabel]
 		if applicationJob[appName] != nil {
+			continue
+		}
+		if forApplications[appName] != true {
 			continue
 		}
 

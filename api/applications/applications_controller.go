@@ -25,11 +25,18 @@ const rootPath = ""
 
 type applicationController struct {
 	*models.DefaultController
+	hasAccessToRR
 }
 
 // NewApplicationController Constructor
-func NewApplicationController() models.Controller {
-	return &applicationController{}
+func NewApplicationController(hasAccessTo hasAccessToRR) models.Controller {
+	if hasAccessTo == nil {
+		hasAccessTo = hasAccess
+	}
+
+	return &applicationController{
+		hasAccessToRR: hasAccessTo,
+	}
 }
 
 // GetRoutes List the supported routes of this controller
@@ -48,7 +55,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/applications",
 			Method:      "GET",
-			HandlerFunc: ShowApplications,
+			HandlerFunc: ac.ShowApplications,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}",
@@ -135,7 +142,7 @@ func GetApplicationStream(clients models.Clients, resource string, resourceIdent
 }
 
 // ShowApplications Lists applications
-func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications platform showApplications
 	// ---
 	// summary: Lists the applications
@@ -158,9 +165,8 @@ func ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Req
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	// Use radix-api service account to access applications
-	handler := Init(clients.InClusterClient, clients.InClusterRadixClient)
-	appRegistrations, err := handler.GetApplications(sshRepo)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, true)
+	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -190,7 +196,7 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
@@ -258,7 +264,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -305,7 +311,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -335,7 +341,7 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
@@ -384,7 +390,7 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
 	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, pipelineParameters)
 
 	if err != nil {

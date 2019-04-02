@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -25,52 +26,39 @@ import (
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	client               kubernetes.Interface
-	radixClient          radixclient.Interface
-	inClusterRadixClient radixclient.Interface
-	jobHandler           job.JobHandler
-}
-
-// Init Constructor
-func Init(client kubernetes.Interface, radixClient radixclient.Interface) ApplicationHandler {
-	jobHandler := job.Init(client, radixClient)
-	return ApplicationHandler{client: client, radixClient: radixClient, jobHandler: jobHandler}
+	userAccount    models.Account
+	serviceAccount models.Account
+	jobHandler     job.JobHandler
 }
 
 // InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
-func InitWithInClusterClient(client kubernetes.Interface, radixClient radixclient.Interface, inClusterRadixClient radixclient.Interface) ApplicationHandler {
+func Init(
+	client kubernetes.Interface,
+	radixClient radixclient.Interface,
+	inClusterRadixClient radixclient.Interface,
+	inClusterClient kubernetes.Interface,
+	initJobHandlerWithInClusterClients bool) ApplicationHandler {
+
 	jobHandler := job.Init(client, radixClient)
-	return ApplicationHandler{client: client, radixClient: radixClient, inClusterRadixClient: inClusterRadixClient, jobHandler: jobHandler}
-}
-
-// GetApplications handler for ShowApplications
-func (ah ApplicationHandler) GetApplications(sshRepo string) ([]*applicationModels.ApplicationSummary, error) {
-	radixRegistationList, err := ah.radixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
+	if initJobHandlerWithInClusterClients {
+		jobHandler = job.Init(inClusterClient, inClusterRadixClient)
 	}
 
-	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication()
-	if err != nil {
-		return nil, err
-	}
-
-	applications := make([]*applicationModels.ApplicationSummary, 0)
-	for _, rr := range radixRegistationList.Items {
-		if filterOnSSHRepo(&rr, sshRepo) {
-			continue
-		}
-
-		jobSummary := applicationJobs[rr.Name]
-		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
-	}
-
-	return applications, nil
+	return ApplicationHandler{
+		userAccount: models.Account{
+			Client:      client,
+			RadixClient: radixClient,
+		},
+		serviceAccount: models.Account{
+			Client:      inClusterClient,
+			RadixClient: inClusterRadixClient,
+		},
+		jobHandler: jobHandler}
 }
 
 // GetApplication handler for GetApplication
 func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.serviceAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +73,7 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	environmentHandler := environments.Init(ah.client, ah.radixClient)
+	environmentHandler := environments.Init(ah.userAccount.Client, ah.userAccount.RadixClient)
 	environments, err := environmentHandler.GetEnvironmentSummary(appName)
 	if err != nil {
 		return nil, err
@@ -126,7 +114,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = ah.radixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
+	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +129,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +164,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
-	_, err = ah.radixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -187,12 +175,12 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
-	_, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	_, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = ah.radixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
+	err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -222,17 +210,17 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		registration, err := ah.radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+		registration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		config, err := ah.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+		config, err := ah.userAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 
-		application, err := applicationconfig.NewApplicationConfig(ah.client, ah.radixClient, registration, config)
+		application, err := applicationconfig.NewApplicationConfig(ah.userAccount.Client, ah.userAccount.RadixClient, registration, config)
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +248,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.inClusterRadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.serviceAccount.RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -271,7 +259,7 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.inClusterRadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.serviceAccount.RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -283,7 +271,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	for _, environment := range environments {
 		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+		ingresses, err := ah.userAccount.Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
 		})
 
@@ -428,15 +416,4 @@ func AnApplicationRegistration() Builder {
 		sharedSecret: "AnySharedSecret",
 		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
 	}
-}
-
-func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
-	filter := true
-
-	if strings.TrimSpace(sshURL) == "" ||
-		strings.EqualFold(rr.Spec.CloneURL, sshURL) {
-		filter = false
-	}
-
-	return filter
 }
