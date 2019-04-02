@@ -3,8 +3,8 @@ package utils
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	restclient "k8s.io/client-go/rest"
@@ -46,8 +46,13 @@ func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixc
 }
 
 func getOutClusterClientConfig(token string) *restclient.Config {
+	host := os.Getenv("K8S_API_HOST")
+	if host == "" {
+		host = "https://kubernetes.default.svc"
+	}
+
 	kubeConfig := &restclient.Config{
-		Host:        "https://kubernetes.default.svc",
+		Host:        host,
 		BearerToken: token,
 		TLSClientConfig: restclient.TLSClientConfig{
 			Insecure: true,
