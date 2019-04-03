@@ -47,8 +47,10 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	impersonateUser, impersonateGroup := getImpersonationFromHeader(r)
+
 	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
-	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClient(token)
+	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup)
 
 	clients := models.Clients{
 		InClusterClient:       inClusterClient,
