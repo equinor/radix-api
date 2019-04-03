@@ -85,6 +85,16 @@ func GetApplicationEnvironmentDeployments(clients models.Clients, w http.Respons
 	//   description: indicator to allow only listing latest
 	//   type: boolean
 	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -137,6 +147,16 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   description: name of environment
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -180,6 +200,16 @@ func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   description: name of environment
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Environment deleted ok"
@@ -214,6 +244,16 @@ func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *htt
 	//   description: name of Radix application
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -270,6 +310,16 @@ func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWri
 	//   required: true
 	//   schema:
 	//       "$ref": "#/definitions/SecretParameters"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: success

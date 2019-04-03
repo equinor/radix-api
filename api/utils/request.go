@@ -21,6 +21,13 @@ func getBearerTokenFromHeader(r *http.Request) (string, error) {
 	return jwtToken, nil
 }
 
+// GetBearerToken Gets bearer token from request header
+func getImpersonationFromHeader(r *http.Request) (string, string) {
+	impersonateUser := r.Header.Get("Impersonate-User")
+	impersonateGroup := r.Header.Get("Impersonate-Group")
+	return impersonateUser, impersonateGroup
+}
+
 // GetTokenFromQuery Gets token from query of the request
 func GetTokenFromQuery(request *http.Request) string {
 	return request.URL.Query().Get("token")

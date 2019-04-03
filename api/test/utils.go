@@ -101,6 +101,11 @@ func (ku *kubeUtilMock) GetOutClusterKubernetesClient(token string) (kubernetes.
 	return ku.kubeFake, ku.radixFake
 }
 
+// GetOutClusterKubernetesClient Gets a kubefake client
+func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup string) (kubernetes.Interface, radixclient.Interface) {
+	return ku.kubeFake, ku.radixFake
+}
+
 // GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
 func (ku *kubeUtilMock) GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
