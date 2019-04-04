@@ -50,7 +50,12 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	impersonateUser, impersonateGroup := getImpersonationFromHeader(r)
 
 	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
-	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup)
+	outClusterClient, outClusterRadixClient, err := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup)
+
+	if err != nil {
+		ErrorResponse(w, r, UnexpectedError("Problems getting kubernetes client", err))
+		return
+	}
 
 	clients := models.Clients{
 		InClusterClient:       inClusterClient,
