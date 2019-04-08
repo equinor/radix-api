@@ -87,12 +87,12 @@ func GetApplicationEnvironmentDeployments(clients models.Clients, w http.Respons
 	//   required: false
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -149,12 +149,12 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -202,12 +202,12 @@ func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -246,12 +246,12 @@ func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *htt
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -312,12 +312,12 @@ func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWri
 	//       "$ref": "#/definitions/SecretParameters"
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
