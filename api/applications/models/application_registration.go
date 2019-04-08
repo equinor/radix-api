@@ -25,9 +25,15 @@ type ApplicationRegistration struct {
 	// required: true
 	AdGroups []string `json:"adGroups"`
 
-	// PublicKey the public part of the deploy key returned
+	// PublicKey the public part of the deploy key set or returned
 	// after successful application
 	//
 	// required: false
 	PublicKey string `json:"publicKey,omitempty"`
+
+	// PrivateKey the private part of the deploy key set or returned
+	// after successful application
+	//
+	// required: false
+	PrivateKey string `json:"privateKey,omitempty"`
 }
