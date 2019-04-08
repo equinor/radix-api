@@ -90,12 +90,12 @@ func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -214,12 +214,12 @@ func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -264,12 +264,12 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   required: true
 	// - name: Impersonate-User
 	//   in: header
-	//   description: Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
 	//   type: string
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Allow impersonation of test group (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
