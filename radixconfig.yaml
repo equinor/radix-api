@@ -25,11 +25,11 @@ spec:
       monitoring: true
       resources:
         requests:
-          memory: "200M"
-          cpu: "100m"
+          memory: "100M"
+          cpu: "50m"
         limits:
-          memory: "500M"
-          cpu: "1"
+          memory: "250M"
+          cpu: "0.5"
       variables:
         PIPELINE_IMG_TAG: "master-latest"
     - environment: prod
