@@ -15,3 +15,8 @@ func AppNameAndBranchAreRequiredForStartingPipeline() error {
 func UnmatchedBranchToEnvironment(branch string) error {
 	return utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Failed to match environment to branch: %s", branch))
 }
+
+// OnePartOfDeployKeyIsNotAllowed Error message
+func OnePartOfDeployKeyIsNotAllowed() error {
+	return utils.ValidationError("Radix Registration", fmt.Sprintf("Setting public key, but no private key is not valid"))
+}

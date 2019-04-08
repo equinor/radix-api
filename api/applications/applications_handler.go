@@ -94,6 +94,11 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 	var deployKey *utils.DeployKey
 	var err error
 
+	if (strings.TrimSpace(application.PublicKey) == "" && strings.TrimSpace(application.PrivateKey) != "") ||
+		(strings.TrimSpace(application.PublicKey) != "" && strings.TrimSpace(application.PrivateKey) == "") {
+		return nil, applicationModels.OnePartOfDeployKeyIsNotAllowed()
+	}
+
 	if strings.TrimSpace(application.Repository) != "" &&
 		strings.TrimSpace(application.PublicKey) == "" {
 		deployKey, err = utils.GenerateDeployKey()
@@ -102,6 +107,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		}
 
 		application.PublicKey = deployKey.PublicKey
+		application.PrivateKey = deployKey.PrivateKey
 	}
 
 	radixRegistration, err := NewBuilder().withAppRegistration(&application).withDeployKey(deployKey).BuildRR()
@@ -298,6 +304,7 @@ type Builder interface {
 	withSharedSecret(string) Builder
 	withAdGroups([]string) Builder
 	withPublicKey(string) Builder
+	withPrivateKey(string) Builder
 	withCloneURL(string) Builder
 	withDeployKey(*utils.DeployKey) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
@@ -322,6 +329,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withSharedSecret(appRegistration.SharedSecret)
 	rb.withAdGroups(appRegistration.AdGroups)
 	rb.withPublicKey(appRegistration.PublicKey)
+	rb.withPrivateKey(appRegistration.PrivateKey)
 	return rb
 }
 
@@ -331,6 +339,8 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withSharedSecret(radixRegistration.Spec.SharedSecret)
 	rb.withAdGroups(radixRegistration.Spec.AdGroups)
 	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
+
+	// Private part of key should never be returned
 	return rb
 }
 
@@ -364,6 +374,11 @@ func (rb *applicationBuilder) withPublicKey(publicKey string) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withPrivateKey(privateKey string) Builder {
+	rb.privateKey = strings.TrimSuffix(privateKey, "\n")
+	return rb
+}
+
 func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder {
 	if deploykey != nil {
 		rb.publicKey = deploykey.PublicKey
@@ -385,6 +400,7 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		SharedSecret: rb.sharedSecret,
 		AdGroups:     rb.adGroups,
 		PublicKey:    rb.publicKey,
+		PrivateKey:   rb.privateKey,
 	}
 }
 
