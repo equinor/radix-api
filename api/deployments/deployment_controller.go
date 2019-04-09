@@ -86,6 +86,16 @@ func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   description: indicator to allow only listing latest
 	//   type: boolean
 	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -138,6 +148,16 @@ func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	//   description: name of deployment
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -179,6 +199,16 @@ func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	//   description: Name of deployment
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "pod log"
@@ -227,6 +257,16 @@ func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	//   description: Name of pod
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "pod log"
@@ -270,6 +310,16 @@ func PromoteToEnvironment(clients models.Clients, w http.ResponseWriter, r *http
 	//   required: true
 	//   schema:
 	//       "$ref": "#/definitions/PromotionParameters"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Promotion ok"

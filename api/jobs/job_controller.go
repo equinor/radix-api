@@ -12,12 +12,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/gorilla/mux"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -88,6 +88,16 @@ func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//   description: Name of pipeline job
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -202,6 +212,16 @@ func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//   description: name of Radix application
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -242,6 +262,16 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   description: name of job
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
