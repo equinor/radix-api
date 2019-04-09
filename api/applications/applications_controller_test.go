@@ -192,7 +192,7 @@ func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *te
 	assert.NotEmpty(t, application.PublicKey)
 }
 
-func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.T) {
+func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _ := setupTest()
 
@@ -205,10 +205,60 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := applicationModels.OnePartOfDeployKeyIsNotAllowed()
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	parameters = AnApplicationRegistration().
+		withName("any-name-2").
+		withRepository("https://github.com/Equinor/any-repo").
+		withPrivateKey("Any private key").
+		Build()
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response = <-responseChannel
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	expectedError = applicationModels.OnePartOfDeployKeyIsNotAllowed()
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+}
+
+func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	parameters := AnApplicationRegistration().
+		withName("any-name-2").
+		withRepository("https://github.com/Equinor/any-repo").
+		withPublicKey("Any public key").
+		withPrivateKey("Any private key").
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response := <-responseChannel
+
 	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, "Any public key", application.PublicKey)
+}
 
+func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName("some-app").
+		WithPublicKey("some-public-key").
+		WithPrivateKey("some-private-key"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "some-app"))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+
+	assert.Equal(t, "", application.Registration.PrivateKey)
 }
 
 func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {

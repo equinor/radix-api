@@ -152,6 +152,16 @@ func (ac *applicationController) ShowApplications(clients models.Clients, w http
 	//   description: ssh repo to identify Radix application if exists
 	//   type: string
 	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -187,6 +197,16 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   description: Name of application
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     "$ref": "#/definitions/Application"
@@ -218,6 +238,16 @@ func IsDeployKeyValidHandler(clients models.Clients, w http.ResponseWriter, r *h
 	//   description: Name of application
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Deploy key is valid"
@@ -248,6 +278,16 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	//   required: true
 	//   schema:
 	//       "$ref": "#/definitions/ApplicationRegistration"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     "$ref": "#/definitions/ApplicationRegistration"
@@ -291,6 +331,16 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	//   required: true
 	//   schema:
 	//       "$ref": "#/definitions/ApplicationRegistration"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     "$ref": "#/definitions/ApplicationRegistration"
@@ -332,6 +382,16 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   description: name of application
 	//   type: string
 	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     description: "Application deleted ok"
@@ -376,6 +436,16 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//   required: true
 	//   schema:
 	//       "$ref": "#/definitions/PipelineParameters"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
 	// responses:
 	//   "200":
 	//     "$ref": "#/definitions/JobSummary"
