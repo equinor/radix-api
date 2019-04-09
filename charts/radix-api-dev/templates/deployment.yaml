@@ -22,5 +22,5 @@ spec:
     - name: http
       port: {{ .Values.component.port }}
     public: true
-    replicas: 2
+    replicas: 1
   environment: {{ .Values.app.env }}
