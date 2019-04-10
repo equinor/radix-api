@@ -35,7 +35,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 	metrics.AddJobTriggered(appName, pipeline.String())
 
 	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
-	return GetJobSummary(job), nil
+	return jobModels.GetJobSummary(job), nil
 }
 
 // CloneContainer The sidecar for cloning repo
@@ -79,6 +79,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 	jobName, randomStr := getUniqueJobName(workerImage)
 	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, getPipelineTag())
+	pipelineType := pipeline.String()
 
 	log.Infof("Using image: %s", imageTag)
 
@@ -89,7 +90,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 			Labels: map[string]string{
 				kube.RadixJobNameLabel:  jobName,
 				kube.RadixJobTypeLabel:  RadixJobTypeJob,
-				"radix-pipeline":        pipeline.String(),
+				"radix-pipeline":        pipelineType,
 				"radix-app-name":        appName, // For backwards compatibility. Remove when cluster is migrated
 				kube.RadixAppLabel:      appName,
 				kube.RadixBranchLabel:   pushBranch,
@@ -116,7 +117,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 								fmt.Sprintf("RADIX_FILE_NAME=%s", "/workspace/radixconfig.yaml"),
 								fmt.Sprintf("IMAGE_TAG=%s", randomStr),
 								fmt.Sprintf("JOB_NAME=%s", jobName),
-								fmt.Sprintf("PIPELINE_TYPE=%s", pipeline.String()),
+								fmt.Sprintf("PIPELINE_TYPE=%s", pipelineType),
 								fmt.Sprintf("PUSH_IMAGE=%s", jobSpec.GetPushImageTag()),
 							},
 							VolumeMounts: []corev1.VolumeMount{

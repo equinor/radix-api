@@ -18,7 +18,7 @@ type PipelineParameters struct {
 	// PushImage should image be pushed to container registry. Defaults pushing
 	//
 	// required: false
-	// example: false
+	// example: true
 	PushImage string `json:"pushImage"`
 }
 
