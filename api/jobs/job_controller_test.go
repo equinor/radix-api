@@ -50,8 +50,9 @@ func TestGetApplicationJob(t *testing.T) {
 		WithCloneURL(anyCloneURL))
 
 	jobParameters := &jobModels.JobParameters{
-		Branch:   anyBranch,
-		CommitID: anyPushCommitID,
+		Branch:    anyBranch,
+		CommitID:  anyPushCommitID,
+		PushImage: true,
 	}
 
 	handler := Init(client, radixclient)

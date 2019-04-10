@@ -23,10 +23,9 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	jobName, randomNr := getUniqueJobName(workerImage)
-	job := createPipelineJob(appName, jobName, randomNr, sshRepo, pipeline, jobSpec.Branch, jobSpec.CommitID)
+	job := createPipelineJob(appName, sshRepo, pipeline, jobSpec)
 
-	log.Infof("Starting job: %s, %s", jobName, workerImage)
+	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := fmt.Sprintf("%s-app", appName)
 	job, err := jh.client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
@@ -35,7 +34,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 
 	metrics.AddJobTriggered(appName, pipeline.String())
 
-	log.Infof("Started job: %s, %s", jobName, workerImage)
+	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
 	return GetJobSummary(job), nil
 }
 
@@ -73,23 +72,17 @@ func CloneContainer(sshURL, branch, dockerRegistry string) (corev1.Container, co
 	return container, volume
 }
 
-func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobModels.Pipeline, pushBranch, commitID string) *batchv1.Job {
-	pipelineTag := os.Getenv(pipelineTagEnvironmentVariable)
-	if pipelineTag == "" {
-		log.Warning("No pipeline image tag defined. Using latest")
-		pipelineTag = "latest"
-	} else {
-		log.Infof("Using %s pipeline image tag", pipelineTag)
-	}
-
-	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
-
-	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, pipelineTag)
-	log.Infof("Using image: %s", imageTag)
-	cloneContainer, volume := CloneContainer(sshURL, "master", dockerRegistry)
-
+func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) *batchv1.Job {
 	backOffLimit := int32(0)
+	pushBranch := jobSpec.Branch
+	commitID := jobSpec.CommitID
+	jobName, randomStr := getUniqueJobName(workerImage)
+	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
+	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, getPipelineTag())
 
+	log.Infof("Using image: %s", imageTag)
+
+	cloneContainer, volume := CloneContainer(sshURL, "master", dockerRegistry)
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
@@ -123,6 +116,8 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 								fmt.Sprintf("RADIX_FILE_NAME=%s", "/workspace/radixconfig.yaml"),
 								fmt.Sprintf("IMAGE_TAG=%s", randomStr),
 								fmt.Sprintf("JOB_NAME=%s", jobName),
+								fmt.Sprintf("PIPELINE_TYPE=%s", pipeline.String()),
+								fmt.Sprintf("PUSH_IMAGE=%s", jobSpec.GetPushImageTag()),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -151,6 +146,17 @@ func createPipelineJob(appName, jobName, randomStr, sshURL string, pipeline jobM
 	}
 
 	return &job
+}
+
+func getPipelineTag() string {
+	pipelineTag := os.Getenv(pipelineTagEnvironmentVariable)
+	if pipelineTag == "" {
+		log.Warning("No pipeline image tag defined. Using latest")
+		pipelineTag = "latest"
+	} else {
+		log.Infof("Using %s pipeline image tag", pipelineTag)
+	}
+	return pipelineTag
 }
 
 func getUniqueJobName(image string) (string, string) {
