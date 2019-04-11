@@ -8,13 +8,18 @@ type Pipeline int
 const (
 	// BuildDeploy Will do build based on docker file and deploy to mapped environment
 	BuildDeploy Pipeline = iota
+	Build
 
 	// end marker of the enum
 	numPipelines
 )
 
 func (p Pipeline) String() string {
-	return [...]string{"build-deploy"}[p]
+	return GetPipelines()[p]
+}
+
+func GetPipelines() []string {
+	return []string{"build-deploy", "build"}
 }
 
 // GetPipelineFromName Gets pipeline from string

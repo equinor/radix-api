@@ -428,6 +428,7 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//   description: Name of pipeline
 	//   type: string
 	//   enum:
+	//   - build
 	//   - build-deploy
 	//   required: true
 	// - name: pipelineParameters

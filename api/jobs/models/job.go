@@ -2,6 +2,10 @@ package models
 
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	batchv1 "k8s.io/api/batch/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Job holds general information about job
@@ -66,4 +70,25 @@ type Job struct {
 	// items:
 	//    "$ref": "#/definitions/DeploymentSummary"
 	Deployments []*deploymentModels.DeploymentSummary `json:"deployments,omitempty"`
+}
+
+func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
+	jobStatus := GetStatusFromJobStatus(job.Status)
+	var jobEnded metav1.Time
+
+	if len(job.Status.Conditions) > 0 {
+		jobEnded = job.Status.Conditions[0].LastTransitionTime
+	}
+
+	return &Job{
+		Name:        job.GetName(),
+		Branch:      job.Labels[kube.RadixBranchLabel],
+		CommitID:    job.Labels[kube.RadixCommitLabel],
+		Started:     utils.FormatTime(job.Status.StartTime),
+		Ended:       utils.FormatTime(&jobEnded),
+		Status:      jobStatus.String(),
+		Pipeline:    job.Labels["radix-pipeline"],
+		Steps:       steps,
+		Deployments: jobDeployments,
+	}
 }
