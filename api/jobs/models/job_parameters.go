@@ -8,4 +8,15 @@ type JobParameters struct {
 
 	// Commit ID of the branch
 	CommitID string `json:"commitID"`
+
+	// should image be pushed to container registry
+	PushImage bool `json:"pushImage"`
+}
+
+func (param JobParameters) GetPushImageTag() string {
+	if param.PushImage {
+		return "1"
+	} else {
+		return "0"
+	}
 }

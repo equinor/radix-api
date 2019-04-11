@@ -239,8 +239,9 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipel
 	}
 
 	jobParameters := &jobModels.JobParameters{
-		Branch:   branch,
-		CommitID: commitID,
+		Branch:    branch,
+		CommitID:  commitID,
+		PushImage: pipelineParameters.PushImageToContainerRegistry(),
 	}
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)

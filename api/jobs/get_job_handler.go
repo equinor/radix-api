@@ -154,24 +154,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	jobStatus := jobModels.GetStatusFromJobStatus(job.Status)
-	var jobEnded metav1.Time
-
-	if len(job.Status.Conditions) > 0 {
-		jobEnded = job.Status.Conditions[0].LastTransitionTime
-	}
-
-	return &jobModels.Job{
-		Name:        job.Name,
-		Branch:      job.Labels[kube.RadixBranchLabel],
-		CommitID:    job.Labels[kube.RadixCommitLabel],
-		Started:     utils.FormatTime(job.Status.StartTime),
-		Ended:       utils.FormatTime(&jobEnded),
-		Status:      jobStatus.String(),
-		Pipeline:    job.Labels["radix-pipeline"],
-		Steps:       steps,
-		Deployments: jobDeployments,
-	}, nil
+	return jobModels.GetJob(job, steps, jobDeployments), nil
 }
 
 func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
@@ -234,7 +217,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 
 // GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
 func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job, jobEnvironmentsMap map[string][]string) (*jobModels.JobSummary, error) {
-	jobSummary := GetJobSummary(job)
+	jobSummary := jobModels.GetJobSummary(job)
 	jobSummary.Environments = jobEnvironmentsMap[job.Name]
 	return jobSummary, nil
 }
@@ -276,36 +259,6 @@ func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error
 	}
 
 	return &pods.Items[0], nil
-}
-
-// GetJobSummary Used to get job summary from a kubernetes job
-func GetJobSummary(job *batchv1.Job) *jobModels.JobSummary {
-	appName := job.Labels[kube.RadixAppLabel]
-	branch := job.Labels[kube.RadixBranchLabel]
-	commit := job.Labels[kube.RadixCommitLabel]
-
-	// TODO: Move string into constant
-	pipeline := job.Labels["radix-pipeline"]
-
-	status := job.Status
-
-	jobStatus := jobModels.GetStatusFromJobStatus(status)
-	ended := utils.FormatTime(status.CompletionTime)
-	if jobStatus == jobModels.Failed {
-		ended = utils.FormatTime(&status.Conditions[0].LastTransitionTime)
-	}
-
-	pipelineJob := &jobModels.JobSummary{
-		Name:     job.Name,
-		AppName:  appName,
-		Branch:   branch,
-		CommitID: commit,
-		Status:   jobStatus.String(),
-		Started:  utils.FormatTime(status.StartTime),
-		Ended:    ended,
-		Pipeline: pipeline,
-	}
-	return pipelineJob
 }
 
 func (jh JobHandler) getAllJobs() (*batchv1.JobList, error) {
