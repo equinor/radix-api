@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -131,7 +132,7 @@ func GetApplicationJobsStream(clients models.Clients, resource string, resourceI
 
 	handleJobApplied := func(obj interface{}) {
 		job := obj.(*batchv1.Job)
-		pipelineJob := GetJobSummary(job)
+		pipelineJob := jobModels.GetJobSummary(job)
 		if pipelineJob == nil {
 			return
 		}
