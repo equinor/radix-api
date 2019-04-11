@@ -1,5 +1,11 @@
 package models
 
+import (
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	batchv1 "k8s.io/api/batch/v1"
+)
+
 // JobSummary holds general information about job
 // swagger:model JobSummary
 type JobSummary struct {
@@ -49,7 +55,7 @@ type JobSummary struct {
 	// Name of the pipeline
 	//
 	// required: false
-	// Enum: build-deploy
+	// Enum: build-deploy, build
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 
@@ -58,4 +64,34 @@ type JobSummary struct {
 	// required: false
 	// example: dev,qa
 	Environments []string `json:"environments,omitempty"`
+}
+
+// GetJobSummary Used to get job summary from a kubernetes job
+func GetJobSummary(job *batchv1.Job) *JobSummary {
+	appName := job.Labels[kube.RadixAppLabel]
+	branch := job.Labels[kube.RadixBranchLabel]
+	commit := job.Labels[kube.RadixCommitLabel]
+
+	// TODO: Move string into constant
+	pipeline := job.Labels["radix-pipeline"]
+
+	status := job.Status
+
+	jobStatus := GetStatusFromJobStatus(status)
+	ended := utils.FormatTime(status.CompletionTime)
+	if jobStatus == Failed {
+		ended = utils.FormatTime(&status.Conditions[0].LastTransitionTime)
+	}
+
+	pipelineJob := &JobSummary{
+		Name:     job.Name,
+		AppName:  appName,
+		Branch:   branch,
+		CommitID: commit,
+		Status:   jobStatus.String(),
+		Started:  utils.FormatTime(status.StartTime),
+		Ended:    ended,
+		Pipeline: pipeline,
+	}
+	return pipelineJob
 }
