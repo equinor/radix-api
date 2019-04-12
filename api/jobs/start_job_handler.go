@@ -27,7 +27,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := fmt.Sprintf("%s-app", appName)
-	job, err := jh.client.BatchV1().Jobs(appNamespace).Create(job)
+	job, err := jh.serviceAccount.Client.BatchV1().Jobs(appNamespace).Create(job)
 	if err != nil {
 		return nil, err
 	}

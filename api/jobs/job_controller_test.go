@@ -55,7 +55,7 @@ func TestGetApplicationJob(t *testing.T) {
 		PushImage: true,
 	}
 
-	handler := Init(client, radixclient)
+	handler := Init(client, radixclient, client, radixclient)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
