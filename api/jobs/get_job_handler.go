@@ -16,6 +16,7 @@ import (
 	deployments "github.com/equinor/radix-api/api/deployments"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -28,15 +29,31 @@ const RadixJobTypeJob = "job"
 
 // JobHandler Instance variables
 type JobHandler struct {
-	client      kubernetes.Interface
-	radixclient radixclient.Interface
-	deploy      deployments.DeployHandler
+	userAccount    models.Account
+	serviceAccount models.Account
+	deploy         deployments.DeployHandler
 }
 
-// Init Constructor
-func Init(client kubernetes.Interface, radixclient radixclient.Interface) JobHandler {
-	deploy := deployments.Init(client, radixclient)
-	return JobHandler{client, radixclient, deploy}
+// InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
+func Init(
+	client kubernetes.Interface,
+	radixClient radixclient.Interface,
+	inClusterClient kubernetes.Interface,
+	inClusterRadixClient radixclient.Interface) JobHandler {
+	// todo! accoutn for running deploy?
+	deploy := deployments.Init(client, radixClient)
+
+	return JobHandler{
+		userAccount: models.Account{
+			Client:      client,
+			RadixClient: radixClient,
+		},
+		serviceAccount: models.Account{
+			Client:      inClusterClient,
+			RadixClient: inClusterRadixClient,
+		},
+		deploy: deploy,
+	}
 }
 
 // GetLatestJobPerApplication Handler for GetApplicationJobs
@@ -132,7 +149,7 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 
 // GetApplicationJob Handler for GetApplicationJob
 func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
-	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	job, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
 	}
@@ -176,7 +193,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 2)
 
 	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
-	jobStepList, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+	jobStepList, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
 
@@ -190,7 +207,7 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	// pipeline coordinator
 	steps = append(steps, pipelineJobStep)
 	for _, jobStep := range jobStepList.Items {
-		jobStepPod, err := jh.client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
+		jobStepPod, err := jh.userAccount.Client.CoreV1().Pods(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "job-name", jobStep.Name),
 		})
 
@@ -246,7 +263,7 @@ func (jh JobHandler) getJobEnvironmentMap(appName string) (map[string][]string, 
 
 func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error) {
 	ns := crdUtils.GetAppNamespace(appName)
-	pods, err := jh.client.CoreV1().Pods(ns).List(metav1.ListOptions{
+	pods, err := jh.userAccount.Client.CoreV1().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", "job-name", jobName),
 	})
 
@@ -262,15 +279,15 @@ func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error
 }
 
 func (jh JobHandler) getAllJobs() (*batchv1.JobList, error) {
-	return jh.getJobsInNamespace(corev1.NamespaceAll)
+	return jh.getJobsInNamespace(jh.serviceAccount.Client, corev1.NamespaceAll)
 }
 
 func (jh JobHandler) getJobs(appName string) (*batchv1.JobList, error) {
-	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
+	return jh.getJobsInNamespace(jh.userAccount.Client, crdUtils.GetAppNamespace(appName))
 }
 
-func (jh JobHandler) getJobsInNamespace(namespace string) (*batchv1.JobList, error) {
-	jobList, err := jh.client.BatchV1().Jobs(namespace).List(metav1.ListOptions{
+func (jh JobHandler) getJobsInNamespace(kubeClient kubernetes.Interface, namespace string) (*batchv1.JobList, error) {
+	jobList, err := kubeClient.BatchV1().Jobs(namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobTypeLabel, RadixJobTypeJob),
 	})
 

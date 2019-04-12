@@ -35,15 +35,10 @@ type ApplicationHandler struct {
 func Init(
 	client kubernetes.Interface,
 	radixClient radixclient.Interface,
-	inClusterRadixClient radixclient.Interface,
 	inClusterClient kubernetes.Interface,
-	initJobHandlerWithInClusterClients bool) ApplicationHandler {
+	inClusterRadixClient radixclient.Interface) ApplicationHandler {
 
-	jobHandler := job.Init(client, radixClient)
-	if initJobHandlerWithInClusterClients {
-		jobHandler = job.Init(inClusterClient, inClusterRadixClient)
-	}
-
+	jobHandler := job.Init(client, radixClient, inClusterClient, inClusterRadixClient)
 	return ApplicationHandler{
 		userAccount: models.Account{
 			Client:      client,
