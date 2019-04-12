@@ -175,7 +175,7 @@ func (ac *applicationController) ShowApplications(clients models.Clients, w http
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, true)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
 
 	if err != nil {
@@ -216,7 +216,7 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
@@ -304,7 +304,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -361,7 +361,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -401,7 +401,7 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
@@ -461,7 +461,7 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterRadixClient, clients.InClusterClient, false)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, pipelineParameters)
 
 	if err != nil {

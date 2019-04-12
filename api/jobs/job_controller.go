@@ -113,7 +113,7 @@ func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.R
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName)
 
 	if err != nil {
@@ -178,7 +178,7 @@ func GetApplicationJobStream(clients models.Clients, resource string, resourceId
 			return
 		}
 
-		handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+		handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 		radixJob, err := handler.GetApplicationJob(appNameToWatch, jobNameToWatch)
 		if err != nil {
 			log.Errorf("Problems getting job %s. Error was %v", jobNameToWatch, err)
@@ -236,7 +236,7 @@ func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
@@ -287,7 +287,7 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
