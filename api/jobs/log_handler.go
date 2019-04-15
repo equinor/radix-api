@@ -3,10 +3,10 @@ package jobs
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -14,7 +14,7 @@ import (
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
 func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
-	job, err := jh.client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	job, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
 	}
@@ -29,7 +29,7 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 
 	logs := []jobModels.StepLog{}
 	for _, step := range steps {
-		log := getStepLog(jh.client, appName, step)
+		log := getStepLog(jh.userAccount.Client, appName, step)
 		logs = append(logs, log)
 	}
 	return logs, nil
