@@ -2,10 +2,14 @@ package utils
 
 import (
 	"errors"
+	"net/http"
 	"os"
 	"strings"
 
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -23,6 +27,13 @@ type KubeUtil interface {
 type kubeUtil struct {
 	useOutClusterClient bool
 }
+
+var (
+	nrRequests = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "radix_api_k8s_request",
+		Help: "request duration done to k8s api in seconds bucket",
+	}, []string{"code", "method"})
+)
 
 // NewKubeUtil Constructor
 func NewKubeUtil(useOutClusterClient bool) KubeUtil {
@@ -91,7 +102,7 @@ func getOutClusterClientConfig(token string, impersonateUser, impersonateGroup *
 		kubeConfig.Impersonate = impersonationConfig
 	}
 
-	return kubeConfig, nil
+	return addCommonConfigs(kubeConfig), nil
 }
 
 func getInClusterClientConfig() *restclient.Config {
@@ -104,6 +115,13 @@ func getInClusterClientConfig() *restclient.Config {
 		}
 	}
 
+	return addCommonConfigs(config)
+}
+
+func addCommonConfigs(config *restclient.Config) *restclient.Config {
+	config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
+	}
 	return config
 }
 
