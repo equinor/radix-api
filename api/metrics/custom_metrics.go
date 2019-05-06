@@ -36,7 +36,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    requestDurationBucketMetric,
 			Help:    "Request duration seconds bucket",
-			Buckets: []float64{0.5, 1, 2, 3, 5},
+			Buckets: DefaultBuckets(),
 		},
 		[]string{pathLabel, methodLabel},
 	)
@@ -45,6 +45,10 @@ var (
 func init() {
 	prometheus.MustRegister(resTime)
 	prometheus.MustRegister(resTimeBucket)
+}
+
+func DefaultBuckets() []float64 {
+	return []float64{0.03, 0.1, 0.3, 1, 2, 3, 5, 10}
 }
 
 // AddJobTriggered New job triggered for application

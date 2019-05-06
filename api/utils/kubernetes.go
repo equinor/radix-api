@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/equinor/radix-api/api/metrics"
+
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -30,8 +32,9 @@ type kubeUtil struct {
 
 var (
 	nrRequests = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "radix_api_k8s_request",
-		Help: "request duration done to k8s api in seconds bucket",
+		Name:    "radix_api_k8s_request",
+		Help:    "request duration done to k8s api in seconds bucket",
+		Buckets: metrics.DefaultBuckets(),
 	}, []string{"code", "method"})
 )
 
