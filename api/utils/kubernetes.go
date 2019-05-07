@@ -32,7 +32,7 @@ type kubeUtil struct {
 
 var (
 	nrRequests = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "radix_api_k8s_request",
+		Name:    "radix_api_k8s_request_duration_seconds",
 		Help:    "request duration done to k8s api in seconds bucket",
 		Buckets: metrics.DefaultBuckets(),
 	}, []string{"code", "method"})
