@@ -5,7 +5,7 @@ FROM alpine:3.7
 # COPY id_rsa /root/.ssh/id_rsa
 
 RUN apk add --no-cache bash openssh-client git
-ENV GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa"
+ENV GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o UserKnownHostsFile=/root/dynamic_known_host"
 
 VOLUME /workspace
 WORKDIR /workspace
