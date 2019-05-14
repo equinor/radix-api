@@ -2,12 +2,10 @@ package applications
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
-	radixjob "github.com/equinor/radix-api/api/jobs"
 	radixerr "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -83,13 +81,12 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 }
 
 func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
-	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
-
 	jobName := strings.ToLower(fmt.Sprintf("%s-%s", rr.Name, utils.RandString(5)))
 	namespace := utils.GetAppNamespace(rr.Name)
 	backOffLimit := int32(1)
 
-	cloneContainer, volume := radixjob.CloneContainer(rr.Spec.CloneURL, "master", dockerRegistry)
+	defaultMode := int32(256)
+	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, "master")
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -104,14 +101,20 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "radix-pipeline",
-					Containers: []corev1.Container{
-						cloneContainer,
-					},
+					Containers:         initContainers,
 					Volumes: []corev1.Volume{
 						{
 							Name: git.BuildContextVolumeName,
 						},
-						volume,
+						{
+							Name: git.GitSSHKeyVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  git.GitSSHKeyVolumeName,
+									DefaultMode: &defaultMode,
+								},
+							},
+						},
 					},
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{

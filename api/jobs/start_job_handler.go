@@ -50,6 +50,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 
 	log.Infof("Using image: %s", imageTag)
 
+	defaultMode := int32(256)
 	initContainers := git.CloneInitContainers(sshURL, "master")
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
