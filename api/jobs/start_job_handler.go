@@ -96,7 +96,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: git.Workspace,
+							Name: git.BuildContextVolumeName,
 						},
 						{
 							Name: git.GitSSHKeyVolumeName,
