@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/equinor/radix-operator/pkg/apis/utils/git"
+
 	radixjob "github.com/equinor/radix-api/api/jobs"
 	radixerr "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -107,7 +109,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "build-context",
+							Name: git.BuildContextVolumeName,
 						},
 						volume,
 					},
