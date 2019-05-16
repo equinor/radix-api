@@ -10,6 +10,7 @@ import (
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,40 +39,6 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 	return jobModels.GetJobSummary(job), nil
 }
 
-// CloneContainer The sidecar for cloning repo
-func CloneContainer(sshURL, branch, dockerRegistry string) (corev1.Container, corev1.Volume) {
-	gitCloneCommand := fmt.Sprintf("git clone %s -b %s --verbose --progress .", sshURL, branch)
-	gitSSHKeyName := "git-ssh-keys"
-	defaultMode := int32(256)
-	container := corev1.Container{
-		Name:    "clone",
-		Image:   fmt.Sprintf("%s/gitclone:latest", dockerRegistry),
-		Command: []string{"/bin/sh", "-c"},
-		Args:    []string{gitCloneCommand},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "build-context",
-				MountPath: "/workspace",
-			},
-			{
-				Name:      gitSSHKeyName,
-				MountPath: "/root/.ssh",
-				ReadOnly:  true,
-			},
-		},
-	}
-	volume := corev1.Volume{
-		Name: gitSSHKeyName,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  gitSSHKeyName,
-				DefaultMode: &defaultMode,
-			},
-		},
-	}
-	return container, volume
-}
-
 func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) *batchv1.Job {
 	backOffLimit := int32(0)
 	pushBranch := jobSpec.Branch
@@ -83,7 +50,8 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 
 	log.Infof("Using image: %s", imageTag)
 
-	cloneContainer, volume := CloneContainer(sshURL, "master", dockerRegistry)
+	defaultMode := int32(256)
+	initContainers := git.CloneInitContainers(sshURL, "master")
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
@@ -103,9 +71,7 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "radix-pipeline",
-					InitContainers: []corev1.Container{
-						cloneContainer,
-					},
+					InitContainers:     initContainers,
 					Containers: []corev1.Container{
 						{
 							Name:            workerImage,
@@ -122,17 +88,25 @@ func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobS
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "build-context",
-									MountPath: "/workspace",
+									Name:      git.BuildContextVolumeName,
+									MountPath: git.Workspace,
 								},
 							},
 						},
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "build-context",
+							Name: git.BuildContextVolumeName,
 						},
-						volume,
+						{
+							Name: git.GitSSHKeyVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  git.GitSSHKeyVolumeName,
+									DefaultMode: &defaultMode,
+								},
+							},
+						},
 					},
 					// https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 					ImagePullSecrets: []corev1.LocalObjectReference{

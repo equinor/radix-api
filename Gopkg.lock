@@ -105,11 +105,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5e665bdb4ee99a32388b51ca1530b991be77e8571f3789e05a63c64c06c7c898"
+  digest = "1:4f8618108c376861626a090478a2bb7b32d6fd0e807e3b6a530d3b3cfad64558"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
     "pkg/apis/applicationconfig",
+    "pkg/apis/defaults",
     "pkg/apis/deployment",
     "pkg/apis/kube",
     "pkg/apis/radix",
@@ -117,6 +118,7 @@
     "pkg/apis/radixvalidators",
     "pkg/apis/test",
     "pkg/apis/utils",
+    "pkg/apis/utils/git",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
@@ -129,7 +131,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "bd743e39f02f8279b661885d43536ebaa8460ae5"
+  revision = "10e00f719f6bf5781fa8fbd056c98d1ecae432d1"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -432,6 +434,7 @@
   packages = [
     "prometheus",
     "prometheus/internal",
+    "prometheus/promauto",
     "prometheus/promhttp",
   ]
   pruneopts = ""
@@ -939,6 +942,7 @@
     "github.com/equinor/radix-operator/pkg/apis/radixvalidators",
     "github.com/equinor/radix-operator/pkg/apis/test",
     "github.com/equinor/radix-operator/pkg/apis/utils",
+    "github.com/equinor/radix-operator/pkg/apis/utils/git",
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned",
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake",
     "github.com/equinor/radix-operator/pkg/client/informers/externalversions",
@@ -947,6 +951,8 @@
     "github.com/gorilla/mux",
     "github.com/graphql-go/graphql",
     "github.com/pkg/errors",
+    "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promauto",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/rakyll/statik/fs",
     "github.com/rs/cors",
@@ -956,6 +962,7 @@
     "github.com/urfave/negroni",
     "golang.org/x/crypto/ssh",
     "k8s.io/api/admission/v1beta1",
+    "k8s.io/api/authorization/v1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",

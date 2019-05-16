@@ -19,6 +19,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
@@ -190,7 +191,12 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	}
 
 	pipelineJobStep := getPipelineJobStep(pipelinePod, 1)
-	pipelineCloneStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.InitContainerStatuses[0], 2)
+	cloneContainerStatus := getCloneContainerStatus(pipelinePod)
+	if cloneContainerStatus == nil {
+		return steps, nil
+	}
+
+	pipelineCloneStep := getJobStep(pipelinePod.GetName(), cloneContainerStatus, 2)
 
 	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
 	jobStepList, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
@@ -221,6 +227,10 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 
 		pod := jobStepPod.Items[0]
 		for _, containerStatus := range pod.Status.InitContainerStatuses {
+			if strings.HasPrefix(containerStatus.Name, git.InternalContainerPrefix) {
+				continue
+			}
+
 			steps = append(steps, getJobStep(pod.GetName(), &containerStatus, 1))
 		}
 
@@ -301,16 +311,30 @@ func (jh JobHandler) getJobsInNamespace(kubeClient kubernetes.Interface, namespa
 func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) jobModels.Step {
 	var pipelineJobStep jobModels.Step
 
-	initcontainerStatus := &pipelinePod.Status.InitContainerStatuses[0]
-	if initcontainerStatus.State.Terminated != nil &&
-		initcontainerStatus.State.Terminated.ExitCode > 0 {
+	cloneContainerStatus := getCloneContainerStatus(pipelinePod)
+	if cloneContainerStatus == nil {
+		return jobModels.Step{}
+	}
+
+	if cloneContainerStatus.State.Terminated != nil &&
+		cloneContainerStatus.State.Terminated.ExitCode > 0 {
 		pipelineJobStep = getJobStepWithContainerName(pipelinePod.GetName(),
-			pipelinePod.Status.ContainerStatuses[0].Name, initcontainerStatus, sort)
+			pipelinePod.Status.ContainerStatuses[0].Name, cloneContainerStatus, sort)
 	} else {
 		pipelineJobStep = getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], sort)
 	}
 
 	return pipelineJobStep
+}
+
+func getCloneContainerStatus(pipelinePod *corev1.Pod) *corev1.ContainerStatus {
+	for _, containerStatus := range pipelinePod.Status.InitContainerStatuses {
+		if containerStatus.Name == git.CloneContainerName {
+			return &containerStatus
+		}
+	}
+
+	return nil
 }
 
 func getJobStep(podName string, containerStatus *corev1.ContainerStatus, sort int32) jobModels.Step {
