@@ -34,10 +34,6 @@ swagger:
 	mv swagger.json ./swaggerui_src/swagger.json
 	statik -src=./swaggerui_src/ -p swaggerui
 
-deploy-gitclone:
-	docker build -t $(DOCKER_REGISTRY)/gitclone:$(IMAGE_TAG) ./gitclone/
-	docker push $(DOCKER_REGISTRY)/gitclone:$(IMAGE_TAG)
-
 deploy-api:
 	draft up
 
