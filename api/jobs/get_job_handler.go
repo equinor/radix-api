@@ -190,14 +190,10 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	pipelineJobStep, err := getPipelineJobStep(pipelinePod, 1)
-	if err != nil {
-		return nil, err
-	}
-
+	pipelineJobStep := getPipelineJobStep(pipelinePod, 1)
 	cloneContainerStatus := getCloneContainerStatus(pipelinePod)
 	if cloneContainerStatus == nil {
-		return nil, utils.UnexpectedError("No clone container was found for pipeline", nil)
+		return steps, nil
 	}
 
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), cloneContainerStatus, 2)
@@ -312,12 +308,12 @@ func (jh JobHandler) getJobsInNamespace(kubeClient kubernetes.Interface, namespa
 	return jobList, nil
 }
 
-func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) (jobModels.Step, error) {
+func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) jobModels.Step {
 	var pipelineJobStep jobModels.Step
 
 	cloneContainerStatus := getCloneContainerStatus(pipelinePod)
 	if cloneContainerStatus == nil {
-		return jobModels.Step{}, utils.UnexpectedError("No clone container was found for pipeline", nil)
+		return jobModels.Step{}
 	}
 
 	if cloneContainerStatus.State.Terminated != nil &&
@@ -328,7 +324,7 @@ func getPipelineJobStep(pipelinePod *corev1.Pod, sort int32) (jobModels.Step, er
 		pipelineJobStep = getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], sort)
 	}
 
-	return pipelineJobStep, nil
+	return pipelineJobStep
 }
 
 func getCloneContainerStatus(pipelinePod *corev1.Pod) *corev1.ContainerStatus {
