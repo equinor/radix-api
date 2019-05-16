@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/equinor/radix-operator/pkg/apis/utils/git"
+
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/equinor/radix-api/api/jobs"
@@ -71,11 +73,12 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyPipeline.String(), job.Pipeline)
 	assert.Empty(t, job.Steps)
 
-	cloneStep := corev1.ContainerStatus{Name: "clone", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+	cloneStep := corev1.ContainerStatus{Name: git.CloneContainerName, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
 	pipelineStep := corev1.ContainerStatus{Name: "radix-pipeline", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
 
 	// Emulate a running job with two steps
-	addInitStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, cloneStep)
+	addInitStepsToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, internalStep, cloneStep)
 	addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
@@ -91,6 +94,8 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, 2, len(job.Steps))
 
 	assert.Equal(t, "radix-pipeline", job.Steps[0].Name)
+
+	// Only clone step comes out, not the internal step
 	assert.Equal(t, "clone", job.Steps[1].Name)
 
 }
@@ -125,10 +130,10 @@ func createPipelinePod(kubeclient kubernetes.Interface, namespace, jobName strin
 	kubeclient.CoreV1().Pods(namespace).Create(podSpec)
 }
 
-func addInitStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) {
+func addInitStepsToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, initSteps ...corev1.ContainerStatus) {
 	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(jobName, metav1.GetOptions{})
 	podStatus := pipelinePod.Status
-	podStatus.InitContainerStatuses = append(podStatus.InitContainerStatuses, jobStep)
+	podStatus.InitContainerStatuses = append(podStatus.InitContainerStatuses, initSteps...)
 	pipelinePod.Status = podStatus
 	kubeclient.CoreV1().Pods(namespace).Update(pipelinePod)
 }
