@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="83" height="20">
+  <linearGradient id="b" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="a">
+    <rect width="83" height="20" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#a)">
+    <path fill="#555" d="M0 0h20v20H0z"/>
+    <path fill="#9f9f9f" d="M20 0h63v20H20z"/>
+    <path fill="url(#b)" d="M0 0h83v20H0z"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110">
+    <text x="505" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="500">unknown</text>
+    <text x="505" y="140" transform="scale(.1)" textLength="500">unknown</text>
+  </g>
+  <g stroke="none" stroke-width="2.857" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" transform="scale(.35)">
+      <g stroke="#FFFFFF" transform="translate(5, 4)">
+          <path d="M19.5010505,19.0323946 C19.3403919,16.5578896 20.1560444,13.0799214 21.8618254,10.3568809 C24.1748936,6.66439148 27.8748111,4.5 33,4.5 L33.5,4.5 L33.5,5 C33.5,15.0701025 28.0593151,19.9048912 19.974951,19.4993722 L19.52992,19.477049 L19.5010505,19.0323946 Z"/>
+          <path d="M27,11 C23.6666667,13.6666667 21.3333333,16.3333333 20,19 C17.3333333,23 19.6666667,31 27,43"/>
+          <path d="M22,33 C27.6666667,37 33.3333333,38.4166667 39,37.25"/>
+          <path d="M24,38 C20,41.3333333 16,42.3333333 12,41"/>
+          <path d="M20,29 C19,33 16,37 8,38"/>
+      </g>
+  </g>
+</svg>
