@@ -70,9 +70,17 @@ type Job struct {
 	// items:
 	//    "$ref": "#/definitions/DeploymentSummary"
 	Deployments []*deploymentModels.DeploymentSummary `json:"deployments,omitempty"`
+
+	// Components (array of ComponentSummary) created by the job
+	//
+	// required: false
+	// type: "array"
+	// items:
+	//    "$ref": "#/definitions/ComponentSummary"
+	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
 }
 
-func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
+func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
 	jobStatus := GetStatusFromJobStatus(job.Status)
 	var jobEnded metav1.Time
 
@@ -90,5 +98,6 @@ func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.D
 		Pipeline:    job.Labels["radix-pipeline"],
 		Steps:       steps,
 		Deployments: jobDeployments,
+		Components:  jobComponents,
 	}
 }
