@@ -2,7 +2,7 @@
 // This is the API Server for the Radix platform.
 // Schemes: https, http
 // BasePath: /api/v1
-// Version: 0.0.83
+// Version: 0.0.84
 // Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 // Consumes:
