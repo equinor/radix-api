@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	deployments "github.com/equinor/radix-api/api/deployments"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -172,7 +173,40 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	return jobModels.GetJob(job, steps, jobDeployments), nil
+	jobComponents, err := jh.getJobComponents(appName, jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobModels.GetJob(job, steps, jobDeployments, jobComponents), nil
+}
+
+func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploymentModels.ComponentSummary, error) {
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	var jobComponents []*deploymentModels.ComponentSummary
+
+	if len(jobDeployments) > 0 {
+		// All deployments for a job should have the same components, so we extract the components from the first one
+
+		firstDeployment, err := jh.deploy.GetDeploymentWithName(appName, jobDeployments[0].Name)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, component := range firstDeployment.Components {
+			componentSummary := deploymentModels.ComponentSummary{
+				Name:  component.Name,
+				Image: component.Image,
+			}
+			jobComponents = append(jobComponents, &componentSummary)
+		}
+	}
+
+	return jobComponents, nil
 }
 
 func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
