@@ -105,7 +105,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4f8618108c376861626a090478a2bb7b32d6fd0e807e3b6a530d3b3cfad64558"
+  digest = "1:47ecdc754c88fff0e6a4541ba298318c8215cd8b763b836c230c3a63a4b3cb0e"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
@@ -131,7 +131,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "10e00f719f6bf5781fa8fbd056c98d1ecae432d1"
+  revision = "87a88fce01f5519301476c5e2aabbad82cb4b2f0"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -936,6 +936,7 @@
   input-imports = [
     "github.com/equinor/radix-operator/pkg/apis/application",
     "github.com/equinor/radix-operator/pkg/apis/applicationconfig",
+    "github.com/equinor/radix-operator/pkg/apis/defaults",
     "github.com/equinor/radix-operator/pkg/apis/deployment",
     "github.com/equinor/radix-operator/pkg/apis/kube",
     "github.com/equinor/radix-operator/pkg/apis/radix/v1",

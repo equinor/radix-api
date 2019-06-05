@@ -7,15 +7,8 @@ RUN apk update && \
     /go/src/github.com/equinor/radix-api/hack
 
 WORKDIR /go/src/github.com/equinor/radix-api/
+
 COPY Gopkg.toml Gopkg.lock ./
-COPY ./hack/removeDependencyToPrivateRepo.sh ./hack/
-
-# Remove dependeny on operator which is manually added to vendor folder
-RUN chmod +x ./hack/removeDependencyToPrivateRepo.sh && \
-    sed -ri '/### REMOVE IN DOCKERFILE/,/### END REMOVE/d' ./Gopkg.toml && \
-    ./hack/removeDependencyToPrivateRepo.sh "github.com/equinor/radix-operator" "[[projects]]" "./Gopkg.lock"
-
-ADD ./vendor/github.com/equinor/radix-operator/pkg/ /vendor/github.com/equinor/radix-operator/pkg
 RUN dep ensure -vendor-only
 
 COPY . .

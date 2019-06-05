@@ -107,17 +107,11 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		return nil, err
 	}
 
-	secrets, err := eh.GetEnvironmentSecrets(appName, envName)
-	if err != nil {
-		return nil, err
-	}
-
 	environment := &environmentModels.Environment{
 		Name:          envName,
 		BranchMapping: buildFrom,
 		Status:        configurationStatus.String(),
 		Deployments:   deployments,
-		Secrets:       secrets,
 	}
 
 	if len(deployments) > 0 {
@@ -127,6 +121,13 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		}
 
 		environment.ActiveDeployment = deployment
+
+		secrets, err := eh.GetEnvironmentSecrets(appName, envName)
+		if err != nil {
+			return nil, err
+		}
+
+		environment.Secrets = secrets
 	}
 
 	return environment, nil
