@@ -28,40 +28,25 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		return nil, utils.ValidationError("Secret", "New secret value is empty")
 	}
 
-	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-
-	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	secretsFromConfig, err := eh.getSecretsFromConfig(ra, ns)
-	if err != nil {
-		return nil, err
-	}
 
 	var secretObjName, partName string
 
-	if _, ok := secretsFromConfig[secretName]; ok {
+	if strings.HasSuffix(secretName, certPartSuffix) {
+		// This is the cert part of the TLS secret
+		secretObjName = strings.TrimSuffix(secretName, certPartSuffix)
+		partName = tlsCertPart
+
+	} else if strings.HasSuffix(secretName, keyPartSuffix) {
+		// This is the key part of the TLS secret
+		secretObjName = strings.TrimSuffix(secretName, keyPartSuffix)
+		partName = tlsKeyPart
+
+	} else {
 		// This is a regular secret
 		secretObjName = k8sObjectUtils.GetComponentSecretName(componentName)
 		partName = secretName
 
-	} else {
-
-		// This is a TLS certificate secret
-		if strings.HasSuffix(secretName, certPartSuffix) {
-			// This is the cert part of the TLS secret
-			secretObjName = strings.TrimSuffix(secretName, certPartSuffix)
-			partName = tlsCertPart
-
-		} else {
-			// This is the key part of the TLS secret
-			secretObjName = strings.TrimSuffix(secretName, keyPartSuffix)
-			partName = tlsKeyPart
-
-		}
 	}
 
 	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(secretObjName, metav1.GetOptions{})
