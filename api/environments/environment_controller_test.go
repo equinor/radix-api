@@ -12,6 +12,9 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/application"
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -25,10 +28,12 @@ import (
 )
 
 const (
-	anyAppName       = "any-app"
-	anyComponentName = "app"
-	anyEnvironment   = "dev"
-	anySecretName    = "TEST_SECRET"
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	anyAppName        = "any-app"
+	anyComponentName  = "app"
+	anyEnvironment    = "dev"
+	anySecretName     = "TEST_SECRET"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -38,11 +43,68 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
+
+func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	deploymentBuilder := builders.ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithRadixApplication(builders.ARadixApplication().
+			WithAppName(anyAppName).
+			WithEnvironment(anyEnvironment, "master").
+			WithDNSExternalAlias("some.alias.com", anyEnvironment, "frontend").
+			WithDNSExternalAlias("another.alias.com", anyEnvironment, "frontend")).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName(anyComponentName).
+				WithPort("http", 8080).
+				WithPublic(true).
+				WithDNSExternalAlias("some.alias.com").
+				WithDNSExternalAlias("another.alias.com"))
+
+	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
+	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
+	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
+
+	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+
+	registration.OnSync()
+	applicationconfig.OnSync()
+	deployment.OnSync()
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response := <-responseChannel
+
+	environment := environmentModels.Environment{}
+	controllertest.GetResponseBody(response, &environment)
+	assert.Equal(t, 4, len(environment.Secrets))
+	assert.Equal(t, "some.alias.com-cert", environment.Secrets[0].Name)
+	assert.Equal(t, "some.alias.com-key", environment.Secrets[1].Name)
+	assert.Equal(t, "another.alias.com-cert", environment.Secrets[2].Name)
+	assert.Equal(t, "another.alias.com-key", environment.Secrets[3].Name)
+
+	parameters := environmentModels.SecretParameters{
+		SecretValue: "anyValue",
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {

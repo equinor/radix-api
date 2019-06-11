@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
@@ -46,10 +44,6 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
-	os.Setenv(deployment.OperatorDNSZoneEnvironmentVariable, dnsZone)
-	os.Setenv(deployment.OperatorAppAliasBaseURLEnvironmentVariable, appAliasDNSZone)
-	os.Setenv(defaults.OperatorEnvLimitDefaultCPUEnvironmentVariable, "1")
-	os.Setenv(defaults.OperatorEnvLimitDefaultMemoryEnvironmentVariable, "300M")
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }))
