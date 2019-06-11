@@ -10,6 +10,9 @@ spec:
   - name: qa
     build:
       from: master
+  - name: RA-37
+    build:
+      from: RA-37_ExternalAlias
   - name: dev
   components:
   - name: "server"
