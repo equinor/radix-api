@@ -89,10 +89,10 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	environment := environmentModels.Environment{}
 	controllertest.GetResponseBody(response, &environment)
 	assert.Equal(t, 4, len(environment.Secrets))
-	assert.Equal(t, "some.alias.com-cert", environment.Secrets[0].Name)
-	assert.Equal(t, "some.alias.com-key", environment.Secrets[1].Name)
-	assert.Equal(t, "another.alias.com-cert", environment.Secrets[2].Name)
-	assert.Equal(t, "another.alias.com-key", environment.Secrets[3].Name)
+	assert.True(t, contains(environment.Secrets, "some.alias.com-cert"))
+	assert.True(t, contains(environment.Secrets, "some.alias.com-key"))
+	assert.True(t, contains(environment.Secrets, "another.alias.com-cert"))
+	assert.True(t, contains(environment.Secrets, "another.alias.com-key"))
 
 	parameters := environmentModels.SecretParameters{
 		SecretValue: "anyValue",
@@ -965,4 +965,13 @@ func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
 			assertSecretObject(t, aSecret, secretF, componentTwoName, "Orphan")
 		}
 	}
+}
+
+func contains(secrets []environmentModels.Secret, name string) bool {
+	for _, secret := range secrets {
+		if secret.Name == name {
+			return true
+		}
+	}
+	return false
 }
