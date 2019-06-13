@@ -7,6 +7,9 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/application"
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +77,51 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 	assert.Equal(t, 1, len(components))
 	assert.Equal(t, 1, len(components[0].Replicas))
+}
+
+func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	deploymentBuilder := builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSExternalAlias("some.alias.com").
+				WithDNSExternalAlias("another.alias.com"))
+
+	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
+	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
+	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
+
+	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+
+	registration.OnSync()
+	applicationconfig.OnSync()
+	deployment.OnSync()
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.Equal(t, 4, len(components[0].Secrets))
+	assert.Equal(t, "some.alias.com-cert", components[0].Secrets[0])
+	assert.Equal(t, "some.alias.com-key", components[0].Secrets[1])
+	assert.Equal(t, "another.alias.com-cert", components[0].Secrets[2])
+	assert.Equal(t, "another.alias.com-key", components[0].Secrets[3])
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {

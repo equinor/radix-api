@@ -12,6 +12,9 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/application"
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -25,7 +28,12 @@ import (
 )
 
 const (
-	anyAppName = "any-app"
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	anyAppName        = "any-app"
+	anyComponentName  = "app"
+	anyEnvironment    = "dev"
+	anySecretName     = "TEST_SECRET"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -35,11 +43,68 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+}
+
+func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	deploymentBuilder := builders.ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithRadixApplication(builders.ARadixApplication().
+			WithAppName(anyAppName).
+			WithEnvironment(anyEnvironment, "master").
+			WithDNSExternalAlias("some.alias.com", anyEnvironment, "frontend").
+			WithDNSExternalAlias("another.alias.com", anyEnvironment, "frontend")).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName(anyComponentName).
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSExternalAlias("some.alias.com").
+				WithDNSExternalAlias("another.alias.com"))
+
+	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
+	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
+	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
+
+	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+
+	registration.OnSync()
+	applicationconfig.OnSync()
+	deployment.OnSync()
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response := <-responseChannel
+
+	environment := environmentModels.Environment{}
+	controllertest.GetResponseBody(response, &environment)
+	assert.Equal(t, 4, len(environment.Secrets))
+	assert.True(t, contains(environment.Secrets, "some.alias.com-cert"))
+	assert.True(t, contains(environment.Secrets, "some.alias.com-key"))
+	assert.True(t, contains(environment.Secrets, "another.alias.com-cert"))
+	assert.True(t, contains(environment.Secrets, "another.alias.com-key"))
+
+	parameters := environmentModels.SecretParameters{
+		SecretValue: "anyValue",
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
@@ -391,18 +456,23 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithCreated(deploymentThreeCreated))
 }
 
-func executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
+func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
+
+	// Setup
 	parameters := environmentModels.SecretParameters{
 		SecretValue: updateSecretValue,
 	}
 
 	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
-
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
-		WithAppName(appName))
-
-	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, existingEnvName)
+		WithAppName(anyAppName).
+		WithComponents(
+			builders.AnApplicationComponent().
+				WithName(anyComponentName).
+				WithSecrets(anySecretName),
+		))
+	ns := k8sObjectUtils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	namespace := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -414,59 +484,40 @@ func executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingC
 	secretObject := v1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
-			Name: k8sObjectUtils.GetComponentSecretName(existingComponentName),
+			Name: k8sObjectUtils.GetComponentSecretName(anyComponentName),
 		},
-		Data: map[string][]byte{oldSecretName: []byte(oldSecretValue)},
+		Data: map[string][]byte{anySecretName: []byte(oldSecretValue)},
 	}
 	kubeclient.CoreV1().Secrets(ns).Create(&secretObject)
 
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", appName, requestEnvName, requestComponentName, updateSecretName), parameters)
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, updateEnvironment, updateComponent, updateSecretName), parameters)
 	response := <-responseChannel
 	return response
 }
 
 func TestUpdateSecret_OK(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "dev"
-	existingComponentName := "backend"
-	requestComponentName := "backend"
-	oldSecretName := "TEST_SECRET"
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
-func TestUpdateSecret_SecretName_Missing(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "dev"
-	existingComponentName := "backend"
-	requestComponentName := "backend"
-	oldSecretName := "TEST"
+func TestUpdateSecret_NonExistingSecret_Missing(t *testing.T) {
+	nonExistingSecretName := "TEST"
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, nonExistingSecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
-func TestUpdateSecret_SecretValue_Empty(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "dev"
-	existingComponentName := "backend"
-	requestComponentName := "backend"
-	oldSecretName := "TEST_SECRET"
+func TestUpdateSecret_EmptySecretValue_ValidationError(t *testing.T) {
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := ""
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -474,54 +525,35 @@ func TestUpdateSecret_SecretValue_Empty(t *testing.T) {
 	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
 }
 
-func TestUpdateSecret_SecretValue_NoChange(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "dev"
-	existingComponentName := "backend"
-	requestComponentName := "backend"
-	oldSecretName := "TEST_SECRET"
+func TestUpdateSecret_NoUpdate_NoError(t *testing.T) {
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "oldvalue"
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
-func TestUpdateSecret_SecretObject_Missing(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "dev"
-	existingComponentName := "backend"
-	requestComponentName := "frontend"
-	oldSecretName := "TEST_SECRET"
+func TestUpdateSecret_NonExistingComponent_Missing(t *testing.T) {
+	nonExistingComponent := "frontend"
+	nonExistingSecretObjName := k8sObjectUtils.GetComponentSecretName(nonExistingComponent)
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
-	secretObjName := k8sObjectUtils.GetComponentSecretName(requestComponentName)
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
-	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
+	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
 }
 
-func TestUpdateSecret_Namespace_Missing(t *testing.T) {
-	appName := "test-app"
-	existingEnvName := "dev"
-	requestEnvName := "prod"
-	existingComponentName := "backend"
-	requestComponentName := "backend"
-	oldSecretName := "TEST_SECRET"
+func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
+	nonExistingEnvironment := "prod"
 	oldSecretValue := "oldvalue"
-	updateSecretName := "TEST_SECRET"
 	updateSecretValue := "newvalue"
-	secretObjName := k8sObjectUtils.GetComponentSecretName(existingComponentName)
+	secretObjName := k8sObjectUtils.GetComponentSecretName(anyComponentName)
 
-	response := executeUpdateSecretTest(appName, existingEnvName, requestEnvName, existingComponentName, requestComponentName, oldSecretName, oldSecretValue, updateSecretName, updateSecretValue)
+	response := executeUpdateSecretTest(oldSecretValue, nonExistingEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
@@ -933,4 +965,13 @@ func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
 			assertSecretObject(t, aSecret, secretF, componentTwoName, "Orphan")
 		}
 	}
+}
+
+func contains(secrets []environmentModels.Secret, name string) bool {
+	for _, secret := range secrets {
+		if secret.Name == name {
+			return true
+		}
+	}
+	return false
 }
