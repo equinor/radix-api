@@ -719,7 +719,7 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 			builders.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
-				WithPublic(true).
+				WithPublicPort("http").
 				WithDNSAppAlias(true),
 			builders.NewDeployComponentBuilder().
 				WithName("backend"))

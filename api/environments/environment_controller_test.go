@@ -66,7 +66,7 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 			builders.NewDeployComponentBuilder().
 				WithName(anyComponentName).
 				WithPort("http", 8080).
-				WithPublic(true).
+				WithPublicPort("http").
 				WithDNSExternalAlias("some.alias.com").
 				WithDNSExternalAlias("another.alias.com"))
 

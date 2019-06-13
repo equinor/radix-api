@@ -90,7 +90,7 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 			builders.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
-				WithPublic(true).
+				WithPublicPort("http").
 				WithDNSExternalAlias("some.alias.com").
 				WithDNSExternalAlias("another.alias.com"))
 
