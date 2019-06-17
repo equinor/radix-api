@@ -86,7 +86,7 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 		return nil, err
 	}
 
-	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envNamespace)
+	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +173,14 @@ func (eh EnvironmentHandler) getSecretsFromConfig(ra *v1.RadixApplication, envNa
 	return secretDTOsMap, nil
 }
 
-func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, envNamespace string) (map[string]environmentModels.Secret, error) {
+func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, envName, envNamespace string) (map[string]environmentModels.Secret, error) {
 	secretDTOsMap := make(map[string]environmentModels.Secret)
 
 	for _, externalAlias := range ra.Spec.DNSExternalAlias {
+		if externalAlias.Environment != envName {
+			continue
+		}
+
 		certStatus := environmentModels.Consistent.String()
 		keyStatus := environmentModels.Consistent.String()
 
