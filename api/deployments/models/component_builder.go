@@ -1,7 +1,12 @@
 package models
 
 import (
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+)
+
+const (
+	certPartSuffix = "-cert"
+	keyPartSuffix  = "-key"
 )
 
 // ComponentBuilder Builds DTOs
@@ -15,10 +20,13 @@ type ComponentBuilder interface {
 }
 
 type componentBuilder struct {
-	component                 v1.RadixDeployComponent
+	componentName             string
+	componentImage            string
 	podNames                  []string
 	replicaSummaryList        []ReplicaSummary
+	environmentVariables      map[string]string
 	radixEnvironmentVariables map[string]string
+	secrets                   []string
 	ports                     []Port
 }
 
@@ -38,7 +46,8 @@ func (b *componentBuilder) WithRadixEnvironmentVariables(radixEnvironmentVariabl
 }
 
 func (b *componentBuilder) WithComponent(component v1.RadixDeployComponent) ComponentBuilder {
-	b.component = component
+	b.componentName = component.Name
+	b.componentImage = component.Image
 
 	ports := []Port{}
 	if component.Ports != nil {
@@ -51,24 +60,30 @@ func (b *componentBuilder) WithComponent(component v1.RadixDeployComponent) Comp
 	}
 
 	b.ports = ports
+	b.secrets = component.Secrets
+	if b.secrets == nil {
+		b.secrets = []string{}
+	}
+
+	for _, externalAlias := range component.DNSExternalAlias {
+		b.secrets = append(b.secrets, externalAlias+certPartSuffix)
+		b.secrets = append(b.secrets, externalAlias+keyPartSuffix)
+	}
+
+	b.environmentVariables = component.EnvironmentVariables
 	return b
 }
 
 func (b *componentBuilder) BuildComponentSummary() *ComponentSummary {
 	return &ComponentSummary{
-		Name:  b.component.Name,
-		Image: b.component.Image,
+		Name:  b.componentName,
+		Image: b.componentImage,
 	}
 }
 
 func (b *componentBuilder) BuildComponent() *Component {
-	secrets := b.component.Secrets
-	if secrets == nil {
-		secrets = []string{}
-	}
-
 	variables := v1.EnvVarsMap{}
-	for name, value := range b.component.EnvironmentVariables {
+	for name, value := range b.environmentVariables {
 		variables[name] = value
 	}
 
@@ -77,10 +92,10 @@ func (b *componentBuilder) BuildComponent() *Component {
 	}
 
 	return &Component{
-		Name:        b.component.Name,
-		Image:       b.component.Image,
+		Name:        b.componentName,
+		Image:       b.componentImage,
 		Ports:       b.ports,
-		Secrets:     secrets,
+		Secrets:     b.secrets,
 		Variables:   variables,
 		Replicas:    b.podNames,
 		ReplicaList: b.replicaSummaryList,
