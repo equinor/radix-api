@@ -15,7 +15,7 @@
                 "server_key_path":"${workspaceFolder}/certs/key.pem",
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "PIPELINE_IMG_TAG": "master-latest",
-                "K8S_API_HOST": "https://weekly-15-clusters-16ede4-bb8612b1.hcp.northeurope.azmk8s.io",
+                "K8S_API_HOST": "https://weekly-25--clusters-16ede4-aa6ef5f2.hcp.northeurope.azmk8s.io",
             },
             "args": [
                 "--useOutClusterClient=false"
