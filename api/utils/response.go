@@ -198,7 +198,7 @@ func ErrorResponse(w http.ResponseWriter, r *http.Request, apiError error) {
 		case Missing:
 			code = http.StatusNotFound
 		case User:
-			code = http.StatusUnprocessableEntity
+			code = http.StatusBadRequest
 		case Server:
 			code = http.StatusInternalServerError
 		default:
