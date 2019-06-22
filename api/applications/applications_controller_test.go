@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -557,7 +558,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	unmappedBranch := "feature"
 
 	parameters := applicationModels.PipelineParameters{Branch: unmappedBranch}
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, pipeline.BuildDeploy), parameters)
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -567,14 +568,14 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 	// Mapped branch should start job
 	parameters = applicationModels.PipelineParameters{Branch: "dev"}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, pipeline.BuildDeploy), parameters)
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	// Magic branch should start job, even if it is not mapped
 	parameters = applicationModels.PipelineParameters{Branch: applicationconfig.MagicBranch}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, pipeline.BuildDeploy), parameters)
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -591,7 +592,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
 
 	parameters := applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "another-app", jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "another-app", pipeline.BuildDeploy), parameters)
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
@@ -599,7 +600,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, "Unable to get registration for app another-app", errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", pipeline.BuildDeploy), parameters)
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
@@ -608,7 +609,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "master", CommitID: pushCommitID}
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", pipeline.BuildDeploy), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ const (
 	anyCloneURL     = "git@github.com:Equinor/any-app.git"
 	anyBranch       = "master"
 	anyPushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
-	anyPipeline     = jobModels.BuildDeploy
+	anyPipelineName = pipeline.BuildDeploy
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -58,6 +59,8 @@ func TestGetApplicationJob(t *testing.T) {
 	}
 
 	handler := Init(client, radixclient, client, radixclient)
+
+	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
@@ -70,7 +73,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline.String(), job.Pipeline)
+	assert.Equal(t, anyPipeline.Name, job.Pipeline)
 	assert.Empty(t, job.Steps)
 
 	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
@@ -89,7 +92,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline.String(), job.Pipeline)
+	assert.Equal(t, anyPipeline.Name, job.Pipeline)
 	assert.NotEmpty(t, job.Steps)
 	assert.Equal(t, 2, len(job.Steps))
 

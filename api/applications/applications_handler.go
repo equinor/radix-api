@@ -17,6 +17,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -191,7 +192,7 @@ func (ah ApplicationHandler) DeleteApplication(appName string) error {
 
 // TriggerPipeline handler for TriggerPipeline
 func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, pipelineParameters applicationModels.PipelineParameters) (*jobModels.JobSummary, error) {
-	pipeline, err := jobModels.GetPipelineFromName(pipelineName)
+	pipeline, err := pipeline.GetPipelineFromName(pipelineName)
 	if err != nil {
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
 	}

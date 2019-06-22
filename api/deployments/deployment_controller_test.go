@@ -1,7 +1,6 @@
 package deployments
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -288,136 +287,6 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	assert.Equal(t, "", deployments[1].ActiveTo)
 }
 
-func TestPromote_ErrorScenarios_ErrorIsReturned(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("1").
-		WithAppName("any-app-1").
-		WithEnvironment("prod").
-		WithImageTag("abcdef"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("2").
-		WithAppName("any-app-1").
-		WithEnvironment("dev").
-		WithImageTag("abcdef"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("3").
-		WithAppName("any-app-2").
-		WithEnvironment("dev").
-		WithImageTag("abcdef"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("4").
-		WithAppName("any-app-2").
-		WithEnvironment("prod").
-		WithImageTag("ghijklm"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("5").
-		WithAppName("any-app-3").
-		WithEnvironment("dev").
-		WithImageTag("abcdef"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("5").
-		WithAppName("any-app-3").
-		WithEnvironment("prod").
-		WithImageTag("abcdef"))
-
-	createEnvNamespace(kubeclient, "any-app-4", "dev")
-	createEnvNamespace(kubeclient, "any-app-4", "prod")
-
-	irrellevantUnderlyingError := errors.New("Any undelying error irrellevant for testing")
-	var testScenarios = []struct {
-		name               string
-		appName            string
-		fromEnvironment    string
-		imageTag           string
-		toEnvironment      string
-		deploymentName     string
-		excectedReturnCode int
-		expectedError      error
-	}{
-		{"promote non-existing app", "noapp", "dev", "abcdef", "prod", "2", http.StatusNotFound, utils.TypeMissingError("Unable to get registration for app noapp", irrellevantUnderlyingError)},
-		{"promote from non-existing environment", "any-app-1", "qa", "abcdef", "prod", "2", http.StatusNotFound, deploymentModels.NonExistingFromEnvironment(irrellevantUnderlyingError)},
-		{"promote to non-existing environment", "any-app-1", "dev", "abcdef", "qa", "2", http.StatusNotFound, deploymentModels.NonExistingToEnvironment(irrellevantUnderlyingError)},
-		{"promote non-existing deployment", "any-app-2", "dev", "nopqrst", "prod", "non-existing", http.StatusNotFound, deploymentModels.NonExistingDeployment(irrellevantUnderlyingError, "non-existing")},
-		{"promote an deployment into environment having already that deployment", "any-app-3", "dev", "abcdef", "prod", "5", http.StatusConflict, nil}, // Error comes from kubernetes API
-	}
-
-	for _, scenario := range testScenarios {
-		t.Run(scenario.name, func(t *testing.T) {
-			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
-
-			deploymentName := scenario.deploymentName
-			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", scenario.appName, deploymentName), parameters)
-			response := <-responseChannel
-
-			assert.Equal(t, scenario.excectedReturnCode, response.Code)
-			errorResponse, _ := controllertest.GetErrorResponse(response)
-
-			if scenario.expectedError != nil {
-				assert.Equal(t, (scenario.expectedError.(*utils.Error)).Message, errorResponse.Message)
-			}
-		})
-	}
-}
-
-func TestPromote_HappyPathScenarios_NewStateIsExpected(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
-	deployHandler := Init(kubeclient, radixclient)
-	deploymentName := "abcdef"
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName(deploymentName).
-		WithAppName("any-app-1").
-		WithEnvironment("dev").
-		WithImageTag("abcdef"))
-
-	// Create prod environment without any deployments
-	createEnvNamespace(kubeclient, "any-app-1", "prod")
-
-	var testScenarios = []struct {
-		name            string
-		appName         string
-		fromEnvironment string
-		imageTag        string
-		toEnvironment   string
-		imageExpected   string
-	}{
-		{"promote single image", "any-app-1", "dev", "abcdef", "prod", ""},
-	}
-
-	for _, scenario := range testScenarios {
-		t.Run(scenario.name, func(t *testing.T) {
-			parameters := deploymentModels.PromotionParameters{FromEnvironment: scenario.fromEnvironment, ToEnvironment: scenario.toEnvironment}
-
-			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", scenario.appName, deploymentName), parameters)
-			response := <-responseChannel
-
-			assert.Equal(t, http.StatusOK, response.Code)
-
-			if scenario.imageExpected != "" {
-				deployments, _ := deployHandler.GetDeploymentsForApplicationEnvironment(scenario.appName, scenario.toEnvironment, false)
-				assert.Equal(t, 1, len(deployments))
-				assert.Equal(t, deploymentName, deployments[0].Name)
-			}
-		})
-	}
-}
-
 func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
 	_, controllerTestUtils, _, _ := setupTest()
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployName))
@@ -491,61 +360,6 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	assert.Equal(t, utils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
 	assert.Equal(t, 2, len(deployment.Components))
-
-}
-
-func TestPromote_WithEnvironmentVariables_NewStateIsExpected(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, radixclient := setupTest()
-	deployHandler := Init(kubeclient, radixclient)
-	anyAppName := "any-app-2"
-	deploymentName := "abcdef"
-
-	// Setup
-	// When we have enviroment specific config the deployment should contain the environment variables defined in the config
-	commonTestUtils.ApplyApplication(builders.
-		ARadixApplication().
-		WithAppName(anyAppName).
-		WithComponents(
-			builders.
-				NewApplicationComponentBuilder().
-				WithName("app").
-				WithEnvironmentConfigs(
-					builders.AnEnvironmentConfig().
-						WithEnvironment("dev").
-						WithEnvironmentVariable("DB_HOST", "useless-dev"),
-					builders.AnEnvironmentConfig().
-						WithEnvironment("prod").
-						WithEnvironmentVariable("DB_HOST", "useless-prod"))).
-		WithEnvironment("dev", "master").
-		WithEnvironment("prod", ""))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName(deploymentName).
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("abcdef").
-		WithComponent(
-			builders.NewDeployComponentBuilder().
-				WithName("app")))
-
-	// Create prod environment without any deployments
-	createEnvNamespace(kubeclient, anyAppName, "prod")
-
-	// Scenario
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/deployments/%s/promote", anyAppName, deploymentName), deploymentModels.PromotionParameters{FromEnvironment: "dev", ToEnvironment: "prod"})
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	deployments, _ := deployHandler.GetDeploymentsForApplicationEnvironment(anyAppName, "prod", false)
-	assert.Equal(t, 1, len(deployments), "HandlePromoteToEnvironment - Was not promoted as expected")
-
-	// Get the RD to see if it has merged ok with the RA
-	radixDeployment, _ := radixclient.RadixV1().RadixDeployments(builders.GetEnvironmentNamespace(anyAppName, deployments[0].Environment)).Get(deployments[0].Name, metav1.GetOptions{})
-	assert.Equal(t, 1, len(radixDeployment.Spec.Components[0].EnvironmentVariables), "HandlePromoteToEnvironment - Was not promoted as expected")
-	assert.Equal(t, "useless-prod", radixDeployment.Spec.Components[0].EnvironmentVariables["DB_HOST"], "HandlePromoteToEnvironment - Was not promoted as expected")
 
 }
 
