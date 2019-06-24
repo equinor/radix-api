@@ -33,7 +33,7 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), errorResponse.Message)
 }
 
 func TestGetComponents_non_existing_deployment(t *testing.T) {
