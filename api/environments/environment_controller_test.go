@@ -370,7 +370,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	// Non-orphaned cannot
 	responseChannel = controllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyNonOrphanedEnvironment))
 	response = <-responseChannel
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := environmentModels.CannotDeleteNonOrphanedEnvironment(anyAppName, anyNonOrphanedEnvironment)
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
@@ -520,7 +520,7 @@ func TestUpdateSecret_EmptySecretValue_ValidationError(t *testing.T) {
 	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	assert.Equal(t, "New secret value is empty", errorResponse.Message)
 	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
 }
