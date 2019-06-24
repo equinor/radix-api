@@ -110,7 +110,7 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 
 		err, _ := controllertest.GetErrorResponse(response)
 		assert.NotNil(t, err)
-		assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), err.Message)
+		assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), err.Message)
 
 		commonTestUtils.ApplyApplication(builders.ARadixApplication().
 			WithAppName(anyAppName))
