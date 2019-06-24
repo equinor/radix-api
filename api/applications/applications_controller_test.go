@@ -153,7 +153,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, "Error: app name cannot be empty", errorResponse.Message)
 }
@@ -202,7 +202,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.OnePartOfDeployKeyIsNotAllowed()
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
@@ -215,7 +215,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response = <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError = applicationModels.OnePartOfDeployKeyIsNotAllowed()
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
@@ -277,7 +277,7 @@ func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, "Error: Repository is in use by any-name", errorResponse.Message)
 }
@@ -465,7 +465,7 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, "Error: Repository is in use by any-name", errorResponse.Message)
 }
@@ -485,13 +485,13 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Unable to get registration for app another-name", errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg("another-name"), errorResponse.Message)
 
 	parameters = AnApplicationRegistration().withName("another-name").Build()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), parameters)
 	response = <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name any-name does not correspond with application name another-name", errorResponse.Message)
 
@@ -560,7 +560,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, jobModels.BuildDeploy.String()), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.UnmatchedBranchToEnvironment(unmappedBranch)
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
@@ -596,13 +596,13 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Unable to get registration for app another-app", errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg("another-app"), errorResponse.Message)
 
 	parameters = applicationModels.PipelineParameters{Branch: "", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", jobModels.BuildDeploy.String()), parameters)
 	response = <-responseChannel
 
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
@@ -648,7 +648,7 @@ func TestIsDeployKeyValid(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app-missing-repository"))
 		response := <-responseChannel
 
-		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+		assert.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		assert.Equal(t, "Clone URL is missing", errorResponse.Message)
@@ -658,7 +658,7 @@ func TestIsDeployKeyValid(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app-missing-key"))
 		response := <-responseChannel
 
-		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+		assert.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		assert.Equal(t, "Deploy key is missing", errorResponse.Message)
@@ -677,7 +677,7 @@ func TestIsDeployKeyValid(t *testing.T) {
 		setStatusOfCloneJob(kubeclient, "some-app-app", false)
 
 		response := <-responseChannel
-		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+		assert.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		assert.Equal(t, "Deploy key was invalid", errorResponse.Message)
