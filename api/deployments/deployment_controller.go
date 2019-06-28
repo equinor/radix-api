@@ -1,8 +1,6 @@
 package deployments
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,8 +8,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 )
 
 const rootPath = "/applications/{appName}"
@@ -47,11 +43,6 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/deployments/{deploymentName}/components",
 			Method:      "GET",
 			HandlerFunc: GetComponents,
-		},
-		models.Route{
-			Path:        rootPath + "/deployments/{deploymentName}/promote",
-			Method:      "POST",
-			HandlerFunc: PromoteToEnvironment,
 		},
 	}
 
@@ -286,61 +277,4 @@ func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.StringResponse(w, r, log)
-}
-
-// PromoteToEnvironment promote an environment from another environment
-func PromoteToEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/deployments/{deploymentName}/promote deployment promoteToEnvironment
-	// ---
-	// summary: Promote an environment from another environment
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of application
-	//   type: string
-	//   required: true
-	// - name: deploymentName
-	//   in: path
-	//   description: Name of deployment
-	//   type: string
-	//   required: true
-	// - name: promotionParameters
-	//   in: body
-	//   description: Environment to promote from and to promote to
-	//   required: true
-	//   schema:
-	//       "$ref": "#/definitions/PromotionParameters"
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: "Promotion ok"
-	//   "404":
-	//     description: "Not found"
-	appName := mux.Vars(r)["appName"]
-	deploymentName := mux.Vars(r)["deploymentName"]
-
-	var promotionParameters deploymentModels.PromotionParameters
-	if err := json.NewDecoder(r.Body).Decode(&promotionParameters); err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
-	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
-	_, err := deployHandler.HandlePromoteToEnvironment(appName, deploymentName, promotionParameters)
-
-	if err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
-	utils.JSONResponse(w, r, fmt.Sprintf("%s promoted from %s for %s", appName, promotionParameters.FromEnvironment, promotionParameters.ToEnvironment))
 }
