@@ -58,7 +58,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), errorResponse.Message)
 
 }
 
@@ -164,7 +164,7 @@ func TestGetDeployments_NoApplicationRegistered(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), errorResponse.Message)
 }
 
 func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
@@ -294,7 +294,7 @@ func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
 
 	assert.Equal(t, 404, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, fmt.Sprintf("Unable to get registration for app %s", anyAppName), errorResponse.Message)
+	assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), errorResponse.Message)
 }
 
 func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
