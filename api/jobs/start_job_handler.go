@@ -24,7 +24,7 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *pipeline.Type, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *pipeline.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	job := createPipelineJob(appName, sshRepo, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
@@ -40,7 +40,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *p
 	return jobModels.GetJobSummary(job), nil
 }
 
-func createPipelineJob(appName, sshURL string, pipeline *pipeline.Type, jobSpec *jobModels.JobParameters) *batchv1.Job {
+func createPipelineJob(appName, sshURL string, pipeline *pipeline.Definition, jobSpec *jobModels.JobParameters) *batchv1.Job {
 	backOffLimit := int32(0)
 	pushBranch := jobSpec.Branch
 	commitID := jobSpec.CommitID
