@@ -3,14 +3,23 @@ package models
 // JobParameters parameters to create a pipeline job
 // Not exposed in the API
 type JobParameters struct {
-	// Name of the branch
+	// For build pipeline: Name of the branch
 	Branch string `json:"branch"`
 
-	// Commit ID of the branch
+	// For build pipeline: Commit ID of the branch
 	CommitID string `json:"commitID"`
 
-	// should image be pushed to container registry
+	// For build pipeline: Should image be pushed to container registry
 	PushImage bool `json:"pushImage"`
+
+	// For promote pipeline: Name (ID) of deployment to promote
+	DeploymentName string `json:"deploymentName"`
+
+	// For promote pipeline: Environment to locate deployment to promote
+	FromEnvironment string `json:"fromEnvironment"`
+
+	// For promote pipeline: Target environment for promotion
+	ToEnvironment string `json:"toEnvironment"`
 }
 
 func (param JobParameters) GetPushImageTag() string {

@@ -86,6 +86,9 @@ func createPipelineJob(appName, sshURL string, pipeline *pipeline.Definition, jo
 								fmt.Sprintf("JOB_NAME=%s", jobName),
 								fmt.Sprintf("PIPELINE_TYPE=%s", pipelineType),
 								fmt.Sprintf("PUSH_IMAGE=%s", jobSpec.GetPushImageTag()),
+								fmt.Sprintf("FROM_ENVIRONMENT=%s", jobSpec.FromEnvironment),
+								fmt.Sprintf("TO_ENVIRONMENT=%s", jobSpec.ToEnvironment),
+								fmt.Sprintf("DEPLOYMENT_NAME=%s", jobSpec.DeploymentName),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
