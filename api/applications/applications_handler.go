@@ -19,6 +19,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -267,11 +268,15 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParame
 		PushImage: pipelineParameters.PushImageToContainerRegistry(),
 	}
 
-	var pipeline jobModels.Pipeline
+	var pipeline *jobPipeline.Definition
+
 	if pipelineParameters.PushImageToContainerRegistry() {
-		pipeline = jobModels.BuildDeploy
+		pipeline, err = jobPipeline.GetPipelineFromName("build-deploy")
 	} else {
-		pipeline = jobModels.Build
+		pipeline, err = jobPipeline.GetPipelineFromName("build")
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
@@ -303,7 +308,12 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, pipelinePara
 		ToEnvironment:   toEnvironment,
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), jobModels.Promote, jobParameters)
+	pipeline, err := jobPipeline.GetPipelineFromName("promote")
+	if err != nil {
+		return nil, err
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
