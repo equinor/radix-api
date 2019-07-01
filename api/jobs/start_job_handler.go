@@ -9,6 +9,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +24,7 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *pipeline.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	job := createPipelineJob(appName, sshRepo, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
@@ -33,20 +34,20 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline jo
 		return nil, err
 	}
 
-	metrics.AddJobTriggered(appName, pipeline.String())
+	metrics.AddJobTriggered(appName, pipeline.Name)
 
 	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
 	return jobModels.GetJobSummary(job), nil
 }
 
-func createPipelineJob(appName, sshURL string, pipeline jobModels.Pipeline, jobSpec *jobModels.JobParameters) *batchv1.Job {
+func createPipelineJob(appName, sshURL string, pipeline *pipeline.Definition, jobSpec *jobModels.JobParameters) *batchv1.Job {
 	backOffLimit := int32(0)
 	pushBranch := jobSpec.Branch
 	commitID := jobSpec.CommitID
 	jobName, randomStr := getUniqueJobName(workerImage)
 	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerRegistry, workerImage, getPipelineTag())
-	pipelineType := pipeline.String()
+	pipelineType := pipeline.Name
 
 	log.Infof("Using image: %s", imageTag)
 
