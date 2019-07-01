@@ -11,7 +11,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
-	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -636,7 +635,7 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 	<-responseChannel
 
 	appNamespace := fmt.Sprintf("%s-app", appName)
-	jobs := commontest.GetJobsInNamespace(kubeclient, appNamespace)
+	jobs, _ := getJobsInNamespace(kubeclient, appNamespace)
 	jobArgs := jobs[0].Spec.Template.Spec.Containers[0].Args
 
 	assert.Equal(t, true, contains(jobArgs, "FROM_ENVIRONMENT=origin"))
@@ -813,7 +812,14 @@ func createRadixJob(kubeclient *kubefake.Clientset, appName, jobName string, sta
 					Time: started,
 				},
 			}})
+}
 
+func getJobsInNamespace(kubeclient *kubefake.Clientset, appNamespace string) ([]batchv1.Job, error) {
+	jobs, err := kubeclient.BatchV1().Jobs(appNamespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return jobs.Items, nil
 }
 
 func contains(stack []string, needle string) bool {
