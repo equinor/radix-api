@@ -431,12 +431,12 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//   - build
 	//   - build-deploy
 	//   required: true
-	// - name: PipelineParametersBuild
+	// - name: PipelineParameters
+	//   description: Pipeline parameters
 	//   in: body
-	//   description: Branch to build
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/PipelineParametersBuild"
+	//     "$ref": "#/definitions/PipelineParameters"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
