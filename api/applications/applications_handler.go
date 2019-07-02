@@ -198,15 +198,15 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 	var err error
 
 	switch pipelineName {
-	case "build":
-	case "build-deploy":
+	case jobPipeline.Build:
+	case jobPipeline.BuildDeploy:
 		var pipelineParameters applicationModels.PipelineParametersBuild
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
 		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineParameters)
 		break
-	case "promote":
+	case jobPipeline.Promote:
 		var pipelineParameters applicationModels.PipelineParametersPromote
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
@@ -271,9 +271,9 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParame
 	var pipeline *jobPipeline.Definition
 
 	if pipelineParameters.PushImageToContainerRegistry() {
-		pipeline, err = jobPipeline.GetPipelineFromName("build-deploy")
+		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.BuildDeploy)
 	} else {
-		pipeline, err = jobPipeline.GetPipelineFromName("build")
+		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.Build)
 	}
 	if err != nil {
 		return nil, err
