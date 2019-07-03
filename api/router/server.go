@@ -23,6 +23,7 @@ import (
 const (
 	apiVersionRoute                 = "/api/v1"
 	admissionControllerRootPath     = "/admissioncontrollers"
+	healthControllerPath            = "/health/"
 	radixDnsZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
 
@@ -50,7 +51,13 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 
 	initializeAPIServer(kubeUtil, router, controllers)
 
+	initializeHealthEndpoint(router)
+
 	serveMux := http.NewServeMux()
+	serveMux.Handle(healthControllerPath, negroni.New(
+		negroni.Wrap(router),
+	))
+
 	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
 		negroni.Wrap(router),
 	))
@@ -124,6 +131,12 @@ func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controller
 			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
+}
+
+func initializeHealthEndpoint(router *mux.Router) {
+	router.HandleFunc(healthControllerPath, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
 }
 
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
