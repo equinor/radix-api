@@ -34,7 +34,7 @@ type ApplicationHandler struct {
 	jobHandler     job.JobHandler
 }
 
-// InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
+// Init Constructor
 func Init(
 	client kubernetes.Interface,
 	radixClient radixclient.Interface,
@@ -211,7 +211,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
-		jobSummary, err = ah.TriggerPipelinePromote(appName, pipelineParameters)
+		jobSummary, err = ah.triggerPipelinePromote(appName, pipelineParameters)
 		break
 	default:
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
@@ -224,6 +224,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 	return jobSummary, nil
 }
 
+// TriggerPipelineBuild Triggers pipeline for an application
 func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
 	branch := pipelineParameters.Branch
 	commitID := pipelineParameters.CommitID
@@ -287,7 +288,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParame
 	return jobSummary, nil
 }
 
-func (ah ApplicationHandler) TriggerPipelinePromote(appName string, pipelineParameters applicationModels.PipelineParametersPromote) (*jobModels.JobSummary, error) {
+func (ah ApplicationHandler) triggerPipelinePromote(appName string, pipelineParameters applicationModels.PipelineParametersPromote) (*jobModels.JobSummary, error) {
 	deploymentName := pipelineParameters.DeploymentName
 	fromEnvironment := pipelineParameters.FromEnvironment
 	toEnvironment := pipelineParameters.ToEnvironment
