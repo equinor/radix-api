@@ -47,6 +47,7 @@ func init() {
 	prometheus.MustRegister(resTimeBucket)
 }
 
+// DefaultBuckets Holds the buckets used as default
 func DefaultBuckets() []float64 {
 	return []float64{0.03, 0.1, 0.3, 1, 2, 3, 5, 10}
 }

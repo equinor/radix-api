@@ -26,7 +26,7 @@ import (
 
 const workerImage = "radix-pipeline"
 
-// TODO: Move this into kube, or another central location
+// RadixJobTypeJob TODO: Move this into kube, or another central location
 const RadixJobTypeJob = "job"
 
 // JobHandler Instance variables
@@ -36,7 +36,7 @@ type JobHandler struct {
 	deploy         deployments.DeployHandler
 }
 
-// InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
+// Init Constructor
 func Init(
 	client kubernetes.Interface,
 	radixClient radixclient.Interface,
