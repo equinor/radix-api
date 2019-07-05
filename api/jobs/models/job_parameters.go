@@ -22,10 +22,11 @@ type JobParameters struct {
 	ToEnvironment string `json:"toEnvironment"`
 }
 
+// GetPushImageTag Represents boolean as 1 or 0
 func (param JobParameters) GetPushImageTag() string {
 	if param.PushImage {
 		return "1"
-	} else {
-		return "0"
 	}
+
+	return "0"
 }

@@ -1,5 +1,6 @@
 package models
 
+// StepLog holds logs for a given step
 // swagger:model StepLog
 type StepLog struct {
 	// Name of the step

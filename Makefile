@@ -65,12 +65,7 @@ undeploy:
 $(BINS): vendor
 	go build -ldflags '$(LDFLAGS)' -o bin/$@ .
 
-build-docker-bins: $(addsuffix -docker-bin,$(BINS))
-%-docker-bin: vendor
-	GOOS=linux GOARCH=$(CX_ARCHS) CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o ./rootfs/$* .
-
 .PHONY: docker-build
-docker-build: build-docker-bins
 docker-build: $(addsuffix -image,$(IMAGES))
 
 %-image:
