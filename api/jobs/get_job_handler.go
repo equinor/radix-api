@@ -19,6 +19,7 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -220,7 +221,25 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	if len(pipelinePod.Status.ContainerStatuses) == 0 || len(pipelinePod.Status.InitContainerStatuses) == 0 {
+	if len(pipelinePod.Status.ContainerStatuses) == 0 {
+		return steps, nil
+	}
+
+	pipelineType := job.Labels["radix-pipeline"]
+
+	switch pipelineType {
+	case pipelineJob.Build, pipelineJob.BuildDeploy:
+		return jh.getJobStepsBuildPipeline(appName, pipelinePod, job)
+	case pipelineJob.Promote:
+		return jh.getJobStepsPromotePipeline(appName, pipelinePod, job)
+	}
+
+	return steps, nil
+}
+
+func (jh JobHandler) getJobStepsBuildPipeline(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
+	steps := []jobModels.Step{}
+	if len(pipelinePod.Status.InitContainerStatuses) == 0 {
 		return steps, nil
 	}
 
@@ -231,10 +250,10 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 	}
 
 	pipelineCloneStep := getJobStep(pipelinePod.GetName(), cloneContainerStatus, 2)
+	jobStepsLabelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
 
-	labelSelector := fmt.Sprintf("%s=%s, %s!=%s", kube.RadixImageTagLabel, job.Labels[kube.RadixImageTagLabel], kube.RadixJobTypeLabel, RadixJobTypeJob)
 	jobStepList, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).List(metav1.ListOptions{
-		LabelSelector: labelSelector,
+		LabelSelector: jobStepsLabelSelector,
 	})
 
 	if err != nil {
@@ -273,6 +292,13 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		}
 	}
 	sort.Slice(steps, func(i, j int) bool { return steps[i].Sort < steps[j].Sort })
+	return steps, nil
+}
+
+func (jh JobHandler) getJobStepsPromotePipeline(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
+	steps := []jobModels.Step{}
+	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0], 1)
+	steps = append(steps, pipelineJobStep)
 	return steps, nil
 }
 
