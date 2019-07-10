@@ -1,10 +1,10 @@
 FROM golang:alpine3.7 as builder
 RUN apk update && \
     apk add bash alpine-sdk sed gawk git ca-certificates curl && \
+    apk add --no-cache gcc musl-dev && \
+    go get -u golang.org/x/lint/golint && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh && \
-    go get -u github.com/go-swagger/go-swagger/cmd/swagger github.com/rakyll/statik && \
-    mkdir -p /go/src/github.com/equinor/radix-api/vendor/github.com/equinor/radix-operator/pkg \
-    /go/src/github.com/equinor/radix-api/hack
+    go get -u github.com/go-swagger/go-swagger/cmd/swagger github.com/rakyll/statik
 
 WORKDIR /go/src/github.com/equinor/radix-api/
 
@@ -20,13 +20,14 @@ RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
     mv swagger.json ./swaggerui_src/swagger.json && \
     statik -src=./swaggerui_src/ -p swaggerui
 
-RUN CGO_ENABLED=0 GOOS=linux go test ./...
+RUN golint `go list ./...` && \
+    go vet `go list ./...` && \
+    CGO_ENABLED=0 GOOS=linux go test ./...
 
 # Build radix api go project
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
 # Until cache working together with user command
 # https://github.com/GoogleContainerTools/kaniko/issues/477
-
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

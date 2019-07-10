@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-// Validates a new app registration
+// ValidateRegistrationChange validates new app registration
 func ValidateRegistrationChange(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error) {
 	log.Infof("admitting radix registrations")
 

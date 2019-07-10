@@ -1,27 +1,64 @@
 package models
 
-// PipelineParameters describe branch to build and its commit ID
-// swagger:model PipelineParameters
-type PipelineParameters struct {
-	// Branch the branch to build
+// PipelineParametersPromote identify deployment to promote and a target environment
+// swagger:model PipelineParametersPromote
+type PipelineParametersPromote struct {
+	// ID of the deployment to promote
+	// REQUIRED for "promote" pipeline
 	//
-	// required: true
+	// example: dev-9tyu1-tftmnqzq
+	DeploymentName string `json:"deploymentName"`
+
+	// Name of environment where to look for the deployment to be promoted
+	// REQUIRED for "promote" pipeline
+	//
+	// example: prod
+	FromEnvironment string `json:"fromEnvironment"`
+
+	// Name of environment to receive the promoted deployment
+	// REQUIRED for "promote" pipeline
+	//
+	// example: prod
+	ToEnvironment string `json:"toEnvironment"`
+}
+
+// PipelineParametersBuild describe branch to build and its commit ID
+// swagger:model PipelineParametersBuild
+type PipelineParametersBuild struct {
+	// Branch the branch to build
+	// REQUIRED for "build" and "build-deploy" pipelines
+	//
 	// example: master
 	Branch string `json:"branch"`
 
 	// CommitID the commit ID of the branch to build
+	// REQUIRED for "build" and "build-deploy" pipelines
 	//
-	// required: true
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
 
 	// PushImage should image be pushed to container registry. Defaults pushing
 	//
-	// required: false
 	// example: true
 	PushImage string `json:"pushImage"`
 }
 
-func (pipeParam PipelineParameters) PushImageToContainerRegistry() bool {
+// PushImageToContainerRegistry Normalises the "PushImage" param from a string
+func (pipeParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
 	return !(pipeParam.PushImage == "0" || pipeParam.PushImage == "false")
+}
+
+// The struct below is only used to keep Swagger documentation happy; it
+// should be updated with the different types of pipeline parameters, making
+// use of the `swagger:allOf` annotation
+
+// PipelineParameters All possible parameters for all pipeline types
+// Only the fields required by the chosen pipeline are necessary
+// swagger:model PipelineParameters
+type PipelineParameters struct {
+	// swagger:allOf
+	PipelineParametersPromote
+
+	// swagger:allOf
+	PipelineParametersBuild
 }

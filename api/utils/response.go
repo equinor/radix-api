@@ -30,9 +30,9 @@ type Error struct {
 func (e *Error) Error() string {
 	if e.Err != nil {
 		return e.Err.Error()
-	} else {
-		return e.Message
 	}
+
+	return e.Message
 }
 
 // Type Type of error
@@ -151,6 +151,7 @@ func writeErrorWithCode(w http.ResponseWriter, r *http.Request, code int, err *E
 	fmt.Fprint(w, err.Error())
 }
 
+// StringResponse Used for textual response data. I.e. log data
 func StringResponse(w http.ResponseWriter, r *http.Request, result string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
