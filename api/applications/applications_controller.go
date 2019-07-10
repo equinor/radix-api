@@ -431,12 +431,12 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//   - build
 	//   - build-deploy
 	//   required: true
-	// - name: pipelineParameters
+	// - name: PipelineParameters
+	//   description: Pipeline parameters
 	//   in: body
-	//   description: Branch to build
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/PipelineParameters"
+	//     "$ref": "#/definitions/PipelineParameters"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -455,14 +455,8 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	appName := mux.Vars(r)["appName"]
 	pipelineName := mux.Vars(r)["pipelineName"]
 
-	var pipelineParameters applicationModels.PipelineParameters
-	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
 	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
-	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, pipelineParameters)
+	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, r)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

@@ -23,7 +23,8 @@ import (
 const (
 	apiVersionRoute                 = "/api/v1"
 	admissionControllerRootPath     = "/admissioncontrollers"
-	radixDnsZoneEnvironmentVariable = "RADIX_DNS_ZONE"
+	healthControllerPath            = "/health/"
+	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
 
 // Server Holds instance variables
@@ -50,7 +51,13 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 
 	initializeAPIServer(kubeUtil, router, controllers)
 
+	initializeHealthEndpoint(router)
+
 	serveMux := http.NewServeMux()
+	serveMux.Handle(healthControllerPath, negroni.New(
+		negroni.Wrap(router),
+	))
+
 	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
 		negroni.Wrap(router),
 	))
@@ -92,7 +99,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 }
 
 func getCORSHandler(apiRouter *Server) http.Handler {
-	radixDnsZone := os.Getenv(radixDnsZoneEnvironmentVariable)
+	radixDNSZone := os.Getenv(radixDNSZoneEnvironmentVariable)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{
@@ -102,9 +109,9 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
 			// 2. Keep cors rules in ingresses
-			fmt.Sprintf("https://console.%s", radixDnsZone),
-			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDnsZone),
-			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDnsZone),
+			fmt.Sprintf("https://console.%s", radixDNSZone),
+			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
 		},
 		AllowCredentials: true, // Needed for sockets
 		MaxAge:           600,
@@ -114,8 +121,8 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 	return c.Handler(apiRouter.Middleware)
 }
 
-func getHostName(componentName, namespace, clustername, radixDnsZone string) string {
-	return fmt.Sprintf("https://%s-%s.%s.%s", componentName, namespace, clustername, radixDnsZone)
+func getHostName(componentName, namespace, clustername, radixDNSZone string) string {
+	return fmt.Sprintf("https://%s-%s.%s.%s", componentName, namespace, clustername, radixDNSZone)
 }
 
 func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
@@ -124,6 +131,12 @@ func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controller
 			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
+}
+
+func initializeHealthEndpoint(router *mux.Router) {
+	router.HandleFunc(healthControllerPath, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
 }
 
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {

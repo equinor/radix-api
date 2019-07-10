@@ -17,7 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const RootPath = "/admissioncontrollers"
+const rootPath = "/admissioncontrollers"
 
 type admissionController struct {
 }
@@ -31,14 +31,14 @@ func NewAdmissionController() models.Controller {
 func (ac *admissionController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:   RootPath + "/registrations",
+			Path:   rootPath + "/registrations",
 			Method: "POST",
 			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRegistrationChange)
 			},
 		},
 		models.Route{
-			Path:   RootPath + "/applications",
+			Path:   rootPath + "/applications",
 			Method: "POST",
 			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRadixConfigurationChange)

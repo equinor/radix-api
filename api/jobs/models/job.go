@@ -80,6 +80,7 @@ type Job struct {
 	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
 }
 
+// GetJob Transforms kubernetes job into job details
 func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
 	jobStatus := GetStatusFromJobStatus(job.Status)
 	var jobEnded metav1.Time
