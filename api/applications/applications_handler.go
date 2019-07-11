@@ -198,21 +198,18 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 	var err error
 
 	switch pipelineName {
-	case jobPipeline.Build:
-	case jobPipeline.BuildDeploy:
+	case jobPipeline.Build, jobPipeline.BuildDeploy:
 		var pipelineParameters applicationModels.PipelineParametersBuild
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
 		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineParameters)
-		break
 	case jobPipeline.Promote:
 		var pipelineParameters applicationModels.PipelineParametersPromote
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
 		jobSummary, err = ah.triggerPipelinePromote(appName, pipelineParameters)
-		break
 	default:
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
 	}
