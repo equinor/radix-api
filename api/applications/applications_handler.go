@@ -203,7 +203,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
-		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineParameters)
+		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineName, pipelineParameters)
 	case jobPipeline.Promote:
 		var pipelineParameters applicationModels.PipelineParametersPromote
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
@@ -222,7 +222,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 }
 
 // TriggerPipelineBuild Triggers pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
+func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
 	branch := pipelineParameters.Branch
 	commitID := pipelineParameters.CommitID
 
@@ -266,13 +266,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParame
 		PushImage: pipelineParameters.PushImageToContainerRegistry(),
 	}
 
-	var pipeline *jobPipeline.Definition
-
-	if pipelineParameters.PushImageToContainerRegistry() {
-		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.BuildDeploy)
-	} else {
-		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.Build)
-	}
+	pipeline, err := jobPipeline.GetPipelineFromName(pipelineName)
 	if err != nil {
 		return nil, err
 	}
