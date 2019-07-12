@@ -198,21 +198,18 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 	var err error
 
 	switch pipelineName {
-	case jobPipeline.Build:
-	case jobPipeline.BuildDeploy:
+	case jobPipeline.Build, jobPipeline.BuildDeploy:
 		var pipelineParameters applicationModels.PipelineParametersBuild
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
-		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineParameters)
-		break
+		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineName, pipelineParameters)
 	case jobPipeline.Promote:
 		var pipelineParameters applicationModels.PipelineParametersPromote
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
 		jobSummary, err = ah.triggerPipelinePromote(appName, pipelineParameters)
-		break
 	default:
 		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
 	}
@@ -225,7 +222,7 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 }
 
 // TriggerPipelineBuild Triggers pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
+func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
 	branch := pipelineParameters.Branch
 	commitID := pipelineParameters.CommitID
 
@@ -269,13 +266,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, pipelineParame
 		PushImage: pipelineParameters.PushImageToContainerRegistry(),
 	}
 
-	var pipeline *jobPipeline.Definition
-
-	if pipelineParameters.PushImageToContainerRegistry() {
-		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.BuildDeploy)
-	} else {
-		pipeline, err = jobPipeline.GetPipelineFromName(jobPipeline.Build)
-	}
+	pipeline, err := jobPipeline.GetPipelineFromName(pipelineName)
 	if err != nil {
 		return nil, err
 	}
