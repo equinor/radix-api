@@ -32,9 +32,4 @@ type Step struct {
 	//
 	// required: false
 	PodName string `json:"-"`
-
-	// sort steps
-	//
-	// required: false
-	Sort int32 `json:"-"`
 }
