@@ -68,13 +68,7 @@ func createPipelineJob(appName, sshURL string, pipeline *pipelineJob.Definition,
 							VolumeMounts:    getPipelineJobContainerVolumeMounts(pipeline),
 						},
 					},
-					Volumes: getPipelineJobVolumes(pipeline),
-					// https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-					ImagePullSecrets: []corev1.LocalObjectReference{
-						{
-							Name: "regcred",
-						},
-					},
+					Volumes:       getPipelineJobVolumes(pipeline),
 					RestartPolicy: "Never",
 				},
 			},
