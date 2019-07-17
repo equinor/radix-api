@@ -116,11 +116,6 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 							},
 						},
 					},
-					ImagePullSecrets: []corev1.LocalObjectReference{
-						{
-							Name: "regcred",
-						},
-					},
 					RestartPolicy: "Never",
 				},
 			},
