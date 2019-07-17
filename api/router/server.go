@@ -112,6 +112,9 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			fmt.Sprintf("https://console.%s", radixDNSZone),
 			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
 			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
+			// Due to active-cluster
+			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
+			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
 		},
 		AllowCredentials: true, // Needed for sockets
 		MaxAge:           600,
@@ -119,6 +122,10 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
 	})
 	return c.Handler(apiRouter.Middleware)
+}
+
+func getActiveClusterHostName(componentName, namespace, radixDNSZone string) string {
+	return fmt.Sprintf("https://%s-%s.%s", componentName, namespace, radixDNSZone)
 }
 
 func getHostName(componentName, namespace, clustername, radixDNSZone string) string {
