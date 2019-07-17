@@ -46,6 +46,5 @@ func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step
 		Name:    step.Name,
 		Log:     buildLog,
 		PodName: step.PodName,
-		Sort:    step.Sort,
 	}
 }
