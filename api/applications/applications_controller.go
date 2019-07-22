@@ -209,7 +209,9 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   required: false
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/Application"
+	//     description: Successful get application
+	//     schema:
+	//       "$ref": "#/definitions/Application"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -290,7 +292,9 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	//   required: false
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/ApplicationRegistration"
+	//     description: Successful application registration
+	//     schema:
+	//       "$ref": "#/definitions/ApplicationRegistration"
 	//   "400":
 	//     description: "Invalid application registration"
 	//   "401":
@@ -343,7 +347,9 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	//   required: false
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/ApplicationRegistration"
+	//     description: Successful change registration details
+	//     schema:
+	//       "$ref": "#/definitions/ApplicationRegistration"
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -450,7 +456,9 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//   required: false
 	// responses:
 	//   "200":
-	//     "$ref": "#/definitions/JobSummary"
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/JobSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
