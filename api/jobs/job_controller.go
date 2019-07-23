@@ -275,11 +275,9 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Successful operation"
+	//     description: "Successful get job"
 	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/Job"
+	//        "$ref": "#/definitions/Job"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
