@@ -151,11 +151,9 @@ func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Successful operation"
+	//     description: "Successful get deployment"
 	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/Deployment"
+	//        "$ref": "#/definitions/Deployment"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
