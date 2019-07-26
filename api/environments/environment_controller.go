@@ -159,11 +159,9 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Successful operation"
+	//     description: "Successful get environment"
 	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/Environment"
+	//        "$ref": "#/definitions/Environment"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
