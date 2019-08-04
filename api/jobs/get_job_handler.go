@@ -19,7 +19,8 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -225,12 +226,12 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 		return steps, nil
 	}
 
-	pipelineType := job.Labels["radix-pipeline"]
+	pipelineType, _ := pipeline.GetPipelineFromName(job.Labels["radix-pipeline"])
 
-	switch pipelineType {
-	case pipelineJob.Build, pipelineJob.BuildDeploy:
+	switch pipelineType.Type {
+	case v1.Build, v1.BuildDeploy:
 		return jh.getJobStepsBuildPipeline(appName, pipelinePod, job)
-	case pipelineJob.Promote:
+	case v1.Promote:
 		return jh.getJobStepsPromotePipeline(appName, pipelinePod, job)
 	}
 

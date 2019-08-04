@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
 )
 
@@ -93,5 +94,26 @@ func GetJobSummary(job *batchv1.Job) *JobSummary {
 		Ended:    ended,
 		Pipeline: pipeline,
 	}
+	return pipelineJob
+}
+
+// GetSummaryFromRadixJob Used to get job summary from a radix job
+func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
+	status := job.Status
+
+	jobStatus := status.Condition
+	ended := utils.FormatTime(status.Ended)
+
+	pipelineJob := &JobSummary{
+		Name:     job.Name,
+		AppName:  job.Spec.AppName,
+		Branch:   job.Spec.Build.Branch,
+		CommitID: job.Spec.Build.CommitID,
+		Status:   string(jobStatus),
+		Started:  utils.FormatTime(status.Started),
+		Ended:    ended,
+		Pipeline: string(job.Spec.PipeLineType),
+	}
+
 	return pipelineJob
 }

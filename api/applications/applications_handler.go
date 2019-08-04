@@ -198,13 +198,13 @@ func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *ht
 	var err error
 
 	switch pipelineName {
-	case jobPipeline.Build, jobPipeline.BuildDeploy:
+	case string(v1.Build), string(v1.BuildDeploy):
 		var pipelineParameters applicationModels.PipelineParametersBuild
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
 		}
 		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineName, pipelineParameters)
-	case jobPipeline.Promote:
+	case string(v1.Promote):
 		var pipelineParameters applicationModels.PipelineParametersPromote
 		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 			return nil, err
