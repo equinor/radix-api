@@ -4,6 +4,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -97,6 +98,35 @@ func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.D
 		Ended:       utils.FormatTime(&jobEnded),
 		Status:      jobStatus.String(),
 		Pipeline:    job.Labels["radix-pipeline"],
+		Steps:       steps,
+		Deployments: jobDeployments,
+		Components:  jobComponents,
+	}
+}
+
+// GetJobFromRadixJob Gets job from a radix job
+func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
+	var steps []Step
+	for _, jobStep := range job.Status.Steps {
+		step := Step{
+			Name:    jobStep.Name,
+			Status:  string(jobStep.Condition),
+			Started: utils.FormatTime(jobStep.Started),
+			Ended:   utils.FormatTime(jobStep.Ended),
+			PodName: jobStep.PodName,
+		}
+
+		steps = append(steps, step)
+	}
+
+	return &Job{
+		Name:        job.GetName(),
+		Branch:      job.Spec.Build.Branch,
+		CommitID:    job.Spec.Build.CommitID,
+		Started:     utils.FormatTime(job.Status.Started),
+		Ended:       utils.FormatTime(job.Status.Ended),
+		Status:      string(job.Status.Condition),
+		Pipeline:    string(job.Spec.PipeLineType),
 		Steps:       steps,
 		Deployments: jobDeployments,
 		Components:  jobComponents,

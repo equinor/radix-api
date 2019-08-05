@@ -62,7 +62,119 @@ func Init(
 
 // GetLatestJobPerApplication Handler for GetApplicationJobs
 func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	jobList, err := jh.getAllJobs()
+	return jh.getLatestJobPerApplicationLegacy(forApplications)
+}
+
+// GetApplicationJobs Handler for GetApplicationJobs
+func (jh JobHandler) GetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
+	return jh.getApplicationJobs(appName)
+}
+
+// GetLatestApplicationJob Get last run application job
+func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
+	jobs, err := jh.getApplicationJobs(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(jobs) == 0 {
+		return nil, nil
+	}
+
+	return jobs[0], nil
+}
+
+// GetApplicationJob Handler for GetApplicationJob
+func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		// This may be a job triggered before the introduction of a RadixJob
+		return jh.getApplicationJobLegacy(appName, jobName)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	jobComponents, err := jh.getJobComponents(appName, jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobModels.GetJobFromRadixJob(job, jobDeployments, jobComponents), nil
+}
+
+func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
+	jobs, err := jh.getJobs(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyJobs, err := jh.getApplicationJobsLegacy(appName)
+	if err == nil && len(legacyJobs) > 0 {
+		// Append legacy jobs to list which is not contained in list of jobs
+		for _, legacyJob := range legacyJobs {
+			exists := false
+
+			for _, job := range jobs {
+				if legacyJob.Name == job.Name {
+					exists = true
+					break
+				}
+			}
+
+			if !exists {
+				jobs = append(jobs, legacyJob)
+			}
+		}
+	}
+
+	// Sort jobs descending
+	sort.Slice(jobs, func(i, j int) bool {
+		jStarted, err := utils.ParseTimestamp(jobs[j].Started)
+		if err != nil {
+			return true
+		}
+
+		iStarted, err := utils.ParseTimestamp(jobs[i].Started)
+		if err != nil {
+			return false
+		}
+
+		return jStarted.Before(iStarted)
+	})
+
+	return jobs, nil
+}
+
+func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
+	return jh.getJobsInNamespace(jh.serviceAccount.RadixClient, corev1.NamespaceAll)
+}
+
+func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
+	return jh.getJobsInNamespace(jh.userAccount.RadixClient, crdUtils.GetAppNamespace(appName))
+}
+
+func (jh JobHandler) getJobsInNamespace(radixClient radixclient.Interface, namespace string) ([]*jobModels.JobSummary, error) {
+	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
+	for i, job := range jobList.Items {
+		jobs[i] = jobModels.GetSummaryFromRadixJob(&job)
+	}
+
+	return jobs, nil
+}
+
+func (jh JobHandler) getLatestJobPerApplicationLegacy(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
+	jobList, err := jh.getAllJobsLegacy()
 	if err != nil {
 		return nil, err
 	}
@@ -87,12 +199,12 @@ func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool)
 			continue
 		}
 
-		jobEnvironmentsMap, err := jh.getJobEnvironmentMap(appName)
+		jobEnvironmentsMap, err := jh.getJobEnvironmentMapLegacy(appName)
 		if err != nil {
 			return nil, err
 		}
 
-		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, jobEnvironmentsMap)
+		jobSummary, err := jh.getJobSummaryWithDeploymentLegacy(appName, &job, jobEnvironmentsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -103,27 +215,8 @@ func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool)
 	return applicationJob, nil
 }
 
-// GetApplicationJobs Handler for GetApplicationJobs
-func (jh JobHandler) GetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getApplicationJobs(appName)
-}
-
-// GetLatestApplicationJob Get last run application job
-func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
-	jobs, err := jh.getApplicationJobs(appName)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(jobs) == 0 {
-		return nil, nil
-	}
-
-	return jobs[0], nil
-}
-
-func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
-	jobList, err := jh.getJobs(appName)
+func (jh JobHandler) getApplicationJobsLegacy(appName string) ([]*jobModels.JobSummary, error) {
+	jobList, err := jh.getJobsLegacy(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -133,14 +226,14 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
 	})
 
-	jobEnvironmentsMap, err := jh.getJobEnvironmentMap(appName)
+	jobEnvironmentsMap, err := jh.getJobEnvironmentMapLegacy(appName)
 	if err != nil {
 		return nil, err
 	}
 
 	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
 	for i, job := range jobList.Items {
-		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, jobEnvironmentsMap)
+		jobSummary, err := jh.getJobSummaryWithDeploymentLegacy(appName, &job, jobEnvironmentsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -151,8 +244,7 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	return jobs, nil
 }
 
-// GetApplicationJob Handler for GetApplicationJob
-func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
+func (jh JobHandler) getApplicationJobLegacy(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
@@ -165,7 +257,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, utils.ValidationError("Radix Application Job", "Job was not of expected type")
 	}
 
-	steps, err := jh.getJobSteps(appName, job)
+	steps, err := jh.getJobStepsLegacy(appName, job)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +303,7 @@ func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploy
 	return jobComponents, nil
 }
 
-func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
+func (jh JobHandler) getJobStepsLegacy(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
 	steps := []jobModels.Step{}
 	jobName := job.GetName()
 
@@ -230,15 +322,15 @@ func (jh JobHandler) getJobSteps(appName string, job *batchv1.Job) ([]jobModels.
 
 	switch pipelineType.Type {
 	case v1.Build, v1.BuildDeploy:
-		return jh.getJobStepsBuildPipeline(appName, pipelinePod, job)
+		return jh.getJobStepsBuildPipelineLegacy(appName, pipelinePod, job)
 	case v1.Promote:
-		return jh.getJobStepsPromotePipeline(appName, pipelinePod, job)
+		return jh.getJobStepsPromotePipelineLegacy(appName, pipelinePod, job)
 	}
 
 	return steps, nil
 }
 
-func (jh JobHandler) getJobStepsBuildPipeline(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
+func (jh JobHandler) getJobStepsBuildPipelineLegacy(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
 	steps := []jobModels.Step{}
 	if len(pipelinePod.Status.InitContainerStatuses) == 0 {
 		return steps, nil
@@ -296,7 +388,7 @@ func (jh JobHandler) getJobStepsBuildPipeline(appName string, pipelinePod *corev
 	return steps, nil
 }
 
-func (jh JobHandler) getJobStepsPromotePipeline(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
+func (jh JobHandler) getJobStepsPromotePipelineLegacy(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
 	steps := []jobModels.Step{}
 	pipelineJobStep := getJobStep(pipelinePod.GetName(), &pipelinePod.Status.ContainerStatuses[0])
 	steps = append(steps, pipelineJobStep)
@@ -304,13 +396,13 @@ func (jh JobHandler) getJobStepsPromotePipeline(appName string, pipelinePod *cor
 }
 
 // GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
-func (jh JobHandler) getJobSummaryWithDeployment(appName string, job *batchv1.Job, jobEnvironmentsMap map[string][]string) (*jobModels.JobSummary, error) {
+func (jh JobHandler) getJobSummaryWithDeploymentLegacy(appName string, job *batchv1.Job, jobEnvironmentsMap map[string][]string) (*jobModels.JobSummary, error) {
 	jobSummary := jobModels.GetJobSummary(job)
 	jobSummary.Environments = jobEnvironmentsMap[job.Name]
 	return jobSummary, nil
 }
 
-func (jh JobHandler) getJobEnvironmentMap(appName string) (map[string][]string, error) {
+func (jh JobHandler) getJobEnvironmentMapLegacy(appName string) (map[string][]string, error) {
 	allDeployments, err := jh.deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
 		return nil, err
@@ -349,15 +441,15 @@ func (jh JobHandler) getPipelinePod(appName, jobName string) (*corev1.Pod, error
 	return &pods.Items[0], nil
 }
 
-func (jh JobHandler) getAllJobs() (*batchv1.JobList, error) {
-	return jh.getJobsInNamespace(jh.serviceAccount.Client, corev1.NamespaceAll)
+func (jh JobHandler) getAllJobsLegacy() (*batchv1.JobList, error) {
+	return jh.getJobsInNamespaceLegacy(jh.serviceAccount.Client, corev1.NamespaceAll)
 }
 
-func (jh JobHandler) getJobs(appName string) (*batchv1.JobList, error) {
-	return jh.getJobsInNamespace(jh.userAccount.Client, crdUtils.GetAppNamespace(appName))
+func (jh JobHandler) getJobsLegacy(appName string) (*batchv1.JobList, error) {
+	return jh.getJobsInNamespaceLegacy(jh.userAccount.Client, crdUtils.GetAppNamespace(appName))
 }
 
-func (jh JobHandler) getJobsInNamespace(kubeClient kubernetes.Interface, namespace string) (*batchv1.JobList, error) {
+func (jh JobHandler) getJobsInNamespaceLegacy(kubeClient kubernetes.Interface, namespace string) (*batchv1.JobList, error) {
 	jobList, err := kubeClient.BatchV1().Jobs(namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobTypeLabel, RadixJobTypeJob),
 	})

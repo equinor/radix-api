@@ -105,14 +105,15 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	ended := utils.FormatTime(status.Ended)
 
 	pipelineJob := &JobSummary{
-		Name:     job.Name,
-		AppName:  job.Spec.AppName,
-		Branch:   job.Spec.Build.Branch,
-		CommitID: job.Spec.Build.CommitID,
-		Status:   string(jobStatus),
-		Started:  utils.FormatTime(status.Started),
-		Ended:    ended,
-		Pipeline: string(job.Spec.PipeLineType),
+		Name:         job.Name,
+		AppName:      job.Spec.AppName,
+		Branch:       job.Spec.Build.Branch,
+		CommitID:     job.Spec.Build.CommitID,
+		Status:       string(jobStatus),
+		Started:      utils.FormatTime(status.Started),
+		Ended:        ended,
+		Pipeline:     string(job.Spec.PipeLineType),
+		Environments: job.Status.TargetEnvs,
 	}
 
 	return pipelineJob
