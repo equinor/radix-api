@@ -176,6 +176,31 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	return &application, nil
 }
 
+// ModifyRegistrationDetails handler for ModifyRegistrationDetails
+func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
+	// Make check that this is an existing application
+	existingRegistration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Only these fields can change over time
+	existingRegistration.Spec.AdGroups = patchRequest.AdGroups
+
+	err = ah.isValidUpdate(existingRegistration)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	if err != nil {
+		return nil, err
+	}
+
+	application := NewBuilder().withRadixRegistration(existingRegistration).Build()
+	return &application, nil
+}
+
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
