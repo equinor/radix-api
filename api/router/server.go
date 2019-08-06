@@ -119,7 +119,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowCredentials: true, // Needed for sockets
 		MaxAge:           600,
 		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
-		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE"},
+		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE", "PATCH"},
 	})
 	return c.Handler(apiRouter.Middleware)
 }
