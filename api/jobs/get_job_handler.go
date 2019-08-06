@@ -62,7 +62,7 @@ func Init(
 
 // GetLatestJobPerApplication Handler for GetApplicationJobs
 func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	return jh.getLatestJobPerApplicationLegacy(forApplications)
+	return jh.getLatestJobPerApplication(forApplications)
 }
 
 // GetApplicationJobs Handler for GetApplicationJobs
@@ -171,6 +171,63 @@ func (jh JobHandler) getJobsInNamespace(radixClient radixclient.Interface, names
 	}
 
 	return jobs, nil
+}
+
+func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
+	// Primarily use Radix Jobs
+	allJobs, err := jh.getAllJobs()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(allJobs, func(i, j int) bool {
+		switch strings.Compare(allJobs[i].AppName, allJobs[j].AppName) {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+
+		jStarted, err := utils.ParseTimestamp(allJobs[j].Started)
+		if err != nil {
+			return true
+		}
+
+		iStarted, err := utils.ParseTimestamp(allJobs[i].Started)
+		if err != nil {
+			return false
+		}
+
+		return jStarted.Before(iStarted)
+	})
+
+	applicationJob := make(map[string]*jobModels.JobSummary)
+	for _, job := range allJobs {
+		if applicationJob[job.AppName] != nil {
+			continue
+		}
+		if forApplications[job.AppName] != true {
+			continue
+		}
+
+		applicationJob[job.AppName] = job
+	}
+
+	forApplicationsWithNoRadixJob := make(map[string]bool)
+	for applicationName := range forApplications {
+		if applicationJob[applicationName] == nil {
+			forApplicationsWithNoRadixJob[applicationName] = true
+		}
+	}
+
+	if len(forApplicationsWithNoRadixJob) > 0 {
+		applicationJobForApplicationsWithNoRadixJob, _ := jh.getLatestJobPerApplicationLegacy(forApplicationsWithNoRadixJob)
+		for applicationName, job := range applicationJobForApplicationsWithNoRadixJob {
+			applicationJob[applicationName] = job
+		}
+	}
+
+	return applicationJob, nil
 }
 
 func (jh JobHandler) getLatestJobPerApplicationLegacy(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {

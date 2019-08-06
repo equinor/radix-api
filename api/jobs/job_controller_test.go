@@ -46,9 +46,6 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 }
 
 func TestGetApplicationJob(t *testing.T) {
-	// TODO Until getting job is taken from RadixJob, this test wont work
-	t.Skip()
-
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
 
@@ -77,7 +74,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline, job.Pipeline)
+	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.Empty(t, job.Steps)
 
 	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
@@ -96,12 +93,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline, job.Pipeline)
-	assert.NotEmpty(t, job.Steps)
-	assert.Equal(t, 2, len(job.Steps))
-
-	assert.Equal(t, "clone-config", job.Steps[0].Name)
-	assert.Equal(t, "radix-pipeline", job.Steps[1].Name)
+	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 
 }
 
