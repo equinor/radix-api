@@ -53,6 +53,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
+			Path:        rootPath + "/applications/{appName}",
+			Method:      "PATCH",
+			HandlerFunc: ModifyRegistrationDetails,
+		},
+		models.Route{
 			Path:        rootPath + "/applications",
 			Method:      "GET",
 			HandlerFunc: ac.ShowApplications,
@@ -369,6 +374,65 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
 	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &appRegistration)
+}
+
+// ModifyRegistrationDetails Updates specific field(s) of an application registration
+func ModifyRegistrationDetails(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PATCH /applications/{appName} application modifyRegistrationDetails
+	// ---
+	// summary: Updates specific field(s) of an application registration
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: patchRequest
+	//   in: body
+	//   description: Application to patch
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ApplicationPatchRequest"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful at modifying registration details
+	//     schema:
+	//       "$ref": "#/definitions/ApplicationRegistration"
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	appName := mux.Vars(r)["appName"]
+
+	var application applicationModels.ApplicationPatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	// Need in cluster Radix client in order to validate registration using sufficient priviledges
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	appRegistration, err := handler.ModifyRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
