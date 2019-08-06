@@ -15,13 +15,14 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -437,7 +438,10 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
+		WithCreated(deploymentOneCreated).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(deploymentOneCreated).
+		WithActiveTo(deploymentTwoCreated))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -445,7 +449,10 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
+		WithCreated(deploymentTwoCreated).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(deploymentTwoCreated).
+		WithActiveTo(deploymentThreeCreated))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -453,7 +460,9 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environment).
 		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
+		WithCreated(deploymentThreeCreated).
+		WithCondition(v1.DeploymentActive).
+		WithActiveFrom(deploymentThreeCreated))
 }
 
 func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
@@ -474,14 +483,14 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 		))
 	ns := k8sObjectUtils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
-	namespace := v1.Namespace{
+	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 		},
 	}
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
 
-	secretObject := v1.Secret{
+	secretObject := corev1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
 			Name: k8sObjectUtils.GetComponentSecretName(anyComponentName),
@@ -578,7 +587,7 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 		WithEnvironment(environmentName, buildFrom).
 		WithComponents(raComponentBuilders...))
 
-	namespace := v1.Namespace{
+	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 		},
@@ -586,7 +595,7 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
 
 	for componentName, clusterComponentSecrets := range clusterComponentSecretsMap {
-		secretObject := v1.Secret{
+		secretObject := corev1.Secret{
 			Type: "Opaque",
 			ObjectMeta: metav1.ObjectMeta{
 				Name: k8sObjectUtils.GetComponentSecretName(componentName),
