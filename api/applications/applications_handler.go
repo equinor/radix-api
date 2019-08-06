@@ -185,16 +185,18 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	}
 
 	// Only these fields can change over time
-	existingRegistration.Spec.AdGroups = patchRequest.AdGroups
+	if k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, patchRequest.AdGroups) {
+		existingRegistration.Spec.AdGroups = patchRequest.AdGroups
 
-	err = ah.isValidUpdate(existingRegistration)
-	if err != nil {
-		return nil, err
-	}
+		err = ah.isValidUpdate(existingRegistration)
+		if err != nil {
+			return nil, err
+		}
 
-	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
-	if err != nil {
-		return nil, err
+		_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	application := NewBuilder().withRadixRegistration(existingRegistration).Build()
