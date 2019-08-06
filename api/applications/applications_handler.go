@@ -185,7 +185,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	}
 
 	// Only these fields can change over time
-	if k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, patchRequest.AdGroups) {
+	if !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, patchRequest.AdGroups) {
 		existingRegistration.Spec.AdGroups = patchRequest.AdGroups
 
 		err = ah.isValidUpdate(existingRegistration)
