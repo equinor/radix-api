@@ -5,7 +5,7 @@ import (
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // DeploymentBuilder Builds DTOs
@@ -46,7 +46,9 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 		WithEnvironment(rd.Spec.Environment).
 		WithActiveFrom(rd.CreationTimestamp.Time).
 		WithJobName(jobName).
-		WithComponents(components)
+		WithComponents(components).
+		WithActiveFrom(rd.Status.ActiveFrom.Time).
+		WithActiveTo(rd.Status.ActiveTo.Time)
 
 	return b
 }

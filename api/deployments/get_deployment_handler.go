@@ -13,7 +13,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -141,35 +141,17 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 	}
 
 	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
-	envsLastIndexMap := getRdEnvironments(rds)
-
 	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
-	for i, rd := range rds {
-		envName := rd.Spec.Environment
+	for _, rd := range rds {
+		if latest && rd.Status.Condition == v1.DeploymentInactive {
+			continue
+		}
 
 		builder := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
-
-		lastIndex := envsLastIndexMap[envName]
-		if lastIndex >= 0 {
-			builder.WithActiveTo(rds[lastIndex].CreationTimestamp.Time)
-		}
-		envsLastIndexMap[envName] = i
-
 		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
 	}
 
-	return postFiltering(radixDeployments, latest), nil
-}
-
-func getRdEnvironments(rds []v1.RadixDeployment) map[string]int {
-	envs := make(map[string]int)
-	for _, rd := range rds {
-		envName := rd.Spec.Environment
-		if _, exists := envs[envName]; !exists {
-			envs[envName] = -1
-		}
-	}
-	return envs
+	return radixDeployments, nil
 }
 
 func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
@@ -177,41 +159,4 @@ func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployme
 		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
 	})
 	return rds
-}
-
-func postFiltering(all []*deploymentModels.DeploymentSummary, latest bool) []*deploymentModels.DeploymentSummary {
-	if latest {
-		filtered := all[:0]
-		for _, rd := range all {
-			if isLatest(rd, all) {
-				filtered = append(filtered, rd)
-			}
-		}
-
-		return filtered
-	}
-
-	return all
-}
-
-func isLatest(theOne *deploymentModels.DeploymentSummary, all []*deploymentModels.DeploymentSummary) bool {
-	theOneActiveFrom, err := utils.ParseTimestamp(theOne.ActiveFrom)
-	if err != nil {
-		return false
-	}
-
-	for _, rd := range all {
-		rdActiveFrom, err := utils.ParseTimestamp(rd.ActiveFrom)
-		if err != nil {
-			continue
-		}
-
-		if rd.Environment == theOne.Environment &&
-			rd.Name != theOne.Name &&
-			rdActiveFrom.After(theOneActiveFrom) {
-			return false
-		}
-	}
-
-	return true
 }

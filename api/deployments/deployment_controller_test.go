@@ -11,6 +11,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -89,22 +90,30 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 		ARadixDeployment().
 		WithAppName("any-app-1").
 		WithEnvironment("prod").
-		WithImageTag("abcdef"))
+		WithImageTag("abcdef").
+		WithCondition(v1.DeploymentInactive))
 
 	// Ensure the second image is considered the latest version
+	firstDeploymentActiveFrom := time.Now()
+	secondDeploymentActiveFrom := time.Now().AddDate(0, 0, 1)
+
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName("any-app-2").
 		WithEnvironment("dev").
 		WithImageTag("ghijklm").
-		WithCreated(time.Now()))
+		WithCreated(firstDeploymentActiveFrom).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(firstDeploymentActiveFrom).
+		WithActiveTo(secondDeploymentActiveFrom))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName("any-app-2").
 		WithEnvironment("dev").
 		WithImageTag("nopqrst").
-		WithCreated(time.Now().AddDate(0, 0, 1)))
+		WithCondition(v1.DeploymentActive).
+		WithActiveFrom(secondDeploymentActiveFrom))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -304,8 +313,8 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	anyEnvironment := "dev"
 	anyDeployment1Name := "abcdef"
 	anyDeployment2Name := "ghijkl"
-	appDeployment1Created, _ := utils.ParseTimestamp("2018-11-12T12:00:00-0000")
-	appDeployment2Created, _ := utils.ParseTimestamp("2018-11-14T12:00:00-0000")
+	appDeployment1Created, _ := utils.ParseTimestamp("2018-11-12T12:00:00Z")
+	appDeployment2Created, _ := utils.ParseTimestamp("2018-11-14T12:00:00Z")
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
@@ -315,6 +324,9 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployment1Name).
 		WithCreated(appDeployment1Created).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(appDeployment1Created).
+		WithActiveTo(appDeployment2Created).
 		WithEnvironment(anyEnvironment).
 		WithImageTag(anyDeployment1Name).
 		WithComponents(
@@ -338,6 +350,8 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployment2Name).
 		WithCreated(appDeployment2Created).
+		WithCondition(v1.DeploymentActive).
+		WithActiveFrom(appDeployment2Created).
 		WithEnvironment(anyEnvironment).
 		WithImageTag(anyDeployment2Name).
 		WithComponents(
@@ -387,13 +401,21 @@ func createNamespace(kubeclient kubernetes.Interface, ns string) {
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {
 	var environmentOne, environmentTwo string
+	var deploymentOneActiveTo, deploymentTwoActiveTo time.Time
+	var deploymentTwoCondition v1.RadixDeployCondition
 
 	if len(environments) == 1 {
 		environmentOne = environments[0]
 		environmentTwo = environments[0]
+		deploymentOneActiveTo = deploymentTwoCreated
+		deploymentTwoActiveTo = deploymentThreeCreated
+		deploymentTwoCondition = v1.DeploymentInactive
+
 	} else {
 		environmentOne = environments[0]
 		environmentTwo = environments[1]
+		deploymentOneActiveTo = deploymentThreeCreated
+		deploymentTwoCondition = v1.DeploymentActive
 	}
 
 	commonTestUtils.ApplyDeployment(builders.
@@ -402,7 +424,10 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environmentOne).
 		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated))
+		WithCreated(deploymentOneCreated).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(deploymentOneCreated).
+		WithActiveTo(deploymentOneActiveTo))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -410,7 +435,10 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environmentTwo).
 		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated))
+		WithCreated(deploymentTwoCreated).
+		WithCondition(deploymentTwoCondition).
+		WithActiveFrom(deploymentTwoCreated).
+		WithActiveTo(deploymentTwoActiveTo))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -418,5 +446,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithAppName(appName).
 		WithEnvironment(environmentOne).
 		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated))
+		WithCreated(deploymentThreeCreated).
+		WithCondition(v1.DeploymentActive).
+		WithActiveFrom(deploymentThreeCreated))
 }

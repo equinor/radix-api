@@ -543,6 +543,36 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 }
 
+func TestModifyApplication_AbleToSetField(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	builder := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/a-repo").
+		withSharedSecret("").
+		withPublicKey("").
+		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"})
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
+	<-responseChannel
+
+	// Test
+	anyNewAdGroup := []string{"98765432-dc00-4a28-9ad9-9e7f1e56919d"}
+	patchRequest := applicationModels.ApplicationPatchRequest{
+		AdGroups: anyNewAdGroup,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
+}
+
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
