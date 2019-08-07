@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -136,14 +137,19 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("initial-deployment").
-		WithCreated(initialDeploymentCreated))
+		WithCreated(initialDeploymentCreated).
+		WithCondition(v1.DeploymentInactive).
+		WithActiveFrom(initialDeploymentCreated).
+		WithActiveTo(activeDeploymentCreated))
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("active-deployment").
-		WithCreated(activeDeploymentCreated))
+		WithCreated(activeDeploymentCreated).
+		WithCondition(v1.DeploymentActive).
+		WithActiveFrom(activeDeploymentCreated))
 
 	createComponentPod(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"))
 	createComponentPod(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"))
