@@ -52,6 +52,9 @@ func createPipelineJob(appName, sshURL string, pipeline *pipelineJob.Definition,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   jobName,
 			Labels: getPipelineJobLabels(appName, jobName, randomStr, pipeline, jobSpec),
+			Annotations: map[string]string{
+				kube.RadixBranchAnnotation: jobSpec.Branch,
+			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &backOffLimit,
@@ -156,7 +159,6 @@ func getPipelineJobLabels(appName string, jobName string, randomStr string, pipe
 		labels[kube.RadixImageTagLabel] = randomStr
 		fallthrough
 	case pipelineJob.Build:
-		labels[kube.RadixBranchLabel] = jobSpec.Branch
 		labels[kube.RadixCommitLabel] = jobSpec.CommitID
 	}
 
