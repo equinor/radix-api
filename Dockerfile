@@ -12,7 +12,6 @@ COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure -vendor-only
 
 COPY . .
-WORKDIR /go/src/github.com/equinor/radix-api/
 
 # Generate swagger + add default user
 RUN rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go && \
