@@ -4,6 +4,9 @@ metadata:
   name: radix-api
 spec:
   environments:
+  - name: build-api
+    build:
+      from: MakeApiBuildAgain
   - name: prod
     build:
       from: release
