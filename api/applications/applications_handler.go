@@ -219,6 +219,17 @@ func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	return nil
 }
 
+// GetSupportedPipelines handler for GetSupportedPipelines
+func (ah ApplicationHandler) GetSupportedPipelines() []string {
+	supportedPipelines := make([]string, 0)
+	pipelines := jobPipeline.GetSupportedPipelines()
+	for _, pipeline := range pipelines {
+		supportedPipelines = append(supportedPipelines, pipeline.Name)
+	}
+
+	return supportedPipelines
+}
+
 // TriggerPipeline handler for TriggerPipeline
 func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var jobSummary *jobModels.JobSummary
