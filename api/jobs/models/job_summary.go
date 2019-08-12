@@ -70,7 +70,7 @@ type JobSummary struct {
 // GetJobSummary Used to get job summary from a kubernetes job
 func GetJobSummary(job *batchv1.Job) *JobSummary {
 	appName := job.Labels[kube.RadixAppLabel]
-	branch := job.Labels[kube.RadixBranchLabel]
+	branch := getBranchFromAnnotation(job)
 	commit := job.Labels[kube.RadixCommitLabel]
 
 	// TODO: Move string into constant
@@ -117,4 +117,12 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	}
 
 	return pipelineJob
+}
+
+func getBranchFromAnnotation(job *batchv1.Job) string {
+	if len(job.Annotations) > 0 && job.Annotations[kube.RadixBranchAnnotation] != "" {
+		return job.Annotations[kube.RadixBranchAnnotation]
+	}
+
+	return job.Labels[kube.RadixBranchDeprecated]
 }

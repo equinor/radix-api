@@ -68,6 +68,9 @@ func createPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec
 			Labels: map[string]string{
 				kube.RadixAppLabel: appName,
 			},
+			Annotations: map[string]string{
+				kube.RadixBranchAnnotation: jobSpec.Branch,
+			},
 		},
 		Spec: v1.RadixJobSpec{
 			AppName:        appName,
