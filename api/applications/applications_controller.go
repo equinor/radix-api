@@ -73,6 +73,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
+			Path:        rootPath + "/applications/{appName}/pipelines",
+			Method:      "GET",
+			HandlerFunc: ListPipelines,
+		},
+		models.Route{
 			Path:        rootPath + "/applications/{appName}/pipelines/{pipelineName}",
 			Method:      "POST",
 			HandlerFunc: TriggerPipeline,
@@ -480,6 +485,31 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// ListPipelines Lists supported pipelines
+func ListPipelines(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/pipelines application listPipelines
+	// ---
+	// summary: Lists the supported pipelines
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: array
+	//        items:
+	//           type: string
+
+	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	supportedPipelines := handler.GetSupportedPipelines()
+	utils.JSONResponse(w, r, supportedPipelines)
 }
 
 // TriggerPipeline creates a pipeline job for the application

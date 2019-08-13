@@ -804,6 +804,26 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%s.%s", "any-app", appAliasDNSZone), application.AppAlias.URL)
 }
 
+func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
+	supportedPipelines := jobPipeline.GetSupportedPipelines()
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName("some-app").
+		WithPublicKey("some-public-key").
+		WithPrivateKey("some-private-key"))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/pipelines", "some-app"))
+	response := <-responseChannel
+
+	pipelines := make([]string, 0)
+	controllertest.GetResponseBody(response, &pipelines)
+	assert.Equal(t, len(supportedPipelines), len(pipelines))
+
+}
+
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
