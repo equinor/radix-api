@@ -91,7 +91,7 @@ func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.D
 
 	return &Job{
 		Name:        job.GetName(),
-		Branch:      job.Labels[kube.RadixBranchLabel],
+		Branch:      getBranchFromAnnotation(job),
 		CommitID:    job.Labels[kube.RadixCommitLabel],
 		Started:     utils.FormatTime(job.Status.StartTime),
 		Ended:       utils.FormatTime(&jobEnded),
