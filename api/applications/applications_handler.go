@@ -224,7 +224,7 @@ func (ah ApplicationHandler) GetSupportedPipelines() []string {
 	supportedPipelines := make([]string, 0)
 	pipelines := jobPipeline.GetSupportedPipelines()
 	for _, pipeline := range pipelines {
-		supportedPipelines = append(supportedPipelines, pipeline.Name)
+		supportedPipelines = append(supportedPipelines, string(pipeline.Type))
 	}
 
 	return supportedPipelines
