@@ -97,6 +97,27 @@ func TestGetApplicationJob(t *testing.T) {
 
 }
 
+func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
+	anyAppName := "any-app"
+	anyJobName := "any-job"
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	job, _ := commonTestUtils.ApplyJob(builders.AStartedBuildDeployJob().WithAppName(anyAppName).WithJobName(anyJobName))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, anyJobName))
+	response := <-responseChannel
+
+	jobSummary := jobModels.Job{}
+	controllertest.GetResponseBody(response, &jobSummary)
+	assert.Equal(t, job.Name, jobSummary.Name)
+	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch)
+	assert.Equal(t, string(job.Spec.PipeLineType), jobSummary.Pipeline)
+	assert.Equal(t, len(job.Status.Steps), len(jobSummary.Steps))
+
+}
+
 func TestGetPipelineJobLogsError(t *testing.T) {
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
