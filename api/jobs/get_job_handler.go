@@ -135,17 +135,19 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 
 	// Sort jobs descending
 	sort.Slice(jobs, func(i, j int) bool {
-		jStarted, err := utils.ParseTimestamp(jobs[j].Started)
+		jCreatedTimeStamp := jobs[j].Created
+		jCreated, err := utils.ParseTimestamp(jCreatedTimeStamp)
 		if err != nil {
 			return true
 		}
 
-		iStarted, err := utils.ParseTimestamp(jobs[i].Started)
+		iCreatedTimestamp := jobs[i].Created
+		iCreated, err := utils.ParseTimestamp(iCreatedTimestamp)
 		if err != nil {
 			return false
 		}
 
-		return jStarted.Before(iStarted)
+		return jCreated.Before(iCreated)
 	})
 
 	return jobs, nil
@@ -188,17 +190,17 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 			return false
 		}
 
-		jStarted, err := utils.ParseTimestamp(allJobs[j].Started)
+		jCreated, err := utils.ParseTimestamp(allJobs[j].Created)
 		if err != nil {
 			return true
 		}
 
-		iStarted, err := utils.ParseTimestamp(allJobs[i].Started)
+		iCreated, err := utils.ParseTimestamp(allJobs[i].Created)
 		if err != nil {
 			return false
 		}
 
-		return jStarted.Before(iStarted)
+		return jCreated.Before(iCreated)
 	})
 
 	applicationJob := make(map[string]*jobModels.JobSummary)

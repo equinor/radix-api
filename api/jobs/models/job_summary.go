@@ -34,6 +34,12 @@ type JobSummary struct {
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
 
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
+
 	// Started timestamp
 	//
 	// required: false
@@ -90,6 +96,7 @@ func GetJobSummary(job *batchv1.Job) *JobSummary {
 		Branch:   branch,
 		CommitID: commit,
 		Status:   jobStatus.String(),
+		Created:  utils.FormatTime(&job.CreationTimestamp),
 		Started:  utils.FormatTime(status.StartTime),
 		Ended:    ended,
 		Pipeline: pipeline,
@@ -110,6 +117,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		Branch:       job.Spec.Build.Branch,
 		CommitID:     job.Spec.Build.CommitID,
 		Status:       string(jobStatus),
+		Created:      utils.FormatTime(&job.CreationTimestamp),
 		Started:      utils.FormatTime(status.Started),
 		Ended:        ended,
 		Pipeline:     string(job.Spec.PipeLineType),
