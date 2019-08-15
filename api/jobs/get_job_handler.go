@@ -212,6 +212,11 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 			continue
 		}
 
+		if job.Started == "" {
+			// Job may still be queued or waiting to be scheduled by the operator
+			continue
+		}
+
 		applicationJob[job.AppName] = job
 	}
 
@@ -274,6 +279,7 @@ func (jh JobHandler) getLatestJobPerApplicationLegacy(forApplications map[string
 	return applicationJob, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 func (jh JobHandler) getApplicationJobsLegacy(appName string) ([]*jobModels.JobSummary, error) {
 	jobList, err := jh.getJobsLegacy(appName)
 	if err != nil {
@@ -303,6 +309,7 @@ func (jh JobHandler) getApplicationJobsLegacy(appName string) ([]*jobModels.JobS
 	return jobs, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 func (jh JobHandler) getApplicationJobLegacy(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
@@ -362,6 +369,7 @@ func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploy
 	return jobComponents, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 func (jh JobHandler) getJobStepsLegacy(appName string, job *batchv1.Job) ([]jobModels.Step, error) {
 	steps := []jobModels.Step{}
 	jobName := job.GetName()
@@ -389,6 +397,7 @@ func (jh JobHandler) getJobStepsLegacy(appName string, job *batchv1.Job) ([]jobM
 	return steps, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 func (jh JobHandler) getJobStepsBuildPipelineLegacy(appName string, pipelinePod *corev1.Pod, job *batchv1.Job) ([]jobModels.Step, error) {
 	steps := []jobModels.Step{}
 	if len(pipelinePod.Status.InitContainerStatuses) == 0 {
@@ -454,6 +463,7 @@ func (jh JobHandler) getJobStepsPromotePipelineLegacy(appName string, pipelinePo
 	return steps, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 // GetJobSummaryWithDeployment Used to get job summary from a kubernetes job
 func (jh JobHandler) getJobSummaryWithDeploymentLegacy(appName string, job *batchv1.Job, jobEnvironmentsMap map[string][]string) (*jobModels.JobSummary, error) {
 	jobSummary := jobModels.GetJobSummary(job)
@@ -461,6 +471,7 @@ func (jh JobHandler) getJobSummaryWithDeploymentLegacy(appName string, job *batc
 	return jobSummary, nil
 }
 
+// TODO : Remove when radixjobs has been in prod for a while
 func (jh JobHandler) getJobEnvironmentMapLegacy(appName string) (map[string][]string, error) {
 	allDeployments, err := jh.deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
