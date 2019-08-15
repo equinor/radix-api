@@ -7,9 +7,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 )
 
-// UnscheduledJobStatus radix-operator still hasn't picked up the job
-const UnscheduledJobStatus = "Unscheduled"
-
 // ProgressStatus Enumeration of the statuses of a job or step
 type ProgressStatus int
 
@@ -66,5 +63,6 @@ func GetStatusFromRadixJobStatus(jobStatus v1.RadixJobStatus) string {
 		return string(jobStatus.Condition)
 	}
 
-	return UnscheduledJobStatus
+	// radix-operator still hasn't picked up the job
+	return Waiting.String()
 }
