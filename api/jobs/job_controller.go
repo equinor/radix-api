@@ -51,8 +51,8 @@ func (jc *jobController) GetRoutes() models.Routes {
 			HandlerFunc: GetApplicationJob,
 		},
 		models.Route{
-			Path:        rootPath + "/jobs/{jobName}",
-			Method:      "DELETE",
+			Path:        rootPath + "/jobs/{jobName}/stop",
+			Method:      "POST",
 			HandlerFunc: StopApplicationJob,
 		},
 	}
@@ -303,7 +303,7 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 
 // StopApplicationJob Stops job
 func StopApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /applications/{appName}/jobs/{jobName} job stopApplicationJob
+	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop job stopApplicationJob
 	// ---
 	// summary: Stops job
 	// parameters:

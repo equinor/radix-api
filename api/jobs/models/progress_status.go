@@ -3,8 +3,12 @@ package models
 import (
 	"fmt"
 
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
 )
+
+// UnscheduledJobStatus radix-operator still hasn't picked up the job
+const UnscheduledJobStatus = "Unscheduled"
 
 // ProgressStatus Enumeration of the statuses of a job or step
 type ProgressStatus int
@@ -54,4 +58,13 @@ func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
 	}
 
 	return status
+}
+
+// GetStatusFromRadixJobStatus Returns job status as string
+func GetStatusFromRadixJobStatus(jobStatus v1.RadixJobStatus) string {
+	if jobStatus.Condition != "" {
+		return string(jobStatus.Condition)
+	}
+
+	return UnscheduledJobStatus
 }

@@ -30,6 +30,12 @@ type Job struct {
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
 
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
+
 	// Started timestamp
 	//
 	// required: false
@@ -94,6 +100,7 @@ func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.D
 		Name:        job.GetName(),
 		Branch:      getBranchFromAnnotation(job),
 		CommitID:    job.Labels[kube.RadixCommitLabel],
+		Created:     utils.FormatTime(&job.CreationTimestamp),
 		Started:     utils.FormatTime(job.Status.StartTime),
 		Ended:       utils.FormatTime(&jobEnded),
 		Status:      jobStatus.String(),
@@ -123,9 +130,10 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Name:        job.GetName(),
 		Branch:      job.Spec.Build.Branch,
 		CommitID:    job.Spec.Build.CommitID,
+		Created:     utils.FormatTime(&job.CreationTimestamp),
 		Started:     utils.FormatTime(job.Status.Started),
 		Ended:       utils.FormatTime(job.Status.Ended),
-		Status:      string(job.Status.Condition),
+		Status:      GetStatusFromRadixJobStatus(job.Status),
 		Pipeline:    string(job.Spec.PipeLineType),
 		Steps:       steps,
 		Deployments: jobDeployments,

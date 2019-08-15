@@ -107,8 +107,6 @@ func GetJobSummary(job *batchv1.Job) *JobSummary {
 // GetSummaryFromRadixJob Used to get job summary from a radix job
 func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	status := job.Status
-
-	jobStatus := status.Condition
 	ended := utils.FormatTime(status.Ended)
 
 	pipelineJob := &JobSummary{
@@ -116,7 +114,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		AppName:      job.Spec.AppName,
 		Branch:       job.Spec.Build.Branch,
 		CommitID:     job.Spec.Build.CommitID,
-		Status:       string(jobStatus),
+		Status:       GetStatusFromRadixJobStatus(status),
 		Created:      utils.FormatTime(&job.CreationTimestamp),
 		Started:      utils.FormatTime(status.Started),
 		Ended:        ended,
