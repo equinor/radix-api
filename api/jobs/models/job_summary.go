@@ -108,6 +108,12 @@ func GetJobSummary(job *batchv1.Job) *JobSummary {
 func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	status := job.Status
 	ended := utils.FormatTime(status.Ended)
+	created := utils.FormatTime(&job.CreationTimestamp)
+	if status.Created != nil {
+		// Use this instead, because in a migration this may be more correct
+		// as migrated jobs will have the same creation timestamp in the new cluster
+		created = utils.FormatTime(status.Created)
+	}
 
 	pipelineJob := &JobSummary{
 		Name:         job.Name,
@@ -115,7 +121,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		Branch:       job.Spec.Build.Branch,
 		CommitID:     job.Spec.Build.CommitID,
 		Status:       GetStatusFromRadixJobStatus(status),
-		Created:      utils.FormatTime(&job.CreationTimestamp),
+		Created:      created,
 		Started:      utils.FormatTime(status.Started),
 		Ended:        ended,
 		Pipeline:     string(job.Spec.PipeLineType),

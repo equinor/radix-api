@@ -126,11 +126,18 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		steps = append(steps, step)
 	}
 
+	created := utils.FormatTime(&job.CreationTimestamp)
+	if job.Status.Created != nil {
+		// Use this instead, because in a migration this may be more correct
+		// as migrated jobs will have the same creation timestamp in the new cluster
+		created = utils.FormatTime(job.Status.Created)
+	}
+
 	return &Job{
 		Name:        job.GetName(),
 		Branch:      job.Spec.Build.Branch,
 		CommitID:    job.Spec.Build.CommitID,
-		Created:     utils.FormatTime(&job.CreationTimestamp),
+		Created:     created,
 		Started:     utils.FormatTime(job.Status.Started),
 		Ended:       utils.FormatTime(job.Status.Ended),
 		Status:      GetStatusFromRadixJobStatus(job.Status),
