@@ -154,8 +154,9 @@ func GetApplicationStream(clients models.Clients, resource string, resourceIdent
 // ShowApplications Lists applications
 func (ac *applicationController) ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications platform showApplications
+	//
 	// ---
-	// summary: Lists the applications
+	// summary: Lists the applications. NOTE - doesn't get applicationSummary.latestJob.Environments
 	// parameters:
 	// - name: sshRepo
 	//   in: query
