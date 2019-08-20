@@ -59,7 +59,7 @@ func Init(
 	}
 }
 
-// GetLatestJobPerApplication Handler for GetApplicationJobs
+// GetLatestJobPerApplication Handler for GetApplicationJobs - NOTE: does not get latestJob.Environments
 func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	jobList, err := jh.getAllJobs()
 	if err != nil {
@@ -86,12 +86,7 @@ func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool)
 			continue
 		}
 
-		jobEnvironmentsMap, err := jh.getJobEnvironmentMap(appName)
-		if err != nil {
-			return nil, err
-		}
-
-		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, jobEnvironmentsMap)
+		jobSummary, err := jh.getJobSummaryWithDeployment(appName, &job, map[string][]string{})
 		if err != nil {
 			return nil, err
 		}
