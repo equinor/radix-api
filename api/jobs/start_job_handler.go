@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,10 +23,11 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	job := createPipelineJob(appName, pipeline, jobSpec)
+	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	job := createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
-	appNamespace := fmt.Sprintf("%s-app", appName)
+	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(job)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,8 @@ func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *p
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func createPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+
 	jobName, randomStr := getUniqueJobName(workerImage)
 	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 
@@ -74,6 +76,7 @@ func createPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec
 		},
 		Spec: v1.RadixJobSpec{
 			AppName:        appName,
+			CloneURL:       cloneURL,
 			PipeLineType:   pipeline.Type,
 			PipelineImage:  getPipelineTag(),
 			DockerRegistry: dockerRegistry,
