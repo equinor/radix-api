@@ -17,7 +17,7 @@ import (
 
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
-// GetApplications handler for ShowApplications
+// GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
 func (ah ApplicationHandler) GetApplications(sshRepo string, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := ah.serviceAccount.RadixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
 	if err != nil {

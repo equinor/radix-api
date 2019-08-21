@@ -16,7 +16,6 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
@@ -55,7 +54,7 @@ func Init(
 	}
 }
 
-// GetLatestJobPerApplication Handler for GetApplicationJobs
+// GetLatestJobPerApplication Handler for GetApplicationJobs - NOTE: does not get latestJob.Environments
 func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	return jh.getLatestJobPerApplication(forApplications)
 }
@@ -227,48 +226,6 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 		for applicationName, job := range applicationJobForApplicationsWithNoRadixJob {
 			applicationJob[applicationName] = job
 		}
-	}
-
-	return applicationJob, nil
-}
-
-func (jh JobHandler) getLatestJobPerApplicationLegacy(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	jobList, err := jh.getAllJobsLegacy()
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(jobList.Items, func(i, j int) bool {
-		switch strings.Compare(jobList.Items[i].Labels[kube.RadixAppLabel], jobList.Items[j].Labels[kube.RadixAppLabel]) {
-		case -1:
-			return true
-		case 1:
-			return false
-		}
-		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
-	})
-
-	applicationJob := make(map[string]*jobModels.JobSummary)
-	for _, job := range jobList.Items {
-		appName := job.Labels[kube.RadixAppLabel]
-		if applicationJob[appName] != nil {
-			continue
-		}
-		if forApplications[appName] != true {
-			continue
-		}
-
-		jobEnvironmentsMap, err := jh.getJobEnvironmentMapLegacy(appName)
-		if err != nil {
-			return nil, err
-		}
-
-		jobSummary, err := jh.getJobSummaryWithDeploymentLegacy(appName, &job, jobEnvironmentsMap)
-		if err != nil {
-			return nil, err
-		}
-
-		applicationJob[appName] = jobSummary
 	}
 
 	return applicationJob, nil

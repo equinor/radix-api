@@ -21,6 +21,43 @@ import (
 
 // JIRA : https://equinor.atlassian.net/browse/RA-725
 // TODO : Remove this entire file and all references to it when radixjobs has been in prod for a while
+func (jh JobHandler) getLatestJobPerApplicationLegacy(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
+	jobList, err := jh.getAllJobsLegacy()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(jobList.Items, func(i, j int) bool {
+		switch strings.Compare(jobList.Items[i].Labels[kube.RadixAppLabel], jobList.Items[j].Labels[kube.RadixAppLabel]) {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+		return jobList.Items[j].Status.StartTime.Before(jobList.Items[i].Status.StartTime)
+	})
+
+	applicationJob := make(map[string]*jobModels.JobSummary)
+	for _, job := range jobList.Items {
+		appName := job.Labels[kube.RadixAppLabel]
+		if applicationJob[appName] != nil {
+			continue
+		}
+		if forApplications[appName] != true {
+			continue
+		}
+
+		jobSummary, err := jh.getJobSummaryWithDeploymentLegacy(appName, &job, map[string][]string{})
+		if err != nil {
+			return nil, err
+		}
+
+		applicationJob[appName] = jobSummary
+	}
+
+	return applicationJob, nil
+}
+
 func (jh JobHandler) getApplicationJobsLegacy(appName string) ([]*jobModels.JobSummary, error) {
 	jobList, err := jh.getJobsLegacy(appName)
 	if err != nil {
