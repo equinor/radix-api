@@ -134,7 +134,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "f54d57cc61dc23b56079147ea90dbb9889e1162f"
+  revision = "816150c073ca2b8da65fdf847f643f2b485355d8"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
