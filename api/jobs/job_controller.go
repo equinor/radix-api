@@ -50,6 +50,11 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetApplicationJob,
 		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/stop",
+			Method:      "POST",
+			HandlerFunc: StopApplicationJob,
+		},
 	}
 
 	return routes
@@ -294,4 +299,51 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	}
 
 	utils.JSONResponse(w, r, jobDetail)
+}
+
+// StopApplicationJob Stops job
+func StopApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop job stopApplicationJob
+	// ---
+	// summary: Stops job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Job stopped ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	err := handler.StopJob(appName, jobName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
