@@ -22,7 +22,7 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 		return nil, err
 	}
 
-	steps, err := jh.getJobSteps(appName, job)
+	steps, err := jh.getJobStepsLegacy(appName, job)
 	if err != nil {
 		return nil, err
 	}

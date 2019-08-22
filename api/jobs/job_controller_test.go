@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ const (
 	anyCloneURL     = "git@github.com:Equinor/any-app.git"
 	anyBranch       = "master"
 	anyPushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
-	anyPipelineName = pipeline.BuildDeploy
+	anyPipelineName = string(v1.BuildDeploy)
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -73,7 +74,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline.Name, job.Pipeline)
+	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.Empty(t, job.Steps)
 
 	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
@@ -92,12 +93,28 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyPipeline.Name, job.Pipeline)
-	assert.NotEmpty(t, job.Steps)
-	assert.Equal(t, 2, len(job.Steps))
+	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 
-	assert.Equal(t, "clone-config", job.Steps[0].Name)
-	assert.Equal(t, "radix-pipeline", job.Steps[1].Name)
+}
+
+func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
+	anyAppName := "any-app"
+	anyJobName := "any-job"
+
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	job, _ := commonTestUtils.ApplyJob(builders.AStartedBuildDeployJob().WithAppName(anyAppName).WithJobName(anyJobName))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, anyJobName))
+	response := <-responseChannel
+
+	jobSummary := jobModels.Job{}
+	controllertest.GetResponseBody(response, &jobSummary)
+	assert.Equal(t, job.Name, jobSummary.Name)
+	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch)
+	assert.Equal(t, string(job.Spec.PipeLineType), jobSummary.Pipeline)
+	assert.Equal(t, len(job.Status.Steps), len(jobSummary.Steps))
 
 }
 
