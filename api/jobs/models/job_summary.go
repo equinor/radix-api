@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
 )
 
@@ -32,6 +33,12 @@ type JobSummary struct {
 	// required: false
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
+
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
 
 	// Started timestamp
 	//
@@ -89,10 +96,38 @@ func GetJobSummary(job *batchv1.Job) *JobSummary {
 		Branch:   branch,
 		CommitID: commit,
 		Status:   jobStatus.String(),
+		Created:  utils.FormatTime(&job.CreationTimestamp),
 		Started:  utils.FormatTime(status.StartTime),
 		Ended:    ended,
 		Pipeline: pipeline,
 	}
+	return pipelineJob
+}
+
+// GetSummaryFromRadixJob Used to get job summary from a radix job
+func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
+	status := job.Status
+	ended := utils.FormatTime(status.Ended)
+	created := utils.FormatTime(&job.CreationTimestamp)
+	if status.Created != nil {
+		// Use this instead, because in a migration this may be more correct
+		// as migrated jobs will have the same creation timestamp in the new cluster
+		created = utils.FormatTime(status.Created)
+	}
+
+	pipelineJob := &JobSummary{
+		Name:         job.Name,
+		AppName:      job.Spec.AppName,
+		Branch:       job.Spec.Build.Branch,
+		CommitID:     job.Spec.Build.CommitID,
+		Status:       GetStatusFromRadixJobStatus(status),
+		Created:      created,
+		Started:      utils.FormatTime(status.Started),
+		Ended:        ended,
+		Pipeline:     string(job.Spec.PipeLineType),
+		Environments: job.Status.TargetEnvs,
+	}
+
 	return pipelineJob
 }
 
