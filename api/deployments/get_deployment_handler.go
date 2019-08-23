@@ -140,7 +140,7 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 		return nil, err
 	}
 
-	rds := sortRdsByCreationTimestampDesc(radixDeploymentList.Items)
+	rds := sortRdsByActiveFromDesc(radixDeploymentList.Items)
 	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for _, rd := range rds {
 		if latest && rd.Status.Condition == v1.DeploymentInactive {
@@ -154,9 +154,16 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 	return radixDeployments, nil
 }
 
-func sortRdsByCreationTimestampDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
+func sortRdsByActiveFromDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
 	sort.Slice(rds, func(i, j int) bool {
-		return rds[j].CreationTimestamp.Before(&rds[i].CreationTimestamp)
+		if rds[j].Status.ActiveFrom.IsZero() {
+			return true
+		}
+
+		if rds[i].Status.ActiveFrom.IsZero() {
+			return false
+		}
+		return rds[j].Status.ActiveFrom.Before(&rds[i].Status.ActiveFrom)
 	})
 	return rds
 }
