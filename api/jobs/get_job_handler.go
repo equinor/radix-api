@@ -242,12 +242,12 @@ func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploy
 func IsBefore(j, i *jobModels.JobSummary) bool {
 	jCreated := getTimeFromTimestamp(j.Created)
 	if jCreated == nil {
-		return true
+		return false
 	}
 
 	iCreated := getTimeFromTimestamp(i.Created)
 	if iCreated == nil {
-		return false
+		return true
 	}
 
 	jStarted := getTimeFromTimestamp(j.Started)
