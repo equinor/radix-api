@@ -122,7 +122,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 
 		environment.ActiveDeployment = deployment
 
-		secrets, err := eh.GetEnvironmentSecrets(appName, envName, deployment)
+		secrets, err := eh.GetEnvironmentSecretsForDeployment(appName, envName, deployment)
 		if err != nil {
 			return nil, err
 		}

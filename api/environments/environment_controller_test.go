@@ -570,22 +570,23 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
 
-func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, raComponentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, environmentName)
 
-	raComponentBuilders := make([]builders.RadixApplicationComponentBuilder, 0)
-	for componentName, raComponentSecrets := range raComponentSecretsMap {
+	componentBuilders := make([]builders.DeployComponentBuilder, 0)
+	for componentName, componentSecrets := range componentSecretsMap {
 		component := builders.
-			NewApplicationComponentBuilder().
+			NewDeployComponentBuilder().
 			WithName(componentName).
-			WithSecrets(raComponentSecrets...)
-		raComponentBuilders = append(raComponentBuilders, component)
+			WithSecrets(componentSecrets)
+		componentBuilders = append(componentBuilders, component)
 	}
-	commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
+	commonTestUtils.ApplyDeployment(builders.
+		NewDeploymentBuilder().
+		WithRadixApplication(builders.ARadixApplication()).
 		WithAppName(anyAppName).
-		WithEnvironment(environmentName, buildFrom).
-		WithComponents(raComponentBuilders...))
+		WithEnvironment(environmentName).
+		WithComponents(componentBuilders...))
 
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -624,9 +625,9 @@ func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
 	secretB := "b"
 	secretC := "c"
 
-	raComponentSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentSecrets,
+	componentSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentSecrets,
 	}
 
 	clusterComponentSecrets := map[string][]byte{
@@ -638,7 +639,7 @@ func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
 		componentOneName: clusterComponentSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 
@@ -669,9 +670,9 @@ func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 	secretC := "c"
 	secretD := "d"
 
-	raComponentSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentSecrets,
+	componentSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentSecrets,
 	}
 
 	clusterComponentSecrets := map[string][]byte{
@@ -683,7 +684,7 @@ func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 		componentOneName: clusterComponentSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 
@@ -719,9 +720,9 @@ func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
 	secretE := "e"
 	secretF := "f"
 
-	raComponentSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentSecrets,
+	componentSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentSecrets,
 	}
 
 	clusterComponentSecrets := map[string][]byte{
@@ -733,7 +734,7 @@ func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
 		componentOneName: clusterComponentSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 
@@ -773,11 +774,11 @@ func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
 	secretB := "b"
 	secretC := "c"
 
-	raComponentOneSecrets := []string{secretA, secretB, secretC}
-	raComponentTwoSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentOneSecrets,
-		componentTwoName: raComponentTwoSecrets,
+	componentOneSecrets := []string{secretA, secretB, secretC}
+	componentTwoSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentOneSecrets,
+		componentTwoName: componentTwoSecrets,
 	}
 
 	clusterComponentOneSecrets := map[string][]byte{
@@ -795,7 +796,7 @@ func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
 		componentTwoName: clusterComponentTwoSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 
@@ -836,11 +837,11 @@ func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 	secretC := "c"
 	secretD := "d"
 
-	raComponentOneSecrets := []string{secretA, secretB, secretC}
-	raComponentTwoSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentOneSecrets,
-		componentTwoName: raComponentTwoSecrets,
+	componentOneSecrets := []string{secretA, secretB, secretC}
+	componentTwoSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentOneSecrets,
+		componentTwoName: componentTwoSecrets,
 	}
 
 	clusterComponentOneSecrets := map[string][]byte{
@@ -858,7 +859,7 @@ func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 		componentTwoName: clusterComponentTwoSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 
@@ -908,11 +909,11 @@ func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	secretE := "e"
 	secretF := "f"
 
-	raComponentOneSecrets := []string{secretA, secretB, secretC}
-	raComponentTwoSecrets := []string{secretA, secretB, secretC}
-	raComponentSecretsMap := map[string][]string{
-		componentOneName: raComponentOneSecrets,
-		componentTwoName: raComponentTwoSecrets,
+	componentOneSecrets := []string{secretA, secretB, secretC}
+	componentTwoSecrets := []string{secretA, secretB, secretC}
+	componentSecretsMap := map[string][]string{
+		componentOneName: componentOneSecrets,
+		componentTwoName: componentTwoSecrets,
 	}
 
 	clusterComponentOneSecrets := map[string][]byte{
@@ -930,7 +931,7 @@ func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
 		componentTwoName: clusterComponentTwoSecrets,
 	}
 
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, raComponentSecretsMap, clusterComponentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
 	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
 

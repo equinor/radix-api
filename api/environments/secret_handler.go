@@ -74,63 +74,74 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 }
 
 // GetEnvironmentSecrets Lists environment secrets for application
-func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string, activeDeployment *deploymentModels.Deployment) ([]environmentModels.Secret, error) {
-	var appNamespace = k8sObjectUtils.GetAppNamespace(appName)
+func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]environmentModels.Secret, error) {
+	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
+
+	if err != nil {
+		return nil, err
+	}
+
+	deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return eh.GetEnvironmentSecretsForDeployment(appName, envName, deployment)
+}
+
+// GetEnvironmentSecretsForDeployment Lists environment secrets for application
+func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName string, activeDeployment *deploymentModels.Deployment) ([]environmentModels.Secret, error) {
 	var envNamespace = k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
+
+	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(activeDeployment, envNamespace)
 	if err != nil {
 		return []environmentModels.Secret{}, nil
 	}
 
-	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(activeDeployment, envNamespace)
-	if err != nil {
-		return nil, err
-	}
-
-	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
-	if err != nil {
-		return nil, err
-	}
+	// secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	secrets := make([]environmentModels.Secret, 0)
 	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
 		secrets = append(secrets, secretFromLatestDeployment)
 	}
 
-	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
-		secrets = append(secrets, secretFromTLSCertificate)
-	}
+	// for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
+	// 	secrets = append(secrets, secretFromTLSCertificate)
+	// }
 
 	return secrets, nil
 }
 
 func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *deploymentModels.Deployment, envNamespace string) (map[string]environmentModels.Secret, error) {
-	raComponentSecretsMap := make(map[string]map[string]bool)
-	for _, raComponent := range activeDeployment.Spec. {
-		if len(raComponent.Secrets) <= 0 {
+	componentSecretsMap := make(map[string]map[string]bool)
+	for _, component := range activeDeployment.Components {
+		if len(component.Secrets) <= 0 {
 			continue
 		}
 
-		raSecretNamesMap := make(map[string]bool)
-		raComponentSecrets := raComponent.Secrets
-		for _, raComponentSecretName := range raComponentSecrets {
-			raSecretNamesMap[raComponentSecretName] = true
+		secretNamesMap := make(map[string]bool)
+		componentSecrets := component.Secrets
+		for _, componentSecretName := range componentSecrets {
+			secretNamesMap[componentSecretName] = true
 		}
-		raComponentSecretsMap[raComponent.Name] = raSecretNamesMap
+		componentSecretsMap[component.Name] = secretNamesMap
 	}
 
 	secretDTOsMap := make(map[string]environmentModels.Secret)
-	for raComponentName, raSecretNamesMap := range raComponentSecretsMap {
-		secretObjectName := k8sObjectUtils.GetComponentSecretName(raComponentName)
+	for componentName, secretNamesMap := range componentSecretsMap {
+		secretObjectName := k8sObjectUtils.GetComponentSecretName(componentName)
 
 		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretObjectName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
-			for raSecretName := range raSecretNamesMap {
-				raSecretNameAndComponentName := fmt.Sprintf("%s-%s", raSecretName, raComponentName)
-				if _, exists := secretDTOsMap[raSecretNameAndComponentName]; !exists {
-					secretDTO := environmentModels.Secret{Name: raSecretName, Component: raComponentName, Status: environmentModels.Pending.String()}
-					secretDTOsMap[raSecretNameAndComponentName] = secretDTO
+			for secretName := range secretNamesMap {
+				secretNameAndComponentName := fmt.Sprintf("%s-%s", secretName, componentName)
+				if _, exists := secretDTOsMap[secretNameAndComponentName]; !exists {
+					secretDTO := environmentModels.Secret{Name: secretName, Component: componentName, Status: environmentModels.Pending.String()}
+					secretDTOsMap[secretNameAndComponentName] = secretDTO
 				}
 			}
 			continue
@@ -143,30 +154,30 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *de
 		clusterSecretEntriesMap := secret.Data
 
 		// Handle Pending secrets (exist in config, does not exist in cluster) due to no secret object entry in the cluster
-		for raSecretName := range raSecretNamesMap {
-			raSecretNameAndComponentName := fmt.Sprintf("%s-%s", raSecretName, raComponentName)
-			if _, exists := secretDTOsMap[raSecretNameAndComponentName]; exists {
+		for secretName := range secretNamesMap {
+			secretNameAndComponentName := fmt.Sprintf("%s-%s", secretName, componentName)
+			if _, exists := secretDTOsMap[secretNameAndComponentName]; exists {
 				continue
 			}
 			status := environmentModels.Consistent.String()
-			if _, exists := clusterSecretEntriesMap[raSecretName]; !exists {
+			if _, exists := clusterSecretEntriesMap[secretName]; !exists {
 				status = environmentModels.Pending.String()
 			}
-			secretDTO := environmentModels.Secret{Name: raSecretName, Component: raComponentName, Status: status}
-			secretDTOsMap[raSecretNameAndComponentName] = secretDTO
+			secretDTO := environmentModels.Secret{Name: secretName, Component: componentName, Status: status}
+			secretDTOsMap[secretNameAndComponentName] = secretDTO
 		}
 
 		// Handle Orphan secrets (exist in cluster, does not exist in config)
 		for clusterSecretName := range clusterSecretEntriesMap {
-			clusterSecretNameAndComponentName := fmt.Sprintf("%s-%s", clusterSecretName, raComponentName)
+			clusterSecretNameAndComponentName := fmt.Sprintf("%s-%s", clusterSecretName, componentName)
 			if _, exists := secretDTOsMap[clusterSecretNameAndComponentName]; exists {
 				continue
 			}
 			status := environmentModels.Consistent.String()
-			if _, exists := raSecretNamesMap[clusterSecretName]; !exists {
+			if _, exists := secretNamesMap[clusterSecretName]; !exists {
 				status = environmentModels.Orphan.String()
 			}
-			secretDTO := environmentModels.Secret{Name: clusterSecretName, Component: raComponentName, Status: status}
+			secretDTO := environmentModels.Secret{Name: clusterSecretName, Component: componentName, Status: status}
 			secretDTOsMap[clusterSecretNameAndComponentName] = secretDTO
 		}
 	}
