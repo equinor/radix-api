@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
@@ -73,7 +74,7 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 }
 
 // GetEnvironmentSecrets Lists environment secrets for application
-func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]environmentModels.Secret, error) {
+func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string, activeDeployment *deploymentModels.Deployment) ([]environmentModels.Secret, error) {
 	var appNamespace = k8sObjectUtils.GetAppNamespace(appName)
 	var envNamespace = k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
 	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
@@ -81,7 +82,7 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 		return []environmentModels.Secret{}, nil
 	}
 
-	secretsFromConfig, err := eh.getSecretsFromConfig(ra, envNamespace)
+	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(activeDeployment, envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +93,8 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 	}
 
 	secrets := make([]environmentModels.Secret, 0)
-	for _, secretFromConfig := range secretsFromConfig {
-		secrets = append(secrets, secretFromConfig)
+	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
+		secrets = append(secrets, secretFromLatestDeployment)
 	}
 
 	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
@@ -103,9 +104,9 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 	return secrets, nil
 }
 
-func (eh EnvironmentHandler) getSecretsFromConfig(ra *v1.RadixApplication, envNamespace string) (map[string]environmentModels.Secret, error) {
+func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *deploymentModels.Deployment, envNamespace string) (map[string]environmentModels.Secret, error) {
 	raComponentSecretsMap := make(map[string]map[string]bool)
-	for _, raComponent := range ra.Spec.Components {
+	for _, raComponent := range activeDeployment.Spec. {
 		if len(raComponent.Secrets) <= 0 {
 			continue
 		}
