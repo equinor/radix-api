@@ -113,18 +113,7 @@ func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.D
 
 // GetJobFromRadixJob Gets job from a radix job
 func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
-	var steps []Step
-	for _, jobStep := range job.Status.Steps {
-		step := Step{
-			Name:    jobStep.Name,
-			Status:  string(jobStep.Condition),
-			Started: utils.FormatTime(jobStep.Started),
-			Ended:   utils.FormatTime(jobStep.Ended),
-			PodName: jobStep.PodName,
-		}
-
-		steps = append(steps, step)
-	}
+	steps := GetJobStepsFromRadixJob(job)
 
 	created := utils.FormatTime(&job.CreationTimestamp)
 	if job.Status.Created != nil {
@@ -146,4 +135,22 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Deployments: jobDeployments,
 		Components:  jobComponents,
 	}
+}
+
+// GetJobStepsFromRadixJob Gets the steps from a Radix job
+func GetJobStepsFromRadixJob(job *v1.RadixJob) []Step {
+	var steps []Step
+	for _, jobStep := range job.Status.Steps {
+		step := Step{
+			Name:    jobStep.Name,
+			Status:  string(jobStep.Condition),
+			Started: utils.FormatTime(jobStep.Started),
+			Ended:   utils.FormatTime(jobStep.Ended),
+			PodName: jobStep.PodName,
+		}
+
+		steps = append(steps, step)
+	}
+
+	return steps
 }

@@ -14,7 +14,7 @@ import (
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
 func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
-	job, err := jh.userAccount.Client.BatchV1().Jobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
 	}
@@ -22,10 +22,7 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 		return nil, err
 	}
 
-	steps, err := jh.getJobStepsLegacy(appName, job)
-	if err != nil {
-		return nil, err
-	}
+	steps := jobModels.GetJobStepsFromRadixJob(job)
 
 	logs := []jobModels.StepLog{}
 	for _, step := range steps {
