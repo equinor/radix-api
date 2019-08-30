@@ -105,7 +105,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a9a88386d5dbddb9c28cd6cbf083def823d82e971c5f1af5c7248813cc815ffb"
+  digest = "1:acab524400bb96d54faafe2ea6924b0e90aa9bcd648b63403aa405d6224168be"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
@@ -134,7 +134,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "8ffc9ba7d3d334e328db459b41d01bea38c6bd25"
+  revision = "1d502f3a129349ac8bf89cb39145be7ddc595d87"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
