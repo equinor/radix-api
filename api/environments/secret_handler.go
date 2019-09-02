@@ -235,7 +235,8 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 
 func secretContained(secrets []environmentModels.Secret, theSecret environmentModels.Secret) bool {
 	for _, aSecret := range secrets {
-		if aSecret.Name == theSecret.Name {
+		if aSecret.Name == theSecret.Name &&
+			aSecret.Component == theSecret.Component {
 			return true
 		}
 	}
