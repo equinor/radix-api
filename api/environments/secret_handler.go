@@ -91,26 +91,34 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 
 // GetEnvironmentSecretsForDeployment Lists environment secrets for application
 func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName string, activeDeployment *deploymentModels.Deployment) ([]environmentModels.Secret, error) {
+	var appNamespace = k8sObjectUtils.GetAppNamespace(appName)
 	var envNamespace = k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
+	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return []environmentModels.Secret{}, nil
+	}
 
 	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(activeDeployment, envNamespace)
 	if err != nil {
 		return []environmentModels.Secret{}, nil
 	}
 
-	// secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	secrets := make([]environmentModels.Secret, 0)
-	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
-		secrets = append(secrets, secretFromLatestDeployment)
+	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
+	if err != nil {
+		return nil, err
 	}
 
-	// for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
-	// 	secrets = append(secrets, secretFromTLSCertificate)
-	// }
+	secrets := make([]environmentModels.Secret, 0)
+	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
+		secrets = append(secrets, secretFromTLSCertificate)
+	}
+
+	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
+		// TLS Certificate secrets may allready exist in the list
+		if !secretContained(secrets, secretFromLatestDeployment) {
+			secrets = append(secrets, secretFromLatestDeployment)
+		}
+	}
 
 	return secrets, nil
 }
@@ -223,4 +231,13 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 	}
 
 	return secretDTOsMap, nil
+}
+
+func secretContained(secrets []environmentModels.Secret, theSecret environmentModels.Secret) bool {
+	for _, aSecret := range secrets {
+		if aSecret.Name == theSecret.Name {
+			return true
+		}
+	}
+	return false
 }
