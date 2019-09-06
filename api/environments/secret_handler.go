@@ -98,7 +98,12 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 		return []environmentModels.Secret{}, nil
 	}
 
-	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(activeDeployment, envNamespace)
+	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(activeDeployment.Name, metav1.GetOptions{})
+	if err != nil {
+		return []environmentModels.Secret{}, nil
+	}
+
+	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(rd, envNamespace)
 	if err != nil {
 		return []environmentModels.Secret{}, nil
 	}
@@ -114,18 +119,15 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 	}
 
 	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
-		// TLS Certificate secrets may allready exist in the list
-		if !secretContained(secrets, secretFromLatestDeployment) {
-			secrets = append(secrets, secretFromLatestDeployment)
-		}
+		secrets = append(secrets, secretFromLatestDeployment)
 	}
 
 	return secrets, nil
 }
 
-func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *deploymentModels.Deployment, envNamespace string) (map[string]environmentModels.Secret, error) {
+func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
 	componentSecretsMap := make(map[string]map[string]bool)
-	for _, component := range activeDeployment.Components {
+	for _, component := range activeDeployment.Spec.Components {
 		if len(component.Secrets) <= 0 {
 			continue
 		}
