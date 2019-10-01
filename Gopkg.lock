@@ -105,7 +105,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2cd1114e4495f348e2048e9db43ef4032980e3fef76d2051bf8df66aa5f3a801"
+  digest = "1:66ef7a87a6e266d5652ab4820dbd92a36aacf8f8f063a8660736303fb9fb3d02"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
@@ -135,7 +135,7 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "4be4d07640c99f7597d170ead3d0b08505d51612"
+  revision = "2f424df431610ccfd163e944b9be3c1c3076734e"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -940,6 +940,7 @@
   input-imports = [
     "github.com/equinor/radix-operator/pkg/apis/application",
     "github.com/equinor/radix-operator/pkg/apis/applicationconfig",
+    "github.com/equinor/radix-operator/pkg/apis/defaults",
     "github.com/equinor/radix-operator/pkg/apis/deployment",
     "github.com/equinor/radix-operator/pkg/apis/kube",
     "github.com/equinor/radix-operator/pkg/apis/pipeline",
@@ -974,6 +975,8 @@
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/runtime",
+    "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",

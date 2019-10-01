@@ -21,6 +21,11 @@ func NonExistingToEnvironment(underlyingError error) error {
 	return utils.TypeMissingError("Non existing to environment", underlyingError)
 }
 
+// NoActiveDeploymentFoundInEnvironment Deployment wasn't found
+func NoActiveDeploymentFoundInEnvironment(appName, envName string) error {
+	return utils.TypeMissingError(fmt.Sprintf("Non active deployment for %s was found in %s", appName, envName), nil)
+}
+
 // NonExistingDeployment Deployment wasn't found
 func NonExistingDeployment(underlyingError error, deploymentName string) error {
 	return utils.TypeMissingError(fmt.Sprintf("Non existing deployment %s", deploymentName), underlyingError)
