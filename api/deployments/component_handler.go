@@ -8,10 +8,12 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const radixEnvVariablePrefix = "RADIX_"
@@ -47,56 +49,73 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 
 	components := []*deploymentModels.Component{}
 	for _, component := range rd.Spec.Components {
-		var environmentVariables map[string]string
-		podNames := []string{}
-		replicaSummaryList := []deploymentModels.ReplicaSummary{}
-		status := deploymentModels.ConsistentComponent
-
-		if deployment.ActiveTo == "" {
-			// current active deployment - we get existing pods
-			pods, err := deploy.getComponentPodsByNamespace(envNs, component.Name)
-			if err != nil {
-				return nil, err
-			}
-			podNames = getPodNames(pods)
-			environmentVariables = getRadixEnvironmentVariables(pods)
-			replicaSummaryList = getReplicaSummaryList(pods)
-
-			if len(pods) == 0 {
-				status = deploymentModels.StoppedComponent
-			} else if component.Replicas != nil && len(pods) != *component.Replicas {
-				status = deploymentModels.ComponentReconciling
-			} else {
-				restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
-				if !strings.EqualFold(restarted, "") {
-					restartedTime, err := utils.ParseTimestamp(restarted)
-					if err != nil {
-						return nil, err
-					}
-
-					reconciledTime := rd.Status.Reconciled
-					if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
-						status = deploymentModels.ComponentRestarting
-					}
-				}
-			}
+		deploymentComponent, err :=
+			GetComponentStateFromSpec(deploy.kubeClient, appName, deployment, rd.Status, component)
+		if err != nil {
+			return nil, err
 		}
-
-		deploymentComponent := deploymentModels.NewComponentBuilder().
-			WithComponent(component).
-			WithStatus(status.String()).
-			WithPodNames(podNames).
-			WithReplicaSummaryList(replicaSummaryList).
-			WithRadixEnvironmentVariables(environmentVariables).
-			BuildComponent()
 
 		components = append(components, deploymentComponent)
 	}
 	return components, nil
 }
 
-func (deploy DeployHandler) getComponentPodsByNamespace(envNs, componentName string) ([]corev1.Pod, error) {
-	pods, err := deploy.kubeClient.CoreV1().Pods(envNs).List(metav1.ListOptions{
+// GetComponentStateFromSpec Returns a component with the current state
+func GetComponentStateFromSpec(
+	client kubernetes.Interface,
+	appName string,
+	deployment *deploymentModels.DeploymentSummary,
+	deploymentStatus v1.RadixDeployStatus,
+	component v1.RadixDeployComponent) (*deploymentModels.Component, error) {
+
+	var environmentVariables map[string]string
+
+	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
+	podNames := []string{}
+	replicaSummaryList := []deploymentModels.ReplicaSummary{}
+	status := deploymentModels.ConsistentComponent
+
+	if deployment.ActiveTo == "" {
+		// current active deployment - we get existing pods
+		pods, err := getComponentPodsByNamespace(client, envNs, component.Name)
+		if err != nil {
+			return nil, err
+		}
+		podNames = getPodNames(pods)
+		environmentVariables = getRadixEnvironmentVariables(pods)
+		replicaSummaryList = getReplicaSummaryList(pods)
+
+		if len(pods) == 0 {
+			status = deploymentModels.StoppedComponent
+		} else if component.Replicas != nil && len(pods) != *component.Replicas {
+			status = deploymentModels.ComponentReconciling
+		} else {
+			restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
+			if !strings.EqualFold(restarted, "") {
+				restartedTime, err := utils.ParseTimestamp(restarted)
+				if err != nil {
+					return nil, err
+				}
+
+				reconciledTime := deploymentStatus.Reconciled
+				if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
+					status = deploymentModels.ComponentRestarting
+				}
+			}
+		}
+	}
+
+	return deploymentModels.NewComponentBuilder().
+		WithComponent(component).
+		WithStatus(status.String()).
+		WithPodNames(podNames).
+		WithReplicaSummaryList(replicaSummaryList).
+		WithRadixEnvironmentVariables(environmentVariables).
+		BuildComponent(), nil
+}
+
+func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
+	pods, err := client.CoreV1().Pods(envNs).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
