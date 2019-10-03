@@ -83,7 +83,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 		return err
 	}
 
-	if !strings.EqualFold(componentState.Status, deploymentModels.ConsistentComponent.String()) {
+	if !strings.EqualFold(componentState.Status, deploymentModels.StoppedComponent.String()) {
 		return environmentModels.CannotStartComponent(appName, componentName, componentState.Status)
 	}
 
@@ -121,7 +121,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	}
 
 	if !strings.EqualFold(componentState.Status, deploymentModels.ConsistentComponent.String()) {
-		return environmentModels.CannotStartComponent(appName, componentName, componentState.Status)
+		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
 	}
 
 	err = eh.updateRestartEnvironmentVariableOnRD(appName, rd, index, componentToUpdate)
