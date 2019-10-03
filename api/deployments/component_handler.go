@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -48,6 +50,7 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 		var environmentVariables map[string]string
 		podNames := []string{}
 		replicaSummaryList := []deploymentModels.ReplicaSummary{}
+		status := deploymentModels.ConsistentComponent
 
 		if deployment.ActiveTo == "" {
 			// current active deployment - we get existing pods
@@ -58,10 +61,30 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 			podNames = getPodNames(pods)
 			environmentVariables = getRadixEnvironmentVariables(pods)
 			replicaSummaryList = getReplicaSummaryList(pods)
+
+			if len(pods) == 0 {
+				status = deploymentModels.StoppedComponent
+			} else if component.Replicas != nil && len(pods) != *component.Replicas {
+				status = deploymentModels.ComponentReconciling
+			} else {
+				restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
+				if !strings.EqualFold(restarted, "") {
+					restartedTime, err := utils.ParseTimestamp(restarted)
+					if err != nil {
+						return nil, err
+					}
+
+					reconciledTime := rd.Status.Reconciled
+					if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
+						status = deploymentModels.ComponentRestarting
+					}
+				}
+			}
 		}
 
 		deploymentComponent := deploymentModels.NewComponentBuilder().
 			WithComponent(component).
+			WithStatus(status.String()).
 			WithPodNames(podNames).
 			WithReplicaSummaryList(replicaSummaryList).
 			WithRadixEnvironmentVariables(environmentVariables).
