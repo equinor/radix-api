@@ -1020,7 +1020,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	// a stopped state and cannot be stopped
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.StoppedComponent.String())
+	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	// Create pod
@@ -1060,7 +1060,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	// a reconciling state and cannot be restarted
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
-	expectedError = environmentModels.CannotRestartComponent(anyAppName, anyComponentName, deploymentModels.StoppedComponent.String())
+	expectedError = environmentModels.CannotRestartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
 	// Emulate a started component

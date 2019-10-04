@@ -137,7 +137,8 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 }
 
 func runningReplicaDifferFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
-	return (environmentConfig != nil && environmentConfig.Replicas != nil && len(actualPods) != *environmentConfig.Replicas) || (len(actualPods) != deployment.DefaultReplicas)
+	return (environmentConfig != nil && environmentConfig.Replicas != nil && len(actualPods) != *environmentConfig.Replicas) ||
+		((environmentConfig == nil || environmentConfig.Replicas == nil) && len(actualPods) != deployment.DefaultReplicas)
 }
 
 func runningReplicaDifferFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
