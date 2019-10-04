@@ -416,7 +416,7 @@ func StopComponent(clients models.Clients, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	utils.JSONResponse(w, r, "Success")
 }
 
 // StartComponent Starts job
@@ -469,7 +469,7 @@ func StartComponent(clients models.Clients, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	utils.JSONResponse(w, r, "Success")
 }
 
 // RestartComponent Restarts job
@@ -522,5 +522,5 @@ func RestartComponent(clients models.Clients, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	utils.JSONResponse(w, r, "Success")
 }
