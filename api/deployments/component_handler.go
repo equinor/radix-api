@@ -85,10 +85,10 @@ func GetComponentStateFromSpec(
 		environmentVariables = getRadixEnvironmentVariables(pods)
 		replicaSummaryList = getReplicaSummaryList(pods)
 
-		if len(pods) == 0 {
-			status = deploymentModels.StoppedComponent
-		} else if component.Replicas != nil && len(pods) != *component.Replicas {
+		if component.Replicas != nil && len(pods) != *component.Replicas {
 			status = deploymentModels.ComponentReconciling
+		} else if len(pods) == 0 {
+			status = deploymentModels.StoppedComponent
 		} else {
 			restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
 			if !strings.EqualFold(restarted, "") {
@@ -161,11 +161,13 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 		if len(pod.Status.ContainerStatuses) > 0 {
 			// We assume one component container per component pod
 			containerState := pod.Status.ContainerStatuses[0].State
+
+			// Set default Pending status
+			replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Pending.String()}
+
 			if containerState.Waiting != nil {
 				replicaSummary.StatusMessage = containerState.Waiting.Message
-				if strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
-					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Pending.String()}
-				} else {
+				if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
 					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Failing.String()}
 				}
 			}
