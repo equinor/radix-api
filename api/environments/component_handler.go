@@ -126,7 +126,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
 	}
 
-	err = eh.updateRestartEnvironmentVariableOnRD(appName, rd, index, componentToUpdate)
+	err = eh.patchRestartEnvironmentVariableOnRD(appName, rd, index, componentToUpdate)
 	if err != nil {
 		return err
 	}
@@ -181,8 +181,14 @@ func getEnvironment(component *v1.RadixComponent, envName string) *v1.RadixEnvir
 	return nil
 }
 
-func (eh EnvironmentHandler) updateRestartEnvironmentVariableOnRD(appName string,
+func (eh EnvironmentHandler) patchRestartEnvironmentVariableOnRD(appName string,
 	rd *v1.RadixDeployment, componentIndex int, componentToUpdate *v1.RadixDeployComponent) error {
+
+	oldJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
+
 	environmentVariables := componentToUpdate.EnvironmentVariables
 	if environmentVariables == nil {
 		environmentVariables = make(map[string]string)
@@ -190,9 +196,15 @@ func (eh EnvironmentHandler) updateRestartEnvironmentVariableOnRD(appName string
 
 	environmentVariables[defaults.RadixRestartEnvironmentVariable] = utils.FormatTimestamp(time.Now())
 	rd.Spec.Components[componentIndex].EnvironmentVariables = environmentVariables
-	_, err := eh.radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Update(rd)
+
+	newJSON, err := json.Marshal(rd)
 	if err != nil {
-		return fmt.Errorf("Failed to update deployment object: %v", err)
+		return err
+	}
+
+	err = eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -211,14 +223,27 @@ func (eh EnvironmentHandler) patchReplicasOnRD(appName string, rd *v1.RadixDeplo
 
 	rd.Spec.Components[componentIndex].Replicas = &newReplica
 	newJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
 
+	err = eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (eh EnvironmentHandler) patch(namespace, name string, oldJSON, newJSON []byte) error {
 	patchBytes, err := jsonpatch.CreateMergePatch(oldJSON, newJSON)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	if patchBytes != nil {
-		_, err := eh.radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Patch(rd.GetName(), types.JSONPatchType, patchBytes)
+		_, err := eh.radixclient.RadixV1().RadixDeployments(namespace).Patch(name, types.MergePatchType, patchBytes)
 		if err != nil {
 			return fmt.Errorf("Failed to patch deployment object: %v", err)
 		}
