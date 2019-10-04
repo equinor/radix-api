@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	jsonpatch "github.com/evanphx/json-patch"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,7 +48,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 
 	log.Infof("Stopping component %s, %s", componentName, appName)
 	noReplicas := 0
-	err = eh.patchReplicasOnRD(appName, rd.GetNamespace(), rd.GetName(), index, &noReplicas)
+	err = eh.patchReplicasOnRD(appName, rd, index, &noReplicas)
 	if err != nil {
 		return err
 	}
@@ -88,7 +90,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	}
 
 	log.Infof("Starting component %s, %s", componentName, appName)
-	err = eh.patchReplicasOnRD(appName, rd.GetNamespace(), rd.GetName(), index, replicas)
+	err = eh.patchReplicasOnRD(appName, rd, index, replicas)
 	if err != nil {
 		return err
 	}
@@ -135,12 +137,16 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 func getReplicasForComponentInEnvironment(ra *v1.RadixApplication, envName, componentName string) (*int, error) {
 	componentDefinition := getComponentDefinition(ra, componentName)
 
+	if componentDefinition == nil {
+		return nil, environmentModels.NonExistingComponent(ra.GetName(), componentName)
+	}
+
 	environmentConfig := getEnvironment(componentDefinition, envName)
 	if environmentConfig != nil {
 		return environmentConfig.Replicas, nil
 	}
 
-	return nil, environmentModels.NonExistingComponent(ra.GetName(), componentName)
+	return nil, nil
 }
 
 func getComponentDefinition(ra *v1.RadixApplication, name string) *v1.RadixComponent {
@@ -192,19 +198,27 @@ func (eh EnvironmentHandler) updateRestartEnvironmentVariableOnRD(appName string
 	return nil
 }
 
-func (eh EnvironmentHandler) patchReplicasOnRD(appName, namespace, name string, componentIndex int, replicas *int) error {
-	var patchBytes []byte
+func (eh EnvironmentHandler) patchReplicasOnRD(appName string, rd *v1.RadixDeployment, componentIndex int, replicas *int) error {
+	oldJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
 
 	newReplica := 1
 	if replicas != nil {
 		newReplica = *replicas
 	}
 
-	patchJSON := fmt.Sprintf(`[{"op": "replace", "path": "/spec/components/%d/replicas","value": %d}]`, componentIndex, newReplica)
-	patchBytes = []byte(patchJSON)
+	rd.Spec.Components[componentIndex].Replicas = &newReplica
+	newJSON, err := json.Marshal(rd)
+
+	patchBytes, err := jsonpatch.CreateMergePatch(oldJSON, newJSON)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	if patchBytes != nil {
-		_, err := eh.radixclient.RadixV1().RadixDeployments(namespace).Patch(name, types.JSONPatchType, patchBytes)
+		_, err := eh.radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Patch(rd.GetName(), types.JSONPatchType, patchBytes)
 		if err != nil {
 			return fmt.Errorf("Failed to patch deployment object: %v", err)
 		}
