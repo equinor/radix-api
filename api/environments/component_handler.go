@@ -10,7 +10,9 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	jsonpatch "github.com/evanphx/json-patch"
@@ -32,12 +34,15 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 		return err
 	}
 
-	index, componentToPatch := getDeploymentComponent(rd, componentName)
+	index, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
 	if componentToPatch == nil {
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, *componentToPatch)
+	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -69,18 +74,20 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 		return err
 	}
 
-	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
-	replicas, err := getReplicasForComponentInEnvironment(ra, envName, componentName)
-	if err != nil {
-		return err
-	}
-
-	index, componentToPatch := getDeploymentComponent(rd, componentName)
+	index, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
 	if componentToPatch == nil {
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, *componentToPatch)
+	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+
+	replicas, err := getReplicasForComponentInEnvironment(environmentConfig)
+	if err != nil {
+		return err
+	}
+
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -112,12 +119,15 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return err
 	}
 
-	index, componentToUpdate := getDeploymentComponent(rd, componentName)
-	if componentToUpdate == nil {
+	index, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
+	if componentToPatch == nil {
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, *componentToUpdate)
+	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -126,7 +136,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
 	}
 
-	err = eh.patchRestartEnvironmentVariableOnRD(appName, rd, index, componentToUpdate)
+	err = eh.patchRestartEnvironmentVariableOnRD(appName, rd, index, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -134,14 +144,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	return nil
 }
 
-func getReplicasForComponentInEnvironment(ra *v1.RadixApplication, envName, componentName string) (*int, error) {
-	componentDefinition := getComponentDefinition(ra, componentName)
-
-	if componentDefinition == nil {
-		return nil, environmentModels.NonExistingComponent(ra.GetName(), componentName)
-	}
-
-	environmentConfig := getEnvironment(componentDefinition, envName)
+func getReplicasForComponentInEnvironment(environmentConfig *v1.RadixEnvironmentConfig) (*int, error) {
 	if environmentConfig != nil {
 		return environmentConfig.Replicas, nil
 	}
@@ -149,47 +152,15 @@ func getReplicasForComponentInEnvironment(ra *v1.RadixApplication, envName, comp
 	return nil, nil
 }
 
-func getComponentDefinition(ra *v1.RadixApplication, name string) *v1.RadixComponent {
-	for _, component := range ra.Spec.Components {
-		if strings.EqualFold(component.Name, name) {
-			return &component
-		}
-	}
-
-	return nil
-}
-
-func getDeploymentComponent(rd *v1.RadixDeployment, name string) (int, *v1.RadixDeployComponent) {
-	for index, component := range rd.Spec.Components {
-		if strings.EqualFold(component.Name, name) {
-			return index, &component
-		}
-	}
-
-	return -1, nil
-}
-
-func getEnvironment(component *v1.RadixComponent, envName string) *v1.RadixEnvironmentConfig {
-	if component != nil {
-		for _, environment := range component.EnvironmentConfig {
-			if strings.EqualFold(environment.Environment, envName) {
-				return &environment
-			}
-		}
-	}
-
-	return nil
-}
-
 func (eh EnvironmentHandler) patchRestartEnvironmentVariableOnRD(appName string,
-	rd *v1.RadixDeployment, componentIndex int, componentToUpdate *v1.RadixDeployComponent) error {
+	rd *v1.RadixDeployment, componentIndex int, componentToPatch *v1.RadixDeployComponent) error {
 
 	oldJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
 	}
 
-	environmentVariables := componentToUpdate.EnvironmentVariables
+	environmentVariables := componentToPatch.EnvironmentVariables
 	if environmentVariables == nil {
 		environmentVariables = make(map[string]string)
 	}

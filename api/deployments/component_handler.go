@@ -7,7 +7,9 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
@@ -47,10 +49,15 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 		return nil, err
 	}
 
+	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+
 	components := []*deploymentModels.Component{}
 	for _, component := range rd.Spec.Components {
+
+		environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.Name)
+
 		deploymentComponent, err :=
-			GetComponentStateFromSpec(deploy.kubeClient, appName, deployment, rd.Status, component)
+			GetComponentStateFromSpec(deploy.kubeClient, appName, deployment, rd.Status, environmentConfig, component)
 		if err != nil {
 			return nil, err
 		}
@@ -66,6 +73,7 @@ func GetComponentStateFromSpec(
 	appName string,
 	deployment *deploymentModels.DeploymentSummary,
 	deploymentStatus v1.RadixDeployStatus,
+	environmentConfig *v1.RadixEnvironmentConfig,
 	component v1.RadixDeployComponent) (*deploymentModels.Component, error) {
 
 	var environmentVariables map[string]string
@@ -85,10 +93,10 @@ func GetComponentStateFromSpec(
 		environmentVariables = getRadixEnvironmentVariables(pods)
 		replicaSummaryList = getReplicaSummaryList(pods)
 
-		if component.Replicas != nil && len(pods) != *component.Replicas {
-			status = deploymentModels.ComponentReconciling
-		} else if len(pods) == 0 {
+		if runningReplicaDifferFromConfig(environmentConfig, pods) && len(pods) == 0 {
 			status = deploymentModels.StoppedComponent
+		} else if runningReplicaDifferFromSpec(component, pods) {
+			status = deploymentModels.ComponentReconciling
 		} else {
 			restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
 			if !strings.EqualFold(restarted, "") {
@@ -124,6 +132,14 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 	}
 
 	return pods.Items, nil
+}
+
+func runningReplicaDifferFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
+	return (environmentConfig != nil && environmentConfig.Replicas != nil && len(actualPods) != *environmentConfig.Replicas) || (len(actualPods) != deployment.DefaultReplicas)
+}
+
+func runningReplicaDifferFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
+	return (component.Replicas != nil && len(actualPods) != *component.Replicas) || (len(actualPods) != deployment.DefaultReplicas)
 }
 
 func getPodNames(pods []corev1.Pod) []string {
