@@ -6,10 +6,10 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
@@ -93,7 +93,9 @@ func GetComponentStateFromSpec(
 		environmentVariables = getRadixEnvironmentVariables(pods)
 		replicaSummaryList = getReplicaSummaryList(pods)
 
-		if runningReplicaDifferFromConfig(environmentConfig, pods) && len(pods) == 0 {
+		if runningReplicaDifferFromConfig(environmentConfig, pods) &&
+			!runningReplicaDifferFromSpec(component, pods) &&
+			len(pods) == 0 {
 			status = deploymentModels.StoppedComponent
 		} else if runningReplicaDifferFromSpec(component, pods) {
 			status = deploymentModels.ComponentReconciling
@@ -139,7 +141,8 @@ func runningReplicaDifferFromConfig(environmentConfig *v1.RadixEnvironmentConfig
 }
 
 func runningReplicaDifferFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
-	return (component.Replicas != nil && len(actualPods) != *component.Replicas) || (len(actualPods) != deployment.DefaultReplicas)
+	return (component.Replicas != nil && len(actualPods) != *component.Replicas) ||
+		(component.Replicas == nil && len(actualPods) != deployment.DefaultReplicas)
 }
 
 func getPodNames(pods []corev1.Pod) []string {
