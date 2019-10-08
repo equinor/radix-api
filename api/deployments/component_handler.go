@@ -93,25 +93,10 @@ func GetComponentStateFromSpec(
 		environmentVariables = getRadixEnvironmentVariables(pods)
 		replicaSummaryList = getReplicaSummaryList(pods)
 
-		if runningReplicaDifferFromConfig(environmentConfig, pods) &&
-			!runningReplicaDifferFromSpec(component, pods) &&
-			len(pods) == 0 {
-			status = deploymentModels.StoppedComponent
-		} else if runningReplicaDifferFromSpec(component, pods) {
-			status = deploymentModels.ComponentReconciling
-		} else {
-			restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
-			if !strings.EqualFold(restarted, "") {
-				restartedTime, err := utils.ParseTimestamp(restarted)
-				if err != nil {
-					return nil, err
-				}
-
-				reconciledTime := deploymentStatus.Reconciled
-				if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
-					status = deploymentModels.ComponentRestarting
-				}
-			}
+		status, err = getStatusOfActiveDeployment(component,
+			deploymentStatus, environmentConfig, pods)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -203,4 +188,36 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 	}
 
 	return replicaSummaryList
+}
+
+func getStatusOfActiveDeployment(
+	component v1.RadixDeployComponent,
+	deploymentStatus v1.RadixDeployStatus,
+	environmentConfig *v1.RadixEnvironmentConfig,
+	pods []corev1.Pod) (deploymentModels.ComponentStatus, error) {
+
+	status := deploymentModels.ConsistentComponent
+
+	if runningReplicaDifferFromConfig(environmentConfig, pods) &&
+		!runningReplicaDifferFromSpec(component, pods) &&
+		len(pods) == 0 {
+		status = deploymentModels.StoppedComponent
+	} else if runningReplicaDifferFromSpec(component, pods) {
+		status = deploymentModels.ComponentReconciling
+	} else {
+		restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
+		if !strings.EqualFold(restarted, "") {
+			restartedTime, err := utils.ParseTimestamp(restarted)
+			if err != nil {
+				return status, err
+			}
+
+			reconciledTime := deploymentStatus.Reconciled
+			if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
+				status = deploymentModels.ComponentRestarting
+			}
+		}
+	}
+
+	return status, nil
 }
