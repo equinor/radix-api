@@ -52,6 +52,21 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Method:      "PUT",
 			HandlerFunc: ChangeEnvironmentComponentSecret,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
+			Method:      "POST",
+			HandlerFunc: StopComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/start",
+			Method:      "POST",
+			HandlerFunc: StartComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
+			Method:      "POST",
+			HandlerFunc: RestartComponent,
+		},
 	}
 
 	return routes
@@ -343,6 +358,165 @@ func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWri
 	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
 
 	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, "Success")
+}
+
+// StopComponent Stops job
+func StopComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/stop component stopComponent
+	// ---
+	// summary: Stops component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Component stopped ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	err := environmentHandler.StopComponent(appName, envName, componentName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, "Success")
+}
+
+// StartComponent Starts job
+func StartComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
+	// ---
+	// summary: Start component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Component started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	err := environmentHandler.StartComponent(appName, envName, componentName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, "Success")
+}
+
+// RestartComponent Restarts job
+func RestartComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/restart component restartComponent
+	// ---
+	// summary: Restart component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Component started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	err := environmentHandler.RestartComponent(appName, envName, componentName)
+
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
