@@ -126,7 +126,7 @@ func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfi
 		((environmentConfig == nil || environmentConfig.Replicas == nil) && len(actualPods) != deployment.DefaultReplicas)
 }
 
-func runningReplicaDifferFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
+func runningReplicaDiffersFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
 	return (component.Replicas != nil && len(actualPods) != *component.Replicas) ||
 		(component.Replicas == nil && len(actualPods) != deployment.DefaultReplicas)
 }
