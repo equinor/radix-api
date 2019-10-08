@@ -11,6 +11,11 @@ func NonExistingApplication(underlyingError error, appName string) error {
 	return utils.TypeMissingError(fmt.Sprintf("Unable to get application for app %s", appName), underlyingError)
 }
 
+// IllegalEmptyEnvironment From environment does not exist
+func IllegalEmptyEnvironment() error {
+	return utils.ValidationError("Radix Deployment", "Environment cannot be empty")
+}
+
 // NonExistingFromEnvironment From environment does not exist
 func NonExistingFromEnvironment(underlyingError error) error {
 	return utils.TypeMissingError("Non existing from environment", underlyingError)

@@ -64,11 +64,11 @@ func (deploy DeployHandler) GetDeploymentsForApplication(appName string, latest 
 
 // GetLatestDeploymentForApplicationEnvironment Gets latest, active, deployment in environment
 func (deploy DeployHandler) GetLatestDeploymentForApplicationEnvironment(appName, environment string) (*deploymentModels.DeploymentSummary, error) {
-	var namespace = corev1.NamespaceAll
-	if strings.TrimSpace(environment) != "" {
-		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
+	if strings.TrimSpace(environment) == "" {
+		return nil, deploymentModels.IllegalEmptyEnvironment()
 	}
 
+	namespace := crdUtils.GetEnvironmentNamespace(appName, environment)
 	deploymentSummaries, err := deploy.getDeployments(namespace, appName, "", true)
 	if err == nil && len(deploymentSummaries) == 1 {
 		return deploymentSummaries[0], nil
