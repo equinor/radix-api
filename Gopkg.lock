@@ -105,7 +105,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:66ef7a87a6e266d5652ab4820dbd92a36aacf8f8f063a8660736303fb9fb3d02"
+  digest = "1:69a26a59fd2516f0f1b3bb3f7c8211a1dcd5c9c8b0efe334e54fc4ede2104849"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
@@ -135,7 +135,15 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "2f424df431610ccfd163e944b9be3c1c3076734e"
+  revision = "380e226e7f8370e8e951107bd1c333726a0edf2e"
+
+[[projects]]
+  digest = "1:46ddeb9dd35d875ac7568c4dc1fc96ce424e034bdbb984239d8ffc151398ec01"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = ""
+  revision = "026c730a0dcc5d11f93f1cf1cc65b01247ea7b6f"
+  version = "v4.5.0"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -952,6 +960,7 @@
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned",
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake",
     "github.com/equinor/radix-operator/pkg/client/informers/externalversions",
+    "github.com/evanphx/json-patch",
     "github.com/golang/gddo/httputil/header",
     "github.com/googollee/go-socket.io",
     "github.com/gorilla/mux",
@@ -976,7 +985,6 @@
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/types",
-    "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
