@@ -14,7 +14,9 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -986,4 +988,113 @@ func contains(secrets []environmentModels.Secret, name string) bool {
 		}
 	}
 	return false
+}
+
+func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+
+	anyAppName := "any-app"
+	anyEnvironment := "dev"
+
+	rd, _ := commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithRadixApplication(builders.
+			ARadixApplication().
+			WithRadixRegistration(builders.ARadixRegistration()).
+			WithAppName(anyAppName).
+			WithEnvironment(anyEnvironment, "master")).
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment))
+
+	componentName := rd.Spec.Components[0].Name
+
+	// Test
+	zeroReplicas := 0
+	assert.True(t, *rd.Spec.Components[0].Replicas > zeroReplicas)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
+	response := <-responseChannel
+
+	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+	// a stopped state and cannot be stopped
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	// Create pod
+	createComponentPod(client, rd.GetNamespace(), componentName)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	assert.True(t, *updatedRd.Spec.Components[0].Replicas == zeroReplicas)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+
+	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+	// a reconciling state and cannot be started
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	expectedError = environmentModels.CannotStartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	// Emulate a stopped component
+	deleteComponentPod(client, rd.GetNamespace(), componentName)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+
+	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+	// a reconciling state and cannot be restarted
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	expectedError = environmentModels.CannotRestartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	// Emulate a started component
+	createComponentPod(client, rd.GetNamespace(), componentName)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
+	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+}
+
+func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
+	podSpec := getPodSpec(componentName)
+	kubeclient.CoreV1().Pods(namespace).Create(podSpec)
+}
+
+func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
+	kubeclient.CoreV1().Pods(namespace).Delete(getComponentPodName(componentName), &metav1.DeleteOptions{})
+}
+
+func getPodSpec(componentName string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: getComponentPodName(componentName),
+			Labels: map[string]string{
+				kube.RadixComponentLabel: componentName,
+			},
+		},
+	}
+}
+
+func getComponentPodName(componentName string) string {
+	return fmt.Sprintf("%s-pod", componentName)
 }

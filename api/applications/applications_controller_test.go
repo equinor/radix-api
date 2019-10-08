@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -34,7 +36,7 @@ const (
 	clusterName       = "AnyClusterName"
 	containerRegistry = "any.container.registry"
 	dnsZone           = "dev.radix.equinor.com"
-	appAliasDNSZone   = ".app.dev.radix.equinor.com"
+	appAliasDNSZone   = "app.dev.radix.equinor.com"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset) {
@@ -45,6 +47,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }))
