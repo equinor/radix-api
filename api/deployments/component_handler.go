@@ -102,7 +102,7 @@ func GetComponentStateFromSpec(
 
 	return deploymentModels.NewComponentBuilder().
 		WithComponent(component).
-		WithStatus(status.String()).
+		WithStatus(status).
 		WithPodNames(podNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).

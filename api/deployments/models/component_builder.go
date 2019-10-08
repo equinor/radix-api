@@ -11,7 +11,7 @@ const (
 
 // ComponentBuilder Builds DTOs
 type ComponentBuilder interface {
-	WithStatus(string) ComponentBuilder
+	WithStatus(ComponentStatus) ComponentBuilder
 	WithPodNames([]string) ComponentBuilder
 	WithReplicaSummaryList([]ReplicaSummary) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
@@ -22,7 +22,7 @@ type ComponentBuilder interface {
 
 type componentBuilder struct {
 	componentName             string
-	status                    string
+	status                    ComponentStatus
 	componentImage            string
 	podNames                  []string
 	replicaSummaryList        []ReplicaSummary
@@ -32,7 +32,7 @@ type componentBuilder struct {
 	ports                     []Port
 }
 
-func (b *componentBuilder) WithStatus(status string) ComponentBuilder {
+func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
 	b.status = status
 	return b
 }
@@ -100,7 +100,7 @@ func (b *componentBuilder) BuildComponent() *Component {
 
 	return &Component{
 		Name:        b.componentName,
-		Status:      b.status,
+		Status:      b.status.String(),
 		Image:       b.componentImage,
 		Ports:       b.ports,
 		Secrets:     b.secrets,
