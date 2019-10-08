@@ -136,7 +136,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
 	}
 
-	err = eh.patchRestartEnvironmentVariableOnRD(appName, rd, index, componentToPatch)
+	err = eh.patchRdForRestart(appName, rd, index, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func getReplicasForComponentInEnvironment(environmentConfig *v1.RadixEnvironment
 	return nil, nil
 }
 
-func (eh EnvironmentHandler) patchRestartEnvironmentVariableOnRD(appName string,
+func (eh EnvironmentHandler) patchRdForRestart(appName string,
 	rd *v1.RadixDeployment, componentIndex int, componentToPatch *v1.RadixDeployComponent) error {
 
 	oldJSON, err := json.Marshal(rd)

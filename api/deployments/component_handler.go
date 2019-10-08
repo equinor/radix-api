@@ -198,11 +198,11 @@ func getStatusOfActiveDeployment(
 
 	status := deploymentModels.ConsistentComponent
 
-	if runningReplicaDifferFromConfig(environmentConfig, pods) &&
-		!runningReplicaDifferFromSpec(component, pods) &&
+	if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
+		!runningReplicaDiffersFromSpec(component, pods) &&
 		len(pods) == 0 {
 		status = deploymentModels.StoppedComponent
-	} else if runningReplicaDifferFromSpec(component, pods) {
+	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
 		restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
