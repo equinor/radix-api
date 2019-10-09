@@ -1,4 +1,4 @@
-name: Go
+name: radix-api-pr
 on:
   pull_request:
     branches:
