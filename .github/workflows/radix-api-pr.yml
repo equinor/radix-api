@@ -23,12 +23,15 @@ jobs:
         path: go/src/github.com/equinor/radix-api
 
     - name: Get dependencies
-      run: |        
+      run: |
+        export PATH=$PATH:$(go env GOPATH)/bin        
         go get -u github.com/golang/dep/cmd/dep
         dep ensure -vendor-only
         
     - name: Linting
       run: |
+        export PATH=$PATH:$(go env GOPATH)/bin
+        go get -u golang.org/x/lint/golint
         golint `go list ./...`
       
     - name: Vetting
