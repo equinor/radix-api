@@ -24,26 +24,26 @@ jobs:
 
     - name: Get dependencies
       run: |
-        export GOPATH=/home/runner/work/go
+        export GOPATH=/home/runner/work/radix-api/go
         export PATH=$PATH:$(go env GOPATH)/bin        
         go get -u github.com/golang/dep/cmd/dep
         dep ensure -vendor-only
         
     - name: Linting
       run: |
-        export GOPATH=/home/runner/work/go
+        export GOPATH=/home/runner/work/radix-api/go
         export PATH=$PATH:$(go env GOPATH)/bin
         go get -u golang.org/x/lint/golint
         golint `go list ./...`
 
     - name: Testing
       run: |
-        export GOPATH=/home/runner/work/go
+        export GOPATH=/home/runner/work/radix-api/go
         export PATH=$PATH:$(go env GOPATH)/bin
         CGO_ENABLED=0 GOOS=linux go test ./...
 
     - name: Building
       run: |
-        export GOPATH=/home/runner/work/go
+        export GOPATH=/home/runner/work/radix-api/go
         export PATH=$PATH:$(go env GOPATH)/bin
         CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a
