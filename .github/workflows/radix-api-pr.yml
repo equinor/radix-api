@@ -21,6 +21,7 @@ jobs:
 
     - name: Get dependencies
       run: |
+        export GOBIN=$GOROOT/bin/
         curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
         dep ensure -vendor-only
         
