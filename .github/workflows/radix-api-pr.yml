@@ -28,7 +28,21 @@ jobs:
         export PATH=$PATH:$(go env GOPATH)/bin        
         go get -u github.com/golang/dep/cmd/dep
         dep ensure -vendor-only
-        
+
+    - name: Generate swagger
+      run: |
+        export GOPATH=/home/runner/work/radix-api/go
+        export PATH=$PATH:$(go env GOPATH)/bin        
+        go get -u github.com/rakyll/statik
+        # Install official release of swagger
+        export download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/16311033 | \
+        jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')
+        curl -o /usr/local/bin/swagger -L'#' "$download_url"
+        chmod +x /usr/local/bin/swagger
+        swagger generate spec -o ./swagger.json --scan-models
+        mv swagger.json ./swaggerui_src/swagger.json
+        statik -src=./swaggerui_src/ -p swaggerui
+
     - name: Linting
       run: |
         export GOPATH=/home/runner/work/radix-api/go
