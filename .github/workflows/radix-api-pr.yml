@@ -31,13 +31,33 @@ jobs:
         dep ensure -vendor-only
         
     - name: Linting
-      run: golint `go list ./...`
+      run: |
+        export GOPATH=/home/runner/work/
+        export GOBIN=$GOROOT/bin/
+        cd $GOPATH/src/radix-api
+        
+        golint `go list ./...`
       
     - name: Vetting
-      run: go vet `go list ./...`
+      run: |
+        export GOPATH=/home/runner/work/
+        export GOBIN=$GOROOT/bin/
+        cd $GOPATH/src/radix-api
+        
+        go vet `go list ./...`
 
     - name: Testing
-      run: CGO_ENABLED=0 GOOS=linux go test ./...
+      run: |
+        export GOPATH=/home/runner/work/
+        export GOBIN=$GOROOT/bin/
+        cd $GOPATH/src/radix-api
+        
+        CGO_ENABLED=0 GOOS=linux go test ./...
 
     - name: Building
-      run: CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a
+      run: |
+        export GOPATH=/home/runner/work/
+        export GOBIN=$GOROOT/bin/
+        cd $GOPATH/src/radix-api
+        
+        CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a
