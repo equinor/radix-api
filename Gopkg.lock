@@ -105,7 +105,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2cd1114e4495f348e2048e9db43ef4032980e3fef76d2051bf8df66aa5f3a801"
+  digest = "1:eba77bc4785dcf4b08c34dc8659f18aea487d087af4cc6f77b36fd5f291ae0d0"
   name = "github.com/equinor/radix-operator"
   packages = [
     "pkg/apis/application",
@@ -135,7 +135,15 @@
     "pkg/client/listers/radix/v1",
   ]
   pruneopts = ""
-  revision = "4be4d07640c99f7597d170ead3d0b08505d51612"
+  revision = "24bbfdccd8e0e056e076d7ae6020ded4f032f392"
+
+[[projects]]
+  digest = "1:46ddeb9dd35d875ac7568c4dc1fc96ce424e034bdbb984239d8ffc151398ec01"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = ""
+  revision = "026c730a0dcc5d11f93f1cf1cc65b01247ea7b6f"
+  version = "v4.5.0"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -940,6 +948,7 @@
   input-imports = [
     "github.com/equinor/radix-operator/pkg/apis/application",
     "github.com/equinor/radix-operator/pkg/apis/applicationconfig",
+    "github.com/equinor/radix-operator/pkg/apis/defaults",
     "github.com/equinor/radix-operator/pkg/apis/deployment",
     "github.com/equinor/radix-operator/pkg/apis/kube",
     "github.com/equinor/radix-operator/pkg/apis/pipeline",
@@ -951,6 +960,7 @@
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned",
     "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake",
     "github.com/equinor/radix-operator/pkg/client/informers/externalversions",
+    "github.com/evanphx/json-patch",
     "github.com/golang/gddo/httputil/header",
     "github.com/googollee/go-socket.io",
     "github.com/gorilla/mux",
@@ -974,6 +984,7 @@
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/runtime",
+    "k8s.io/apimachinery/pkg/types",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",

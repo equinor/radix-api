@@ -9,6 +9,15 @@ type Component struct {
 	// example: server
 	Name string `json:"name"`
 
+	// Status of the component
+	// required: false
+	// - Stopped = Component is stopped (no replica)
+	// - Consistent = Component is consistent with config
+	// - Restarting = User has trigged restart, but this is not reconciled
+	//
+	// example: Consistent
+	Status string `json:"status"`
+
 	// Image name
 	//
 	// required: true

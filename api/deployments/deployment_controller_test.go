@@ -335,12 +335,12 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublic(true).
-				WithReplicas(1),
+				WithReplicas(commontest.IntPtr(1)),
 			builders.NewDeployComponentBuilder().
 				WithImage("radixdev.azurecr.io/another-image:imagetag").
 				WithName("backend").
 				WithPublic(false).
-				WithReplicas(1)))
+				WithReplicas(commontest.IntPtr(1))))
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
@@ -359,7 +359,7 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 				WithImage("radixdev.azurecr.io/another-second-image:imagetag").
 				WithName("backend").
 				WithPublic(false).
-				WithReplicas(1)))
+				WithReplicas(commontest.IntPtr(1))))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployment1Name))
