@@ -92,7 +92,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
 		controllertest.GetResponseBody(response, &applications)
-		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, 2, len(applications))
 	})
 
 	t.Run("access to all app", func(t *testing.T) {
