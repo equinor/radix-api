@@ -35,6 +35,7 @@ jobs:
 
     - name: Generate swagger
       run: |
+        export GOBIN=$GOPATH/bin
         go get -u github.com/rakyll/statik
         # Install official release of swagger
         export download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/16311033 | \
