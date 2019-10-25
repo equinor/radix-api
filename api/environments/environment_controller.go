@@ -72,13 +72,6 @@ func (ec *environmentController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetSubscriptions Lists subscriptions this handler offers
-func (ec *environmentController) GetSubscriptions() models.Subscriptions {
-	subscriptions := models.Subscriptions{}
-
-	return subscriptions
-}
-
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
 func GetApplicationEnvironmentDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments

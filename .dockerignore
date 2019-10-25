@@ -3,16 +3,14 @@ charts
 docs
 
 # Vendor folders
-/vendor/cloud.google.com/*
-/vendor/github.com/*
-/vendor/golang.org/*
-/vendor/google.golang.org/*
-/vendor/gopkg.in/*
-/vendor/k8s.io/*
-
-!/vendor/github.com/equinor
+vendor
 
 .git
+.github
 bin
 Makefile
 charts
+
+debug
+swaggerui_src/swagger.json
+swaggerui/statik.go
