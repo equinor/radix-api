@@ -142,7 +142,7 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 
 func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
-	labelSelector := fmt.Sprintf("radixApp=%s", appName)
+	labelSelector := fmt.Sprintf("radix-app=%s", appName)
 
 	if strings.TrimSpace(jobName) != "" {
 		labelSelector = fmt.Sprintf(labelSelector+", %s=%s", kube.RadixJobNameLabel, jobName)

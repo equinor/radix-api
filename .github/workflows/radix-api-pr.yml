@@ -6,59 +6,53 @@ on:
 jobs:
 
   build:
+    env:	
+      GOPATH: /home/runner/work/radix-api/go
     name: Build
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.12
+    - name: Set up Go 1.11
       uses: actions/setup-go@v1
       with:
-        go-version: 1.12
+        go-version: 1.11
       id: go
 
-    - name: Check out code into the Go module directory
+    - name: Add $GOPATH/bin
+      run: |
+        echo ::add-path::$(go env GOPATH)/bin
+
+    - name: Check out code into the Go path directory
       uses: actions/checkout@v1
       with:
         fetch-depth: 1
         path: go/src/github.com/equinor/radix-api
 
     - name: Get dependencies
-      run: |
-        export GOPATH=/home/runner/work/radix-api/go
-        export PATH=$PATH:$(go env GOPATH)/bin        
+      run: |    
         go get -u github.com/golang/dep/cmd/dep
         dep ensure -vendor-only
 
     - name: Generate swagger
       run: |
-        export GOPATH=/home/runner/work/radix-api/go
         export GOBIN=$GOPATH/bin
-        export PATH=$PATH:$(go env GOPATH)/bin        
         go get -u github.com/rakyll/statik
         # Install official release of swagger
         export download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/16311033 | \
         jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url')
         curl -o $GOBIN/swagger -L'#' "$download_url"
         chmod +x $GOBIN/swagger
-        swagger generate spec -o ./swagger.json --scan-models
-        mv swagger.json ./swaggerui_src/swagger.json
-        statik -src=./swaggerui_src/ -p swaggerui
+        make swagger
 
     - name: Linting
       run: |
-        export GOPATH=/home/runner/work/radix-api/go
-        export PATH=$PATH:$(go env GOPATH)/bin
         go get -u golang.org/x/lint/golint
         golint `go list ./...`
 
     - name: Testing
       run: |
-        export GOPATH=/home/runner/work/radix-api/go
-        export PATH=$PATH:$(go env GOPATH)/bin
         CGO_ENABLED=0 GOOS=linux go test ./...
 
     - name: Building
       run: |
-        export GOPATH=/home/runner/work/radix-api/go
-        export PATH=$PATH:$(go env GOPATH)/bin
         CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a
