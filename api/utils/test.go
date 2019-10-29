@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// SyncRadixOperatorControllers syncs based on deployment builder, and default builders for application and registration.
 func SyncRadixOperatorControllers(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, deploymentBuilder builders.DeploymentBuilder) {
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
