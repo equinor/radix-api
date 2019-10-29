@@ -12,10 +12,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/application"
-	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
@@ -75,18 +72,7 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 				WithDNSExternalAlias("some.alias.com").
 				WithDNSExternalAlias("another.alias.com"))
 
-	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
-	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
-
-	kubeUtils, _ := kube.New(client, radixclient)
-	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
-	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	deployment, _ := deployment.NewDeployment(client, kubeUtils, radixclient, nil, registrationBuilder.BuildRR(), rd)
-
-	registration.OnSync()
-	applicationconfig.OnSync()
-	deployment.OnSync()
+	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
