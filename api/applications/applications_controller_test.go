@@ -784,9 +784,10 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
-	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
-	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
+	kubeUtils, _ := kube.New(client, radixclient)
+	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
+	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	deployment, _ := deployment.NewDeployment(client, kubeUtils, radixclient, nil, registrationBuilder.BuildRR(), rd)
 
 	registration.OnSync()
 	applicationconfig.OnSync()

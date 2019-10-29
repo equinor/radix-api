@@ -3,72 +3,26 @@ module github.com/equinor/radix-api
 go 1.13
 
 require (
-	cloud.google.com/go v0.36.0
-	github.com/Azure/go-autorest v10.6.2+incompatible
-	github.com/PuerkitoBio/purell v1.1.1
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
-	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
-	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
-	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
-	github.com/coreos/prometheus-operator v0.24.0
-	github.com/davecgh/go-spew v1.1.1
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/emicklei/go-restful v2.9.0+incompatible
-	github.com/equinor/radix-operator v0.0.0-20191008061129-24bbfdccd8e0
+	github.com/equinor/radix-operator v1.0.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
-	github.com/ghodss/yaml v1.0.0
-	github.com/go-openapi/jsonpointer v0.18.0
-	github.com/go-openapi/jsonreference v0.18.0
-	github.com/go-openapi/spec v0.19.0
-	github.com/go-openapi/swag v0.18.0
-	github.com/gogo/protobuf v1.2.1
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.3.0
-	github.com/google/btree v1.0.0
-	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
-	github.com/googleapis/gnostic v0.2.0
-	github.com/googollee/go-engine.io v0.0.0-20180829091931-e2f255711dcb
-	github.com/googollee/go-socket.io v0.0.0-20180921171217-25e1f67559cf
-	github.com/gophercloud/gophercloud v0.0.0-20190303224450-f83aee3da90f
 	github.com/gorilla/mux v1.7.0
-	github.com/gorilla/websocket v1.4.0
 	github.com/graphql-go/graphql v0.7.7
-	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
-	github.com/hashicorp/golang-lru v0.5.1
-	github.com/imdario/mergo v0.3.7
-	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2
-	github.com/mailru/easyjson v0.0.0-20190221075403-6243d8e04c3f
-	github.com/matttproud/golang_protobuf_extensions v1.0.1
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
-	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742
-	github.com/petar/GoLLRB v0.0.0-20130427215148-53be0d36a84c
-	github.com/peterbourgon/diskv v2.0.1+incompatible
 	github.com/pkg/errors v0.8.1
-	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v0.9.2
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
-	github.com/prometheus/common v0.2.0
-	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573
+	github.com/prometheus/client_golang v1.1.0
 	github.com/rakyll/statik v0.1.5
 	github.com/rs/cors v1.6.0
-	github.com/sirupsen/logrus v1.3.0
-	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.2.2
+	github.com/sirupsen/logrus v1.4.2
+	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.4.0
 	github.com/urfave/negroni v1.0.0
-	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
-	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
-	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
-	golang.org/x/sys v0.0.0-20190305064518-30e92a19ae4a
-	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
-	google.golang.org/appengine v1.4.0
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/inf.v0 v0.9.1
-	gopkg.in/yaml.v2 v2.2.2
-	k8s.io/api v0.0.0-20180628040859-072894a440bd
-	k8s.io/apimachinery v0.0.0-20180621070125-103fd098999d
-	k8s.io/client-go v8.0.0+incompatible
-	k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	k8s.io/api v0.0.0-20191016225839-816a9b7df678
+	k8s.io/apimachinery v0.0.0-20191020214737-6c8691705fc5
+	k8s.io/client-go v12.0.0+incompatible
+)
+
+replace (
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190818123050-43acd0e2e93f
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 )

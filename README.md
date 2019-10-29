@@ -4,14 +4,14 @@ The Radix API Server for accessing functionality on the Radix platform. Please s
 
 ## Developing
 
-You need Go and [`dep`](https://github.com/golang/dep) installed. Make sure `GOPATH` and `GOROOT` are properly set up.
+You need Go installed. Make sure `GOPATH` and `GOROOT` are properly set up.
 
 Also needed:
 
   - [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
   - [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
 
-Clone the repo into your `GOPATH` and run `dep ensure`.
+Clone the repo into your `GOPATH` and run `go mod install`.
 
 ## Common errors running locally
 
