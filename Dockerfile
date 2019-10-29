@@ -1,6 +1,8 @@
 FROM golang:alpine3.10 as builder
+ENV GO111MODULE=on
+
 RUN apk update && \
-    apk add bash jq alpine-sdk sed gawk git ca-certificates curl dep && \
+    apk add bash jq alpine-sdk sed gawk git ca-certificates curl && \
     apk add --no-cache gcc musl-dev && \
     go get -u golang.org/x/lint/golint && \
     go get -u github.com/rakyll/statik && \
@@ -13,16 +15,15 @@ RUN apk update && \
 WORKDIR /go/src/github.com/equinor/radix-api/
 
 # get dependencies
-COPY Gopkg.toml Gopkg.lock ./
-RUN dep ensure -vendor-only
+COPY go.mod go.sum ./
+RUN go mod download
 
 # copy api code
 COPY . .
 
-# Generate swagger + add default user
-# RUN swagger generate spec -o ./swagger.json --scan-models && \
-#     mv swagger.json ./swaggerui_src/swagger.json && \
-#     statik -src=./swaggerui_src/ -p swaggerui
+# Generate swagger
+RUN swagger generate spec -o ./swaggerui_src/swagger.json --scan-models && \
+    statik -src=./swaggerui_src/ -p swaggerui
 
 # lint and unit tests
 RUN golint `go list ./...` && \
