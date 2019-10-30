@@ -4,21 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	informers "github.com/equinor/radix-operator/pkg/client/informers/externalversions"
 	"github.com/graphql-go/graphql"
-
-	"k8s.io/client-go/tools/cache"
 )
 
 const rootPath = ""
@@ -90,65 +82,6 @@ func (ac *applicationController) GetRoutes() models.Routes {
 	}
 
 	return routes
-}
-
-// GetSubscriptions Lists subscriptions this controller offers
-func (ac *applicationController) GetSubscriptions() models.Subscriptions {
-	subscriptions := models.Subscriptions{
-		models.Subscription{
-			Resource:    rootPath + "/applications",
-			DataType:    "ApplicationSummary",
-			HandlerFunc: GetApplicationStream,
-		},
-	}
-
-	return subscriptions
-}
-
-// GetApplicationStream Gets stream of applications
-func GetApplicationStream(clients models.Clients, resource string, resourceIdentifiers []string, data chan []byte, unsubscribe chan struct{}) {
-	arg := `{
-			name
-			repository
-			description
-		}`
-
-	factory := informers.NewSharedInformerFactory(clients.OutClusterRadixClient, 0)
-	rrInformer := factory.Radix().V1().RadixRegistrations().Informer()
-	raInformer := factory.Radix().V1().RadixApplications().Informer()
-	rdInformer := factory.Radix().V1().RadixDeployments().Informer()
-
-	handleRR := func(obj interface{}, event string) {
-		rr := obj.(*v1.RadixRegistration)
-		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, rr.Name, crdUtils.GetGithubRepositoryURLFromCloneURL(rr.Spec.CloneURL), event)
-		data <- body
-	}
-
-	handleRA := func(obj interface{}, event string) {
-		ra := obj.(*v1.RadixApplication)
-		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, ra.Name, "", event)
-		data <- body
-	}
-
-	handleRD := func(obj interface{}, event string) {
-		rd := obj.(*v1.RadixDeployment)
-		body, _ := getSubscriptionData(clients.OutClusterRadixClient, arg, rd.Name, "", event)
-		data <- body
-	}
-
-	defaultResourceEventHandler := func(handler func(interface{}, string)) cache.ResourceEventHandler {
-		return cache.ResourceEventHandlerFuncs{
-			AddFunc:    func(obj interface{}) { handler(obj, fmt.Sprintf("%s added", reflect.TypeOf(obj))) },
-			UpdateFunc: func(old interface{}, new interface{}) { handler(new, fmt.Sprintf("%s updated", reflect.TypeOf(new))) },
-			DeleteFunc: func(obj interface{}) { handler(obj, fmt.Sprintf("%s deleted", reflect.TypeOf(obj))) },
-		}
-	}
-
-	rrInformer.AddEventHandler(defaultResourceEventHandler(handleRR))
-	raInformer.AddEventHandler(defaultResourceEventHandler(handleRA))
-	rdInformer.AddEventHandler(defaultResourceEventHandler(handleRD))
-
-	utils.StreamInformers(unsubscribe, rrInformer, raInformer, rdInformer)
 }
 
 // ShowApplications Lists applications
@@ -568,21 +501,6 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	}
 
 	utils.JSONResponse(w, r, &jobSummary)
-}
-
-func getSubscriptionData(radixclient radixclient.Interface, arg, name, repo, description string) ([]byte, error) {
-	log.Infof("%s", description)
-	radixApplication := &applicationModels.ApplicationSummary{
-		Name: name,
-	}
-
-	queryData, err := getDataFromQuery(arg, radixApplication)
-	if err != nil {
-		return nil, err
-	}
-
-	body, _ := json.Marshal(queryData)
-	return body, nil
 }
 
 func getDataFromQuery(arg string, radixApplication *applicationModels.ApplicationSummary) (*graphql.Result, error) {

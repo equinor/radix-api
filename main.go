@@ -1,26 +1,3 @@
-// Radix Api Server.
-// This is the API Server for the Radix platform.
-// Schemes: https, http
-// BasePath: /api/v1
-// Version: 0.0.102
-// Contact: https://equinor.slack.com/messages/CBKM6N2JY
-//
-// Consumes:
-// - application/json
-//
-// Produces:
-// - application/json
-//
-// SecurityDefinitions:
-//   bearer:
-//     type: apiKey
-//     name: Authorization
-//     in: header
-//
-// Security:
-// - bearer:
-//
-// swagger:meta
 package main
 
 import (
@@ -45,10 +22,13 @@ import (
 
 	// Force loading of needed authentication library
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	_ "github.com/equinor/radix-api/docs"
 )
 
 const clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
 
+//go:generate swagger generate spec
 func main() {
 	fs := initializeFlagSet()
 

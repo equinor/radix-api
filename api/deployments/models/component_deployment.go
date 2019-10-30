@@ -110,6 +110,7 @@ type ReplicaSummary struct {
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
+// swagger:model ReplicaStatus
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating
