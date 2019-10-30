@@ -11,7 +11,7 @@ Also needed:
   - [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
   - [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
 
-Clone the repo into your `GOPATH` and run `go mod install`.
+Clone the repo into your `GOPATH` and run `go mod download`.
 
 ## Common errors running locally
 
