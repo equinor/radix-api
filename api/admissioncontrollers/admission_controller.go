@@ -49,13 +49,6 @@ func (ac *admissionController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetSubscriptions Lists subscriptions this handler offers
-func (ac *admissionController) GetSubscriptions() models.Subscriptions {
-	subscriptions := models.Subscriptions{}
-
-	return subscriptions
-}
-
 type admitFunc func(client kubernetes.Interface, radixclient radixclient.Interface, ar v1beta1.AdmissionReview) (bool, error)
 
 func serve(client kubernetes.Interface, radixclient radixclient.Interface, w http.ResponseWriter, r *http.Request, admit admitFunc) {
