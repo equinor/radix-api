@@ -10,4 +10,4 @@ jobs:
     steps:
     - name: build docker image
       uses: docker
-      run: docker build -t radix-api .
+      image: Dockerfile
