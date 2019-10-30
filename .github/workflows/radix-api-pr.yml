@@ -6,7 +6,10 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: docker
+    runs-on: ubuntu-latest
     steps:
-    - name: build docker image
-      run: docker build -t radix-api .
+    - uses: actions/checkout@v1
+    - name: Build docker image
+      env:
+        REF: ${{ github. sha }}
+      run: docker build -t radix-api:${REF##*/} .
