@@ -9,10 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
@@ -780,17 +778,7 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 			builders.NewDeployComponentBuilder().
 				WithName("backend"))
 
-	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
-	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
-
-	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
-	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
-
-	registration.OnSync()
-	applicationconfig.OnSync()
-	deployment.OnSync()
+	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))

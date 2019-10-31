@@ -49,13 +49,6 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetSubscriptions Lists subscriptions this handler offers
-func (dc *deploymentController) GetSubscriptions() models.Subscriptions {
-	subscriptions := models.Subscriptions{}
-
-	return subscriptions
-}
-
 // GetDeployments Lists deployments
 func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments application getDeployments
