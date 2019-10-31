@@ -7,9 +7,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/application"
-	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -95,17 +92,7 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 				WithDNSExternalAlias("some.alias.com").
 				WithDNSExternalAlias("another.alias.com"))
 
-	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
-	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
-
-	registration, _ := application.NewApplication(client, radixclient, registrationBuilder.BuildRR())
-	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	deployment, _ := deployment.NewDeployment(client, radixclient, nil, registrationBuilder.BuildRR(), rd)
-
-	registration.OnSync()
-	applicationconfig.OnSync()
-	deployment.OnSync()
+	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)

@@ -285,8 +285,8 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, 
 		if err != nil {
 			return nil, err
 		}
-
-		application, err := applicationconfig.NewApplicationConfig(ah.userAccount.Client, ah.userAccount.RadixClient, registration, config)
+		kubeUtils, _ := kube.New(ah.userAccount.Client, ah.userAccount.RadixClient)
+		application, err := applicationconfig.NewApplicationConfig(ah.userAccount.Client, kubeUtils, ah.userAccount.RadixClient, registration, config)
 		if err != nil {
 			return nil, err
 		}
