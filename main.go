@@ -14,6 +14,7 @@ import (
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	"github.com/equinor/radix-api/api/jobs"
+	"github.com/equinor/radix-api/api/privateimagehubs"
 
 	router "github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/models"
@@ -72,6 +73,7 @@ func getControllers() []models.Controller {
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(),
+		privateimagehubs.NewPrivateImageHubController(),
 	}
 }
 
