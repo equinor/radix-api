@@ -276,17 +276,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, 
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		registration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-
-		config, err := ah.userAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		kubeUtils, _ := kube.New(ah.userAccount.Client, ah.userAccount.RadixClient)
-		application, err := applicationconfig.NewApplicationConfig(ah.userAccount.Client, kubeUtils, ah.userAccount.RadixClient, registration, config)
+		application, err := utils.CreateApplicationConfig(ah.userAccount.Client, ah.userAccount.RadixClient, appName)
 		if err != nil {
 			return nil, err
 		}
