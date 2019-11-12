@@ -4,7 +4,7 @@
 //
 //     Schemes: http, https
 //     BasePath: /api/v1
-//     Version: 0.0.2
+//     Version: 1.0.0
 //     Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 //     Consumes:
