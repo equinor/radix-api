@@ -5,6 +5,7 @@ import (
 
 	buildSecretsModels "github.com/equinor/radix-api/api/buildsecrets/models"
 	sharedModels "github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
 	"github.com/equinor/radix-api/api/utils"
@@ -13,11 +14,6 @@ import (
 
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	buildSecretDefaultData = "xx"
-	buildSecretsName       = "build-secrets"
 )
 
 // Handler Instance variables
@@ -50,7 +46,7 @@ func (sh Handler) ChangeBuildSecret(appName, secretName, secretValue string) err
 		return utils.ValidationError("Secret", "New secret value is empty")
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(buildSecretsName, metav1.GetOptions{})
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return utils.TypeMissingError("Build secrets object does not exist", err)
 	}
@@ -80,7 +76,7 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 		return nil, err
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(buildSecretsName, metav1.GetOptions{})
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Build secrets object does not exist", err)
 	}
@@ -89,7 +85,7 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 	for _, secretName := range ra.Spec.Build.Secrets {
 		secretStatus := buildSecretsModels.Pending.String()
 		secretValue := strings.TrimSpace(string(secretObject.Data[secretName]))
-		if !strings.EqualFold(secretValue, buildSecretDefaultData) {
+		if !strings.EqualFold(secretValue, defaults.BuildSecretDefaultData) {
 			secretStatus = buildSecretsModels.Consistent.String()
 		}
 
