@@ -76,23 +76,21 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 		return nil, err
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
-	if err != nil && errors.IsNotFound(err) {
-		return nil, utils.TypeMissingError("Build secrets object does not exist", err)
-	}
-
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
-	for _, secretName := range ra.Spec.Build.Secrets {
-		secretStatus := buildSecretsModels.Pending.String()
-		secretValue := strings.TrimSpace(string(secretObject.Data[secretName]))
-		if !strings.EqualFold(secretValue, defaults.BuildSecretDefaultData) {
-			secretStatus = buildSecretsModels.Consistent.String()
-		}
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
+	if err == nil && secretObject != nil {
+		for _, secretName := range ra.Spec.Build.Secrets {
+			secretStatus := buildSecretsModels.Pending.String()
+			secretValue := strings.TrimSpace(string(secretObject.Data[secretName]))
+			if !strings.EqualFold(secretValue, defaults.BuildSecretDefaultData) {
+				secretStatus = buildSecretsModels.Consistent.String()
+			}
 
-		buildSecrets = append(buildSecrets, buildSecretsModels.BuildSecret{
-			Name:   secretName,
-			Status: secretStatus,
-		})
+			buildSecrets = append(buildSecrets, buildSecretsModels.BuildSecret{
+				Name:   secretName,
+				Status: secretStatus,
+			})
+		}
 	}
 
 	return buildSecrets, nil
