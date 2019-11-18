@@ -122,13 +122,48 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 }
 
 func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
-	return (environmentConfig != nil && environmentConfig.Replicas != nil && len(actualPods) != *environmentConfig.Replicas) ||
-		((environmentConfig == nil || environmentConfig.Replicas == nil) && len(actualPods) != deployment.DefaultReplicas)
+	actualPodsLength := len(actualPods)
+	if environmentConfig != nil {
+		// No HPA config
+		if environmentConfig.HorizontalScaling == nil {
+			if environmentConfig.Replicas != nil {
+				return actualPodsLength != *environmentConfig.Replicas
+			}
+			return actualPodsLength != deployment.DefaultReplicas
+		}
+		// With HPA config
+		if environmentConfig.Replicas != nil && *environmentConfig.Replicas == 0 {
+			return actualPodsLength != *environmentConfig.Replicas
+		}
+		if environmentConfig.HorizontalScaling.MinReplicas != nil {
+			return actualPodsLength < int(*environmentConfig.HorizontalScaling.MinReplicas) ||
+				actualPodsLength > int(environmentConfig.HorizontalScaling.MaxReplicas)
+		}
+		return actualPodsLength < deployment.DefaultReplicas ||
+			actualPodsLength > int(environmentConfig.HorizontalScaling.MaxReplicas)
+	}
+	return actualPodsLength != deployment.DefaultReplicas
 }
 
 func runningReplicaDiffersFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
-	return (component.Replicas != nil && len(actualPods) != *component.Replicas) ||
-		(component.Replicas == nil && len(actualPods) != deployment.DefaultReplicas)
+	actualPodsLength := len(actualPods)
+	// No HPA config
+	if component.HorizontalScaling == nil {
+		if component.Replicas != nil {
+			return actualPodsLength != *component.Replicas
+		}
+		return actualPodsLength != deployment.DefaultReplicas
+	}
+	// With HPA config
+	if component.Replicas != nil && *component.Replicas == 0 {
+		return actualPodsLength != *component.Replicas
+	}
+	if component.HorizontalScaling.MinReplicas != nil {
+		return actualPodsLength < int(*component.HorizontalScaling.MinReplicas) ||
+			actualPodsLength > int(component.HorizontalScaling.MaxReplicas)
+	}
+	return actualPodsLength < deployment.DefaultReplicas ||
+		actualPodsLength > int(component.HorizontalScaling.MaxReplicas)
 }
 
 func getPodNames(pods []corev1.Pod) []string {
