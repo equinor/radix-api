@@ -78,7 +78,7 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
 	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
-	if err == nil && secretObject != nil {
+	if err == nil && secretObject != nil && ra.Spec.Build != nil {
 		for _, secretName := range ra.Spec.Build.Secrets {
 			secretStatus := buildSecretsModels.Pending.String()
 			secretValue := strings.TrimSpace(string(secretObject.Data[secretName]))
