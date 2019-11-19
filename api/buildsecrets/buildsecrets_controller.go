@@ -1,4 +1,4 @@
-package privateimagehubs
+package buildsecrets
 
 import (
 	"encoding/json"
@@ -12,38 +12,38 @@ import (
 
 const rootPath = "/applications/{appName}"
 
-type privateImageHubController struct {
+type buildSecretsController struct {
 	*models.DefaultController
 }
 
-// NewPrivateImageHubController Constructor
-func NewPrivateImageHubController() models.Controller {
-	return &privateImageHubController{}
+// NewBuildSecretsController Constructor
+func NewBuildSecretsController() models.Controller {
+	return &buildSecretsController{}
 }
 
 // GetRoutes List the supported routes of this handler
-func (dc *privateImageHubController) GetRoutes() models.Routes {
+func (dc *buildSecretsController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/privateimagehubs",
+			Path:        rootPath + "/buildsecrets",
 			Method:      "GET",
-			HandlerFunc: GetPrivateImageHubs,
+			HandlerFunc: GetBuildSecrets,
 		},
 		models.Route{
-			Path:        rootPath + "/privateimagehubs/{serverName}",
+			Path:        rootPath + "/buildsecrets/{secretName}",
 			Method:      "PUT",
-			HandlerFunc: ChangePrivateImageHubSecret,
+			HandlerFunc: ChangeBuildSecret,
 		},
 	}
 
 	return routes
 }
 
-// GetPrivateImageHubs Lists private image hubs
-func GetPrivateImageHubs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/privateimagehubs application getPrivateImageHubs
+// GetBuildSecrets Lists build secrets
+func GetBuildSecrets(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/buildsecrets application getBuildSecrets
 	// ---
-	// summary: Lists the application private image hubs
+	// summary: Lists the application build secrets
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -66,41 +66,41 @@ func GetPrivateImageHubs(clients models.Clients, w http.ResponseWriter, r *http.
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/ImageHubSecret"
+	//           "$ref": "#/definitions/BuildSecret"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	privateImageHubHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
-	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(appName)
+	buildSecretsHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(appName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, imageHubSecrets)
+	utils.JSONResponse(w, r, buildSecrets)
 }
 
-// ChangePrivateImageHubSecret Modifies an application private image hub secret
-func ChangePrivateImageHubSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/privateimagehubs/{serverName} application updatePrivateImageHubsSecretValue
+// ChangeBuildSecret Modifies an application build secret
+func ChangeBuildSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/buildsecrets/{secretName} application updateBuildSecretsSecretValue
 	// ---
-	// summary: Update an application private image hub secret
+	// summary: Update an application build secret
 	// parameters:
 	// - name: appName
 	//   in: path
 	//   description: Name of application
 	//   type: string
 	//   required: true
-	// - name: serverName
+	// - name: secretName
 	//   in: path
-	//   description: server name to update
+	//   description: name of secret
 	//   type: string
 	//   required: true
-	// - name: imageHubSecret
+	// - name: secretValue
 	//   in: body
 	//   description: New secret value
 	//   required: true
@@ -128,7 +128,7 @@ func ChangePrivateImageHubSecret(clients models.Clients, w http.ResponseWriter, 
 	//   "409":
 	//     description: "Conflict"
 	appName := mux.Vars(r)["appName"]
-	serverName := mux.Vars(r)["serverName"]
+	secretName := mux.Vars(r)["secretName"]
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
@@ -136,8 +136,8 @@ func ChangePrivateImageHubSecret(clients models.Clients, w http.ResponseWriter, 
 		return
 	}
 
-	privateImageHubHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
-	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
+	buildSecretsHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	err := buildSecretsHandler.ChangeBuildSecret(appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
