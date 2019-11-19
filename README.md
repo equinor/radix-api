@@ -13,6 +13,13 @@ Also needed:
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
+## Dependencies - go modules
+
+Go modules are used for dependency management. See [link](https://blog.golang.org/using-go-modules) for information how to add, upgrade and remove dependencies. E.g. To update `radix-operator` dependency:
+
+- list versions: `go list -m -versions github.com/equinor/radix-operator`
+- update: `go get github.com/equinor/radix-operator@v1.3.1`
+
 ## Common errors running locally
 
 **Problem**: `panic: statik/fs: no zip data registered`
