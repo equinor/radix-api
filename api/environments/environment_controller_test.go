@@ -56,23 +56,22 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	deploymentBuilder := builders.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
 			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName(anyComponent).
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com"))
-
-	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
+			WithEnvironment(anyEnvironment).
+			WithRadixApplication(builders.ARadixApplication().
+				WithAppName(anyAppName).
+				WithEnvironment(anyEnvironment, "master").
+				WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
+				WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName(anyComponent).
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithDNSExternalAlias("some.alias.com").
+					WithDNSExternalAlias("another.alias.com")))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
