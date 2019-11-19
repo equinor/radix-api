@@ -80,19 +80,18 @@ func TestGetComponents_active_deployment(t *testing.T) {
 func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	deploymentBuilder := builders.ARadixDeployment().
-		WithAppName("any-app").
-		WithEnvironment("prod").
-		WithDeploymentName(anyDeployName).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName("frontend").
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com"))
-
-	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName("any-app").
+			WithEnvironment("prod").
+			WithDeploymentName(anyDeployName).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithDNSExternalAlias("some.alias.com").
+					WithDNSExternalAlias("another.alias.com")))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)

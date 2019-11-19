@@ -766,19 +766,18 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	deploymentBuilder := builders.ARadixDeployment().
-		WithAppName("any-app").
-		WithEnvironment("prod").
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName("frontend").
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithDNSAppAlias(true),
-			builders.NewDeployComponentBuilder().
-				WithName("backend"))
-
-	utils.SyncRadixOperatorControllers(client, radixclient, commonTestUtils, deploymentBuilder)
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName("any-app").
+			WithEnvironment("prod").
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithDNSAppAlias(true),
+				builders.NewDeployComponentBuilder().
+					WithName("backend")))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
