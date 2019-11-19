@@ -3,7 +3,7 @@ module github.com/equinor/radix-api
 go 1.13
 
 require (
-	github.com/equinor/radix-operator v1.0.3
+	github.com/equinor/radix-operator v1.3.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
 	github.com/gorilla/mux v1.7.0
