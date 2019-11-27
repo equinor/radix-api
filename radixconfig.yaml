@@ -21,7 +21,9 @@ spec:
     public: true
     environmentConfig:
     - environment: qa
-      replicas: 2
+      horizontalScaling:
+        minReplicas: 1
+        maxReplicas: 2
       monitoring: true
       resources:
         requests:
