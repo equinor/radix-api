@@ -1,6 +1,16 @@
-# radix-api.
+# Radix API
 
-The Radix API Server for accessing functionality on the Radix platform. Please see [Development practices](./development-practices.md) for more information on the release process.
+The Radix API is an HTTP server for accessing functionality on the [Radix](https://www.radix.equinor.com) platform. This document is for Radix developers, or anyone interested in poking around. Please see [Development practices](./development-practices.md) for more information on the release process.
+
+## Purpose
+
+The Radix API is meant to be the single point of entry for platform users to the platform (through e.g. the Web Console). Users should not be able to access the Kubernetes API directly; therefore the Radix API limits and customises what platform users are able to do.
+
+## Security
+
+Authentication and authorisation are performed through an HTTP bearer token, which is (in most cases) relayed to the Kubernetes API. The Kubernetes AAD integration then performs its authentication and resource authorisation checks, and the result is relayed to the the user.
+
+Some requests trigger more complex authorisation checks within the Radix API itself by using the `radix-api` [clusterrole](https://github.com/equinor/radix-operator/blob/master/docs/RBAC.md#api).
 
 ## Developing
 
@@ -8,24 +18,19 @@ You need Go installed. Make sure `GOPATH` and `GOROOT` are properly set up.
 
 Also needed:
 
-  - [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
-  - [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
+- [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
+- [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
-## Common errors running locally
+### Dependencies - go modules
 
-**Problem**: `panic: statik/fs: no zip data registered`
+Go modules are used for dependency management. See [link](https://blog.golang.org/using-go-modules) for information how to add, upgrade and remove dependencies. E.g. To update `radix-operator` dependency:
 
-**Solution**: `make swagger`
+- list versions: `go list -m -versions github.com/equinor/radix-operator`
+- update: `go get github.com/equinor/radix-operator@v1.3.1`
 
-## Deployment
-
-Radix API follows the [standard procedure](https://github.com/equinor/radix-pƒrivate/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in _how we work_.
-
-Radix API is installed as a Radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup API environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a Webhook so that changes to this repository will be reflected in Radix platform.
-
-## Running locally
+### Running locally
 
 The following env vars are needed. Useful default values in brackets.
 
@@ -40,16 +45,22 @@ When `useOutClusterClient` is `false`, the Radix API will connect to the current
 
 If you are using VSCode, there is a convenient launch configuration in `.vscode`.
 
-## Manual redeployment on existing cluster
+#### Common errors running locally
 
-### Prerequisites
+- **Problem**: `panic: statik/fs: no zip data registered`
+
+  **Solution**: `make swagger`
+
+### Manual redeployment on existing cluster
+
+#### Prerequisites
 
 1. Install draft (https://draft.sh/)
 2. `draft init` from project directory (inside `radix-api`)
 3. `draft config set registry radixdev.azurecr.io`
 4. `az acr login --name radixdev`
 
-### Process
+#### Process
 
 1. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
 2. Execute `draft up` to install to dev environment of radix-api
@@ -61,6 +72,12 @@ If you are using VSCode, there is a convenient launch configuration in `.vscode`
 The Radix API server is meant to be the single point of entry for platform users to the platform (through the web console or a command line interface). They should not be able to access the Kubernetes API directly. Therefore the Radix API will limit what platform users will be able to do. Authentication is done through a bearer token, which essentially is relayed to the Kubernetes API to ensure that users only can see what they should be able to see, and therefore rely on the k8s AAD integration for authentication <sup><sup>1</sup></sup>.
 
 <sup><sup>1</sup></sup> <sub><sup>Until the work referred to in [this document](https://github.com/equinor/radix-operator/blob/master/docs/RBAC.md) is solved, listing applications, listing jobs and creating build job is done using the service account of the API server, and access is therefore verified inside the Radix API server rather than by the Kubernetes API using RBAC.</sup></sub>
+
+## Deployment
+
+Radix API follows the [standard procedure](https://github.com/equinor/radix-private/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in _how we work_.
+
+Radix API is installed as a Radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup API environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a Webhook so that changes to this repository will be reflected in Radix platform.
 
 ## Pull request checking
 
