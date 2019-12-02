@@ -85,7 +85,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 }
 
 // ShowApplications Lists applications
-func (ac *applicationController) ShowApplications(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ShowApplications(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications platform showApplications
 	//
 	// ---
@@ -119,7 +119,7 @@ func (ac *applicationController) ShowApplications(clients models.Clients, w http
 	//     description: "Not found"
 	sshRepo := r.FormValue("sshRepo")
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
 
 	if err != nil {
@@ -131,7 +131,7 @@ func (ac *applicationController) ShowApplications(clients models.Clients, w http
 }
 
 // GetApplication Gets application by application name
-func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName} application getApplication
 	// ---
 	// summary: Gets the application application by name
@@ -162,7 +162,7 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
@@ -174,7 +174,7 @@ func GetApplication(clients models.Clients, w http.ResponseWriter, r *http.Reque
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name
-func IsDeployKeyValidHandler(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deploykey-valid application isDeployKeyValid
 	// ---
 	// summary: Checks if the deploy key is correctly setup for application by cloning the repository
@@ -202,7 +202,7 @@ func IsDeployKeyValidHandler(clients models.Clients, w http.ResponseWriter, r *h
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	isDeployKeyValid, err := IsDeployKeyValid(clients.OutClusterClient, clients.OutClusterRadixClient, appName)
+	isDeployKeyValid, err := IsDeployKeyValid(accounts.UserAccount, appName)
 
 	if isDeployKeyValid {
 		utils.JSONResponse(w, r, &isDeployKeyValid)
@@ -213,7 +213,7 @@ func IsDeployKeyValidHandler(clients models.Clients, w http.ResponseWriter, r *h
 }
 
 // RegisterApplication Creates new application registation
-func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications platform registerApplication
 	// ---
 	// summary: Create an application registration
@@ -252,7 +252,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -263,7 +263,7 @@ func RegisterApplication(clients models.Clients, w http.ResponseWriter, r *http.
 }
 
 // ChangeRegistrationDetails Updates application registration
-func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName} application changeRegistrationDetails
 	// ---
 	// summary: Update application registration
@@ -311,7 +311,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -322,7 +322,7 @@ func ChangeRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 }
 
 // ModifyRegistrationDetails Updates specific field(s) of an application registration
-func ModifyRegistrationDetails(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PATCH /applications/{appName} application modifyRegistrationDetails
 	// ---
 	// summary: Updates specific field(s) of an application registration
@@ -370,7 +370,7 @@ func ModifyRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient priviledges
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	appRegistration, err := handler.ModifyRegistrationDetails(appName, application)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -381,7 +381,7 @@ func ModifyRegistrationDetails(clients models.Clients, w http.ResponseWriter, r 
 }
 
 // DeleteApplication Deletes application
-func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName} application deleteApplication
 	// ---
 	// summary: Delete application
@@ -410,7 +410,7 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
@@ -422,7 +422,7 @@ func DeleteApplication(clients models.Clients, w http.ResponseWriter, r *http.Re
 }
 
 // ListPipelines Lists supported pipelines
-func ListPipelines(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/pipelines application listPipelines
 	// ---
 	// summary: Lists the supported pipelines
@@ -441,13 +441,13 @@ func ListPipelines(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	//           type: string
 
 	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	supportedPipelines := handler.GetSupportedPipelines()
 	utils.JSONResponse(w, r, supportedPipelines)
 }
 
 // TriggerPipeline creates a pipeline job for the application
-func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func TriggerPipeline(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/{pipelineName} application triggerPipeline
 	// ---
 	// summary: Run a pipeline for a given application and branch
@@ -492,7 +492,7 @@ func TriggerPipeline(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	appName := mux.Vars(r)["appName"]
 	pipelineName := mux.Vars(r)["pipelineName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, r)
 
 	if err != nil {

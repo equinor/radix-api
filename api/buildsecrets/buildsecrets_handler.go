@@ -11,9 +11,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"k8s.io/client-go/kubernetes"
 )
 
 // Handler Instance variables
@@ -23,21 +20,11 @@ type Handler struct {
 }
 
 // Init Constructor
-func Init(
-	client kubernetes.Interface,
-	radixClient radixclient.Interface,
-	inClusterClient kubernetes.Interface,
-	inClusterRadixClient radixclient.Interface) Handler {
-
+func Init(accounts sharedModels.Accounts) Handler {
 	return Handler{
-		userAccount: sharedModels.Account{
-			Client:      client,
-			RadixClient: radixClient,
-		},
-		serviceAccount: sharedModels.Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
-		}}
+		userAccount:    accounts.UserAccount,
+		serviceAccount: accounts.ServiceAccount,
+	}
 }
 
 // ChangeBuildSecret handler to modify the build secret

@@ -6,6 +6,7 @@ import (
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -27,15 +28,14 @@ type EnvironmentHandler struct {
 }
 
 // Init Constructor
-func Init(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
-	deployHandler := deployments.Init(client, radixclient)
-	return EnvironmentHandler{client: client, radixclient: radixclient, deployHandler: deployHandler}
-}
-
-// InitWithInClusterClient Special Constructor used when we need extra access to in cluster client
-func InitWithInClusterClient(client kubernetes.Interface, radixclient radixclient.Interface, inClusterClient kubernetes.Interface) EnvironmentHandler {
-	deployHandler := deployments.Init(client, radixclient)
-	return EnvironmentHandler{client, radixclient, inClusterClient, deployHandler}
+func Init(accounts models.Accounts) EnvironmentHandler {
+	deployHandler := deployments.Init(accounts)
+	return EnvironmentHandler{
+		client:          accounts.UserAccount.Client,
+		radixclient:     accounts.UserAccount.RadixClient,
+		inClusterClient: accounts.ServiceAccount.Client,
+		deployHandler:   deployHandler,
+	}
 }
 
 // GetEnvironmentSummary GetEnvironmentSummary

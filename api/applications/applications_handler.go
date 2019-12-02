@@ -14,7 +14,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
@@ -24,34 +23,25 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	userAccount    models.Account
-	serviceAccount models.Account
-	jobHandler     job.JobHandler
+	userAccount        models.Account
+	serviceAccount     models.Account
+	jobHandler         job.JobHandler
+	environmentHandler environments.EnvironmentHandler
 }
 
 // Init Constructor
-func Init(
-	client kubernetes.Interface,
-	radixClient radixclient.Interface,
-	inClusterClient kubernetes.Interface,
-	inClusterRadixClient radixclient.Interface) ApplicationHandler {
-
-	jobHandler := job.Init(client, radixClient, inClusterClient, inClusterRadixClient)
+func Init(accounts models.Accounts) ApplicationHandler {
+	jobHandler := job.Init(accounts)
 	return ApplicationHandler{
-		userAccount: models.Account{
-			Client:      client,
-			RadixClient: radixClient,
-		},
-		serviceAccount: models.Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
-		},
-		jobHandler: jobHandler}
+		userAccount:        accounts.UserAccount,
+		serviceAccount:     accounts.ServiceAccount,
+		jobHandler:         jobHandler,
+		environmentHandler: environments.Init(accounts),
+	}
 }
 
 // GetApplication handler for GetApplication
@@ -71,8 +61,7 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	environmentHandler := environments.Init(ah.userAccount.Client, ah.userAccount.RadixClient)
-	environments, err := environmentHandler.GetEnvironmentSummary(appName)
+	environments, err := ah.environmentHandler.GetEnvironmentSummary(appName)
 	if err != nil {
 		return nil, err
 	}
