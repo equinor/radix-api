@@ -56,22 +56,17 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clients := models.Clients{
-		InClusterClient:       inClusterClient,
-		InClusterRadixClient:  inClusterRadixClient,
-		OutClusterClient:      outClusterClient,
-		OutClusterRadixClient: outClusterRadixClient,
-	}
+	accounts := models.NewAccounts(inClusterClient, inClusterRadixClient, outClusterClient, outClusterRadixClient)
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
-		if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
+		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
 			ErrorResponse(w, r, err)
 			return
 		}
 	}
 
-	handler.next(clients, w, r)
+	handler.next(accounts, w, r)
 }
 
 // BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header

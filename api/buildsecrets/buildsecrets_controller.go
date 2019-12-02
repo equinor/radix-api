@@ -40,7 +40,7 @@ func (dc *buildSecretsController) GetRoutes() models.Routes {
 }
 
 // GetBuildSecrets Lists build secrets
-func GetBuildSecrets(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/buildsecrets application getBuildSecrets
 	// ---
 	// summary: Lists the application build secrets
@@ -73,7 +73,7 @@ func GetBuildSecrets(clients models.Clients, w http.ResponseWriter, r *http.Requ
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	buildSecretsHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	buildSecretsHandler := Init(accounts)
 	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(appName)
 
 	if err != nil {
@@ -85,7 +85,7 @@ func GetBuildSecrets(clients models.Clients, w http.ResponseWriter, r *http.Requ
 }
 
 // ChangeBuildSecret Modifies an application build secret
-func ChangeBuildSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/buildsecrets/{secretName} application updateBuildSecretsSecretValue
 	// ---
 	// summary: Update an application build secret
@@ -136,7 +136,7 @@ func ChangeBuildSecret(clients models.Clients, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	buildSecretsHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	buildSecretsHandler := Init(accounts)
 	err := buildSecretsHandler.ChangeBuildSecret(appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {

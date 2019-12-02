@@ -4,9 +4,6 @@ import (
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
 	sharedModels "github.com/equinor/radix-api/models"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-
-	"k8s.io/client-go/kubernetes"
 )
 
 // PrivateImageHubHandler Instance variables
@@ -16,21 +13,11 @@ type PrivateImageHubHandler struct {
 }
 
 // Init Constructor
-func Init(
-	client kubernetes.Interface,
-	radixClient radixclient.Interface,
-	inClusterClient kubernetes.Interface,
-	inClusterRadixClient radixclient.Interface) PrivateImageHubHandler {
+func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
 
 	return PrivateImageHubHandler{
-		userAccount: sharedModels.Account{
-			Client:      client,
-			RadixClient: radixClient,
-		},
-		serviceAccount: sharedModels.Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
-		}}
+		userAccount:    accounts.UserAccount,
+		serviceAccount: accounts.ServiceAccount}
 }
 
 // GetPrivateImageHubs returns all private image hubs defined for app

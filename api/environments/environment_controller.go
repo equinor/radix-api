@@ -73,7 +73,7 @@ func (ec *environmentController) GetRoutes() models.Routes {
 }
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
-func GetApplicationEnvironmentDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments
 	// ---
 	// summary: Lists the application environment deployments
@@ -128,7 +128,7 @@ func GetApplicationEnvironmentDeployments(clients models.Clients, w http.Respons
 		}
 	}
 
-	deploymentHandler := deployments.Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	deploymentHandler := deployments.Init(accounts)
 
 	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(appName, envName, useLatest)
 	if err != nil {
@@ -140,7 +140,7 @@ func GetApplicationEnvironmentDeployments(clients models.Clients, w http.Respons
 }
 
 // GetEnvironment Get details for an application environment
-func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName} environment getEnvironment
 	// ---
 	// summary: Get details for an application environment
@@ -178,7 +178,7 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
@@ -191,7 +191,7 @@ func GetEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Reque
 }
 
 // DeleteEnvironment Deletes environment
-func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName} environment deleteEnvironment
 	// ---
 	// summary: Deletes application environment
@@ -228,7 +228,7 @@ func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Re
 	envName := mux.Vars(r)["envName"]
 
 	// Need in cluster client in order to delete namespace using sufficient priviledges
-	environmentHandler := InitWithInClusterClient(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient)
+	environmentHandler := Init(accounts)
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 
 	if err != nil {
@@ -240,7 +240,7 @@ func DeleteEnvironment(clients models.Clients, w http.ResponseWriter, r *http.Re
 }
 
 // GetEnvironmentSummary Lists the environments for an application
-func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments environment getEnvironmentSummary
 	// ---
 	// summary: Lists the environments for an application
@@ -273,7 +273,7 @@ func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *htt
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
@@ -285,7 +285,7 @@ func GetEnvironmentSummary(clients models.Clients, w http.ResponseWriter, r *htt
 }
 
 // ChangeEnvironmentComponentSecret Modifies an application environment component secret
-func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ChangeEnvironmentComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeEnvironmentComponentSecret
 	// ---
 	// summary: Update an application environment component secret
@@ -348,7 +348,7 @@ func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWri
 		return
 	}
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 
 	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
@@ -360,7 +360,7 @@ func ChangeEnvironmentComponentSecret(clients models.Clients, w http.ResponseWri
 }
 
 // StopComponent Stops job
-func StopComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/stop component stopComponent
 	// ---
 	// summary: Stops component
@@ -401,7 +401,7 @@ func StopComponent(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 	err := environmentHandler.StopComponent(appName, envName, componentName)
 
 	if err != nil {
@@ -413,7 +413,7 @@ func StopComponent(clients models.Clients, w http.ResponseWriter, r *http.Reques
 }
 
 // StartComponent Starts job
-func StartComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
 	// ---
 	// summary: Start component
@@ -454,7 +454,7 @@ func StartComponent(clients models.Clients, w http.ResponseWriter, r *http.Reque
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 	err := environmentHandler.StartComponent(appName, envName, componentName)
 
 	if err != nil {
@@ -466,7 +466,7 @@ func StartComponent(clients models.Clients, w http.ResponseWriter, r *http.Reque
 }
 
 // RestartComponent Restarts job
-func RestartComponent(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/restart component restartComponent
 	// ---
 	// summary: Restart component
@@ -507,7 +507,7 @@ func RestartComponent(clients models.Clients, w http.ResponseWriter, r *http.Req
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	environmentHandler := Init(accounts)
 	err := environmentHandler.RestartComponent(appName, envName, componentName)
 
 	if err != nil {

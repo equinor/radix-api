@@ -7,10 +7,10 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
 	radixerr "github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,8 +22,8 @@ import (
 const containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
 
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
-func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Interface, appName string) (bool, error) {
-	rr, err := radixclient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
+	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -36,7 +36,7 @@ func IsDeployKeyValid(client kubernetes.Interface, radixclient radixclient.Inter
 		return false, radixerr.ValidationError("Radix Registration", fmt.Sprintf("Deploy key is missing"))
 	}
 
-	err = verifyDeployKey(client, rr)
+	err = verifyDeployKey(account.Client, rr)
 	return err == nil, err
 }
 
