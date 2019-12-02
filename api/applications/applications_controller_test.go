@@ -19,12 +19,10 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -328,10 +326,10 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	app2Job2Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
 	app2Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:01Z")
 
-	createRadixJob(kubeclient, "app-1", "app-1-job-1", app1Job1Started)
-	createRadixJob(kubeclient, "app-2", "app-2-job-1", app2Job1Started)
-	createRadixJob(kubeclient, "app-2", "app-2-job-2", app2Job2Started)
-	createRadixJob(kubeclient, "app-2", "app-2-job-3", app2Job3Started)
+	createRadixJob(commonTestUtils, "app-1", "app-1-job-1", app1Job1Started)
+	createRadixJob(commonTestUtils, "app-2", "app-2-job-1", app2Job1Started)
+	createRadixJob(commonTestUtils, "app-2", "app-2-job-2", app2Job2Started)
+	createRadixJob(commonTestUtils, "app-2", "app-2-job-3", app2Job3Started)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
@@ -364,9 +362,9 @@ func TestGetApplication_WithJobs(t *testing.T) {
 	app1Job2Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14Z")
 	app1Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
 
-	createRadixJob(kubeclient, "any-name", "any-name-job-1", app1Job1Started)
-	createRadixJob(kubeclient, "any-name", "any-name-job-2", app1Job2Started)
-	createRadixJob(kubeclient, "any-name", "any-name-job-3", app1Job3Started)
+	createRadixJob(commonTestUtils, "any-name", "any-name-job-1", app1Job1Started)
+	createRadixJob(commonTestUtils, "any-name", "any-name-job-2", app1Job2Started)
+	createRadixJob(commonTestUtils, "any-name", "any-name-job-3", app1Job3Started)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
@@ -838,19 +836,23 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 	}
 }
 
-func createRadixJob(kubeclient *kubefake.Clientset, appName, jobName string, started time.Time) {
-	kubeclient.BatchV1().Jobs(builders.GetAppNamespace(appName)).Create(
-		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{
-			Name: jobName,
-			Labels: map[string]string{
-				"radix-app-name":       appName, // For backwards compatibility. Remove when cluster is migrated
-				kube.RadixAppLabel:     appName,
-				kube.RadixJobTypeLabel: "job"}},
-			Status: batchv1.JobStatus{
-				StartTime: &metav1.Time{
-					Time: started,
-				},
-			}})
+func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) {
+	commonTestUtils.ApplyJob(
+		builders.ARadixBuildDeployJob().
+			WithAppName(appName).
+			WithJobName(jobName).
+			WithStatus(builders.NewJobStatusBuilder().
+				WithCondition(v1.JobSucceeded).
+				WithStarted(started.UTC()).
+				WithSteps(
+					builders.ACloneConfigStep().
+						WithCondition(v1.JobSucceeded).
+						WithStarted(started.UTC()).
+						WithEnded(started.Add(time.Second*time.Duration(100))),
+					builders.ARadixPipelineStep().
+						WithCondition(v1.JobRunning).
+						WithStarted(started.UTC()).
+						WithEnded(started.Add(time.Second*time.Duration(100))))))
 }
 
 func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
