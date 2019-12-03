@@ -40,7 +40,7 @@ func (dc *privateImageHubController) GetRoutes() models.Routes {
 }
 
 // GetPrivateImageHubs Lists private image hubs
-func GetPrivateImageHubs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/privateimagehubs application getPrivateImageHubs
 	// ---
 	// summary: Lists the application private image hubs
@@ -73,7 +73,7 @@ func GetPrivateImageHubs(clients models.Clients, w http.ResponseWriter, r *http.
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	privateImageHubHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	privateImageHubHandler := Init(accounts)
 	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(appName)
 
 	if err != nil {
@@ -85,7 +85,7 @@ func GetPrivateImageHubs(clients models.Clients, w http.ResponseWriter, r *http.
 }
 
 // ChangePrivateImageHubSecret Modifies an application private image hub secret
-func ChangePrivateImageHubSecret(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/privateimagehubs/{serverName} application updatePrivateImageHubsSecretValue
 	// ---
 	// summary: Update an application private image hub secret
@@ -136,7 +136,7 @@ func ChangePrivateImageHubSecret(clients models.Clients, w http.ResponseWriter, 
 		return
 	}
 
-	privateImageHubHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	privateImageHubHandler := Init(accounts)
 	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {

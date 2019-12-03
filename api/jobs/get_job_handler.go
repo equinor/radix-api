@@ -6,7 +6,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"strings"
 
@@ -32,24 +31,14 @@ type JobHandler struct {
 }
 
 // Init Constructor
-func Init(
-	client kubernetes.Interface,
-	radixClient radixclient.Interface,
-	inClusterClient kubernetes.Interface,
-	inClusterRadixClient radixclient.Interface) JobHandler {
+func Init(accounts models.Accounts) JobHandler {
 	// todo! accoutn for running deploy?
-	deploy := deployments.Init(client, radixClient)
+	deploy := deployments.Init(accounts)
 
 	return JobHandler{
-		userAccount: models.Account{
-			Client:      client,
-			RadixClient: radixClient,
-		},
-		serviceAccount: models.Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
-		},
-		deploy: deploy,
+		userAccount:    accounts.UserAccount,
+		serviceAccount: accounts.ServiceAccount,
+		deploy:         deploy,
 	}
 }
 

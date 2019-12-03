@@ -12,6 +12,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -605,7 +606,7 @@ func assertSecretObject(t *testing.T, secretObject environmentModels.Secret, nam
 
 func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -649,7 +650,7 @@ func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
 
 func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -697,7 +698,7 @@ func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 
 func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -753,7 +754,7 @@ func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
 
 func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -815,7 +816,7 @@ func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
 
 func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -885,7 +886,7 @@ func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := Init(kubeclient, radixclient)
+	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
 	componentOneName := "backend"
@@ -1059,6 +1060,10 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
 	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+}
+
+func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
+	return Init(models.NewAccounts(client, radixclient, client, radixclient))
 }
 
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {

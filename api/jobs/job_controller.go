@@ -49,7 +49,7 @@ func (jc *jobController) GetRoutes() models.Routes {
 }
 
 // GetPipelineJobLogs Get logs of a job for an application
-func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs job getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
@@ -88,7 +88,7 @@ func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.R
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName)
 
 	if err != nil {
@@ -101,7 +101,7 @@ func GetPipelineJobLogs(clients models.Clients, w http.ResponseWriter, r *http.R
 }
 
 // GetApplicationJobs gets job summaries
-func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs job getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
@@ -134,7 +134,7 @@ func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.R
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
@@ -146,7 +146,7 @@ func GetApplicationJobs(clients models.Clients, w http.ResponseWriter, r *http.R
 }
 
 // GetApplicationJob gets specific job details
-func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName} job getApplicationJob
 	// ---
 	// summary: Gets the detail of a given job for a given application
@@ -183,7 +183,7 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
@@ -195,7 +195,7 @@ func GetApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Re
 }
 
 // StopApplicationJob Stops job
-func StopApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop job stopApplicationJob
 	// ---
 	// summary: Stops job
@@ -230,7 +230,7 @@ func StopApplicationJob(clients models.Clients, w http.ResponseWriter, r *http.R
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(clients.OutClusterClient, clients.OutClusterRadixClient, clients.InClusterClient, clients.InClusterRadixClient)
+	handler := Init(accounts)
 	err := handler.StopJob(appName, jobName)
 
 	if err != nil {
