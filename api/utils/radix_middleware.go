@@ -55,7 +55,13 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
 	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation)
 
-	accounts := models.NewAccounts(inClusterClient, inClusterRadixClient, outClusterClient, outClusterRadixClient)
+	accounts := models.NewAccounts(
+		inClusterClient,
+		inClusterRadixClient,
+		outClusterClient,
+		outClusterRadixClient,
+		token,
+		impersonation)
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {

@@ -10,3 +10,5 @@ spec:
   - "a6a3b81b-34gd-sfsf-saf2-7986371ea35f"
   secrets:
     test: test
+  owner: "radix@equinor.com"
+  creator: "radix@equinor.com"
