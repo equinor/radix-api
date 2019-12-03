@@ -19,13 +19,6 @@ func NewImpersonation(user, group string) (Impersonation, error) {
 	return impersonation, impersonation.isValid()
 }
 
-func NullObjImpersonation() Impersonation {
-	return Impersonation{
-		User:  "",
-		Group: "",
-	}
-}
-
 func (impersonation Impersonation) PerformImpersonation() bool {
 	return impersonation.User != "" && impersonation.Group != ""
 }

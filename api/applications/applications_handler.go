@@ -42,17 +42,17 @@ func Init(accounts models.Accounts) ApplicationHandler {
 	}
 }
 
-func (ah ApplicationHandler) userAccount() models.Account {
+func (ah ApplicationHandler) getUserAccount() models.Account {
 	return ah.accounts.UserAccount
 }
 
-func (ah ApplicationHandler) serviceAccount() models.Account {
+func (ah ApplicationHandler) getServiceAccount() models.Account {
 	return ah.accounts.ServiceAccount
 }
 
 // GetApplication handler for GetApplication
 func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.serviceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
-	_, err = ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
 	// Make check that this is an existing application
-	existingRegistration, err := ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 			return nil, err
 		}
 
-		_, err = ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 		if err != nil {
 			return nil, err
 		}
@@ -221,12 +221,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
-	_, err := ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = ah.userAccount().RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
+	err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, 
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		application, err := utils.CreateApplicationConfig(ah.userAccount().Client, ah.userAccount().RadixClient, appName)
+		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
 		if err != nil {
 			return nil, err
 		}
@@ -359,7 +359,7 @@ func (ah ApplicationHandler) triggerPipelinePromote(appName string, pipelinePara
 func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.serviceAccount().RadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.serviceAccount().RadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	for _, environment := range environments {
 		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.userAccount().Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+		ingresses, err := ah.getUserAccount().Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
 		})
 

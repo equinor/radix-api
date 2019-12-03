@@ -46,24 +46,17 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	if ku.useOutClusterClient {
-		config := getOutClusterClientConfig(token, models.NullObjImpersonation())
-		return getKubernetesClientFromConfig(config)
-	}
-
-	return ku.GetInClusterKubernetesClient()
+	return ku.GetOutClusterKubernetesClientWithImpersonation(token, models.Impersonation{})
 }
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation models.Impersonation) (kubernetes.Interface, radixclient.Interface) {
 	if ku.useOutClusterClient {
 		config := getOutClusterClientConfig(token, impersonation)
-		client, radixclient := getKubernetesClientFromConfig(config)
-		return client, radixclient
+		return getKubernetesClientFromConfig(config)
 	}
 
-	client, radixclient := ku.GetInClusterKubernetesClient()
-	return client, radixclient
+	return ku.GetInClusterKubernetesClient()
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod

@@ -90,7 +90,7 @@ func TestGetApplicationJob(t *testing.T) {
 		PushImage: true,
 	}
 
-	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.NullObjImpersonation()))
+	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
