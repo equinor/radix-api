@@ -142,11 +142,12 @@ func GetJobStepsFromRadixJob(job *v1.RadixJob) []Step {
 	var steps []Step
 	for _, jobStep := range job.Status.Steps {
 		step := Step{
-			Name:    jobStep.Name,
-			Status:  string(jobStep.Condition),
-			Started: utils.FormatTime(jobStep.Started),
-			Ended:   utils.FormatTime(jobStep.Ended),
-			PodName: jobStep.PodName,
+			Name:       jobStep.Name,
+			Status:     string(jobStep.Condition),
+			Started:    utils.FormatTime(jobStep.Started),
+			Ended:      utils.FormatTime(jobStep.Ended),
+			PodName:    jobStep.PodName,
+			Components: jobStep.Components,
 		}
 
 		steps = append(steps, step)
