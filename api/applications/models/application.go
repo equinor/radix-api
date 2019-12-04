@@ -14,6 +14,16 @@ type Application struct {
 	// example: radix-canary-golang
 	Name string `json:"name"`
 
+	// Owner of the application (email). Can be a single person or a shared group email
+	//
+	// required: false
+	Owner string `json:"owner"`
+
+	// Creator of the application (user principle name).
+	//
+	// required: false
+	Creator string `json:"creator"`
+
 	// Registration registration details
 	//
 	// required: false

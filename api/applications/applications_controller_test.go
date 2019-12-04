@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -239,6 +240,27 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 	assert.Equal(t, "Any public key", application.PublicKey)
 }
 
+func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	parameters := AnApplicationRegistration().
+		withName("any-name-2").
+		withRepository("https://github.com/Equinor/any-repo").
+		withPublicKey("Any public key").
+		withPrivateKey("Any private key").
+		withOwner("").
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := radixvalidators.InvalidEmailError("owner", "")
+	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
+}
+
 func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
@@ -289,7 +311,8 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
 		withSharedSecret("Any secret").
-		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).Build()
+		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+		withOwner("AN_OWNER@equinor.com").Build()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -304,6 +327,8 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Registration.Repository)
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
 	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
+	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
+	assert.Equal(t, "RADIX@equinor.com", application.Registration.Creator)
 }
 
 func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
@@ -550,14 +575,15 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withRepository("https://github.com/Equinor/a-repo").
 		withSharedSecret("").
 		withPublicKey("").
-		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"})
+		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
+		withOwner("AN_OWNER@equinor.com")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
 	<-responseChannel
 
 	// Test
 	anyNewAdGroup := []string{"98765432-dc00-4a28-9ad9-9e7f1e56919d"}
 	patchRequest := applicationModels.ApplicationPatchRequest{
-		AdGroups: anyNewAdGroup,
+		AdGroups: &anyNewAdGroup,
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -569,6 +595,23 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	application := applicationModels.Application{}
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
+	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
+
+	// Test
+	anyNewOwner := "A_NEW_OWNER@equinor.com"
+	patchRequest = applicationModels.ApplicationPatchRequest{
+		Owner: &anyNewOwner,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
+	assert.Equal(t, anyNewOwner, application.Registration.Owner)
 }
 
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {

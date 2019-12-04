@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/equinor/radix-api/models"
 )
 
 // GetBearerToken Gets bearer token from request header
@@ -22,10 +24,10 @@ func getBearerTokenFromHeader(r *http.Request) (string, error) {
 }
 
 // GetBearerToken Gets bearer token from request header
-func getImpersonationFromHeader(r *http.Request) (string, string) {
+func getImpersonationFromHeader(r *http.Request) (models.Impersonation, error) {
 	impersonateUser := r.Header.Get("Impersonate-User")
 	impersonateGroup := r.Header.Get("Impersonate-Group")
-	return impersonateUser, impersonateGroup
+	return models.NewImpersonation(impersonateUser, impersonateGroup)
 }
 
 // GetTokenFromQuery Gets token from query of the request

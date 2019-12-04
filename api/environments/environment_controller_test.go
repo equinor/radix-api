@@ -1063,7 +1063,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 }
 
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
-	return Init(models.NewAccounts(client, radixclient, client, radixclient))
+	return Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 }
 
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {

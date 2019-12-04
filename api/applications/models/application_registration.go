@@ -25,6 +25,16 @@ type ApplicationRegistration struct {
 	// required: true
 	AdGroups []string `json:"adGroups"`
 
+	// Owner of the application (email). Can be a single person or a shared group email
+	//
+	// required: true
+	Owner string `json:"owner"`
+
+	// Owner of the application (email). Can be a single person or a shared group email
+	//
+	// required: true
+	Creator string `json:"creator"`
+
 	// PublicKey the public part of the deploy key set or returned
 	// after successful application
 	//
