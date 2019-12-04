@@ -189,6 +189,7 @@ func TestGetComponents_success(t *testing.T) {
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 1, len(components))
+	assert.Nil(t, components[0].HorizontalScalingSummary)
 }
 
 func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
@@ -273,6 +274,41 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	assert.Equal(t, 1, len(components[0].Replicas))
 	assert.Equal(t, deploymentModels.Pending.String(), components[0].ReplicaList[0].Status.Status)
 	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
+}
+
+func TestGetComponents_WithHorizontalScaling(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	minReplicas := int32(2)
+	maxReplicas := int32(6)
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName("any-app").
+			WithEnvironment("prod").
+			WithDeploymentName(anyDeployName).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithHorizontalScaling(&minReplicas, maxReplicas)))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.NotNil(t, components[0].HorizontalScalingSummary)
+	assert.Equal(t, minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
+	assert.Equal(t, maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
+	assert.Equal(t, int32(0), components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
+	assert.Equal(t, int32(80), components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
 }
 
 func createComponentPodWithContainerState(kubeclient kubernetes.Interface, namespace, message string, status deploymentModels.ContainerStatus) {

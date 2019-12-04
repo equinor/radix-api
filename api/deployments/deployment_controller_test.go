@@ -23,11 +23,13 @@ import (
 )
 
 const (
-	anyAppName    = "any-app"
-	anyCloneURL   = "git@github.com:Equinor/any-app.git"
-	anyPodName    = "any-pod"
-	anyDeployName = "any-deploy"
-	anyEnv        = "any-env"
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	anyAppName        = "any-app"
+	anyCloneURL       = "git@github.com:Equinor/any-app.git"
+	anyPodName        = "any-pod"
+	anyDeployName     = "any-deploy"
+	anyEnv            = "any-env"
 )
 
 func createGetLogEndpoint(appName, podName string) string {
@@ -41,6 +43,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())
