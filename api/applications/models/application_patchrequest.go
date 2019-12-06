@@ -5,6 +5,11 @@ package models
 type ApplicationPatchRequest struct {
 	// AdGroups the groups that should be able to access the application
 	//
-	// required: true
-	AdGroups []string `json:"adGroups"`
+	// required: false
+	AdGroups *[]string `json:"adGroups,omitempty"`
+
+	// Owner of the application - should be an email
+	//
+	// required: false
+	Owner *string `json:"owner,omitempty"`
 }

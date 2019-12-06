@@ -33,15 +33,15 @@ func (ac *admissionController) GetRoutes() models.Routes {
 		models.Route{
 			Path:   rootPath + "/registrations",
 			Method: "POST",
-			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRegistrationChange)
+			HandlerFunc: func(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+				serve(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, w, r, ValidateRegistrationChange)
 			},
 		},
 		models.Route{
 			Path:   rootPath + "/applications",
 			Method: "POST",
-			HandlerFunc: func(clients models.Clients, w http.ResponseWriter, r *http.Request) {
-				serve(clients.InClusterClient, clients.InClusterRadixClient, w, r, ValidateRadixConfigurationChange)
+			HandlerFunc: func(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+				serve(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, w, r, ValidateRadixConfigurationChange)
 			},
 		},
 	}

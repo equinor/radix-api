@@ -14,7 +14,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
@@ -24,39 +23,36 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 )
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	userAccount    models.Account
-	serviceAccount models.Account
-	jobHandler     job.JobHandler
+	jobHandler         job.JobHandler
+	environmentHandler environments.EnvironmentHandler
+	accounts           models.Accounts
 }
 
 // Init Constructor
-func Init(
-	client kubernetes.Interface,
-	radixClient radixclient.Interface,
-	inClusterClient kubernetes.Interface,
-	inClusterRadixClient radixclient.Interface) ApplicationHandler {
-
-	jobHandler := job.Init(client, radixClient, inClusterClient, inClusterRadixClient)
+func Init(accounts models.Accounts) ApplicationHandler {
+	jobHandler := job.Init(accounts)
 	return ApplicationHandler{
-		userAccount: models.Account{
-			Client:      client,
-			RadixClient: radixClient,
-		},
-		serviceAccount: models.Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
-		},
-		jobHandler: jobHandler}
+		accounts:           accounts,
+		jobHandler:         jobHandler,
+		environmentHandler: environments.Init(accounts),
+	}
+}
+
+func (ah ApplicationHandler) getUserAccount() models.Account {
+	return ah.accounts.UserAccount
+}
+
+func (ah ApplicationHandler) getServiceAccount() models.Account {
+	return ah.accounts.ServiceAccount
 }
 
 // GetApplication handler for GetApplication
 func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.serviceAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +67,7 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	environmentHandler := environments.Init(ah.userAccount.Client, ah.userAccount.RadixClient)
-	environments, err := environmentHandler.GetEnvironmentSummary(appName)
+	environments, err := ah.environmentHandler.GetEnvironmentSummary(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +77,14 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	return &applicationModels.Application{Name: applicationRegistration.Name, Registration: applicationRegistration, Jobs: jobs, Environments: environments, AppAlias: appAlias}, nil
+	return &applicationModels.Application{
+		Name:         applicationRegistration.Name,
+		Registration: applicationRegistration,
+		Jobs:         jobs,
+		Environments: environments,
+		AppAlias:     appAlias,
+		Owner:        applicationRegistration.Owner,
+		Creator:      applicationRegistration.Creator}, nil
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -107,8 +109,12 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		application.PublicKey = deployKey.PublicKey
 		application.PrivateKey = deployKey.PrivateKey
 	}
+	creator, err := ah.accounts.GetUserAccountUserPrincipleName()
+	if err != nil {
+		return nil, err
+	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(&application).withDeployKey(deployKey).BuildRR()
+	radixRegistration, err := NewBuilder().withAppRegistration(&application).withDeployKey(deployKey).withCreator(creator).BuildRR()
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +124,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +139,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -162,13 +168,14 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -179,21 +186,29 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
 	// Make check that this is an existing application
-	existingRegistration, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	runUpdate := false
 	// Only these fields can change over time
-	if !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, patchRequest.AdGroups) {
-		existingRegistration.Spec.AdGroups = patchRequest.AdGroups
+	if patchRequest.AdGroups != nil && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
+		runUpdate = true
+	}
+	if patchRequest.Owner != nil && *patchRequest.Owner != "" {
+		existingRegistration.Spec.Owner = *patchRequest.Owner
+		runUpdate = true
+	}
 
+	if runUpdate {
 		err = ah.isValidUpdate(existingRegistration)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
 		if err != nil {
 			return nil, err
 		}
@@ -206,12 +221,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
-	_, err := ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = ah.userAccount.RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
+	err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -276,7 +291,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, 
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		application, err := utils.CreateApplicationConfig(ah.userAccount.Client, ah.userAccount.RadixClient, appName)
+		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
 		if err != nil {
 			return nil, err
 		}
@@ -344,7 +359,7 @@ func (ah ApplicationHandler) triggerPipelinePromote(appName string, pipelinePara
 func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.serviceAccount.RadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -355,7 +370,7 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.serviceAccount.RadixClient, radixRegistration)
+	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -367,7 +382,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	for _, environment := range environments {
 		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.userAccount.Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+		ingresses, err := ah.getUserAccount().Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
 		})
 
@@ -390,6 +405,8 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 // Builder Handles construction of DTO
 type Builder interface {
 	withName(name string) Builder
+	withOwner(owner string) Builder
+	withCreator(creator string) Builder
 	withRepository(string) Builder
 	withSharedSecret(string) Builder
 	withAdGroups([]string) Builder
@@ -405,6 +422,8 @@ type Builder interface {
 
 type applicationBuilder struct {
 	name         string
+	owner        string
+	creator      string
 	repository   string
 	sharedSecret string
 	adGroups     []string
@@ -420,6 +439,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withAdGroups(appRegistration.AdGroups)
 	rb.withPublicKey(appRegistration.PublicKey)
 	rb.withPrivateKey(appRegistration.PrivateKey)
+	rb.withOwner(appRegistration.Owner)
 	return rb
 }
 
@@ -429,6 +449,8 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withSharedSecret(radixRegistration.Spec.SharedSecret)
 	rb.withAdGroups(radixRegistration.Spec.AdGroups)
 	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
+	rb.withOwner(radixRegistration.Spec.Owner)
+	rb.withCreator(radixRegistration.Spec.Creator)
 
 	// Private part of key should never be returned
 	return rb
@@ -436,6 +458,16 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 
 func (rb *applicationBuilder) withName(name string) Builder {
 	rb.name = name
+	return rb
+}
+
+func (rb *applicationBuilder) withOwner(owner string) Builder {
+	rb.owner = owner
+	return rb
+}
+
+func (rb *applicationBuilder) withCreator(creator string) Builder {
+	rb.creator = creator
 	return rb
 }
 
@@ -491,6 +523,8 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		AdGroups:     rb.adGroups,
 		PublicKey:    rb.publicKey,
 		PrivateKey:   rb.privateKey,
+		Owner:        rb.owner,
+		Creator:      rb.creator,
 	}
 }
 
@@ -504,6 +538,8 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithRepository(rb.repository).
 		WithSharedSecret(rb.sharedSecret).
 		WithAdGroups(rb.adGroups).
+		WithOwner(rb.owner).
+		WithCreator(rb.creator).
 		BuildRR()
 
 	return radixRegistration, nil
@@ -521,5 +557,7 @@ func AnApplicationRegistration() Builder {
 		repository:   "https://github.com/Equinor/my-app",
 		sharedSecret: "AnySharedSecret",
 		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
+		owner:        "a_test_user@equinor.com",
+		creator:      "a_test_user@equinor.com",
 	}
 }

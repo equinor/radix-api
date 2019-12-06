@@ -50,7 +50,7 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 }
 
 // GetDeployments Lists deployments
-func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments application getDeployments
 	// ---
 	// summary: Lists the application deployments
@@ -105,7 +105,7 @@ func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	deployHandler := Init(accounts)
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
 
 	if err != nil {
@@ -117,7 +117,7 @@ func GetDeployments(clients models.Clients, w http.ResponseWriter, r *http.Reque
 }
 
 // GetDeployment Get deployment details
-func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName} deployment getDeployment
 	// ---
 	// summary: Get deployment details
@@ -154,7 +154,7 @@ func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	deployHandler := Init(accounts)
 	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
 
 	if err != nil {
@@ -166,7 +166,7 @@ func GetDeployment(clients models.Clients, w http.ResponseWriter, r *http.Reques
 }
 
 // GetComponents for a deployment
-func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components component components
 	// ---
 	// summary: Get components for a deployment
@@ -203,7 +203,7 @@ func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Reques
 	appName := mux.Vars(r)["appName"]
 	deploymentName := mux.Vars(r)["deploymentName"]
 
-	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	deployHandler := Init(accounts)
 	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
@@ -214,7 +214,7 @@ func GetComponents(clients models.Clients, w http.ResponseWriter, r *http.Reques
 }
 
 // GetPodLog Get logs of a single pod
-func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
+func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs component log
 	// ---
 	// summary: Get logs from a deployed pod
@@ -259,7 +259,7 @@ func GetPodLog(clients models.Clients, w http.ResponseWriter, r *http.Request) {
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	deployHandler := Init(clients.OutClusterClient, clients.OutClusterRadixClient)
+	deployHandler := Init(accounts)
 	log, err := deployHandler.GetLogs(appName, podName)
 
 	if err != nil {

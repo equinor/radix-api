@@ -1,13 +1,12 @@
 package utils
 
 import (
-	"errors"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/equinor/radix-api/api/metrics"
 
+	"github.com/equinor/radix-api/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -22,7 +21,7 @@ import (
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
 	GetOutClusterKubernetesClient(string) (kubernetes.Interface, radixclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, string, string) (kubernetes.Interface, radixclient.Interface, error)
+	GetOutClusterKubernetesClientWithImpersonation(string, models.Impersonation) (kubernetes.Interface, radixclient.Interface)
 	GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface)
 }
 
@@ -47,28 +46,17 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
+	return ku.GetOutClusterKubernetesClientWithImpersonation(token, models.Impersonation{})
+}
+
+// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
+func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation models.Impersonation) (kubernetes.Interface, radixclient.Interface) {
 	if ku.useOutClusterClient {
-		config, _ := getOutClusterClientConfig(token, nil, nil)
+		config := getOutClusterClientConfig(token, impersonation)
 		return getKubernetesClientFromConfig(config)
 	}
 
 	return ku.GetInClusterKubernetesClient()
-}
-
-// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup string) (kubernetes.Interface, radixclient.Interface, error) {
-	if ku.useOutClusterClient {
-		config, err := getOutClusterClientConfig(token, &impersonateUser, &impersonateGroup)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		client, radixclient := getKubernetesClientFromConfig(config)
-		return client, radixclient, err
-	}
-
-	client, radixclient := ku.GetInClusterKubernetesClient()
-	return client, radixclient, nil
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
@@ -77,7 +65,7 @@ func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixc
 	return getKubernetesClientFromConfig(config)
 }
 
-func getOutClusterClientConfig(token string, impersonateUser, impersonateGroup *string) (*restclient.Config, error) {
+func getOutClusterClientConfig(token string, impersonation models.Impersonation) *restclient.Config {
 	host := os.Getenv("K8S_API_HOST")
 	if host == "" {
 		host = "https://kubernetes.default.svc"
@@ -91,21 +79,16 @@ func getOutClusterClientConfig(token string, impersonateUser, impersonateGroup *
 		},
 	}
 
-	impersonate, err := performImpersonation(impersonateUser, impersonateGroup)
-	if err != nil {
-		return nil, err
-	}
-
-	if impersonate {
+	if impersonation.PerformImpersonation() {
 		impersonationConfig := restclient.ImpersonationConfig{
-			UserName: *impersonateUser,
-			Groups:   []string{*impersonateGroup},
+			UserName: impersonation.User,
+			Groups:   []string{impersonation.Group},
 		}
 
 		kubeConfig.Impersonate = impersonationConfig
 	}
 
-	return addCommonConfigs(kubeConfig), nil
+	return addCommonConfigs(kubeConfig)
 }
 
 func getInClusterClientConfig() *restclient.Config {
@@ -140,21 +123,4 @@ func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interf
 	}
 
 	return client, radixClient
-}
-
-func performImpersonation(impersonateUser, impersonateGroup *string) (bool, error) {
-	impersonateUserSet := impersonateUser != nil && strings.TrimSpace(*impersonateUser) != ""
-	impersonateGroupSet := impersonateGroup != nil && strings.TrimSpace(*impersonateGroup) != ""
-
-	if (impersonateUserSet && !impersonateGroupSet) ||
-		(!impersonateUserSet && impersonateGroupSet) {
-		return true, errors.New("Impersonation cannot be done without both user and group being set")
-	}
-
-	if impersonateUserSet &&
-		impersonateGroupSet {
-		return true, nil
-	}
-
-	return false, nil
 }

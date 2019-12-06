@@ -12,6 +12,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -27,10 +28,10 @@ type DeployHandler struct {
 }
 
 // Init Constructor
-func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) DeployHandler {
+func Init(accounts models.Accounts) DeployHandler {
 	return DeployHandler{
-		kubeClient:  kubeClient,
-		radixClient: radixClient,
+		kubeClient:  accounts.UserAccount.Client,
+		radixClient: accounts.UserAccount.RadixClient,
 	}
 }
 

@@ -46,32 +46,32 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	impersonateUser, impersonateGroup := getImpersonationFromHeader(r)
-
-	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
-	outClusterClient, outClusterRadixClient, err := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonateUser, impersonateGroup)
-
+	impersonation, err := getImpersonationFromHeader(r)
 	if err != nil {
-		ErrorResponse(w, r, UnexpectedError("Problems getting kubernetes client", err))
+		ErrorResponse(w, r, UnexpectedError("Problems impersonating", err))
 		return
 	}
 
-	clients := models.Clients{
-		InClusterClient:       inClusterClient,
-		InClusterRadixClient:  inClusterRadixClient,
-		OutClusterClient:      outClusterClient,
-		OutClusterRadixClient: outClusterRadixClient,
-	}
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
+	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation)
+
+	accounts := models.NewAccounts(
+		inClusterClient,
+		inClusterRadixClient,
+		outClusterClient,
+		outClusterRadixClient,
+		token,
+		impersonation)
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
-		if _, err := clients.OutClusterRadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
+		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
 			ErrorResponse(w, r, err)
 			return
 		}
 	}
 
-	handler.next(clients, w, r)
+	handler.next(accounts, w, r)
 }
 
 // BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header

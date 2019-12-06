@@ -13,6 +13,7 @@ import (
 	. "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-api/models"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -89,7 +90,7 @@ func TestGetApplicationJob(t *testing.T) {
 		PushImage: true,
 	}
 
-	handler := Init(client, radixclient, client, radixclient)
+	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
