@@ -14,11 +14,15 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-const radixEnvVariablePrefix = "RADIX_"
+const (
+	radixEnvVariablePrefix      = "RADIX_"
+	defaultTargetCPUUtilization = int32(80)
+)
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
 func (deploy DeployHandler) GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
@@ -60,6 +64,33 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 			GetComponentStateFromSpec(deploy.kubeClient, appName, deployment, rd.Status, environmentConfig, component)
 		if err != nil {
 			return nil, err
+		}
+
+		hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(deploymentComponent.Name, metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return nil, err
+		}
+		if err == nil {
+			minReplicas := int32(1)
+			if hpa.Spec.MinReplicas != nil {
+				minReplicas = *hpa.Spec.MinReplicas
+			}
+			maxReplicas := hpa.Spec.MaxReplicas
+			currentCPUUtil := int32(0)
+			if hpa.Status.CurrentCPUUtilizationPercentage != nil {
+				currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
+			}
+			targetCPUUtil := defaultTargetCPUUtilization
+			if hpa.Spec.TargetCPUUtilizationPercentage != nil {
+				targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
+			}
+			hpaSummary := deploymentModels.HorizontalScalingSummary{
+				MinReplicas:                     minReplicas,
+				MaxReplicas:                     maxReplicas,
+				CurrentCPUUtilizationPercentage: currentCPUUtil,
+				TargetCPUUtilizationPercentage:  targetCPUUtil,
+			}
+			deploymentComponent.HorizontalScalingSummary = &hpaSummary
 		}
 
 		components = append(components, deploymentComponent)
