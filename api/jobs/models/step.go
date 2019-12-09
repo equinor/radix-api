@@ -32,4 +32,9 @@ type Step struct {
 	//
 	// required: false
 	PodName string `json:"-"`
+
+	// Components associated components
+	//
+	// required: false
+	Components []string `json:"components,omitempty"`
 }

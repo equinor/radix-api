@@ -107,6 +107,8 @@ github.com/emicklei/go-restful v2.11.0+incompatible h1:XfJYmBrweXijz6u2n8jWVAH10
 github.com/emicklei/go-restful v2.11.0+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
 github.com/equinor/radix-operator v1.3.2 h1:pKrSW8Z5dSrx55Yb29WHl6BX8xIkaFM+4nI9mTut9A4=
 github.com/equinor/radix-operator v1.3.2/go.mod h1:gx3VuzHDa/ojfnfOFzitZVlou/ULAtPZi7/TY3BPy6M=
+github.com/equinor/radix-operator v1.4.0 h1:4mxvJKh+YViD2MSySImCglQCzSP2LU2PPmBXj84O6G8=
+github.com/equinor/radix-operator v1.4.0/go.mod h1:gx3VuzHDa/ojfnfOFzitZVlou/ULAtPZi7/TY3BPy6M=
 github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.2.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.5.0+incompatible h1:ouOWdg56aJriqS0huScTkVXPC5IcNrDCXZ6OoTAWu7M=

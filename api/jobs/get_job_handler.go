@@ -4,8 +4,6 @@ import (
 	"sort"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -71,10 +69,6 @@ func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSumm
 // GetApplicationJob Handler for GetApplicationJob
 func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
 	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		// This may be a job triggered before the introduction of a RadixJob
-		return jh.getApplicationJobLegacy(appName, jobName)
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -96,25 +90,6 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	jobs, err := jh.getJobs(appName)
 	if err != nil {
 		return nil, err
-	}
-
-	legacyJobs, err := jh.getApplicationJobsLegacy(appName)
-	if err == nil && len(legacyJobs) > 0 {
-		// Append legacy jobs to list which is not contained in list of jobs
-		for _, legacyJob := range legacyJobs {
-			exists := false
-
-			for _, job := range jobs {
-				if legacyJob.Name == job.Name {
-					exists = true
-					break
-				}
-			}
-
-			if !exists {
-				jobs = append(jobs, legacyJob)
-			}
-		}
 	}
 
 	// Sort jobs descending
@@ -186,13 +161,6 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 	for applicationName := range forApplications {
 		if applicationJob[applicationName] == nil {
 			forApplicationsWithNoRadixJob[applicationName] = true
-		}
-	}
-
-	if len(forApplicationsWithNoRadixJob) > 0 {
-		applicationJobForApplicationsWithNoRadixJob, _ := jh.getLatestJobPerApplicationLegacy(forApplicationsWithNoRadixJob)
-		for applicationName, job := range applicationJobForApplicationsWithNoRadixJob {
-			applicationJob[applicationName] = job
 		}
 	}
 
