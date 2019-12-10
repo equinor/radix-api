@@ -55,6 +55,11 @@ type Component struct {
 	//
 	// required: false
 	ReplicaList []ReplicaSummary `json:"replicaList"`
+
+	// HorizontalScaling defines horizontal scaling summary for this component
+	//
+	// required: false
+	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 }
 
 // Port describe an component part of an deployment
@@ -122,4 +127,32 @@ type ReplicaStatus struct {
 	// required: true
 	// example: Pending, Failing, Running, Terminated
 	Status string `json:"status"`
+}
+
+// HorizontalScalingSummary describe the summary of horizontal scaling of a component
+// swagger:model HorizontalScalingSummary
+type HorizontalScalingSummary struct {
+	// Component minimum replicas. From radixconfig.yaml
+	//
+	// required: false
+	// example: 2
+	MinReplicas int32 `json:"minReplicas"`
+
+	// Component maximum replicas. From radixconfig.yaml
+	//
+	// required: false
+	// example: 5
+	MaxReplicas int32 `json:"maxReplicas"`
+
+	// Component current average CPU utilization over all pods, represented as a percentage of requested CPU
+	//
+	// required: false
+	// example: 70
+	CurrentCPUUtilizationPercentage int32 `json:"currentCPUUtilizationPercentage"`
+
+	// Component target average CPU utilization over all pods
+	//
+	// required: false
+	// example: 80
+	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage"`
 }
