@@ -70,9 +70,19 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ListPipelines,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/{pipelineName}",
+			Path:        rootPath + "/applications/{appName}/pipelines/build",
 			Method:      "POST",
-			HandlerFunc: TriggerPipeline,
+			HandlerFunc: TriggerPipelineBuild,
+		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/pipelines/build-deploy",
+			Method:      "POST",
+			HandlerFunc: TriggerPipelineBuildDeploy,
+		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/pipelines/promote",
+			Method:      "POST",
+			HandlerFunc: TriggerPipelinePromote,
 		},
 		models.Route{
 			Path:        rootPath + "/applications/{appName}/deploykey-valid",
@@ -446,32 +456,23 @@ func ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	utils.JSONResponse(w, r, supportedPipelines)
 }
 
-// TriggerPipeline creates a pipeline job for the application
-func TriggerPipeline(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/pipelines/{pipelineName} application triggerPipeline
+// TriggerPipelineBuild creates a build pipeline job for the application
+func TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipelines/build application triggerPipelineBuild
 	// ---
-	// summary: Run a pipeline for a given application and branch
+	// summary: Run a build pipeline for a given application and branch
 	// parameters:
 	// - name: appName
 	//   in: path
 	//   description: Name of application
 	//   type: string
 	//   required: true
-	// - name: pipelineName
-	//   in: path
-	//   description: Name of pipeline
-	//   type: string
-	//   enum:
-	//   - build
-	//   - build-deploy
-	//   - promote
-	//   required: true
-	// - name: PipelineParameters
+	// - name: PipelineParametersBuild
 	//   description: Pipeline parameters
 	//   in: body
 	//   required: true
 	//   schema:
-	//     "$ref": "#/definitions/PipelineParameters"
+	//     "$ref": "#/definitions/PipelineParametersBuild"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -490,10 +491,103 @@ func TriggerPipeline(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	pipelineName := mux.Vars(r)["pipelineName"]
 
 	handler := Init(accounts)
-	jobSummary, err := handler.TriggerPipeline(appName, pipelineName, r)
+	jobSummary, err := handler.TriggerPipelineBuild(appName, r)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &jobSummary)
+}
+
+// TriggerPipelineBuildDeploy creates a build-deploy pipeline job for the application
+func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipelines/build-deploy application triggerPipelineBuildDeploy
+	// ---
+	// summary: Run a build-deploy pipeline for a given application and branch
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: PipelineParametersBuild
+	//   description: Pipeline parameters
+	//   in: body
+	//   required: true
+	//   schema:
+	//     "$ref": "#/definitions/PipelineParametersBuild"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/JobSummary"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := Init(accounts)
+	jobSummary, err := handler.TriggerPipelineBuildDeploy(appName, r)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &jobSummary)
+}
+
+// TriggerPipelinePromote creates a promote pipeline job for the application
+func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipelines/promote application triggerPipelinePromote
+	// ---
+	// summary: Run a promote pipeline for a given application and branch
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: PipelineParametersPromote
+	//   description: Pipeline parameters
+	//   in: body
+	//   required: true
+	//   schema:
+	//     "$ref": "#/definitions/PipelineParametersPromote"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/JobSummary"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := Init(accounts)
+	jobSummary, err := handler.TriggerPipelinePromote(appName, r)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

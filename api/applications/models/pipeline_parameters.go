@@ -47,18 +47,3 @@ type PipelineParametersBuild struct {
 func (pipeParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
 	return !(pipeParam.PushImage == "0" || pipeParam.PushImage == "false")
 }
-
-// The struct below is only used to keep Swagger documentation happy; it
-// should be updated with the different types of pipeline parameters, making
-// use of the `swagger:allOf` annotation
-
-// PipelineParameters All possible parameters for all pipeline types
-// Only the fields required by the chosen pipeline are necessary
-// swagger:model PipelineParameters
-type PipelineParameters struct {
-	// swagger:allOf
-	PipelineParametersPromote
-
-	// swagger:allOf
-	PipelineParametersBuild
-}
