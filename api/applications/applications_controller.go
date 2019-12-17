@@ -85,6 +85,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: TriggerPipelinePromote,
 		},
 		models.Route{
+			Path:        rootPath + "/applications/{appName}/pipelines/deploy",
+			Method:      "POST",
+			HandlerFunc: TriggerPipelineDeploy,
+		},
+		models.Route{
 			Path:        rootPath + "/applications/{appName}/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
@@ -541,6 +546,53 @@ func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter,
 
 	handler := Init(accounts)
 	jobSummary, err := handler.TriggerPipelineBuildDeploy(appName, r)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &jobSummary)
+}
+
+// TriggerPipelineDeploy creates a deploy pipeline job for the application
+func TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipelines/deploy application triggerPipelineDeploy
+	// ---
+	// summary: Run a deploy pipeline for a given application and environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: PipelineParametersDeploy
+	//   description: Pipeline parameters
+	//   in: body
+	//   required: true
+	//   schema:
+	//     "$ref": "#/definitions/PipelineParametersDeploy"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/JobSummary"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := Init(accounts)
+	jobSummary, err := handler.TriggerPipelineDeploy(appName, r)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

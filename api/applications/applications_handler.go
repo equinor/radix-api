@@ -282,6 +282,74 @@ func (ah ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.
 	return jobSummary, nil
 }
 
+// TriggerPipelinePromote Triggers promote pipeline for an application
+func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersPromote
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
+	deploymentName := pipelineParameters.DeploymentName
+	fromEnvironment := pipelineParameters.FromEnvironment
+	toEnvironment := pipelineParameters.ToEnvironment
+
+	if strings.TrimSpace(deploymentName) == "" || strings.TrimSpace(fromEnvironment) == "" || strings.TrimSpace(toEnvironment) == "" {
+		return nil, utils.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
+	}
+
+	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
+
+	jobParameters := &jobModels.JobParameters{
+		DeploymentName:  deploymentName,
+		FromEnvironment: fromEnvironment,
+		ToEnvironment:   toEnvironment,
+	}
+
+	pipeline, err := jobPipeline.GetPipelineFromName("promote")
+	if err != nil {
+		return nil, err
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSummary, nil
+}
+
+// TriggerPipelineDeploy Triggers deploy pipeline for an application
+func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersDeploy
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
+	toEnvironment := pipelineParameters.ToEnvironment
+
+	if strings.TrimSpace(toEnvironment) == "" {
+		return nil, utils.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
+	}
+
+	log.Infof("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)
+
+	pipeline, err := jobPipeline.GetPipelineFromName("deploy")
+	if err != nil {
+		return nil, err
+	}
+
+	jobParameters := &jobModels.JobParameters{
+		ToEnvironment: toEnvironment,
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSummary, nil
+}
+
 func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
@@ -296,10 +364,6 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 	}
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
-	app, err := ah.GetApplication(appName)
-	if err != nil {
-		return nil, err
-	}
 
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
@@ -326,47 +390,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
-	if err != nil {
-		return nil, err
-	}
-
-	return jobSummary, nil
-}
-
-// TriggerPipelinePromote Triggers promote pipeline for an application
-func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
-	var pipelineParameters applicationModels.PipelineParametersPromote
-	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
-		return nil, err
-	}
-
-	deploymentName := pipelineParameters.DeploymentName
-	fromEnvironment := pipelineParameters.FromEnvironment
-	toEnvironment := pipelineParameters.ToEnvironment
-
-	if strings.TrimSpace(deploymentName) == "" || strings.TrimSpace(fromEnvironment) == "" || strings.TrimSpace(toEnvironment) == "" {
-		return nil, utils.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
-	}
-
-	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
-	app, err := ah.GetApplication(appName)
-	if err != nil {
-		return nil, err
-	}
-
-	jobParameters := &jobModels.JobParameters{
-		DeploymentName:  deploymentName,
-		FromEnvironment: fromEnvironment,
-		ToEnvironment:   toEnvironment,
-	}
-
-	pipeline, err := jobPipeline.GetPipelineFromName("promote")
-	if err != nil {
-		return nil, err
-	}
-
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
