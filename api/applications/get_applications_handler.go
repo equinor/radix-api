@@ -57,6 +57,12 @@ func (ah ApplicationHandler) filterRadixRegByAccessAndSSHRepo(radixregs []v1.Rad
 	result := []v1.RadixRegistration{}
 
 	for _, rr := range radixregs {
+		if rr.Status.Reconciled.IsZero() {
+			// Registration hasn't been properly reconciled, and therefore
+			// cannot be checked
+			continue
+		}
+
 		if filterOnSSHRepo(&rr, sshURL) {
 			continue
 		}
