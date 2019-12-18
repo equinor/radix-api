@@ -245,37 +245,32 @@ func (ah ApplicationHandler) GetSupportedPipelines() []string {
 	return supportedPipelines
 }
 
-// TriggerPipeline handler for TriggerPipeline
-func (ah ApplicationHandler) TriggerPipeline(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
-	var jobSummary *jobModels.JobSummary
-	var err error
-
-	switch pipelineName {
-	case string(v1.Build), string(v1.BuildDeploy):
-		var pipelineParameters applicationModels.PipelineParametersBuild
-		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
-			return nil, err
-		}
-		jobSummary, err = ah.TriggerPipelineBuild(appName, pipelineName, pipelineParameters)
-	case string(v1.Promote):
-		var pipelineParameters applicationModels.PipelineParametersPromote
-		if err = json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
-			return nil, err
-		}
-		jobSummary, err = ah.triggerPipelinePromote(appName, pipelineParameters)
-	default:
-		return nil, utils.ValidationError("Radix Application Pipeline", fmt.Sprintf("Pipeline %s not supported", pipelineName))
-	}
-
+// TriggerPipelineBuild Triggers build pipeline for an application
+func (ah ApplicationHandler) TriggerPipelineBuild(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	pipelineName := "build"
+	jobSummary, err := ah.triggerPipelineBuildOrBuildDeploy(appName, pipelineName, r)
 	if err != nil {
 		return nil, err
 	}
-
 	return jobSummary, nil
 }
 
-// TriggerPipelineBuild Triggers pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, pipelineParameters applicationModels.PipelineParametersBuild) (*jobModels.JobSummary, error) {
+// TriggerPipelineBuildDeploy Triggers build-deploy pipeline for an application
+func (ah ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	pipelineName := "build-deploy"
+	jobSummary, err := ah.triggerPipelineBuildOrBuildDeploy(appName, pipelineName, r)
+	if err != nil {
+		return nil, err
+	}
+	return jobSummary, nil
+}
+
+func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersBuild
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
 	branch := pipelineParameters.Branch
 	commitID := pipelineParameters.CommitID
 
@@ -322,7 +317,13 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName, pipelineName string, 
 	return jobSummary, nil
 }
 
-func (ah ApplicationHandler) triggerPipelinePromote(appName string, pipelineParameters applicationModels.PipelineParametersPromote) (*jobModels.JobSummary, error) {
+// TriggerPipelinePromote Triggers promote pipeline for an application
+func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersPromote
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
 	deploymentName := pipelineParameters.DeploymentName
 	fromEnvironment := pipelineParameters.FromEnvironment
 	toEnvironment := pipelineParameters.ToEnvironment
