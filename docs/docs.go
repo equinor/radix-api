@@ -1,4 +1,4 @@
-// Package classification Radix API.
+// Package docs classification Radix API.
 //
 // This is the API Server for the Radix platform.
 //
