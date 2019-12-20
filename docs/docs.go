@@ -1,10 +1,10 @@
-// Package classification Radix API.
+// Package docs classification Radix API.
 //
 // This is the API Server for the Radix platform.
 //
 //     Schemes: http, https
 //     BasePath: /api/v1
-//     Version: 1.3.2
+//     Version: 1.3.3
 //     Contact: https://equinor.slack.com/messages/CBKM6N2JY
 //
 //     Consumes:
