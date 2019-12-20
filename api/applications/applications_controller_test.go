@@ -612,6 +612,23 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, anyNewOwner, application.Registration.Owner)
+
+	// Test
+	anyNewAdGroup = []string{}
+	patchRequest = applicationModels.ApplicationPatchRequest{
+		AdGroups: &anyNewAdGroup,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Nil(t, application.Registration.AdGroups)
+	assert.Equal(t, anyNewOwner, application.Registration.Owner)
+
 }
 
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {

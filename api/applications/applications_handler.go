@@ -202,11 +202,11 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 
 	runUpdate := false
 	// Only these fields can change over time
-	if patchRequest.AdGroups != nil && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
-	} else if patchRequest.AdGroups == nil {
+	} else if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) == 0 {
 		existingRegistration.Spec.AdGroups = nil
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: nil})
 		runUpdate = true
