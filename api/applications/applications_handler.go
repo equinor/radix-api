@@ -23,7 +23,14 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"k8s.io/apimachinery/pkg/types"
 )
+
+type patch struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
+}
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
@@ -191,14 +198,23 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		return nil, err
 	}
 
+	payload := []patch{}
+
 	runUpdate := false
 	// Only these fields can change over time
-	if patchRequest.AdGroups != nil && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
+		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
+		runUpdate = true
+	} else if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) == 0 {
+		existingRegistration.Spec.AdGroups = nil
+		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: nil})
 		runUpdate = true
 	}
+
 	if patchRequest.Owner != nil && *patchRequest.Owner != "" {
 		existingRegistration.Spec.Owner = *patchRequest.Owner
+		payload = append(payload, patch{Op: "replace", Path: "/spec/owner", Value: *patchRequest.Owner})
 		runUpdate = true
 	}
 
@@ -208,7 +224,8 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 			return nil, err
 		}
 
-		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+		payloadBytes, _ := json.Marshal(payload)
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(existingRegistration.GetName(), types.JSONPatchType, payloadBytes)
 		if err != nil {
 			return nil, err
 		}

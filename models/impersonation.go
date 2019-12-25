@@ -11,6 +11,7 @@ type Impersonation struct {
 	Group string
 }
 
+// NewImpersonation Constructor
 func NewImpersonation(user, group string) (Impersonation, error) {
 	impersonation := Impersonation{
 		User:  strings.TrimSpace(user),
@@ -19,6 +20,7 @@ func NewImpersonation(user, group string) (Impersonation, error) {
 	return impersonation, impersonation.isValid()
 }
 
+// PerformImpersonation Impersonate user
 func (impersonation Impersonation) PerformImpersonation() bool {
 	return impersonation.User != "" && impersonation.Group != ""
 }
