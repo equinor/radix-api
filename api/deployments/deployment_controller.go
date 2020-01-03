@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -239,6 +240,17 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   description: Name of pod
 	//   type: string
 	//   required: true
+	// - name: from
+	//   in: query
+	//   description: From time
+	//   type: string
+	//   format: date-time
+	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Will stream log data
+	//   type: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -252,15 +264,37 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// responses:
 	//   "200":
 	//     description: "pod log"
+	//     schema:
+	//        type: "string"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	// deploymentName := mux.Vars(r)["deploymentName"]
-	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
+	fromVar := r.URL.Query()["from"]
+	followVar := r.URL.Query()["follow"]
+
+	var from time.Time
+	var follow bool
+	var err error
+
+	if fromVar != nil {
+		from, err = time.Parse("2006-01-02T15:04:05.000Z", fromVar[0])
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	if followVar != nil {
+		follow, err = strconv.ParseBool(followVar[0])
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(appName, podName)
+	log, err := deployHandler.GetLogs(appName, podName, from, follow)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

@@ -2,6 +2,7 @@ package pods
 
 import (
 	"bytes"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,24 +24,24 @@ func Init(client kubernetes.Interface) PodHandler {
 }
 
 // HandleGetAppPodLog Get logs from pod in app namespace
-func (ph PodHandler) HandleGetAppPodLog(appName, podName, containerName string) (string, error) {
+func (ph PodHandler) HandleGetAppPodLog(appName, podName, containerName string, from time.Time, follow bool) (string, error) {
 	appNs := crdUtils.GetAppNamespace(appName)
-	return ph.getPodLog(appNs, podName, containerName)
+	return ph.getPodLog(appNs, podName, containerName, from, follow)
 }
 
 // HandleGetEnvironmentPodLog Get logs from pod in environment
-func (ph PodHandler) HandleGetEnvironmentPodLog(appName, envName, podName, containerName string) (string, error) {
+func (ph PodHandler) HandleGetEnvironmentPodLog(appName, envName, podName, containerName string, from time.Time, follow bool) (string, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	return ph.getPodLog(envNs, podName, containerName)
+	return ph.getPodLog(envNs, podName, containerName, from, follow)
 }
 
-func (ph PodHandler) getPodLog(namespace, podName, containerName string) (string, error) {
+func (ph PodHandler) getPodLog(namespace, podName, containerName string, from time.Time, follow bool) (string, error) {
 	pod, err := ph.client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	req := getPodLogRequest(ph.client, pod, containerName, false)
+	req := getPodLogRequest(ph.client, pod, containerName, from, false)
 	readCloser, err := req.Stream()
 	if err != nil {
 		return "", err
@@ -55,10 +56,15 @@ func (ph PodHandler) getPodLog(namespace, podName, containerName string) (string
 	return buf.String(), nil
 }
 
-func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerName string, follow bool) *rest.Request {
+func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerName string, from time.Time, follow bool) *rest.Request {
 	podLogOption := corev1.PodLogOptions{
 		Follow: follow,
 	}
+
+	if !from.IsZero() {
+		podLogOption.SinceTime = &metav1.Time{Time: from}
+	}
+
 	if containerName != "" {
 		podLogOption.Container = containerName
 	}
