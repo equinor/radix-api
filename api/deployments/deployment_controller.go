@@ -252,6 +252,8 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// responses:
 	//   "200":
 	//     description: "pod log"
+	//     schema:
+	//        type: "string"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
