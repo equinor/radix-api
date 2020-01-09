@@ -282,58 +282,6 @@ func (ah ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.
 	return jobSummary, nil
 }
 
-func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
-	var pipelineParameters applicationModels.PipelineParametersBuild
-	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
-		return nil, err
-	}
-
-	branch := pipelineParameters.Branch
-	commitID := pipelineParameters.CommitID
-
-	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
-		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
-	}
-
-	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
-	app, err := ah.GetApplication(appName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if branch is mapped
-	if !applicationconfig.IsMagicBranch(branch) {
-		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
-		if err != nil {
-			return nil, err
-		}
-
-		branchIsMapped, _ := application.IsBranchMappedToEnvironment(branch)
-
-		if !branchIsMapped {
-			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
-		}
-	}
-
-	jobParameters := &jobModels.JobParameters{
-		Branch:    branch,
-		CommitID:  commitID,
-		PushImage: pipelineParameters.PushImageToContainerRegistry(),
-	}
-
-	pipeline, err := jobPipeline.GetPipelineFromName(pipelineName)
-	if err != nil {
-		return nil, err
-	}
-
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
-	if err != nil {
-		return nil, err
-	}
-
-	return jobSummary, nil
-}
-
 // TriggerPipelinePromote Triggers promote pipeline for an application
 func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersPromote
@@ -350,10 +298,6 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 	}
 
 	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
-	app, err := ah.GetApplication(appName)
-	if err != nil {
-		return nil, err
-	}
 
 	jobParameters := &jobModels.JobParameters{
 		DeploymentName:  deploymentName,
@@ -366,7 +310,87 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, crdUtils.GetGithubCloneURLFromRepo(app.Registration.Repository), pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSummary, nil
+}
+
+// TriggerPipelineDeploy Triggers deploy pipeline for an application
+func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersDeploy
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
+	toEnvironment := pipelineParameters.ToEnvironment
+
+	if strings.TrimSpace(toEnvironment) == "" {
+		return nil, utils.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
+	}
+
+	log.Infof("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)
+
+	pipeline, err := jobPipeline.GetPipelineFromName("deploy")
+	if err != nil {
+		return nil, err
+	}
+
+	jobParameters := &jobModels.JobParameters{
+		ToEnvironment: toEnvironment,
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSummary, nil
+}
+
+func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersBuild
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
+	branch := pipelineParameters.Branch
+	commitID := pipelineParameters.CommitID
+
+	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
+		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
+	}
+
+	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+
+	// Check if branch is mapped
+	if !applicationconfig.IsMagicBranch(branch) {
+		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
+		if err != nil {
+			return nil, err
+		}
+
+		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
+
+		if !isThereAnythingToDeploy {
+			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
+		}
+	}
+
+	jobParameters := &jobModels.JobParameters{
+		Branch:    branch,
+		CommitID:  commitID,
+		PushImage: pipelineParameters.PushImageToContainerRegistry(),
+	}
+
+	pipeline, err := jobPipeline.GetPipelineFromName(pipelineName)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}

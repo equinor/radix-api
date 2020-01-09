@@ -22,7 +22,7 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(appName, sshRepo string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	job := createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
@@ -46,6 +46,7 @@ func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definitio
 
 	var buildSpec v1.RadixBuildSpec
 	var promoteSpec v1.RadixPromoteSpec
+	var deploySpec v1.RadixDeploySpec
 
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
@@ -61,6 +62,10 @@ func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definitio
 			DeploymentName:  jobSpec.DeploymentName,
 			FromEnvironment: jobSpec.FromEnvironment,
 			ToEnvironment:   jobSpec.ToEnvironment,
+		}
+	case v1.Deploy:
+		deploySpec = v1.RadixDeploySpec{
+			ToEnvironment: jobSpec.ToEnvironment,
 		}
 	}
 
@@ -82,6 +87,7 @@ func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definitio
 			DockerRegistry: dockerRegistry,
 			Build:          buildSpec,
 			Promote:        promoteSpec,
+			Deploy:         deploySpec,
 		},
 	}
 
