@@ -372,9 +372,9 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 			return nil, err
 		}
 
-		branchIsMapped, _ := application.IsBranchMappedToEnvironment(branch)
+		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
 
-		if !branchIsMapped {
+		if !isThereAnythingToDeploy {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
 	}
