@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
@@ -13,10 +14,12 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -92,6 +95,35 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		AppAlias:     appAlias,
 		Owner:        applicationRegistration.Owner,
 		Creator:      applicationRegistration.Creator}, nil
+}
+
+// RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
+func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
+	appNamespace := crdUtils.GetAppNamespace(appName)
+	machineUserSA, err := ah.getMachineUserServiceAccount(appName, appNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if len(machineUserSA.Secrets) == 0 {
+		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
+	}
+
+	tokenName := machineUserSA.Secrets[0].Name
+	err = ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Delete(tokenName, &metav1.DeleteOptions{})
+
+	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
+	queryInterval := time.Tick(time.Duration(1) * time.Second)
+	for {
+		select {
+		case <-queryInterval:
+			machineUser, err := ah.getMachineUserForApp(appName)
+			if err == nil {
+				return machineUser, nil
+			}
+		case <-queryTimeout.C:
+			return nil, fmt.Errorf("Timeout getting user machine token secret")
+		}
+	}
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -215,6 +247,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	if patchRequest.Owner != nil && *patchRequest.Owner != "" {
 		existingRegistration.Spec.Owner = *patchRequest.Owner
 		payload = append(payload, patch{Op: "replace", Path: "/spec/owner", Value: *patchRequest.Owner})
+		runUpdate = true
+	}
+
+	if patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
+		existingRegistration.Spec.MachineUser = patchRequest.MachineUser
+		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
 		runUpdate = true
 	}
 
@@ -434,6 +472,43 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	return nil, nil
 }
 
+func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationModels.MachineUser, error) {
+	appNamespace := crdUtils.GetAppNamespace(name)
+
+	machineUserSA, err := ah.getMachineUserServiceAccount(name, appNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(machineUserSA.Secrets) == 0 {
+		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
+	}
+
+	tokenName := machineUserSA.Secrets[0].Name
+	token, err := ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	tokenStringData := string(token.Data["token"])
+	var tokenString *string
+	tokenString = &tokenStringData
+
+	return &applicationModels.MachineUser{
+		Token: *tokenString,
+	}, nil
+}
+
+func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
+	machineUserName := defaults.GetMachineUserRoleName(appName)
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(machineUserName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return machineUserSA, nil
+}
+
 // Builder Handles construction of DTO
 type Builder interface {
 	withName(name string) Builder
@@ -446,6 +521,7 @@ type Builder interface {
 	withPrivateKey(string) Builder
 	withCloneURL(string) Builder
 	withDeployKey(*utils.DeployKey) Builder
+	withMachineUser(bool) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -462,6 +538,7 @@ type applicationBuilder struct {
 	publicKey    string
 	privateKey   string
 	cloneURL     string
+	machineUser  bool
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -483,6 +560,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
 	rb.withOwner(radixRegistration.Spec.Owner)
 	rb.withCreator(radixRegistration.Spec.Creator)
+	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 
 	// Private part of key should never be returned
 	return rb
@@ -542,6 +620,11 @@ func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder 
 	return rb
 }
 
+func (rb *applicationBuilder) withMachineUser(machineUser bool) Builder {
+	rb.machineUser = machineUser
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -557,6 +640,7 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		PrivateKey:   rb.privateKey,
 		Owner:        rb.owner,
 		Creator:      rb.creator,
+		MachineUser:  rb.machineUser,
 	}
 }
 
@@ -572,6 +656,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithAdGroups(rb.adGroups).
 		WithOwner(rb.owner).
 		WithCreator(rb.creator).
+		WithMachineUser(rb.machineUser).
 		BuildRR()
 
 	return radixRegistration, nil

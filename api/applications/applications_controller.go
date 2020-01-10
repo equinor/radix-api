@@ -94,6 +94,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/regenerate-machine-user-token",
+			Method:      "POST",
+			HandlerFunc: RegenerateMachineUserTokenHandler,
+		},
 	}
 
 	return routes
@@ -225,6 +230,48 @@ func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r 
 	}
 
 	utils.ErrorResponse(w, r, err)
+}
+
+// RegenerateMachineUserTokenHandler Deletes the secret holding the token to force refresh and returns the new token
+func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/regenerate-machine-user-token application regenerateMachineUserToken
+	// ---
+	// summary: Regenerates machine user token
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful regenerate machine-user token
+	//     schema:
+	//       "$ref": "#/definitions/MachineUser"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	handler := Init(accounts)
+	machineUser, err := handler.RegenerateMachineUserToken(appName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &machineUser)
 }
 
 // RegisterApplication Creates new application registation
