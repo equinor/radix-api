@@ -23,6 +23,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -64,9 +65,24 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
+	// TODO user method from operator
+	machineUserName := fmt.Sprintf("%s-%s", appName, "machine-user")
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(corev1.NamespaceDefault).Get(machineUserName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	tokenName := machineUserSA.Secrets[0].Name
+	token, err := ah.getServiceAccount().Client.CoreV1().Secrets(corev1.NamespaceDefault).Get(tokenName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	tokenString := string(token.Data["token"])
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
+		withServiceAccountToken(tokenString).
 		Build()
 
 	jobs, err := ah.jobHandler.GetApplicationJobs(appName)
@@ -458,20 +474,22 @@ type Builder interface {
 	withDeployKey(*utils.DeployKey) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
+	withServiceAccountToken(string) Builder
 	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
 }
 
 type applicationBuilder struct {
-	name         string
-	owner        string
-	creator      string
-	repository   string
-	sharedSecret string
-	adGroups     []string
-	publicKey    string
-	privateKey   string
-	cloneURL     string
+	name                string
+	owner               string
+	creator             string
+	repository          string
+	sharedSecret        string
+	adGroups            []string
+	publicKey           string
+	privateKey          string
+	cloneURL            string
+	serviceAccountToken string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -495,6 +513,11 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withCreator(radixRegistration.Spec.Creator)
 
 	// Private part of key should never be returned
+	return rb
+}
+
+func (rb *applicationBuilder) withServiceAccountToken(serviceAccountToken string) Builder {
+	rb.serviceAccountToken = serviceAccountToken
 	return rb
 }
 
@@ -559,14 +582,15 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:         rb.name,
-		Repository:   repository,
-		SharedSecret: rb.sharedSecret,
-		AdGroups:     rb.adGroups,
-		PublicKey:    rb.publicKey,
-		PrivateKey:   rb.privateKey,
-		Owner:        rb.owner,
-		Creator:      rb.creator,
+		Name:                rb.name,
+		Repository:          repository,
+		SharedSecret:        rb.sharedSecret,
+		AdGroups:            rb.adGroups,
+		PublicKey:           rb.publicKey,
+		PrivateKey:          rb.privateKey,
+		Owner:               rb.owner,
+		Creator:             rb.creator,
+		ServiceAccountToken: rb.serviceAccountToken,
 	}
 }
 

@@ -46,4 +46,9 @@ type ApplicationRegistration struct {
 	//
 	// required: false
 	PrivateKey string `json:"privateKey,omitempty"`
+
+	// ServiceAccountToken the token of the service account representing the application
+	//
+	// required: false
+	ServiceAccountToken string `json:"serviceAccountToken,omitempty"`
 }
