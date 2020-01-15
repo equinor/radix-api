@@ -238,5 +238,5 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 		return
 	}
 
-	utils.JSONResponse(w, r, nil)
+	w.WriteHeader(http.StatusNoContent)
 }
