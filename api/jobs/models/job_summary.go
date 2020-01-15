@@ -55,7 +55,7 @@ type JobSummary struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Failed
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
 	// example: Waiting
 	Status string `json:"status"`
 
@@ -120,7 +120,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		AppName:      job.Spec.AppName,
 		Branch:       job.Spec.Build.Branch,
 		CommitID:     job.Spec.Build.CommitID,
-		Status:       GetStatusFromRadixJobStatus(status),
+		Status:       GetStatusFromRadixJobStatus(status, job.Spec.Stop),
 		Created:      created,
 		Started:      utils.FormatTime(status.Started),
 		Ended:        ended,

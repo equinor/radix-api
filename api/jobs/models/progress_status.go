@@ -23,11 +23,17 @@ const (
 	// Waiting Job/step pending
 	Waiting
 
+	// Stopping job
+	Stopping
+
+	// Stopped job
+	Stopped
+
 	numStatuses
 )
 
 func (p ProgressStatus) String() string {
-	return [...]string{"Running", "Succeeded", "Failed", "Waiting"}[p]
+	return [...]string{"Running", "Succeeded", "Failed", "Waiting", "Stopping", "Stopped"}[p]
 }
 
 // GetStatusFromName Gets status from name
@@ -58,7 +64,11 @@ func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
 }
 
 // GetStatusFromRadixJobStatus Returns job status as string
-func GetStatusFromRadixJobStatus(jobStatus v1.RadixJobStatus) string {
+func GetStatusFromRadixJobStatus(jobStatus v1.RadixJobStatus, specStop bool) string {
+	if specStop && string(jobStatus.Condition) != Stopped.String() {
+		return Stopping.String()
+	}
+
 	if jobStatus.Condition != "" {
 		return string(jobStatus.Condition)
 	}
