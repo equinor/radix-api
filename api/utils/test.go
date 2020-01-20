@@ -12,18 +12,25 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ApplyRegistrationWithSync syncs based on registration builder
+func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder utils.RegistrationBuilder) {
+	kubeUtils, _ := kube.New(client, radixclient)
+	commonTestUtils.ApplyRegistration(registrationBuilder)
+
+	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
+	registration.OnSync()
+}
+
 // ApplyApplicationWithSync syncs based on application builder, and default builder for registration.
 func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder utils.ApplicationBuilder) {
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
+	ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
+
 	kubeUtils, _ := kube.New(client, radixclient)
-	commonTestUtils.ApplyRegistration(registrationBuilder)
 	commonTestUtils.ApplyApplication(applicationBuilder)
 
-	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
 	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-
-	registration.OnSync()
 	applicationconfig.OnSync()
 }
 

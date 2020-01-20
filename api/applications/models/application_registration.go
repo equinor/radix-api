@@ -50,5 +50,5 @@ type ApplicationRegistration struct {
 	// ServiceAccountToken the token of the service account representing the application
 	//
 	// required: false
-	ServiceAccountToken string `json:"serviceAccountToken,omitempty"`
+	ServiceAccountToken *string `json:"serviceAccountToken,omitempty"`
 }

@@ -12,6 +12,7 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -65,20 +66,20 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	// TODO user method from operator
-	machineUserName := fmt.Sprintf("%s-%s", appName, "machine-user")
+	var tokenString *string
+	machineUserName := defaults.GetMachineUserRoleName(appName)
 	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(corev1.NamespaceDefault).Get(machineUserName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
+	if err == nil && len(machineUserSA.Secrets) > 0 {
+		tokenName := machineUserSA.Secrets[0].Name
+		token, err := ah.getServiceAccount().Client.CoreV1().Secrets(corev1.NamespaceDefault).Get(tokenName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		tokenStringData := string(token.Data["token"])
+		tokenString = &tokenStringData
 	}
 
-	tokenName := machineUserSA.Secrets[0].Name
-	token, err := ah.getServiceAccount().Client.CoreV1().Secrets(corev1.NamespaceDefault).Get(tokenName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	tokenString := string(token.Data["token"])
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
@@ -474,7 +475,7 @@ type Builder interface {
 	withDeployKey(*utils.DeployKey) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
-	withServiceAccountToken(string) Builder
+	withServiceAccountToken(*string) Builder
 	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
 }
@@ -489,7 +490,7 @@ type applicationBuilder struct {
 	publicKey           string
 	privateKey          string
 	cloneURL            string
-	serviceAccountToken string
+	serviceAccountToken *string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -516,7 +517,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	return rb
 }
 
-func (rb *applicationBuilder) withServiceAccountToken(serviceAccountToken string) Builder {
+func (rb *applicationBuilder) withServiceAccountToken(serviceAccountToken *string) Builder {
 	rb.serviceAccountToken = serviceAccountToken
 	return rb
 }
