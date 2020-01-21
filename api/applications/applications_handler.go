@@ -24,7 +24,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -66,12 +65,14 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
+	appNamespace := crdUtils.GetAppNamespace(radixRegistration.Name)
+
 	var tokenString *string
 	machineUserName := defaults.GetMachineUserRoleName(appName)
-	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(corev1.NamespaceDefault).Get(machineUserName, metav1.GetOptions{})
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(appNamespace).Get(machineUserName, metav1.GetOptions{})
 	if err == nil && len(machineUserSA.Secrets) > 0 {
 		tokenName := machineUserSA.Secrets[0].Name
-		token, err := ah.getServiceAccount().Client.CoreV1().Secrets(corev1.NamespaceDefault).Get(tokenName, metav1.GetOptions{})
+		token, err := ah.getServiceAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
