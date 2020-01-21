@@ -708,6 +708,25 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, pushCommitID, jobSummary.CommitID)
 }
 
+func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
+	_, controllerTestUtils, _, radixclient := setupTest()
+
+	appName := "an-app"
+
+	parameters := applicationModels.PipelineParametersDeploy{
+		ToEnvironment: "target",
+	}
+
+	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).Build())
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), parameters)
+	<-responseChannel
+
+	appNamespace := fmt.Sprintf("%s-app", appName)
+	jobs, _ := getJobsInNamespace(radixclient, appNamespace)
+
+	assert.Equal(t, jobs[0].Spec.Deploy.ToEnvironment, "target")
+}
+
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 	_, controllerTestUtils, _, radixclient := setupTest()
 

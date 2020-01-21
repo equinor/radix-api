@@ -43,6 +43,16 @@ type PipelineParametersBuild struct {
 	PushImage string `json:"pushImage"`
 }
 
+// PipelineParametersDeploy describes environment to deploy
+// swagger:model PipelineParametersDeploy
+type PipelineParametersDeploy struct {
+	// Name of environment to deploy
+	// REQUIRED for "deploy" pipeline
+	//
+	// example: prod
+	ToEnvironment string `json:"toEnvironment"`
+}
+
 // PushImageToContainerRegistry Normalises the "PushImage" param from a string
 func (pipeParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
 	return !(pipeParam.PushImage == "0" || pipeParam.PushImage == "false")

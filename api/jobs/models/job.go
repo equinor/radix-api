@@ -51,7 +51,7 @@ type Job struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Failed
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
 	// example: Waiting
 	Status string `json:"status"`
 
@@ -129,7 +129,7 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Created:     created,
 		Started:     utils.FormatTime(job.Status.Started),
 		Ended:       utils.FormatTime(job.Status.Ended),
-		Status:      GetStatusFromRadixJobStatus(job.Status),
+		Status:      GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
 		Pipeline:    string(job.Spec.PipeLineType),
 		Steps:       steps,
 		Deployments: jobDeployments,

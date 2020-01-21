@@ -93,7 +93,7 @@ func TestGetApplicationJob(t *testing.T) {
 	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyCloneURL, anyPipeline, jobParameters)
+	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters)
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
 	// Test

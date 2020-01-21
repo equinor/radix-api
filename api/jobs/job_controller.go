@@ -221,7 +221,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   type: string
 	//   required: false
 	// responses:
-	//   "200":
+	//   "204":
 	//     description: "Job stopped ok"
 	//   "401":
 	//     description: "Unauthorized"
@@ -238,5 +238,5 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
