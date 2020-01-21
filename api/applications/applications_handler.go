@@ -12,12 +12,12 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -65,26 +65,15 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	appNamespace := crdUtils.GetAppNamespace(radixRegistration.Name)
-
-	var tokenString *string
-	machineUserName := defaults.GetMachineUserRoleName(appName)
-	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(appNamespace).Get(machineUserName, metav1.GetOptions{})
-	if err == nil && len(machineUserSA.Secrets) > 0 {
-		tokenName := machineUserSA.Secrets[0].Name
-		token, err := ah.getServiceAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-
-		tokenStringData := string(token.Data["token"])
-		tokenString = &tokenStringData
+	token, err := ah.getMachineUserTokenForApp(radixRegistration.Name)
+	if err != nil {
+		log.Errorf("Error getting machine user token: %v", err)
 	}
 
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
-		withServiceAccountToken(tokenString).
+		withServiceAccountToken(token).
 		Build()
 
 	jobs, err := ah.jobHandler.GetApplicationJobs(appName)
@@ -460,6 +449,29 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	}
 
 	return nil, nil
+}
+
+func (ah ApplicationHandler) getMachineUserTokenForApp(name string) (*string, error) {
+	appNamespace := crdUtils.GetAppNamespace(name)
+
+	var tokenString *string
+	machineUserName := defaults.GetMachineUserRoleName(name)
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(appNamespace).Get(machineUserName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	} else if len(machineUserSA.Secrets) == 0 {
+		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
+	}
+
+	tokenName := machineUserSA.Secrets[0].Name
+	token, err := ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	tokenStringData := string(token.Data["token"])
+	tokenString = &tokenStringData
+	return tokenString, nil
 }
 
 // Builder Handles construction of DTO
