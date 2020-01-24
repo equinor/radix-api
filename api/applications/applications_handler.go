@@ -12,7 +12,9 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/secret"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/equinor/radix-api/models"
@@ -65,15 +67,17 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	token, err := ah.getMachineUserTokenForApp(radixRegistration.Name)
+	machineUser, err := ah.getMachineUserForApp(radixRegistration.Name)
 	if err != nil {
 		log.Errorf("Error getting machine user token: %v", err)
 	}
 
+	obfuscatedToken := secret.Obfuscate(machineUser.Token, 5, len(machineUser.Token)-10, '*')
+
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
-		withServiceAccountToken(token).
+		withServiceAccountToken(&obfuscatedToken).
 		Build()
 
 	jobs, err := ah.jobHandler.GetApplicationJobs(appName)
@@ -99,6 +103,40 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		AppAlias:     appAlias,
 		Owner:        applicationRegistration.Owner,
 		Creator:      applicationRegistration.Creator}, nil
+}
+
+// GetMachineUser Gets machine user token
+func (ah ApplicationHandler) GetMachineUser(appName string) (*applicationModels.MachineUser, error) {
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	machineUser, err := ah.getMachineUserForApp(radixRegistration.Name)
+	if err != nil {
+		log.Errorf("Error getting machine user token: %v", err)
+	}
+
+	return machineUser, nil
+}
+
+// DeleteMachineUserToken Deletes the secret holding the token to force refresh
+func (ah ApplicationHandler) DeleteMachineUserToken(appName string) error {
+	appNamespace := crdUtils.GetAppNamespace(appName)
+	machineUserSA, err := ah.getMachineUserServiceAccount(appName, appNamespace)
+
+	if err != nil {
+		return err
+	}
+
+	if len(machineUserSA.Secrets) == 0 {
+		return fmt.Errorf("Unable to get secrets on machine user service account")
+	}
+
+	tokenName := machineUserSA.Secrets[0].Name
+	err = ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Delete(tokenName, &metav1.DeleteOptions{})
+	return err
+
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -451,15 +489,15 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	return nil, nil
 }
 
-func (ah ApplicationHandler) getMachineUserTokenForApp(name string) (*string, error) {
+func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationModels.MachineUser, error) {
 	appNamespace := crdUtils.GetAppNamespace(name)
 
-	var tokenString *string
-	machineUserName := defaults.GetMachineUserRoleName(name)
-	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(appNamespace).Get(machineUserName, metav1.GetOptions{})
+	machineUserSA, err := ah.getMachineUserServiceAccount(name, appNamespace)
 	if err != nil {
 		return nil, err
-	} else if len(machineUserSA.Secrets) == 0 {
+	}
+
+	if len(machineUserSA.Secrets) == 0 {
 		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
 	}
 
@@ -470,8 +508,24 @@ func (ah ApplicationHandler) getMachineUserTokenForApp(name string) (*string, er
 	}
 
 	tokenStringData := string(token.Data["token"])
+	var tokenString *string
 	tokenString = &tokenStringData
-	return tokenString, nil
+	tokenCreated := utils.FormatTimestamp(token.CreationTimestamp.Time)
+
+	return &applicationModels.MachineUser{
+		Token:        *tokenString,
+		TokenCreated: tokenCreated,
+	}, nil
+}
+
+func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
+	machineUserName := defaults.GetMachineUserRoleName(appName)
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(machineUserName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return machineUserSA, nil
 }
 
 // Builder Handles construction of DTO

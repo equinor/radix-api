@@ -94,6 +94,16 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/machine-user",
+			Method:      "GET",
+			HandlerFunc: GetMachineUserHandler,
+		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/machine-user",
+			Method:      "DELETE",
+			HandlerFunc: DeleteMachineUserHandler,
+		},
 	}
 
 	return routes
@@ -225,6 +235,89 @@ func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r 
 	}
 
 	utils.ErrorResponse(w, r, err)
+}
+
+// GetMachineUserHandler gets machine user token
+func GetMachineUserHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/machine-user application getMachineUser
+	// ---
+	// summary: Obtains machine user token
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful get machine-user
+	//     schema:
+	//       "$ref": "#/definitions/MachineUser"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	handler := Init(accounts)
+	machineUser, err := handler.GetMachineUser(appName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &machineUser)
+}
+
+// DeleteMachineUserHandler Deletes machine user token
+func DeleteMachineUserHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation DELETE /applications/{appName}/machine-user application deleteMachineUser
+	// ---
+	// summary: Deletes machine user token
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Machine user token deleted ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := Init(accounts)
+	err := handler.DeleteMachineUserToken(appName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // RegisterApplication Creates new application registation
