@@ -72,7 +72,10 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		log.Errorf("Error getting machine user token: %v", err)
 	}
 
-	obfuscatedToken := secret.Obfuscate(machineUser.Token, 5, len(machineUser.Token)-10, '*')
+	var obfuscatedToken string
+	if machineUser != nil {
+		obfuscatedToken = secret.Obfuscate(machineUser.Token, 5, len(machineUser.Token)-10, '*')
+	}
 
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
