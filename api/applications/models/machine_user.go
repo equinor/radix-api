@@ -7,9 +7,4 @@ type MachineUser struct {
 	//
 	// required: true
 	Token string `json:"token"`
-
-	// TokenCreated timestamp of last generation
-	//
-	// example: 2006-01-02T15:04:05Z
-	TokenCreated string `json:"tokenCreated"`
 }

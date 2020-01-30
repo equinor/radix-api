@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/environments"
@@ -12,7 +13,6 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/secret"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,20 +67,9 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		return nil, err
 	}
 
-	machineUser, err := ah.getMachineUserForApp(radixRegistration.Name)
-	if err != nil {
-		log.Errorf("Error getting machine user token: %v", err)
-	}
-
-	var obfuscatedToken string
-	if machineUser != nil {
-		obfuscatedToken = secret.Obfuscate(machineUser.Token, 5, len(machineUser.Token)-10, '*')
-	}
-
 	applicationRegistrationBuilder := NewBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
 		withRadixRegistration(radixRegistration).
-		withServiceAccountToken(&obfuscatedToken).
 		Build()
 
 	jobs, err := ah.jobHandler.GetApplicationJobs(appName)
@@ -108,38 +97,33 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 		Creator:      applicationRegistration.Creator}, nil
 }
 
-// GetMachineUser Gets machine user token
-func (ah ApplicationHandler) GetMachineUser(appName string) (*applicationModels.MachineUser, error) {
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+// RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
+func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
+	appNamespace := crdUtils.GetAppNamespace(appName)
+	machineUserSA, err := ah.getMachineUserServiceAccount(appName, appNamespace)
 	if err != nil {
 		return nil, err
 	}
-
-	machineUser, err := ah.getMachineUserForApp(radixRegistration.Name)
-	if err != nil {
-		log.Errorf("Error getting machine user token: %v", err)
-	}
-
-	return machineUser, nil
-}
-
-// DeleteMachineUserToken Deletes the secret holding the token to force refresh
-func (ah ApplicationHandler) DeleteMachineUserToken(appName string) error {
-	appNamespace := crdUtils.GetAppNamespace(appName)
-	machineUserSA, err := ah.getMachineUserServiceAccount(appName, appNamespace)
-
-	if err != nil {
-		return err
-	}
-
 	if len(machineUserSA.Secrets) == 0 {
-		return fmt.Errorf("Unable to get secrets on machine user service account")
+		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
 	err = ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Delete(tokenName, &metav1.DeleteOptions{})
-	return err
 
+	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
+	queryInterval := time.Tick(time.Duration(1) * time.Second)
+	for {
+		select {
+		case <-queryInterval:
+			machineUser, err := ah.getMachineUserForApp(appName)
+			if err == nil {
+				return machineUser, nil
+			}
+		case <-queryTimeout.C:
+			return nil, fmt.Errorf("Timeout getting user machine token secret")
+		}
+	}
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -513,11 +497,9 @@ func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationMode
 	tokenStringData := string(token.Data["token"])
 	var tokenString *string
 	tokenString = &tokenStringData
-	tokenCreated := utils.FormatTimestamp(token.CreationTimestamp.Time)
 
 	return &applicationModels.MachineUser{
-		Token:        *tokenString,
-		TokenCreated: tokenCreated,
+		Token: *tokenString,
 	}, nil
 }
 
@@ -545,22 +527,20 @@ type Builder interface {
 	withDeployKey(*utils.DeployKey) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
-	withServiceAccountToken(*string) Builder
 	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
 }
 
 type applicationBuilder struct {
-	name                string
-	owner               string
-	creator             string
-	repository          string
-	sharedSecret        string
-	adGroups            []string
-	publicKey           string
-	privateKey          string
-	cloneURL            string
-	serviceAccountToken *string
+	name         string
+	owner        string
+	creator      string
+	repository   string
+	sharedSecret string
+	adGroups     []string
+	publicKey    string
+	privateKey   string
+	cloneURL     string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -584,11 +564,6 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withCreator(radixRegistration.Spec.Creator)
 
 	// Private part of key should never be returned
-	return rb
-}
-
-func (rb *applicationBuilder) withServiceAccountToken(serviceAccountToken *string) Builder {
-	rb.serviceAccountToken = serviceAccountToken
 	return rb
 }
 
@@ -653,15 +628,14 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:                rb.name,
-		Repository:          repository,
-		SharedSecret:        rb.sharedSecret,
-		AdGroups:            rb.adGroups,
-		PublicKey:           rb.publicKey,
-		PrivateKey:          rb.privateKey,
-		Owner:               rb.owner,
-		Creator:             rb.creator,
-		ServiceAccountToken: rb.serviceAccountToken,
+		Name:         rb.name,
+		Repository:   repository,
+		SharedSecret: rb.sharedSecret,
+		AdGroups:     rb.adGroups,
+		PublicKey:    rb.publicKey,
+		PrivateKey:   rb.privateKey,
+		Owner:        rb.owner,
+		Creator:      rb.creator,
 	}
 }
 
