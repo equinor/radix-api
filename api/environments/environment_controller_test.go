@@ -1007,11 +1007,11 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
-
 	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas == zeroReplicas)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
 
 	// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
 	assert.Equal(t, http.StatusBadRequest, response.Code)
