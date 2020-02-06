@@ -47,7 +47,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 		return err
 	}
 
-	if !strings.EqualFold(componentState.Status, deploymentModels.ConsistentComponent.String()) {
+	if strings.EqualFold(componentState.Status, deploymentModels.StoppedComponent.String()) {
 		return environmentModels.CannotStopComponent(appName, componentName, componentState.Status)
 	}
 
