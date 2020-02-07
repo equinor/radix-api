@@ -1004,21 +1004,23 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	response := <-responseChannel
 
 	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-	// a stopped state and cannot be stopped
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
-
-	// Create pod
-	createComponentPod(client, rd.GetNamespace(), componentName)
-
-	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
+	// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas == zeroReplicas)
+
+	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
+	response = <-responseChannel
+
+	// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.StoppedComponent.String())
+	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+
+	// Create pod
+	createComponentPod(client, rd.GetNamespace(), componentName)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, componentName))
 	response = <-responseChannel
