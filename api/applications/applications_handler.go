@@ -250,6 +250,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		runUpdate = true
 	}
 
+	if patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
+		existingRegistration.Spec.MachineUser = patchRequest.MachineUser
+		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
+		runUpdate = true
+	}
+
 	if runUpdate {
 		err = ah.isValidUpdate(existingRegistration)
 		if err != nil {
@@ -525,6 +531,7 @@ type Builder interface {
 	withPrivateKey(string) Builder
 	withCloneURL(string) Builder
 	withDeployKey(*utils.DeployKey) Builder
+	withMachineUser(bool) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -541,6 +548,7 @@ type applicationBuilder struct {
 	publicKey    string
 	privateKey   string
 	cloneURL     string
+	machineUser  bool
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -562,6 +570,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
 	rb.withOwner(radixRegistration.Spec.Owner)
 	rb.withCreator(radixRegistration.Spec.Creator)
+	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 
 	// Private part of key should never be returned
 	return rb
@@ -621,6 +630,11 @@ func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder 
 	return rb
 }
 
+func (rb *applicationBuilder) withMachineUser(machineUser bool) Builder {
+	rb.machineUser = machineUser
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -636,6 +650,7 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		PrivateKey:   rb.privateKey,
 		Owner:        rb.owner,
 		Creator:      rb.creator,
+		MachineUser:  rb.machineUser,
 	}
 }
 
@@ -651,6 +666,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithAdGroups(rb.adGroups).
 		WithOwner(rb.owner).
 		WithCreator(rb.creator).
+		WithMachineUser(rb.machineUser).
 		BuildRR()
 
 	return radixRegistration, nil

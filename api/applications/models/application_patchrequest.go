@@ -12,4 +12,9 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	Owner *string `json:"owner,omitempty"`
+
+	// MachineUser is used for interacting directly with Radix API
+	//
+	// required: false
+	MachineUser bool `json:"machineUser"`
 }
