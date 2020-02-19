@@ -60,7 +60,7 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 	ra, err := sh.userAccount.RadixClient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 
 	if err != nil {
-		return nil, err
+		return []buildSecretsModels.BuildSecret{}, nil
 	}
 
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
