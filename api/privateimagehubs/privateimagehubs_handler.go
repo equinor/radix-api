@@ -25,7 +25,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(appName string) ([]models.I
 	imageHubSecrets := []models.ImageHubSecret{}
 	application, err := utils.CreateApplicationConfig(ph.userAccount.Client, ph.userAccount.RadixClient, appName)
 	if err != nil {
-		return nil, err
+		return []models.ImageHubSecret{}, nil
 	}
 	pendingImageHubSecrets, err := application.GetPendingPrivateImageHubSecrets()
 	if err != nil {
