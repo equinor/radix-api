@@ -50,7 +50,7 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 
 	}
 
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(secretObjName, metav1.GetOptions{})
+	secretObject, err := eh.inClusterClient.CoreV1().Secrets(ns).Get(secretObjName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Secret object does not exist", err)
 	}
@@ -144,7 +144,7 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1
 	for componentName, secretNamesMap := range componentSecretsMap {
 		secretObjectName := k8sObjectUtils.GetComponentSecretName(componentName)
 
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretObjectName, metav1.GetOptions{})
+		secret, err := eh.inClusterClient.CoreV1().Secrets(envNamespace).Get(secretObjectName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for secretName := range secretNamesMap {
@@ -206,7 +206,7 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 		certStatus := environmentModels.Consistent.String()
 		keyStatus := environmentModels.Consistent.String()
 
-		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(externalAlias.Alias, metav1.GetOptions{})
+		secretValue, err := eh.inClusterClient.CoreV1().Secrets(envNamespace).Get(externalAlias.Alias, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			certStatus = environmentModels.Pending.String()
 		}

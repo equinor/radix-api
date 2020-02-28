@@ -495,7 +495,8 @@ func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationMode
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
-	token, err := ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
+
+	token, err := ah.getServiceAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

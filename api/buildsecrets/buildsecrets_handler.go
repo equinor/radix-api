@@ -33,7 +33,7 @@ func (sh Handler) ChangeBuildSecret(appName, secretName, secretValue string) err
 		return utils.ValidationError("Secret", "New secret value is empty")
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
+	secretObject, err := sh.serviceAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return utils.TypeMissingError("Build secrets object does not exist", err)
 	}
@@ -64,7 +64,8 @@ func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSec
 	}
 
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
+
+	secretObject, err := sh.serviceAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(defaults.BuildSecretsName, metav1.GetOptions{})
 	if err == nil && secretObject != nil && ra.Spec.Build != nil {
 		for _, secretName := range ra.Spec.Build.Secrets {
 			secretStatus := buildSecretsModels.Pending.String()
