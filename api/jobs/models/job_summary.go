@@ -40,6 +40,12 @@ type JobSummary struct {
 	// example: 2006-01-02T15:04:05Z
 	Created string `json:"created"`
 
+	// TriggeredBy user that triggered the job. If through webhook = sender.login. If through api - usertoken.upn
+	//
+	// required: false
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy"`
+
 	// Started timestamp
 	//
 	// required: false
@@ -73,37 +79,6 @@ type JobSummary struct {
 	Environments []string `json:"environments,omitempty"`
 }
 
-// GetJobSummary Used to get job summary from a kubernetes job
-func GetJobSummary(job *batchv1.Job) *JobSummary {
-	appName := job.Labels[kube.RadixAppLabel]
-	branch := getBranchFromAnnotation(job)
-	commit := job.Labels[kube.RadixCommitLabel]
-
-	// TODO: Move string into constant
-	pipeline := job.Labels["radix-pipeline"]
-
-	status := job.Status
-
-	jobStatus := GetStatusFromJobStatus(status)
-	ended := utils.FormatTime(status.CompletionTime)
-	if jobStatus == Failed {
-		ended = utils.FormatTime(&status.Conditions[0].LastTransitionTime)
-	}
-
-	pipelineJob := &JobSummary{
-		Name:     job.Name,
-		AppName:  appName,
-		Branch:   branch,
-		CommitID: commit,
-		Status:   jobStatus.String(),
-		Created:  utils.FormatTime(&job.CreationTimestamp),
-		Started:  utils.FormatTime(status.StartTime),
-		Ended:    ended,
-		Pipeline: pipeline,
-	}
-	return pipelineJob
-}
-
 // GetSummaryFromRadixJob Used to get job summary from a radix job
 func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	status := job.Status
@@ -126,6 +101,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		Ended:        ended,
 		Pipeline:     string(job.Spec.PipeLineType),
 		Environments: job.Status.TargetEnvs,
+		TriggeredBy:  job.Spec.TriggeredBy,
 	}
 
 	return pipelineJob
