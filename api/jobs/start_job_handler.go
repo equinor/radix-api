@@ -52,6 +52,9 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipel
 	if triggeredBy == "" {
 		triggeredBy, _ = jh.accounts.GetUserAccountUserPrincipleName()
 	}
+	if triggeredBy == "<nil>" {
+		triggeredBy = ""
+	}
 
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
