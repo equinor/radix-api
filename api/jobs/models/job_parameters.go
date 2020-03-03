@@ -12,6 +12,9 @@ type JobParameters struct {
 	// For build pipeline: Should image be pushed to container registry
 	PushImage bool `json:"pushImage"`
 
+	// TriggeredBy of the job - if empty will use user token upn (user principle name)
+	TriggeredBy string `json:"triggeredBy"`
+
 	// For promote pipeline: Name (ID) of deployment to promote
 	DeploymentName string `json:"deploymentName"`
 

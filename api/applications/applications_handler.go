@@ -299,11 +299,7 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 
 	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
 
-	jobParameters := &jobModels.JobParameters{
-		DeploymentName:  deploymentName,
-		FromEnvironment: fromEnvironment,
-		ToEnvironment:   toEnvironment,
-	}
+	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 
 	pipeline, err := jobPipeline.GetPipelineFromName("promote")
 	if err != nil {
@@ -338,9 +334,7 @@ func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Reque
 		return nil, err
 	}
 
-	jobParameters := &jobModels.JobParameters{
-		ToEnvironment: toEnvironment,
-	}
+	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
 	if err != nil {
@@ -379,11 +373,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 		}
 	}
 
-	jobParameters := &jobModels.JobParameters{
-		Branch:    branch,
-		CommitID:  commitID,
-		PushImage: pipelineParameters.PushImageToContainerRegistry(),
-	}
+	jobParameters := pipelineParameters.MapPipelineParametersBuildToJobParameter()
 
 	pipeline, err := jobPipeline.GetPipelineFromName(pipelineName)
 	if err != nil {

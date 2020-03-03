@@ -3,10 +3,7 @@ package models
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	batchv1 "k8s.io/api/batch/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Job holds general information about job
@@ -35,6 +32,12 @@ type Job struct {
 	// required: false
 	// example: 2006-01-02T15:04:05Z
 	Created string `json:"created"`
+
+	// TriggeredBy user that triggered the job. If through webhook = sender.login. If through api = usertoken.upn
+	//
+	// required: false
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy"`
 
 	// Started timestamp
 	//
@@ -87,30 +90,6 @@ type Job struct {
 	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
 }
 
-// GetJob Transforms kubernetes job into job details
-func GetJob(job *batchv1.Job, steps []Step, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
-	jobStatus := GetStatusFromJobStatus(job.Status)
-	var jobEnded metav1.Time
-
-	if len(job.Status.Conditions) > 0 {
-		jobEnded = job.Status.Conditions[0].LastTransitionTime
-	}
-
-	return &Job{
-		Name:        job.GetName(),
-		Branch:      getBranchFromAnnotation(job),
-		CommitID:    job.Labels[kube.RadixCommitLabel],
-		Created:     utils.FormatTime(&job.CreationTimestamp),
-		Started:     utils.FormatTime(job.Status.StartTime),
-		Ended:       utils.FormatTime(&jobEnded),
-		Status:      jobStatus.String(),
-		Pipeline:    job.Labels["radix-pipeline"],
-		Steps:       steps,
-		Deployments: jobDeployments,
-		Components:  jobComponents,
-	}
-}
-
 // GetJobFromRadixJob Gets job from a radix job
 func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
 	steps := GetJobStepsFromRadixJob(job)
@@ -134,6 +113,7 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Steps:       steps,
 		Deployments: jobDeployments,
 		Components:  jobComponents,
+		TriggeredBy: job.Spec.TriggeredBy,
 	}
 }
 
