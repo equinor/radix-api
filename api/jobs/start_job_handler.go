@@ -24,7 +24,8 @@ const (
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
-	job := createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
+
+	job := jh.createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
@@ -39,14 +40,21 @@ func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJo
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
-
+func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
 	jobName, randomStr := getUniqueJobName(workerImage)
 	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 
 	var buildSpec v1.RadixBuildSpec
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
+
+	triggeredBy := jobSpec.TriggeredBy
+	if triggeredBy == "" {
+		triggeredBy, _ = jh.accounts.GetUserAccountUserPrincipleName()
+	}
+	if triggeredBy == "<nil>" {
+		triggeredBy = ""
+	}
 
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
@@ -88,6 +96,7 @@ func createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definitio
 			Build:          buildSpec,
 			Promote:        promoteSpec,
 			Deploy:         deploySpec,
+			TriggeredBy:    triggeredBy,
 		},
 	}
 

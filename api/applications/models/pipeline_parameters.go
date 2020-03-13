@@ -1,5 +1,7 @@
 package models
 
+import jobModels "github.com/equinor/radix-api/api/jobs/models"
+
 // PipelineParametersPromote identify deployment to promote and a target environment
 // swagger:model PipelineParametersPromote
 type PipelineParametersPromote struct {
@@ -20,6 +22,21 @@ type PipelineParametersPromote struct {
 	//
 	// example: prod
 	ToEnvironment string `json:"toEnvironment"`
+
+	// TriggeredBy of the job - if empty will use user token upn (user principle name)
+	//
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy,omitempty"`
+}
+
+// MapPipelineParametersPromoteToJobParameter maps to JobParameter
+func (promoteParam PipelineParametersPromote) MapPipelineParametersPromoteToJobParameter() *jobModels.JobParameters {
+	return &jobModels.JobParameters{
+		DeploymentName:  promoteParam.DeploymentName,
+		FromEnvironment: promoteParam.FromEnvironment,
+		ToEnvironment:   promoteParam.ToEnvironment,
+		TriggeredBy:     promoteParam.TriggeredBy,
+	}
 }
 
 // PipelineParametersBuild describe branch to build and its commit ID
@@ -41,6 +58,26 @@ type PipelineParametersBuild struct {
 	//
 	// example: true
 	PushImage string `json:"pushImage"`
+
+	// TriggeredBy of the job - if empty will use user token upn (user principle name)
+	//
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy,omitempty"`
+}
+
+// MapPipelineParametersBuildToJobParameter maps to JobParameter
+func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
+	return &jobModels.JobParameters{
+		Branch:      buildParam.Branch,
+		CommitID:    buildParam.CommitID,
+		PushImage:   buildParam.PushImageToContainerRegistry(),
+		TriggeredBy: buildParam.TriggeredBy,
+	}
+}
+
+// PushImageToContainerRegistry Normalises the "PushImage" param from a string
+func (buildParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
+	return !(buildParam.PushImage == "0" || buildParam.PushImage == "false")
 }
 
 // PipelineParametersDeploy describes environment to deploy
@@ -51,9 +88,17 @@ type PipelineParametersDeploy struct {
 	//
 	// example: prod
 	ToEnvironment string `json:"toEnvironment"`
+
+	// TriggeredBy of the job - if empty will use user token upn (user principle name)
+	//
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy,omitempty"`
 }
 
-// PushImageToContainerRegistry Normalises the "PushImage" param from a string
-func (pipeParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
-	return !(pipeParam.PushImage == "0" || pipeParam.PushImage == "false")
+// MapPipelineParametersDeployToJobParameter maps to JobParameter
+func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobParameter() *jobModels.JobParameters {
+	return &jobModels.JobParameters{
+		ToEnvironment: deployParam.ToEnvironment,
+		TriggeredBy:   deployParam.TriggeredBy,
+	}
 }

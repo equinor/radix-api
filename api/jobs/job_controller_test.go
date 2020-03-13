@@ -30,6 +30,7 @@ const (
 	anyBranch       = "master"
 	anyPushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
 	anyPipelineName = string(v1.BuildDeploy)
+	anyUser         = "a_user@equinor.com"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -85,9 +86,10 @@ func TestGetApplicationJob(t *testing.T) {
 		WithCloneURL(anyCloneURL))
 
 	jobParameters := &jobModels.JobParameters{
-		Branch:    anyBranch,
-		CommitID:  anyPushCommitID,
-		PushImage: true,
+		Branch:      anyBranch,
+		CommitID:    anyPushCommitID,
+		PushImage:   true,
+		TriggeredBy: anyUser,
 	}
 
 	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
@@ -105,6 +107,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
+	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.Empty(t, job.Steps)
 
@@ -124,6 +127,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
+	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 
 }

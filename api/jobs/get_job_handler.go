@@ -25,6 +25,7 @@ const RadixJobTypeJob = "job"
 
 // JobHandler Instance variables
 type JobHandler struct {
+	accounts       models.Accounts
 	userAccount    models.Account
 	serviceAccount models.Account
 	deploy         deployments.DeployHandler
@@ -36,6 +37,7 @@ func Init(accounts models.Accounts) JobHandler {
 	deploy := deployments.Init(accounts)
 
 	return JobHandler{
+		accounts:       accounts,
 		userAccount:    accounts.UserAccount,
 		serviceAccount: accounts.ServiceAccount,
 		deploy:         deploy,
