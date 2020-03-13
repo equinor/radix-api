@@ -36,7 +36,7 @@ spec:
         PIPELINE_IMG_TAG: "master-latest"
     - environment: prod
       horizontalScaling:
-        minReplicas: 1
+        minReplicas: 3
         maxReplicas: 5
       monitoring: true
       resources:
