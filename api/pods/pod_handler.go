@@ -23,7 +23,13 @@ func Init(client kubernetes.Interface) PodHandler {
 }
 
 // HandleGetAppPodLog Get logs from pod in app namespace
-func (ph PodHandler) HandleGetAppPodLog(appName, podName, containerName string) (string, error) {
+func (ph PodHandler) HandleGetAppPodLog(appName, podName string) (string, error) {
+	appNs := crdUtils.GetAppNamespace(appName)
+	return ph.getPodLog(appNs, podName, "")
+}
+
+// HandleGetAppContainerPodLog Get logs from pod in app namespace
+func (ph PodHandler) HandleGetAppContainerPodLog(appName, podName, containerName string) (string, error) {
 	appNs := crdUtils.GetAppNamespace(appName)
 	return ph.getPodLog(appNs, podName, containerName)
 }

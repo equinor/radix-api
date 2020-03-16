@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"fmt"
+	"strings"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
@@ -34,14 +35,25 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 
 func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step) jobModels.StepLog {
 	podHandler := pods.Init(client)
-	buildLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName, step.Name)
+	containerLog, err := podHandler.HandleGetAppContainerPodLog(appName, step.PodName, step.Name)
 	if err != nil {
-		log.Warnf("Failed to get build logs. %v", err)
-		buildLog = fmt.Sprintf("%v", err)
+		log.Warnf("Failed to get container logs. %v", err)
+		containerLog = fmt.Sprintf("%v", err)
 	}
+
+	podLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName)
+	if err != nil {
+		log.Warnf("Failed to get pod logs. %v", err)
+		podLog = fmt.Sprintf("%v", err)
+	}
+
+	if !strings.EqualFold(containerLog, podLog) {
+		containerLog = fmt.Sprintf("%s\n%s", containerLog, podLog)
+	}
+
 	return jobModels.StepLog{
 		Name:    step.Name,
-		Log:     buildLog,
+		Log:     containerLog,
 		PodName: step.PodName,
 	}
 }
