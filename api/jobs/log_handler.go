@@ -41,12 +41,16 @@ func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step
 		containerLog = fmt.Sprintf("%v", err)
 	}
 
+	// Get log of container which the container live inside
+	// Disadvantage of this is that we make an unnecessary
 	podLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName)
 	if err != nil {
 		log.Warnf("Failed to get pod logs. %v", err)
 		podLog = fmt.Sprintf("%v", err)
 	}
 
+	// If the container is the only one in the pod,
+	// log of container equals log of pod
 	if !strings.EqualFold(containerLog, podLog) {
 		containerLog = fmt.Sprintf("%s\n%s", containerLog, podLog)
 	}
