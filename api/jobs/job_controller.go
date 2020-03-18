@@ -3,6 +3,8 @@ package jobs
 import (
 	"net/http"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -64,6 +66,12 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   description: Name of pipeline job
 	//   type: string
 	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -87,9 +95,21 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = utils.ParseTimestamp(sinceTime)
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
 
 	handler := Init(accounts)
-	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName)
+	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName, &since)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

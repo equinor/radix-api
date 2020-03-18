@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -239,6 +240,12 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   description: Name of pod
 	//   type: string
 	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -261,8 +268,21 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = utils.ParseTimestamp(sinceTime)
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(appName, podName)
+	log, err := deployHandler.GetLogs(appName, podName, &since)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
