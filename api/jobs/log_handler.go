@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"fmt"
+	"time"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
@@ -13,7 +14,7 @@ import (
 )
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
-func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]jobModels.StepLog, error) {
+func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string, sinceTime *time.Time) ([]jobModels.StepLog, error) {
 	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
@@ -26,15 +27,15 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string) ([]job
 
 	logs := []jobModels.StepLog{}
 	for _, step := range steps {
-		log := getStepLog(jh.userAccount.Client, appName, step)
+		log := getStepLog(jh.userAccount.Client, appName, step, sinceTime)
 		logs = append(logs, log)
 	}
 	return logs, nil
 }
 
-func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step) jobModels.StepLog {
+func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step, sinceTime *time.Time) jobModels.StepLog {
 	podHandler := pods.Init(client)
-	buildLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName, step.Name)
+	buildLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName, step.Name, sinceTime)
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		buildLog = fmt.Sprintf("%v", err)
