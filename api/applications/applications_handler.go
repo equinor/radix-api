@@ -452,7 +452,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	for _, environment := range environments {
 		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.getUserAccount().Client.ExtensionsV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+		ingresses, err := ah.getUserAccount().Client.NetworkingV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
 		})
 
