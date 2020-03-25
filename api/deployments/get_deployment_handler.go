@@ -36,7 +36,7 @@ func Init(accounts models.Accounts) DeployHandler {
 }
 
 // GetLogs handler for GetLogs
-func (deploy DeployHandler) GetLogs(appName, podName string) (string, error) {
+func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
@@ -45,7 +45,7 @@ func (deploy DeployHandler) GetLogs(appName, podName string) (string, error) {
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.kubeClient)
-		log, err := podHandler.HandleGetEnvironmentPodLog(appName, env.Name, podName, "")
+		log, err := podHandler.HandleGetEnvironmentPodLog(appName, env.Name, podName, "", sinceTime)
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {
