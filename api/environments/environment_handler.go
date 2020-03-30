@@ -11,6 +11,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -133,12 +134,12 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
 	if existInConfig {
 		// Must be removed from radix config first
-		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, uniqueName)
+		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, envName)
 	}
 
 	// idempotent removal of RadixEnvironment
 	err = eh.radixclient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -154,10 +155,11 @@ func (eh EnvironmentHandler) getConfigurationStatusOfNamespace(namespace string)
 	return environmentModels.Consistent
 }
 
-func (eh EnvironmentHandler) getConfigurationStatus(uniqueName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
+func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
 
 	namespacesInConfig := getNamespacesInConfig(radixApplication)
 
+	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 	exists, err := eh.namespaceExists(uniqueName)
 
 	if namespacesInConfig[uniqueName] && !exists {
@@ -165,7 +167,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(uniqueName string, radixAppl
 		return environmentModels.Pending, nil
 
 	} else if !exists {
-		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, uniqueName)
+		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
 
 	} else if isOrphaned(uniqueName, namespacesInConfig) {
 		return environmentModels.Orphan, nil
@@ -239,7 +241,6 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 	namespacesInConfig := getNamespacesInConfig(app)
-
 	radixEnvironments, _ := eh.radixclient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
 		LabelSelector: appLabel,
 	})
@@ -247,29 +248,6 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	for _, re := range radixEnvironments.Items {
 		if isOrphaned(re.Name, namespacesInConfig) {
 			envNames = append(envNames, re.Spec.EnvName)
-		}
-	}
-
-	// TODO: make sure this second part is even necessary!
-	namespaces, _ := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
-		LabelSelector: appLabel,
-	})
-
-	for _, ns := range namespaces.Items {
-		if !isAppNamespace(ns) &&
-			isOrphaned(ns.Name, namespacesInConfig) {
-
-			envName := ns.Labels[kube.RadixEnvLabel]
-
-			covered := false
-			for _, name := range envNames {
-				if envName == name {
-					covered = true
-				}
-			}
-			if !covered {
-				envNames = append(envNames, ns.Labels[kube.RadixEnvLabel])
-			}
 		}
 	}
 

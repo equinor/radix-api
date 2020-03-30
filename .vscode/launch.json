@@ -18,6 +18,15 @@
             "args": [
                 "--useOutClusterClient=false"
             ]
+        },
+        {
+          "name": "Test Environments",
+          "type": "go",
+          "request": "launch",
+          "mode": "test",
+          "program": "${workspaceFolder}/api/environments",
+          "env": {},
+          "args": ["environment_controller_test.go"]
         }
     ]
 }
