@@ -360,8 +360,6 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-
 	// Remove feature environment from application config
 	commonTestUtils.ApplyApplicationUpdate(builders.
 		NewRadixApplicationBuilder().
@@ -370,7 +368,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 
 	// Test
 	// Start with two environments
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
