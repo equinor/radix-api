@@ -264,15 +264,21 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
 
-	commonTestUtils.ApplyRegistration(builders.
+	rr, _ := commonTestUtils.ApplyRegistration(builders.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
 
 	commonTestUtils.ApplyApplication(builders.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
-		WithEnvironment(anyOrphanedEnvironment, "feature"))
+		WithEnvironment("dev", "master"))
+
+	commonTestUtils.ApplyEnvironment(builders.
+		NewEnvironmentBuilder().
+		WithAppLabel().
+		WithAppName(anyAppName).
+		WithEnvironmentName(anyOrphanedEnvironment).
+		WithRegistrationOwner(rr))
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
@@ -285,12 +291,6 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 		WithAppName(anyAppName).
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
-
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
