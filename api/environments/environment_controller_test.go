@@ -274,16 +274,6 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 		WithEnvironment("dev", "master").
 		WithEnvironment(anyOrphanedEnvironment, "feature"))
 
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName("dev"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName(anyOrphanedEnvironment))
-
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -337,16 +327,6 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 		WithAppName(anyAppName).
 		WithEnvironment(anyNonOrphanedEnvironment, "master").
 		WithEnvironment(anyOrphanedEnvironment, "feature"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName(anyNonOrphanedEnvironment))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName(anyOrphanedEnvironment))
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().

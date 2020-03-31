@@ -418,21 +418,6 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironment("prod", "release").
 		WithEnvironment(anyOrphanedEnvironment, "feature"))
 
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName("dev"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName("prod"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName(anyOrphanedEnvironment))
-
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -657,16 +642,6 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 		WithEnvironment("dev", "dev").
 		WithEnvironment("prod", "release"))
 
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName("dev"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName(anyAppName).WithAppLabel().
-		WithEnvironmentName("prod"))
-
 	// Test
 	unmappedBranch := "feature"
 
@@ -880,11 +855,6 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 					WithDNSAppAlias(true),
 				builders.NewDeployComponentBuilder().
 					WithName("backend")))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppName("any-app").WithAppLabel().
-		WithEnvironmentName("prod"))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
