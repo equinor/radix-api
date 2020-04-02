@@ -153,22 +153,24 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 	exists, err := eh.environmentExists(uniqueName)
 
-	if configMap[uniqueName] {
-		// does occur in config
-		_, err := eh.client.CoreV1().Namespaces().Get(uniqueName, metav1.GetOptions{})
-		if exists && err == nil {
-			// has underlying resources
-			return environmentModels.Consistent, nil
-		}
-		// does not have underlying resources
-		return environmentModels.Pending, nil
+	if !exists {
+		// does not exist in radix regardless of config
+		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
 	}
-	// does not occur in config
-	if exists {
-		// but is still an active resource
+
+	if !configMap[uniqueName] {
+		// does not occur in config but is still an active resource
 		return environmentModels.Orphan, nil
 	}
-	return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
+
+	_, err = eh.client.CoreV1().Namespaces().Get(uniqueName, metav1.GetOptions{})
+	if err != nil {
+		// exists but does not have underlying resources
+		return environmentModels.Pending, nil
+	}
+
+	// exists and has underlying resources
+	return environmentModels.Consistent, nil
 }
 
 func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
