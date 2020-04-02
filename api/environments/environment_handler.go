@@ -155,13 +155,17 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 
 	if configMap[uniqueName] {
 		// does occur in config
-		if exists {
+		_, err := eh.client.CoreV1().Namespaces().Get(uniqueName, metav1.GetOptions{})
+		if exists && err == nil {
+			// has underlying resources
 			return environmentModels.Consistent, nil
 		}
+		// does not have underlying resources
 		return environmentModels.Pending, nil
 	}
 	// does not occur in config
 	if exists {
+		// but is still an active resource
 		return environmentModels.Orphan, nil
 	}
 	return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
