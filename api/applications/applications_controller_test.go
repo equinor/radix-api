@@ -402,7 +402,7 @@ func TestGetApplication_WithJobs(t *testing.T) {
 
 func TestGetApplication_WithEnvironments(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, radix := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
@@ -415,8 +415,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master").
-		WithEnvironment("prod", "release").
-		WithEnvironment(anyOrphanedEnvironment, "feature"))
+		WithEnvironment("prod", "release"))
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
@@ -430,12 +429,14 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
 
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
+	re, _ := commonTestUtils.ApplyEnvironment(builders.
+		NewEnvironmentBuilder().
+		WithAppLabel().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
-		WithEnvironment("prod", "release"))
+		WithEnvironmentName(anyOrphanedEnvironment))
+
+	re.Status.Orphaned = true
+	radix.RadixV1().RadixEnvironments().Update(re)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))

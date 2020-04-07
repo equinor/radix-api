@@ -259,7 +259,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 
 func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, radix := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
@@ -273,24 +273,15 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
-	commonTestUtils.ApplyEnvironment(builders.
+	re, _ := commonTestUtils.ApplyEnvironment(builders.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
 		WithEnvironmentName(anyOrphanedEnvironment).
 		WithRegistrationOwner(rr))
 
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
+	re.Status.Orphaned = true
+	radix.RadixV1().RadixEnvironments().Update(re)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -302,7 +293,6 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 	for _, environment := range environments {
 		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
 			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
-			assert.NotNil(t, environment.ActiveDeployment)
 			environmentListed = true
 		}
 	}
@@ -312,7 +302,7 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 
 func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, radix := setupTest()
 
 	anyAppName := "any-app"
 	anyNonOrphanedEnvironment := "dev"
@@ -325,26 +315,16 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	commonTestUtils.ApplyApplication(builders.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment(anyNonOrphanedEnvironment, "master").
-		WithEnvironment(anyOrphanedEnvironment, "feature"))
+		WithEnvironment(anyNonOrphanedEnvironment, "master"))
 
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
+	re, _ := commonTestUtils.ApplyEnvironment(builders.
+		NewEnvironmentBuilder().
+		WithAppLabel().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
+		WithEnvironmentName(anyOrphanedEnvironment))
 
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
-
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+	re.Status.Orphaned = true
+	radix.RadixV1().RadixEnvironments().Update(re)
 
 	// Test
 	// Start with two environments
