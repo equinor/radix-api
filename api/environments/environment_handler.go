@@ -26,6 +26,7 @@ type EnvironmentHandler struct {
 	radixclient     radixclient.Interface
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
+	accounts        models.Accounts
 }
 
 // Init Constructor
@@ -36,6 +37,7 @@ func Init(accounts models.Accounts) EnvironmentHandler {
 		radixclient:     accounts.UserAccount.RadixClient,
 		inClusterClient: accounts.ServiceAccount.Client,
 		deployHandler:   deployHandler,
+		accounts:        accounts,
 	}
 }
 
@@ -138,7 +140,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	// idempotent removal of RadixEnvironment
-	err = eh.radixclient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
+	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -237,7 +239,7 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 	environmentsInConfig := getEnvironmentsInConfig(app)
-	radixEnvironments, _ := eh.radixclient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
+	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
 		LabelSelector: appLabel,
 	})
 
@@ -253,6 +255,10 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 func (eh EnvironmentHandler) environmentExists(uniqueName string) (bool, error) {
 	_, err := eh.radixclient.RadixV1().RadixEnvironments().Get(uniqueName, metav1.GetOptions{})
 	return err == nil, err
+}
+
+func (eh EnvironmentHandler) getServiceAccount() models.Account {
+	return eh.accounts.ServiceAccount
 }
 
 func getEnvironmentsInConfig(radixApplication *v1.RadixApplication) map[string]bool {
