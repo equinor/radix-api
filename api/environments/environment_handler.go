@@ -11,6 +11,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -25,6 +26,7 @@ type EnvironmentHandler struct {
 	radixclient     radixclient.Interface
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
+	accounts        models.Accounts
 }
 
 // Init Constructor
@@ -35,10 +37,11 @@ func Init(accounts models.Accounts) EnvironmentHandler {
 		radixclient:     accounts.UserAccount.RadixClient,
 		inClusterClient: accounts.ServiceAccount.Client,
 		deployHandler:   deployHandler,
+		accounts:        accounts,
 	}
 }
 
-// GetEnvironmentSummary GetEnvironmentSummary
+// GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
@@ -48,24 +51,10 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 
 	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
 	for i, environment := range radixApplication.Spec.Environments {
-		environmentSummary := &environmentModels.EnvironmentSummary{
-			Name:          environment.Name,
-			BranchMapping: environment.Build.From,
-		}
-
-		deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment.Name, latestDeployment)
+		environments[i], err = eh.getEnvironmentSummary(radixApplication, environment)
 		if err != nil {
 			return nil, err
 		}
-
-		configurationStatus := eh.getConfigurationStatusOfNamespace(k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name))
-		environmentSummary.Status = configurationStatus.String()
-
-		if len(deploymentSummaries) == 1 {
-			environmentSummary.ActiveDeployment = deploymentSummaries[0]
-		}
-
-		environments[i] = environmentSummary
 	}
 
 	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
@@ -74,7 +63,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 	return environments, nil
 }
 
-// GetEnvironment Handler for GetEnvironmentSummary
+// GetEnvironment Handler for GetEnvironment
 func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
@@ -107,7 +96,8 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		return nil, err
 	}
 
-	environment := &environmentModels.Environment{
+	// data-transfer-object for serialization
+	environmentDto := &environmentModels.Environment{
 		Name:          envName,
 		BranchMapping: buildFrom,
 		Status:        configurationStatus.String(),
@@ -120,134 +110,170 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 			return nil, err
 		}
 
-		environment.ActiveDeployment = deployment
+		environmentDto.ActiveDeployment = deployment
 
 		secrets, err := eh.GetEnvironmentSecretsForDeployment(appName, envName, deployment)
 		if err != nil {
 			return nil, err
 		}
 
-		environment.Secrets = secrets
+		environmentDto.Secrets = secrets
 	}
 
-	return environment, nil
+	return environmentDto, nil
 }
 
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
+
 	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	configurationStatus, err := eh.getConfigurationStatus(envName, radixApplication)
-	if err != nil {
-		return err
-	}
+	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
+	configMap := getEnvironmentsInConfig(radixApplication)
 
-	if configurationStatus != environmentModels.Orphan {
+	if configMap[uniqueName] {
+		// Must be removed from radix config first
 		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, envName)
 	}
 
-	environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
-
-	// Use radix-api service account session to delete namespace
-	err = eh.inClusterClient.CoreV1().Namespaces().Delete(environmentNamespace, &metav1.DeleteOptions{})
-	if err != nil {
+	// idempotent removal of RadixEnvironment
+	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
 	return nil
 }
 
-func (eh EnvironmentHandler) getConfigurationStatusOfNamespace(namespace string) environmentModels.ConfigurationStatus {
-	_, err := eh.client.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
-	if err != nil {
-		return environmentModels.Pending
-	}
-
-	return environmentModels.Consistent
-}
-
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
-	environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
-	namespacesInConfig := getNamespacesInConfig(radixApplication)
 
-	_, err := eh.client.CoreV1().Namespaces().Get(environmentNamespace, metav1.GetOptions{})
-	if namespacesInConfig[environmentNamespace] && err != nil {
-		// Environment is in config, but no namespace exist
-		return environmentModels.Pending, nil
+	configMap := getEnvironmentsInConfig(radixApplication)
 
-	} else if err != nil {
+	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
+	exists, err := eh.environmentExists(uniqueName)
+
+	if !exists {
+		// does not exist in radix regardless of config
 		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
-
-	} else if isOrphaned(environmentNamespace, namespacesInConfig) {
-		return environmentModels.Orphan, nil
-
 	}
 
+	if !configMap[uniqueName] {
+		// does not occur in config but is still an active resource
+		return environmentModels.Orphan, nil
+	}
+
+	_, err = eh.client.CoreV1().Namespaces().Get(uniqueName, metav1.GetOptions{})
+	if err != nil {
+		// exists but does not have underlying resources
+		return environmentModels.Pending, nil
+	}
+
+	// exists and has underlying resources
 	return environmentModels.Consistent, nil
 }
 
-func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
-	namespaces, err := eh.client.CoreV1().Namespaces().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixAppLabel, appName),
-	})
+func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
+
+	environmentSummary := &environmentModels.EnvironmentSummary{
+		Name:          env.Name,
+		BranchMapping: env.Build.From,
+	}
+
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(app.Name, env.Name, latestDeployment)
 	if err != nil {
 		return nil, err
 	}
 
-	namespacesInConfig := getNamespacesInConfig(radixApplication)
+	configurationStatus, _ := eh.getConfigurationStatus(env.Name, app)
+	environmentSummary.Status = configurationStatus.String()
+
+	if len(deploymentSummaries) == 1 {
+		environmentSummary.ActiveDeployment = deploymentSummaries[0]
+	}
+
+	return environmentSummary, nil
+}
+
+func (eh EnvironmentHandler) getOrphanEnvironmentSummary(appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
+
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, latestDeployment)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentSummary := &environmentModels.EnvironmentSummary{
+		Name:   envName,
+		Status: environmentModels.Orphan.String(),
+	}
+
+	if len(deploymentSummaries) == 1 {
+		environmentSummary.ActiveDeployment = deploymentSummaries[0]
+	}
+
+	return environmentSummary, nil
+}
+
+// getOrphanedEnvironments returns a slice of Summary data of orphaned environments
+func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
 
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
-	for _, namespace := range namespaces.Items {
-		if !isAppNamespace(namespace) &&
-			isOrphaned(namespace.Name, namespacesInConfig) {
 
-			// Orphaned namespace
-			environment := namespace.Labels[kube.RadixEnvLabel]
-			deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, latestDeployment)
-			if err != nil {
-				return nil, err
-			}
-
-			environmentSummary := &environmentModels.EnvironmentSummary{
-				Name:   environment,
-				Status: environmentModels.Orphan.String(),
-			}
-
-			if len(deploymentSummaries) == 1 {
-				environmentSummary.ActiveDeployment = deploymentSummaries[0]
-			}
-
-			orphanedEnvironments = append(orphanedEnvironments, environmentSummary)
+	for _, name := range eh.getOrphanedEnvNames(radixApplication) {
+		summary, err := eh.getOrphanEnvironmentSummary(appName, name)
+		if err != nil {
+			return nil, err
 		}
+
+		orphanedEnvironments = append(orphanedEnvironments, summary)
 	}
 
 	return orphanedEnvironments, nil
 }
 
-func getNamespacesInConfig(radixApplication *v1.RadixApplication) map[string]bool {
-	namespacesInConfig := make(map[string]bool)
-	for _, environment := range radixApplication.Spec.Environments {
-		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, environment.Name)
-		namespacesInConfig[environmentNamespace] = true
+// getOrphanedEnvNames returns a slice of non-unique-names of orphaned environments
+func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []string {
+
+	envNames := make([]string, 0)
+	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
+	environmentsInConfig := getEnvironmentsInConfig(app)
+	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
+		LabelSelector: appLabel,
+	})
+
+	for _, re := range radixEnvironments.Items {
+		if !environmentsInConfig[re.Name] {
+			envNames = append(envNames, re.Spec.EnvName)
+		}
 	}
 
-	return namespacesInConfig
+	return envNames
+}
+
+func (eh EnvironmentHandler) environmentExists(uniqueName string) (bool, error) {
+	_, err := eh.radixclient.RadixV1().RadixEnvironments().Get(uniqueName, metav1.GetOptions{})
+	return err == nil, err
+}
+
+func (eh EnvironmentHandler) getServiceAccount() models.Account {
+	return eh.accounts.ServiceAccount
+}
+
+func getEnvironmentsInConfig(radixApplication *v1.RadixApplication) map[string]bool {
+	environmentsInConfig := make(map[string]bool)
+	for _, environment := range radixApplication.Spec.Environments {
+		uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, environment.Name)
+		environmentsInConfig[uniqueName] = true
+	}
+
+	return environmentsInConfig
 }
 
 func isAppNamespace(namespace corev1.Namespace) bool {
 	environment := namespace.Labels[kube.RadixEnvLabel]
 	if !strings.EqualFold(environment, "app") {
-		return false
-	}
-
-	return true
-}
-
-func isOrphaned(namespace string, namespacesInConfig map[string]bool) bool {
-	if namespacesInConfig[namespace] {
 		return false
 	}
 
