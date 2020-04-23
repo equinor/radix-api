@@ -44,6 +44,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
+			Method:      "POST",
+			HandlerFunc: CreateEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}",
 			Method:      "DELETE",
 			HandlerFunc: DeleteEnvironment,
 		},
@@ -137,6 +142,53 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 	}
 
 	utils.JSONResponse(w, r, appEnvironmentDeployments)
+}
+
+// CreateEnvironment Creates a new environment
+func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName} environment createEnvironment
+	// ---
+	// summary: Creates application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Environment created ok"
+	//   "401":
+	//     description: "Unauthorized"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	// Need in cluster client in order to delete namespace using sufficient priviledges
+	environmentHandler := Init(accounts)
+	_, err := environmentHandler.CreateEnvironment(appName, envName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // GetEnvironment Get details for an application environment
