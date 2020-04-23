@@ -181,14 +181,14 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	// Need in cluster client in order to delete namespace using sufficient priviledges
 	environmentHandler := Init(accounts)
-	radixEnvironment, err := environmentHandler.CreateEnvironment(appName, envName)
+	_, err := environmentHandler.CreateEnvironment(appName, envName)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, radixEnvironment)
+	w.WriteHeader(http.StatusOK)
 }
 
 // GetEnvironment Get details for an application environment

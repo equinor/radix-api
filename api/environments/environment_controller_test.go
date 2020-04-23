@@ -1066,19 +1066,20 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
 	appName := "myApp"
 	envName := "myEnv"
 
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName))
+
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
 	response := <-responseChannel
-	var environment *v1.Environment
-	controllertest.GetResponseBody(response, environment)
 
-	assert.NotNil(t, environment)
-	assert.Equal(t, "myApp-myEnv", environment.Name)
+	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
