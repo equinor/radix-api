@@ -8,6 +8,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +27,7 @@ type EnvironmentHandler struct {
 	radixclient     radixclient.Interface
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
+	accounts        models.Accounts
 }
 
 // Init Constructor
@@ -36,6 +38,7 @@ func Init(accounts models.Accounts) EnvironmentHandler {
 		radixclient:     accounts.UserAccount.RadixClient,
 		inClusterClient: accounts.ServiceAccount.Client,
 		deployHandler:   deployHandler,
+		accounts:        accounts,
 	}
 }
 
@@ -121,6 +124,31 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 	return environmentDto, nil
 }
 
+// CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist
+func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.RadixEnvironment, error) {
+
+	// ensure application exists
+	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// idempotent creation of RadixEnvironment
+	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(builders.
+		NewEnvironmentBuilder().
+		WithAppLabel().
+		WithAppName(appName).
+		WithEnvironmentName(envName).
+		WithRegistrationOwner(rr).
+		BuildRE())
+	// if an error is anything other than already-exist, return it
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return nil, err
+	}
+
+	return re, nil
+}
+
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
@@ -136,7 +164,8 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	// idempotent removal of RadixEnvironment
-	err = eh.radixclient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
+	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
+	// if an error is anything other than not-found, return it
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
@@ -234,7 +263,8 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
-	radixEnvironments, _ := eh.radixclient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
+
+	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
 		LabelSelector: appLabel,
 	})
 
@@ -245,6 +275,10 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	}
 
 	return envNames
+}
+
+func (eh EnvironmentHandler) getServiceAccount() models.Account {
+	return eh.accounts.ServiceAccount
 }
 
 func isAppNamespace(namespace corev1.Namespace) bool {

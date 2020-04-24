@@ -1044,6 +1044,24 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
 }
 
+func TestCreateEnvironment(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	appName := "myApp"
+	envName := "myEnv"
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+}
+
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
 	return Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 }
