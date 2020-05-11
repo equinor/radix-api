@@ -521,7 +521,11 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/restart component restartComponent
 	// ---
-	// summary: Restart component
+	// summary: |
+	//   Restart a component
+	//     - Stops running the component container
+	//     - Pulls new image from image hub in radix configuration
+	//     - Starts the container again using up to date image
 	// parameters:
 	// - name: appName
 	//   in: path
