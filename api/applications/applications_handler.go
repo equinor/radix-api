@@ -208,6 +208,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
+	existingRegistration.Spec.WBS = radixRegistration.Spec.WBS
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -253,6 +254,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	if patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
 		existingRegistration.Spec.MachineUser = patchRequest.MachineUser
 		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
+		runUpdate = true
+	}
+
+	if patchRequest.WBS != nil && *patchRequest.WBS != "" {
+		existingRegistration.Spec.WBS = *patchRequest.WBS
+		payload = append(payload, patch{Op: "replace", Path: "/spec/wbs", Value: *patchRequest.WBS})
 		runUpdate = true
 	}
 
@@ -522,6 +529,7 @@ type Builder interface {
 	withCloneURL(string) Builder
 	withDeployKey(*utils.DeployKey) Builder
 	withMachineUser(bool) Builder
+	withWBS(string) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -539,6 +547,7 @@ type applicationBuilder struct {
 	privateKey   string
 	cloneURL     string
 	machineUser  bool
+	wbs          string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -549,6 +558,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withPublicKey(appRegistration.PublicKey)
 	rb.withPrivateKey(appRegistration.PrivateKey)
 	rb.withOwner(appRegistration.Owner)
+	rb.withWBS(appRegistration.WBS)
 	return rb
 }
 
@@ -561,6 +571,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withOwner(radixRegistration.Spec.Owner)
 	rb.withCreator(radixRegistration.Spec.Creator)
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
+	rb.withWBS(radixRegistration.Spec.WBS)
 
 	// Private part of key should never be returned
 	return rb
@@ -625,6 +636,11 @@ func (rb *applicationBuilder) withMachineUser(machineUser bool) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withWBS(wbs string) Builder {
+	rb.wbs = wbs
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -641,6 +657,7 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		Owner:        rb.owner,
 		Creator:      rb.creator,
 		MachineUser:  rb.machineUser,
+		WBS:          rb.wbs,
 	}
 }
 
@@ -657,6 +674,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithOwner(rb.owner).
 		WithCreator(rb.creator).
 		WithMachineUser(rb.machineUser).
+		WithWBS(rb.wbs).
 		BuildRR()
 
 	return radixRegistration, nil
