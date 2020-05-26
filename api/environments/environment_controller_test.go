@@ -259,7 +259,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 
 func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, radix := setupTest()
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
@@ -273,15 +273,13 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
-	re, _ := commonTestUtils.ApplyEnvironment(builders.
+	commonTestUtils.ApplyEnvironment(builders.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
 		WithEnvironmentName(anyOrphanedEnvironment).
-		WithRegistrationOwner(rr))
-
-	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(re)
+		WithRegistrationOwner(rr).
+		WithOrphaned(true))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -302,29 +300,25 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 
 func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, radix := setupTest()
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyNonOrphanedEnvironment := "dev"
 	anyOrphanedEnvironment := "feature"
 
-	commonTestUtils.ApplyRegistration(builders.
-		NewRegistrationBuilder().
-		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(builders.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment(anyNonOrphanedEnvironment, "master"))
+		WithEnvironment(anyNonOrphanedEnvironment, "master").
+		WithRadixRegistration(builders.
+			NewRegistrationBuilder().
+			WithName(anyAppName)))
 
-	re, _ := commonTestUtils.ApplyEnvironment(builders.
+	commonTestUtils.ApplyEnvironment(builders.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
 		WithEnvironmentName(anyOrphanedEnvironment))
-
-	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(re)
 
 	// Test
 	// Start with two environments
