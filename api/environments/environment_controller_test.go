@@ -1056,6 +1056,53 @@ func TestCreateEnvironment(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
+func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	handler := initHandler(kubeclient, radixclient)
+
+	appName := "any-app"
+	componentName := "backend"
+	environmentName := "dev"
+	buildFrom := "master"
+
+	deployment, err := commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentName).
+		WithImageTag(buildFrom))
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName).
+		WithEnvironment(environmentName, buildFrom).
+		WithComponent(builders.
+			AnApplicationComponent().
+			WithName(componentName)).
+		WithDNSExternalAlias("cdn.myalias.com", environmentName, componentName))
+
+	secrets, err := handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	// Should not return secrets because none exists
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 0)
+
+	kubeclient.CoreV1().Secrets(appName + "-" + environmentName).Create(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cdn.myalias.com",
+		},
+	})
+
+	secrets, err = handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	// Should return <name>-key and <name>-cert for secret because 1 exists
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 2)
+}
+
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
 	return Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 }

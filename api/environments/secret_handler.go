@@ -208,7 +208,7 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 
 		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(externalAlias.Alias, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
-			certStatus = environmentModels.Pending.String()
+			continue
 		}
 
 		if err != nil {
