@@ -1064,6 +1064,7 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 	componentName := "backend"
 	environmentName := "dev"
 	buildFrom := "master"
+	alias := "cdn.myalias.com"
 
 	deployment, err := commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -1078,19 +1079,25 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 		WithComponent(builders.
 			AnApplicationComponent().
 			WithName(componentName)).
-		WithDNSExternalAlias("cdn.myalias.com", environmentName, componentName))
+		WithDNSExternalAlias(alias, environmentName, componentName))
 
 	secrets, err := handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
 		Name: deployment.Name,
 	})
 
-	// Should not return secrets because none exists
 	assert.NoError(t, err)
-	assert.Len(t, secrets, 0)
+	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Pending", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Pending", s.Status)
+		}
+	}
 
 	kubeclient.CoreV1().Secrets(appName + "-" + environmentName).Create(&corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "cdn.myalias.com",
+			Name: alias,
 		},
 	})
 
@@ -1098,9 +1105,15 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 		Name: deployment.Name,
 	})
 
-	// Should return <name>-key and <name>-cert for secret because 1 exists
 	assert.NoError(t, err)
 	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Consistent", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Consistent", s.Status)
+		}
+	}
 }
 
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {

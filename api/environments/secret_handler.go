@@ -7,6 +7,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/equinor/radix-api/api/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -207,22 +208,20 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 		keyStatus := environmentModels.Consistent.String()
 
 		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(externalAlias.Alias, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			continue
-		}
-
 		if err != nil {
-			return nil, err
-		}
-
-		certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
-		if strings.EqualFold(certValue, tlsSecretDefaultData) {
+			log.Warnf("Error on retrieving secret '%s'. Message: %s", externalAlias.Alias, err.Error())
 			certStatus = environmentModels.Pending.String()
-		}
-
-		keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
-		if strings.EqualFold(keyValue, tlsSecretDefaultData) {
 			keyStatus = environmentModels.Pending.String()
+		} else {
+			certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
+			if strings.EqualFold(certValue, tlsSecretDefaultData) {
+				certStatus = environmentModels.Pending.String()
+			}
+
+			keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
+			if strings.EqualFold(keyValue, tlsSecretDefaultData) {
+				keyStatus = environmentModels.Pending.String()
+			}
 		}
 
 		secretDTO := environmentModels.Secret{Name: externalAlias.Alias + certPartSuffix, Component: externalAlias.Component, Status: certStatus}
