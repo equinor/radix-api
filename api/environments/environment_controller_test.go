@@ -1056,6 +1056,66 @@ func TestCreateEnvironment(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
+func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	handler := initHandler(kubeclient, radixclient)
+
+	appName := "any-app"
+	componentName := "backend"
+	environmentName := "dev"
+	buildFrom := "master"
+	alias := "cdn.myalias.com"
+
+	deployment, err := commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentName).
+		WithImageTag(buildFrom))
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName).
+		WithEnvironment(environmentName, buildFrom).
+		WithComponent(builders.
+			AnApplicationComponent().
+			WithName(componentName)).
+		WithDNSExternalAlias(alias, environmentName, componentName))
+
+	secrets, err := handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Pending", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Pending", s.Status)
+		}
+	}
+
+	kubeclient.CoreV1().Secrets(appName + "-" + environmentName).Create(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: alias,
+		},
+	})
+
+	secrets, err = handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Consistent", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Consistent", s.Status)
+		}
+	}
+}
+
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
 	return Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 }
