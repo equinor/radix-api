@@ -632,6 +632,33 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 }
 
+func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	builder := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/a-repo")
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
+	<-responseChannel
+
+	// Test
+	anyNewRepo := "https://github.com/repo/updated-version"
+	patchRequest := applicationModels.ApplicationPatchRequest{
+		Repository: &anyNewRepo,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewRepo, application.Registration.Repository)
+}
+
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
