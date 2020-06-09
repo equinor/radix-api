@@ -278,19 +278,8 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 		WithAppLabel().
 		WithAppName(anyAppName).
 		WithEnvironmentName(anyOrphanedEnvironment).
-		WithRegistrationOwner(rr))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
+		WithRegistrationOwner(rr).
+		WithOrphaned(true))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -302,7 +291,6 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 	for _, environment := range environments {
 		if strings.EqualFold(environment.Name, anyOrphanedEnvironment) {
 			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
-			assert.NotNil(t, environment.ActiveDeployment)
 			environmentListed = true
 		}
 	}
@@ -318,33 +306,19 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	anyNonOrphanedEnvironment := "dev"
 	anyOrphanedEnvironment := "feature"
 
-	commonTestUtils.ApplyRegistration(builders.
-		NewRegistrationBuilder().
-		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(builders.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyNonOrphanedEnvironment, "master").
-		WithEnvironment(anyOrphanedEnvironment, "feature"))
+		WithRadixRegistration(builders.
+			NewRegistrationBuilder().
+			WithName(anyAppName)))
 
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
+	commonTestUtils.ApplyEnvironment(builders.
+		NewEnvironmentBuilder().
+		WithAppLabel().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
-
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironmentName(anyOrphanedEnvironment))
 
 	// Test
 	// Start with two environments
@@ -1062,6 +1036,84 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
 	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+}
+
+func TestCreateEnvironment(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+
+	appName := "myApp"
+	envName := "myEnv"
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+}
+
+func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	handler := initHandler(kubeclient, radixclient)
+
+	appName := "any-app"
+	componentName := "backend"
+	environmentName := "dev"
+	buildFrom := "master"
+	alias := "cdn.myalias.com"
+
+	deployment, err := commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithEnvironment(environmentName).
+		WithImageTag(buildFrom))
+
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(appName).
+		WithEnvironment(environmentName, buildFrom).
+		WithComponent(builders.
+			AnApplicationComponent().
+			WithName(componentName)).
+		WithDNSExternalAlias(alias, environmentName, componentName))
+
+	secrets, err := handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Pending", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Pending", s.Status)
+		}
+	}
+
+	kubeclient.CoreV1().Secrets(appName + "-" + environmentName).Create(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: alias,
+		},
+	})
+
+	secrets, err = handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
+		Name: deployment.Name,
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, secrets, 2)
+	for _, s := range secrets {
+		if s.Name == alias+"-key" {
+			assert.Equal(t, "Consistent", s.Status)
+		} else if s.Name == alias+"-cert" {
+			assert.Equal(t, "Consistent", s.Status)
+		}
+	}
 }
 
 func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
