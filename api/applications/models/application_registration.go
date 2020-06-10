@@ -51,4 +51,9 @@ type ApplicationRegistration struct {
 	//
 	// required: false
 	MachineUser bool `json:"machineUser"`
+
+	// WBS information
+	//
+	// required: false
+	WBS string `json:"wbs"`
 }
