@@ -20,6 +20,9 @@ const (
 	// Terminated container
 	Terminated
 
+	// Starting container
+	Starting
+
 	numStatuses
 )
 
