@@ -125,7 +125,7 @@ type ReplicaStatus struct {
 	//
 	// Enum: Pending,Failing,Running,Terminated
 	// required: true
-	// example: Pending, Failing, Running, Terminated
+	// example: Pending, Failing, Running, Terminated, Starting
 	Status string `json:"status"`
 }
 

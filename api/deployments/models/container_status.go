@@ -20,11 +20,14 @@ const (
 	// Terminated container
 	Terminated
 
+	// Starting container
+	Starting
+
 	numStatuses
 )
 
 func (p ContainerStatus) String() string {
-	return [...]string{"Pending", "Failing", "Running", "Terminated"}[p]
+	return [...]string{"Pending", "Failing", "Running", "Terminated", "Starting"}[p]
 }
 
 // GetStatusFromName Gets status from name
