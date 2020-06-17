@@ -312,7 +312,8 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withRepository("https://github.com/Equinor/any-repo").
 		withSharedSecret("Any secret").
 		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
-		withOwner("AN_OWNER@equinor.com").Build()
+		withOwner("AN_OWNER@equinor.com").
+		withWBS("A.BCD.00.999").Build()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -329,6 +330,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "RADIX@equinor.com", application.Registration.Creator)
+	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
 }
 
 func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
@@ -597,6 +599,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
+	assert.Equal(t, "", application.Registration.WBS)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
@@ -630,6 +633,20 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	assert.Nil(t, application.Registration.AdGroups)
 	assert.Equal(t, anyNewOwner, application.Registration.Owner)
 
+	// Test
+	anyNewWBS := "A.BCD.00.999"
+	patchRequest = applicationModels.ApplicationPatchRequest{
+		WBS: &anyNewWBS,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewWBS, application.Registration.WBS)
 }
 
 func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
