@@ -22,4 +22,9 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	Repository *string `json:"repository,omitempty"`
+
+	// WBS information
+	//
+	// required: false
+	WBS *string `json:"wbs,omitempty"`
 }
