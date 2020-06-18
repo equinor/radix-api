@@ -19,6 +19,11 @@ type Application struct {
 	// required: false
 	Owner string `json:"owner"`
 
+	// Repository the github repository
+	//
+	// required: false
+	Repository string `json:"repository"`
+
 	// Creator of the application (user principle name).
 	//
 	// required: false

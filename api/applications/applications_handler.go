@@ -251,6 +251,13 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		runUpdate = true
 	}
 
+	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
+		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
+		existingRegistration.Spec.CloneURL = cloneURL
+		payload = append(payload, patch{Op: "replace", Path: "/spec/cloneURL", Value: cloneURL})
+		runUpdate = true
+	}
+
 	if patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
 		existingRegistration.Spec.MachineUser = patchRequest.MachineUser
 		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})

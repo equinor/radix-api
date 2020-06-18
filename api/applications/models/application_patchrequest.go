@@ -18,6 +18,11 @@ type ApplicationPatchRequest struct {
 	// required: false
 	MachineUser bool `json:"machineUser"`
 
+	// Repository the github repository
+	//
+	// required: false
+	Repository *string `json:"repository,omitempty"`
+
 	// WBS information
 	//
 	// required: false
