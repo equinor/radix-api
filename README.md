@@ -78,7 +78,11 @@ The Radix API server is meant to be the single point of entry for platform users
 Radix API follows the [standard procedure](https://github.com/equinor/radix-private/blob/master/docs/how-we-work/development-practices.md#standard-radix-applications) defined in _how we work_.
 
 Radix API is installed as a Radix application in [script](https://github.com/equinor/radix-platform/blob/master/scripts/install_base_components.sh) when setting up a cluster. It will setup API environment with [aliases](https://github.com/equinor/radix-platform/blob/master/scripts/create_alias.sh), and a Webhook so that changes to this repository will be reflected in Radix platform.
-
+```
+If radix-operator is updated to a new tag, `go.mod` should be updated as follows: 
+   
+    github.com/equinor/radix-operator <NEW_OPERATOR_TAG>
+```
 ## Pull request checking
 
 Radix API makes use of [GitHub Actions](https://github.com/features/actions) for build checking in every pull request to the `master` branch. Refer to the [configuration file](https://github.com/equinor/radix-api/blob/master/.github/workflows/radix-api-pr.yml) of the workflow for more details.
