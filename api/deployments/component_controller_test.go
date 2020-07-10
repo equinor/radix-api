@@ -202,7 +202,7 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 		WithDeploymentName(anyDeployName))
 
 	message := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
-	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Failing)
+	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Failing, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -230,7 +230,7 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 		WithDeploymentName(anyDeployName))
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Running)
+	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Running, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -248,6 +248,34 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
 }
 
+func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
+	commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment("dev").
+		WithDeploymentName(anyDeployName))
+
+	message := ""
+	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Running, false)
+
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.Equal(t, 1, len(components))
+	assert.Equal(t, 1, len(components[0].ReplicaList))
+	assert.Equal(t, deploymentModels.Starting.String(), components[0].ReplicaList[0].Status.Status)
+	assert.Equal(t, message, components[0].ReplicaList[0].StatusMessage)
+}
+
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
@@ -258,7 +286,7 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 		WithDeploymentName(anyDeployName))
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Pending)
+	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Pending, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -311,13 +339,14 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	assert.Equal(t, int32(80), components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
 }
 
-func createComponentPodWithContainerState(kubeclient kubernetes.Interface, namespace, message string, status deploymentModels.ContainerStatus) {
+func createComponentPodWithContainerState(kubeclient kubernetes.Interface, namespace, message string, status deploymentModels.ContainerStatus, ready bool) {
 	podSpec := getPodSpec()
 	containerState := getContainerState(message, status)
 	podStatus := corev1.PodStatus{
 		ContainerStatuses: []corev1.ContainerStatus{
 			{
 				State: containerState,
+				Ready: ready,
 			},
 		},
 	}

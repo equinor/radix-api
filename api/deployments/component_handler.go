@@ -231,7 +231,8 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 		replicaSummary.Name = pod.GetName()
 		if len(pod.Status.ContainerStatuses) > 0 {
 			// We assume one component container per component pod
-			containerState := pod.Status.ContainerStatuses[0].State
+			containerStatus := pod.Status.ContainerStatuses[0]
+			containerState := containerStatus.State
 
 			// Set default Pending status
 			replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Pending.String()}
@@ -243,7 +244,11 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 				}
 			}
 			if containerState.Running != nil {
-				replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Running.String()}
+				if containerStatus.Ready {
+					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Running.String()}
+				} else {
+					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Starting.String()}
+				}
 			}
 			if containerState.Terminated != nil {
 				replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Terminated.String()}
