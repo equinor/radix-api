@@ -85,6 +85,8 @@ func TestGetApplicationJob(t *testing.T) {
 		WithName(anyAppName).
 		WithCloneURL(anyCloneURL))
 
+	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName(anyAppName))
+
 	jobParameters := &jobModels.JobParameters{
 		Branch:      anyBranch,
 		CommitID:    anyPushCommitID,
@@ -101,7 +103,6 @@ func TestGetApplicationJob(t *testing.T) {
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response := <-responseChannel
-
 	job := jobModels.Job{}
 	controllertest.GetResponseBody(response, &job)
 	assert.Equal(t, jobSummary.Name, job.Name)
@@ -110,6 +111,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.Empty(t, job.Steps)
+	assert.Equal(t, jobSummary.Environments, []string{"test"})
 
 	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
 	cloneStep := corev1.ContainerStatus{Name: git.CloneContainerName, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
