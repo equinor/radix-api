@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/equinor/radix-operator/pkg/apis/utils/branch"
+
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -23,13 +25,27 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+
+	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
+
 	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixApplication, _ := jh.userAccount.RadixClient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
+
+	targetEnvironments := []string{}
+	for _, env := range radixApplication.Spec.Environments {
+		if env.Build.From != "" && branch.MatchesPattern(env.Build.From, jobSpec.Branch) {
+			targetEnvironments = append(targetEnvironments, env.Name)
+		}
+	}
 
 	job := jh.createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
-	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
+
 	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(job)
+	job.Status.TargetEnvs = targetEnvironments
+	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).UpdateStatus(job)
+
 	if err != nil {
 		return nil, err
 	}
