@@ -94,10 +94,12 @@ func TestGetApplicationJob(t *testing.T) {
 		TriggeredBy: anyUser,
 	}
 
+	anyTargetEnvs := map[string]bool{"test": true}
+
 	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters)
+	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters, anyTargetEnvs)
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
 	// Test

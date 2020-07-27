@@ -716,7 +716,8 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedForExisting(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("any-app"))
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName("any-app").Build())
 	<-responseChannel
