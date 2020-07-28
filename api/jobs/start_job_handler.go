@@ -22,22 +22,43 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters, environments map[string]bool) (*jobModels.JobSummary, error) {
+
+	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
+
 	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	var targetEnvironments []string
+	for targetEnv, deploy := range environments {
+		if deploy {
+			targetEnvironments = append(targetEnvironments, targetEnv)
+		}
+	}
 
 	job := jh.createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
-	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
+
 	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(job)
+
+	// Update the job with target environments
+	jobToUpdate, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Get(job.Name, metav1.GetOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	jobToUpdate.Status.TargetEnvs = targetEnvironments
+
+	updatedJob, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).UpdateStatus(jobToUpdate)
+
 	if err != nil {
 		return nil, err
 	}
 
 	metrics.AddJobTriggered(appName, string(pipeline.Type))
 
-	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
-	return jobModels.GetSummaryFromRadixJob(job), nil
+	log.Infof("Started job: %s, %s", updatedJob.GetName(), workerImage)
+	return jobModels.GetSummaryFromRadixJob(updatedJob), nil
 }
 
 func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {

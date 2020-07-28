@@ -358,7 +358,11 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	targetEnvironments := map[string]bool{
+		toEnvironment: true,
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters, targetEnvironments)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +392,11 @@ func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Reque
 
 	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	targetEnvironments := map[string]bool{
+		toEnvironment: true,
+	}
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters, targetEnvironments)
 	if err != nil {
 		return nil, err
 	}
@@ -411,18 +419,19 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
+	application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if branch is mapped
 	if !applicationconfig.IsMagicBranch(branch) {
-		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
-		if err != nil {
-			return nil, err
-		}
-
 		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
 
 		if !isThereAnythingToDeploy {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
+
 	}
 
 	jobParameters := pipelineParameters.MapPipelineParametersBuildToJobParameter()
@@ -432,7 +441,9 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
+	_, targetEnvironments := application.IsThereAnythingToDeploy(branch)
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters, targetEnvironments)
 	if err != nil {
 		return nil, err
 	}
