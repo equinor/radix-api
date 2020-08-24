@@ -27,22 +27,24 @@ spec:
       monitoring: true
       resources:
         requests:
-          memory: "100M"
+          memory: "250M"
           cpu: "50m"
         limits:
           memory: "250M"
-          cpu: "500m"
+          cpu: "1000m"
       variables:
         PIPELINE_IMG_TAG: "master-latest"
+        GOMAXPROCS: 2
     - environment: prod
       replicas: 2
       monitoring: true
       resources:
         requests:
-          memory: "200M"
-          cpu: "100m"
+          memory: "400M"
+          cpu: "200m"
         limits:
-          memory: "500M"
-          cpu: "1000m"
+          memory: "400M"
+          cpu: "2000m"
       variables:
         PIPELINE_IMG_TAG: "release-latest"
+        GOMAXPROCS: 2
