@@ -40,10 +40,10 @@ spec:
       monitoring: true
       resources:
         requests:
-          memory: "400M"
+          memory: "1200M"
           cpu: "200m"
         limits:
-          memory: "400M"
+          memory: "1200M"
           cpu: "2000m"
       variables:
         PIPELINE_IMG_TAG: "release-latest"
