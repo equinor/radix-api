@@ -7,6 +7,7 @@ require (
 	github.com/equinor/radix-operator v1.5.16
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
+	github.com/gorilla/handlers v1.5.0
 	github.com/gorilla/mux v1.7.0
 	github.com/graphql-go/graphql v0.7.7
 	github.com/pkg/errors v0.8.1

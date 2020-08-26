@@ -5,17 +5,18 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/handlers"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
 	// Controllers
 	"github.com/equinor/radix-api/api/admissioncontrollers"
 	"github.com/equinor/radix-api/api/applications"
+	"github.com/equinor/radix-api/api/buildsecrets"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	"github.com/equinor/radix-api/api/jobs"
 	"github.com/equinor/radix-api/api/privateimagehubs"
-	"github.com/equinor/radix-api/api/buildsecrets"
 
 	router "github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/models"
@@ -48,7 +49,7 @@ func main() {
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...)))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
