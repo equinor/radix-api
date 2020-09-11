@@ -51,6 +51,25 @@ If you are using VSCode, there is a convenient launch configuration in `.vscode`
 
   **Solution**: `make swagger`
 
+#### Update version
+We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
+`radix-api` has three places to set version
+* `apiVersionRoute` in `api/router/server.go` and `BasePath`in `docs/docs.go` - API version, used in API's URL
+* `Version` in `docs/docs.go` - indicates changes in radix-api logic - to see (e.g in swagger), that the version in the environment corresponds with what you wanted
+
+    Run following command to update version in `swagger.json`
+    ```
+    make swagger
+    ``` 
+
+* `tag` in git repository (in `master` branch) - matching to the version of `Version` in `docs/docs.go`
+
+    Run following command to set `tag` (with corresponding version)
+    ```
+    git tag v1.0.0
+    git push origin v1.0.0
+    ```
+
 ### Manual redeployment on existing cluster
 
 #### Prerequisites
@@ -62,7 +81,7 @@ If you are using VSCode, there is a convenient launch configuration in `.vscode`
 
 #### Process
 
-1. Update version in header of swagger version in `main.go` so that you can see that the version in the environment corresponds with what you wanted
+1. Update version
 2. Execute `draft up` to install to dev environment of radix-api
 3. Wait for pods to start
 4. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header.
