@@ -16,7 +16,7 @@ type ApplicationPatchRequest struct {
 	// MachineUser is used for interacting directly with Radix API
 	//
 	// required: false
-	MachineUser bool `json:"machineUser"`
+	MachineUser *bool `json:"machineUser,omitempty"`
 
 	// Repository the github repository
 	//
