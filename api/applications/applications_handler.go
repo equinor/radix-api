@@ -701,5 +701,6 @@ func AnApplicationRegistration() Builder {
 		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
 		owner:        "a_test_user@equinor.com",
 		creator:      "a_test_user@equinor.com",
+		wbs:          "T.O123A.AZ.45678",
 	}
 }

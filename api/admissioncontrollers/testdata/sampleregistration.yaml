@@ -12,3 +12,4 @@ spec:
     test: test
   owner: "radix@equinor.com"
   creator: "radix@equinor.com"
+  wbs: "T.O123A.AZ.45678"
