@@ -579,7 +579,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withSharedSecret("").
 		withPublicKey("").
 		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
-		withOwner("AN_OWNER@equinor.com")
+		withOwner("AN_OWNER@equinor.com").
+		withWBS("T.O123A.AZ.45678")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
 	<-responseChannel
 
@@ -599,7 +600,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
-	assert.Equal(t, "", application.Registration.WBS)
+	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
