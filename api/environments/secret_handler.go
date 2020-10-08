@@ -6,6 +6,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 
@@ -16,11 +17,11 @@ import (
 )
 
 const (
-	tlsSecretDefaultData = "xx"
-	certPartSuffix       = "-cert"
-	tlsCertPart          = "tls.crt"
-	keyPartSuffix        = "-key"
-	tlsKeyPart           = "tls.key"
+	secretDefaultData = "xx"
+	certPartSuffix    = "-cert"
+	tlsCertPart       = "tls.crt"
+	keyPartSuffix     = "-key"
+	tlsKeyPart        = "tls.key"
 )
 
 // ChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
@@ -43,6 +44,16 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		// This is the key part of the TLS secret
 		secretObjName = strings.TrimSuffix(secretName, keyPartSuffix)
 		partName = tlsKeyPart
+
+	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
+		// This is the account key part of the bobfuse cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
+		partName = defaults.BlobFuseCredsAccountKeyPart
+
+	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix) {
+		// This is the account name part of the bobfuse cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
+		partName = defaults.BlobFuseCredsAccountNamePart
 
 	} else {
 		// This is a regular secret
@@ -114,7 +125,16 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 		return nil, err
 	}
 
+	secretsFromVolumeMounts, err := eh.getSecretsFromVolumeMounts(rd, envNamespace)
+	if err != nil {
+		return nil, err
+	}
+
 	secrets := make([]environmentModels.Secret, 0)
+	for _, secretFromVolumeMounts := range secretsFromVolumeMounts {
+		secrets = append(secrets, secretFromVolumeMounts)
+	}
+
 	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
 		secrets = append(secrets, secretFromTLSCertificate)
 	}
@@ -196,6 +216,45 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1
 	return secretDTOsMap, nil
 }
 
+func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
+	secretDTOsMap := make(map[string]environmentModels.Secret)
+	for _, component := range activeDeployment.Spec.Components {
+		for _, volumeMount := range component.VolumeMounts {
+			// The only type we currently handle
+			if volumeMount.Type == v1.MountTypeBlob {
+				secretName := defaults.GetBlobFuseCredsSecret(component.Name)
+				accountkeyStatus := environmentModels.Consistent.String()
+				accountnameStatus := environmentModels.Consistent.String()
+
+				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+					accountkeyStatus = environmentModels.Pending.String()
+					accountnameStatus = environmentModels.Pending.String()
+				} else {
+					accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
+					if strings.EqualFold(accountkeyValue, secretDefaultData) {
+						accountkeyStatus = environmentModels.Pending.String()
+					}
+
+					accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
+					if strings.EqualFold(accountnameValue, secretDefaultData) {
+						accountnameStatus = environmentModels.Pending.String()
+					}
+				}
+
+				secretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.Name, Status: accountkeyStatus}
+				secretDTOsMap[secretDTO.Name] = secretDTO
+
+				secretDTO = environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.Name, Status: accountnameStatus}
+				secretDTOsMap[secretDTO.Name] = secretDTO
+			}
+		}
+	}
+
+	return secretDTOsMap, nil
+}
+
 func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, envName, envNamespace string) (map[string]environmentModels.Secret, error) {
 	secretDTOsMap := make(map[string]environmentModels.Secret)
 
@@ -214,12 +273,12 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 			keyStatus = environmentModels.Pending.String()
 		} else {
 			certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
-			if strings.EqualFold(certValue, tlsSecretDefaultData) {
+			if strings.EqualFold(certValue, secretDefaultData) {
 				certStatus = environmentModels.Pending.String()
 			}
 
 			keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
-			if strings.EqualFold(keyValue, tlsSecretDefaultData) {
+			if strings.EqualFold(keyValue, secretDefaultData) {
 				keyStatus = environmentModels.Pending.String()
 			}
 		}

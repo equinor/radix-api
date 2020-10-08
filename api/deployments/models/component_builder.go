@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -75,6 +76,14 @@ func (b *componentBuilder) WithComponent(component v1.RadixDeployComponent) Comp
 	for _, externalAlias := range component.DNSExternalAlias {
 		b.secrets = append(b.secrets, externalAlias+certPartSuffix)
 		b.secrets = append(b.secrets, externalAlias+keyPartSuffix)
+	}
+
+	for _, volumeMount := range component.VolumeMounts {
+		if volumeMount.Type == v1.MountTypeBlob {
+			secretName := defaults.GetBlobFuseCredsSecret(component.Name)
+			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
+			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
+		}
 	}
 
 	b.environmentVariables = component.EnvironmentVariables

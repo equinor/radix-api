@@ -111,6 +111,43 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	assert.Equal(t, "another.alias.com-key", components[0].Secrets[3])
 }
 
+func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName("any-app").
+			WithEnvironment("prod").
+			WithDeploymentName(anyDeployName).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithVolumeMounts([]v1.RadixVolumeMount{
+						{
+							Type: v1.MountTypeBlob,
+							Name: "some-name",
+							Path: "some-path",
+						},
+					})))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.Equal(t, 2, len(components[0].Secrets))
+	assert.Equal(t, "frontend-blob-blobfusecreds-accountkey", components[0].Secrets[0])
+	assert.Equal(t, "frontend-blob-blobfusecreds-accountname", components[0].Secrets[1])
+}
+
 func TestGetComponents_inactive_deployment(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
