@@ -131,8 +131,8 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 	environment := environmentModels.Environment{}
 	controllertest.GetResponseBody(response, &environment)
 	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "frontend-blob-blobfusecreds-accountkey"))
-	assert.True(t, contains(environment.Secrets, "frontend-blob-blobfusecreds-accountname"))
+	assert.True(t, contains(environment.Secrets, "frontend-blobfusecreds-accountkey"))
+	assert.True(t, contains(environment.Secrets, "frontend-blobfusecreds-accountname"))
 
 	parameters := environmentModels.SecretParameters{
 		SecretValue: "anyValue",

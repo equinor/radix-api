@@ -144,8 +144,8 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 	controllertest.GetResponseBody(response, &components)
 
 	assert.Equal(t, 2, len(components[0].Secrets))
-	assert.Equal(t, "frontend-blob-blobfusecreds-accountkey", components[0].Secrets[0])
-	assert.Equal(t, "frontend-blob-blobfusecreds-accountname", components[0].Secrets[1])
+	assert.Equal(t, "frontend-blobfusecreds-accountkey", components[0].Secrets[0])
+	assert.Equal(t, "frontend-blobfusecreds-accountname", components[0].Secrets[1])
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {
