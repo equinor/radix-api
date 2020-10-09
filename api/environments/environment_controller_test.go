@@ -141,10 +141,6 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
