@@ -50,11 +50,6 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
 		partName = defaults.BlobFuseCredsAccountKeyPart
 
-	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix) {
-		// This is the account name part of the bobfuse cred secret
-		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
-		partName = defaults.BlobFuseCredsAccountNamePart
-
 	} else {
 		// This is a regular secret
 		secretObjName = k8sObjectUtils.GetComponentSecretName(componentName)
@@ -224,29 +219,19 @@ func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.Rad
 			if volumeMount.Type == v1.MountTypeBlob {
 				secretName := defaults.GetBlobFuseCredsSecret(component.Name)
 				accountkeyStatus := environmentModels.Consistent.String()
-				accountnameStatus := environmentModels.Consistent.String()
 
 				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
 					accountkeyStatus = environmentModels.Pending.String()
-					accountnameStatus = environmentModels.Pending.String()
 				} else {
 					accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
 					if strings.EqualFold(accountkeyValue, secretDefaultData) {
 						accountkeyStatus = environmentModels.Pending.String()
 					}
-
-					accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
-					if strings.EqualFold(accountnameValue, secretDefaultData) {
-						accountnameStatus = environmentModels.Pending.String()
-					}
 				}
 
 				secretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.Name, Status: accountkeyStatus}
-				secretDTOsMap[secretDTO.Name] = secretDTO
-
-				secretDTO = environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.Name, Status: accountnameStatus}
 				secretDTOsMap[secretDTO.Name] = secretDTO
 			}
 		}

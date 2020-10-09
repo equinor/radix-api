@@ -82,7 +82,6 @@ func (b *componentBuilder) WithComponent(component v1.RadixDeployComponent) Comp
 		if volumeMount.Type == v1.MountTypeBlob {
 			secretName := defaults.GetBlobFuseCredsSecret(component.Name)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
 		}
 	}
 
