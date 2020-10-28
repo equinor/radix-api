@@ -209,6 +209,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
 	existingRegistration.Spec.WBS = radixRegistration.Spec.WBS
+	existingRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -267,6 +268,19 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	if patchRequest.WBS != nil && *patchRequest.WBS != "" {
 		existingRegistration.Spec.WBS = *patchRequest.WBS
 		payload = append(payload, patch{Op: "replace", Path: "/spec/wbs", Value: *patchRequest.WBS})
+		runUpdate = true
+	}
+
+	if patchRequest.ConfigBranch != nil && *patchRequest.ConfigBranch != "" {
+		existingRegistration.Spec.ConfigBranch = *patchRequest.ConfigBranch
+		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: *patchRequest.ConfigBranch})
+		runUpdate = true
+	}
+
+	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
+	if existingRegistration.Spec.ConfigBranch == "" {
+		existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
+		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
 		runUpdate = true
 	}
 
@@ -411,13 +425,17 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if branch is mapped
-	if !applicationconfig.IsMagicBranch(branch) {
+	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
 		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
 		if err != nil {
 			return nil, err
 		}
-
 		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
 
 		if !isThereAnythingToDeploy {
@@ -537,6 +555,7 @@ type Builder interface {
 	withDeployKey(*utils.DeployKey) Builder
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
+	withConfigBranch(string) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -555,6 +574,7 @@ type applicationBuilder struct {
 	cloneURL     string
 	machineUser  bool
 	wbs          string
+	configBranch string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -566,6 +586,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withPrivateKey(appRegistration.PrivateKey)
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
+	rb.withConfigBranch(appRegistration.ConfigBranch)
 	return rb
 }
 
@@ -579,6 +600,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withCreator(radixRegistration.Spec.Creator)
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 	rb.withWBS(radixRegistration.Spec.WBS)
+	rb.withConfigBranch(radixRegistration.Spec.ConfigBranch)
 
 	// Private part of key should never be returned
 	return rb
@@ -648,6 +670,11 @@ func (rb *applicationBuilder) withWBS(wbs string) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withConfigBranch(configBranch string) Builder {
+	rb.configBranch = configBranch
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -665,6 +692,7 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		Creator:      rb.creator,
 		MachineUser:  rb.machineUser,
 		WBS:          rb.wbs,
+		ConfigBranch: rb.configBranch,
 	}
 }
 
@@ -682,6 +710,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithCreator(rb.creator).
 		WithMachineUser(rb.machineUser).
 		WithWBS(rb.wbs).
+		WithConfigBranch(rb.configBranch).
 		BuildRR()
 
 	return radixRegistration, nil
@@ -702,5 +731,6 @@ func AnApplicationRegistration() Builder {
 		owner:        "a_test_user@equinor.com",
 		creator:      "a_test_user@equinor.com",
 		wbs:          "T.O123A.AZ.45678",
+		configBranch: "main",
 	}
 }

@@ -56,4 +56,9 @@ type ApplicationRegistration struct {
 	//
 	// required: false
 	WBS string `json:"wbs"`
+
+	// ConfigBranch information
+	//
+	// required: true
+	ConfigBranch string `json:"configBranch"`
 }
