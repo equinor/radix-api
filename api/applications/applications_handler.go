@@ -271,10 +271,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		runUpdate = true
 	}
 
-	if patchRequest.ConfigBranch != nil && strings.TrimSpace(*patchRequest.ConfigBranch) != "" {
-		existingRegistration.Spec.ConfigBranch = *patchRequest.ConfigBranch
-		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: *patchRequest.ConfigBranch})
-		runUpdate = true
+	if patchRequest.ConfigBranch != nil {
+		if trimmedBranch := strings.TrimSpace(*patchRequest.ConfigBranch); trimmedBranch != "" {
+			existingRegistration.Spec.ConfigBranch = trimmedBranch
+			payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: trimmedBranch})
+			runUpdate = true
+		}
 	}
 
 	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
