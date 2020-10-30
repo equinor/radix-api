@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
 	radixerr "github.com/equinor/radix-api/api/utils"
@@ -86,7 +87,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 	backOffLimit := int32(1)
 
 	defaultMode := int32(256)
-	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, "master")
+	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, applicationconfig.GetConfigBranch(rr))
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
