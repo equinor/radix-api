@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/equinor/radix-operator v1.6.1
+	github.com/equinor/radix-operator v1.7.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
 	github.com/gorilla/handlers v1.5.0
