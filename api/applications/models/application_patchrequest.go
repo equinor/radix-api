@@ -27,4 +27,9 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	WBS *string `json:"wbs,omitempty"`
+
+	// ConfigBranch information
+	//
+	// required: false
+	ConfigBranch *string `json:"configBranch,omitempty"`
 }

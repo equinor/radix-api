@@ -261,6 +261,49 @@ func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
+func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		withPublicKey("Any public key").
+		withPrivateKey("Any private key").
+		withConfigBranch("").
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := radixvalidators.ResourceNameCannotBeEmptyError("branch name")
+	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
+}
+
+func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	configBranch := "main.."
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		withPublicKey("Any public key").
+		withPrivateKey("Any private key").
+		withConfigBranch(configBranch).
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := radixvalidators.InvalidConfigBranchName(configBranch)
+	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
+}
+
 func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
@@ -313,7 +356,9 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withSharedSecret("Any secret").
 		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
 		withOwner("AN_OWNER@equinor.com").
-		withWBS("A.BCD.00.999").Build()
+		withWBS("A.BCD.00.999").
+		withConfigBranch("abranch").
+		Build()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -331,6 +376,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "RADIX@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
+	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 }
 
 func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
@@ -540,33 +586,57 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
 	<-responseChannel
 
-	// Test
+	// Test Repository
+	newRepository := "https://github.com/Equinor/any-repo"
 	builder = builder.
-		withRepository("https://github.com/Equinor/any-repo")
+		withRepository(newRepository)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
 	response := <-responseChannel
 
 	application := applicationModels.ApplicationRegistration{}
 	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Repository)
+	assert.Equal(t, newRepository, application.Repository)
 
+	// Test SharedSecret
+	newSharedSecret := "Any shared secret"
 	builder = builder.
-		withSharedSecret("Any shared secret")
+		withSharedSecret(newSharedSecret)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
 	response = <-responseChannel
 	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, "Any shared secret", application.SharedSecret)
+	assert.Equal(t, newSharedSecret, application.SharedSecret)
 
+	// Test PublicKey
+	newPublicKey := "Any public key"
 	builder = builder.
-		withPublicKey("Any public key")
+		withPublicKey(newPublicKey)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
 	response = <-responseChannel
 	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, "Any public key", application.PublicKey)
+	assert.Equal(t, newPublicKey, application.PublicKey)
 
+	// Test WBS
+	newWbs := "new.wbs.code"
+	builder = builder.
+		withWBS(newWbs)
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	response = <-responseChannel
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, newWbs, application.WBS)
+
+	// Test ConfigBranch
+	newConfigBranch := "newcfgbranch"
+	builder = builder.
+		withConfigBranch(newConfigBranch)
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	response = <-responseChannel
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, newConfigBranch, application.ConfigBranch)
 }
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {
@@ -580,7 +650,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withPublicKey("").
 		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
 		withOwner("AN_OWNER@equinor.com").
-		withWBS("T.O123A.AZ.45678")
+		withWBS("T.O123A.AZ.45678").
+		withConfigBranch("main1")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
 	<-responseChannel
 
@@ -601,6 +672,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
+	assert.Equal(t, "main1", application.Registration.ConfigBranch)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
@@ -648,6 +720,21 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewWBS, application.Registration.WBS)
+
+	// Test ConfigBranch
+	anyNewConfigBranch := "main2"
+	patchRequest = applicationModels.ApplicationPatchRequest{
+		ConfigBranch: &anyNewConfigBranch,
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewConfigBranch, application.Registration.ConfigBranch)
 }
 
 func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
@@ -677,16 +764,46 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	assert.Equal(t, anyNewRepo, application.Registration.Repository)
 }
 
+func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
+	// Setup
+	appName := "any-name"
+	_, controllerTestUtils, _, radixClient := setupTest()
+	rr := builders.ARadixRegistration().
+		WithName(appName).
+		WithConfigBranch("")
+	radixClient.RadixV1().RadixRegistrations().Create(rr.BuildRR())
+
+	// Test
+	anyNewRepo := "https://github.com/repo/updated-version"
+	patchRequest := applicationModels.ApplicationPatchRequest{
+		Repository: &anyNewRepo,
+	}
+
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", appName), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", appName))
+	response := <-responseChannel
+
+	application := applicationModels.Application{}
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, applicationconfig.ConfigBranchFallback, application.Registration.ConfigBranch)
+}
+
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _ := setupTest()
-
 	anyAppName := "any-app"
+	configBranch := "magic"
+
+	rr := builders.ARadixRegistration().WithConfigBranch(configBranch)
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
+		WithRadixRegistration(rr).
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "dev").
-		WithEnvironment("prod", "release"))
+		WithEnvironment("prod", "release"),
+	)
 
 	// Test
 	unmappedBranch := "feature"
@@ -708,7 +825,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	// Magic branch should start job, even if it is not mapped
-	parameters = applicationModels.PipelineParametersBuild{Branch: applicationconfig.MagicBranch}
+	parameters = applicationModels.PipelineParametersBuild{Branch: configBranch}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, v1.BuildDeploy), parameters)
 	response = <-responseChannel
 
@@ -719,7 +836,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	// Setup
 	_, controllerTestUtils, _, _ := setupTest()
 
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName("any-app").Build())
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().
+		withName("any-app").withConfigBranch("maincfg").Build())
 	<-responseChannel
 
 	// Test
@@ -742,7 +860,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
 
-	parameters = applicationModels.PipelineParametersBuild{Branch: "master", CommitID: pushCommitID}
+	parameters = applicationModels.PipelineParametersBuild{Branch: "maincfg", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", v1.BuildDeploy), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -750,7 +868,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	jobSummary := jobModels.JobSummary{}
 	controllertest.GetResponseBody(response, &jobSummary)
 	assert.Equal(t, "any-app", jobSummary.AppName)
-	assert.Equal(t, "master", jobSummary.Branch)
+	assert.Equal(t, "maincfg", jobSummary.Branch)
 	assert.Equal(t, pushCommitID, jobSummary.CommitID)
 }
 
