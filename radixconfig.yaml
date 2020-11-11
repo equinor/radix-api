@@ -11,6 +11,8 @@ spec:
     build:
       from: master
   - name: dev
+    build:
+      from: 46550-52031-add-blobfuse-config-secrets
   components:
   - name: "server"
     src: "."
