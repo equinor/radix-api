@@ -118,10 +118,9 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 					WithPublicPort("http").
 					WithVolumeMounts([]v1.RadixVolumeMount{
 						{
-							Type:        v1.MountTypeBlob,
-							AccountName: "some-account",
-							Container:   "some-container",
-							Path:        "some-path",
+							Type:      v1.MountTypeBlob,
+							Container: "some-container",
+							Path:      "some-path",
 						},
 					})))
 
