@@ -50,3 +50,14 @@ spec:
       variables:
         PIPELINE_IMG_TAG: "release-latest"
         GOMAXPROCS: 2
+    - environment: dev
+      resources:
+        requests:
+          memory: "200M"
+          cpu: "250m"
+        limits:
+          memory: "200M"
+          cpu: "2000m"
+      variables:
+        PIPELINE_IMG_TAG: "master-latest"
+        GOMAXPROCS: 1
