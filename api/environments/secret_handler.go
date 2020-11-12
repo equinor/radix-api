@@ -46,9 +46,14 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		partName = tlsKeyPart
 
 	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
-		// This is the account key part of the bobfuse cred secret
+		// This is the account key part of the blobfuse cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
 		partName = defaults.BlobFuseCredsAccountKeyPart
+
+	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix) {
+		// This is the account name part of the blobfuse cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
+		partName = defaults.BlobFuseCredsAccountNamePart
 
 	} else {
 		// This is a regular secret
