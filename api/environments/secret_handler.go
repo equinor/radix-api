@@ -219,20 +219,28 @@ func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.Rad
 			if volumeMount.Type == v1.MountTypeBlob {
 				secretName := defaults.GetBlobFuseCredsSecret(component.Name)
 				accountkeyStatus := environmentModels.Consistent.String()
+				accountnameStatus := environmentModels.Consistent.String()
 
 				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
 					accountkeyStatus = environmentModels.Pending.String()
+					accountnameStatus = environmentModels.Pending.String()
 				} else {
 					accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
 					if strings.EqualFold(accountkeyValue, secretDefaultData) {
 						accountkeyStatus = environmentModels.Pending.String()
 					}
+					accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
+					if strings.EqualFold(accountnameValue, secretDefaultData) {
+						accountnameStatus = environmentModels.Pending.String()
+					}
 				}
 
-				secretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.Name, Status: accountkeyStatus}
-				secretDTOsMap[secretDTO.Name] = secretDTO
+				accountKeySecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.Name, Status: accountkeyStatus}
+				secretDTOsMap[accountKeySecretDTO.Name] = accountKeySecretDTO
+				accountNameSecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.Name, Status: accountnameStatus}
+				secretDTOsMap[accountNameSecretDTO.Name] = accountNameSecretDTO
 			}
 		}
 	}
