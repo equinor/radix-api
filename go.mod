@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/equinor/radix-operator v1.7.1-0.20201111141532-8b51b6dbe13d
+	github.com/equinor/radix-operator v1.7.1-0.20201112160810-654d5d03414c
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
 	github.com/gorilla/handlers v1.5.0
@@ -19,7 +19,6 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/urfave/negroni v1.0.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/tools v0.0.0-20191010171213-8abd42400456
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.0.0-20191016225839-816a9b7df678
 	k8s.io/apimachinery v0.0.0-20191020214737-6c8691705fc5
