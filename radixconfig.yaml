@@ -10,9 +10,6 @@ spec:
     - name: qa
       build:
         from: master
-    - name: dev
-      build:
-        from: 46550-52031-add-blobfuse-config-secrets
   components:
     - name: "server"
       src: "."
@@ -50,14 +47,3 @@ spec:
           variables:
             PIPELINE_IMG_TAG: "release-latest"
             GOMAXPROCS: 2
-        - environment: dev
-          resources:
-            requests:
-              memory: "200M"
-              cpu: "250m"
-            limits:
-              memory: "200M"
-              cpu: "2000m"
-          variables:
-            PIPELINE_IMG_TAG: "46550-52031-add-blobfuse-config-secrets-latest"
-            GOMAXPROCS: 1
