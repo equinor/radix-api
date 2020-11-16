@@ -105,8 +105,8 @@ github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633/go.mod h1:otzb
 github.com/emicklei/go-restful v2.6.0+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
 github.com/emicklei/go-restful v2.11.0+incompatible h1:XfJYmBrweXijz6u2n8jWVAH10Vt7AsYahtOAZepjmGA=
 github.com/emicklei/go-restful v2.11.0+incompatible/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=
-github.com/equinor/radix-operator v1.7.0 h1:PGXo0xN+FLFMZs41E7jhyNQz6I939DuEASk3EGnFVg0=
-github.com/equinor/radix-operator v1.7.0/go.mod h1:zHDzi3bBE+YTQvXLxDuIxjBCczKLbaqXca2fZAAS95o=
+github.com/equinor/radix-operator v1.7.1 h1:k9O2haGet/MXJimE04XKIOe73XS6AJ9PqvydwR/xyd8=
+github.com/equinor/radix-operator v1.7.1/go.mod h1:zHDzi3bBE+YTQvXLxDuIxjBCczKLbaqXca2fZAAS95o=
 github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.2.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch v4.5.0+incompatible h1:ouOWdg56aJriqS0huScTkVXPC5IcNrDCXZ6OoTAWu7M=
@@ -647,6 +647,7 @@ golang.org/x/tools v0.0.0-20190813034749-528a2984e271/go.mod h1:b+2E5dAYhXwXZwtn
 golang.org/x/tools v0.0.0-20190816200558-6889da9d5479/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20190911174233-4f2ddba30aff/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20190927191325-030b2cf1153e/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
+golang.org/x/tools v0.0.0-20191010171213-8abd42400456 h1:LR16zMCx87X52rsLOtnByklL2K/xWUKAo1Nm7AA4HA0=
 golang.org/x/tools v0.0.0-20191010171213-8abd42400456/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 gonum.org/v1/gonum v0.0.0-20190331200053-3d26580ed485/go.mod h1:2ltnJ7xHfj0zHS40VVPYEAAMTa3ZGguvHGBSJeRWqE0=

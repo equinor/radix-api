@@ -126,10 +126,9 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 					WithPublicPort("http").
 					WithVolumeMounts([]v1.RadixVolumeMount{
 						{
-							Type:        v1.MountTypeBlob,
-							AccountName: "some-account",
-							Container:   "some-container",
-							Path:        "some-path",
+							Type:      v1.MountTypeBlob,
+							Container: "some-container",
+							Path:      "some-path",
 						},
 					})))
 
@@ -144,8 +143,10 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
-	assert.Equal(t, 1, len(components[0].Secrets))
-	assert.Equal(t, "frontend-blobfusecreds-accountkey", components[0].Secrets[0])
+	secrets := components[0].Secrets
+	assert.Equal(t, 2, len(secrets))
+	assert.Contains(t, secrets, "frontend-blobfusecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-blobfusecreds-accountname")
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {

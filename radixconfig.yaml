@@ -4,47 +4,46 @@ metadata:
   name: radix-api
 spec:
   environments:
-  - name: prod
-    build:
-      from: release
-  - name: qa
-    build:
-      from: master
-  - name: dev
+    - name: prod
+      build:
+        from: release
+    - name: qa
+      build:
+        from: master
   components:
-  - name: "server"
-    src: "."
-    dockerfileName: "Dockerfile"
-    ports:
-    - name: http
-      port: 3002
-    public: true
-    environmentConfig:
-    - environment: qa
-      horizontalScaling:
-        minReplicas: 1
-        maxReplicas: 2
-      monitoring: true
-      resources:
-        requests:
-          memory: "400M"
-          cpu: "250m"
-        limits:
-          memory: "400M"
-          cpu: "2000m"
-      variables:
-        PIPELINE_IMG_TAG: "master-latest"
-        GOMAXPROCS: 1
-    - environment: prod
-      replicas: 2
-      monitoring: true
-      resources:
-        requests:
-          memory: "400M"
-          cpu: "250m"
-        limits:
-          memory: "400M"
-          cpu: "2000m"
-      variables:
-        PIPELINE_IMG_TAG: "release-latest"
-        GOMAXPROCS: 2
+    - name: "server"
+      src: "."
+      dockerfileName: "Dockerfile"
+      ports:
+        - name: http
+          port: 3002
+      public: true
+      environmentConfig:
+        - environment: qa
+          horizontalScaling:
+            minReplicas: 1
+            maxReplicas: 2
+          monitoring: true
+          resources:
+            requests:
+              memory: "400M"
+              cpu: "250m"
+            limits:
+              memory: "400M"
+              cpu: "2000m"
+          variables:
+            PIPELINE_IMG_TAG: "master-latest"
+            GOMAXPROCS: 1
+        - environment: prod
+          replicas: 2
+          monitoring: true
+          resources:
+            requests:
+              memory: "400M"
+              cpu: "250m"
+            limits:
+              memory: "400M"
+              cpu: "2000m"
+          variables:
+            PIPELINE_IMG_TAG: "release-latest"
+            GOMAXPROCS: 2
