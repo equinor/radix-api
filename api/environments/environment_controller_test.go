@@ -119,6 +119,7 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 					WithVolumeMounts([]v1.RadixVolumeMount{
 						{
 							Type:      v1.MountTypeBlob,
+							Name:      "somevolumename",
 							Container: "some-container",
 							Path:      "some-path",
 						},
@@ -131,8 +132,8 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 	environment := environmentModels.Environment{}
 	controllertest.GetResponseBody(response, &environment)
 	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "frontend-blobfusecreds-accountkey"))
-	assert.True(t, contains(environment.Secrets, "frontend-blobfusecreds-accountname"))
+	assert.True(t, contains(environment.Secrets, "frontend-somevolumename-blobfusecreds-accountkey"))
+	assert.True(t, contains(environment.Secrets, "frontend-somevolumename-blobfusecreds-accountname"))
 
 	parameters := environmentModels.SecretParameters{
 		SecretValue: "anyValue",
