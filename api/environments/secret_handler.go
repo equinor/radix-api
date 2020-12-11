@@ -222,7 +222,7 @@ func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.Rad
 		for _, volumeMount := range component.VolumeMounts {
 			// The only type we currently handle
 			if volumeMount.Type == v1.MountTypeBlob {
-				secretName := defaults.GetBlobFuseCredsSecretName(component.Name)
+				secretName := defaults.GetBlobFuseCredsSecretName(component.Name, volumeMount.Name)
 				accountkeyStatus := environmentModels.Consistent.String()
 				accountnameStatus := environmentModels.Consistent.String()
 

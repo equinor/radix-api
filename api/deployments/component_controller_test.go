@@ -127,6 +127,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 					WithVolumeMounts([]v1.RadixVolumeMount{
 						{
 							Type:      v1.MountTypeBlob,
+							Name:      "somevolumename",
 							Container: "some-container",
 							Path:      "some-path",
 						},
@@ -145,8 +146,55 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 
 	secrets := components[0].Secrets
 	assert.Equal(t, 2, len(secrets))
-	assert.Contains(t, secrets, "frontend-blobfusecreds-accountkey")
-	assert.Contains(t, secrets, "frontend-blobfusecreds-accountname")
+	assert.Contains(t, secrets, "frontend-somevolumename-blobfusecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename-blobfusecreds-accountname")
+}
+
+func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName("any-app").
+			WithEnvironment("prod").
+			WithDeploymentName(anyDeployName).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithPublicPort("http").
+					WithVolumeMounts([]v1.RadixVolumeMount{
+						{
+							Type:      v1.MountTypeBlob,
+							Name:      "somevolumename1",
+							Container: "some-container1",
+							Path:      "some-path1",
+						},
+						{
+							Type:      v1.MountTypeBlob,
+							Name:      "somevolumename2",
+							Container: "some-container2",
+							Path:      "some-path2",
+						},
+					})))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	secrets := components[0].Secrets
+	assert.Equal(t, 4, len(secrets))
+	assert.Contains(t, secrets, "frontend-somevolumename1-blobfusecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename1-blobfusecreds-accountname")
+	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountname")
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {
