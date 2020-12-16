@@ -53,6 +53,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: DeleteEnvironment,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/events",
+			Method:      "GET",
+			HandlerFunc: GetEnvironmentEvents,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
 			Method:      "PUT",
 			HandlerFunc: ChangeEnvironmentComponentSecret,
@@ -334,6 +339,57 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	}
 
 	utils.JSONResponse(w, r, appEnvironments)
+}
+
+// GetEnvironmentEvents Get events for an application environment
+func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/events environment getEnvironmentEvents
+	// ---
+	// summary: Lists events for an application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful get environment events"
+	//     schema:
+	//        "$ref": "#/definitions/Event"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(accounts)
+	events, err := environmentHandler.GetEnvironmentEvents(appName, envName)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, events)
+
 }
 
 // ChangeEnvironmentComponentSecret Modifies an application environment component secret

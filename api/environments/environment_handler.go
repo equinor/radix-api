@@ -6,6 +6,10 @@ import (
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/api/events"
+
+	eventModels "github.com/equinor/radix-api/api/events/models"
+
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -171,6 +175,27 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	return nil
+}
+
+// GetEnvironmentEvents Handler for GetEnvironmentEvents
+func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = eh.getConfigurationStatus(envName, radixApplication)
+	if err != nil {
+		return nil, err
+	}
+
+	evh := events.Init(eh.accounts)
+	events, err := evh.GetEvents(events.RadixEnvironmentNamespace(radixApplication, envName))
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
