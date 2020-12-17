@@ -10,6 +10,10 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	event "github.com/equinor/radix-api/api/events"
+	eventMock "github.com/equinor/radix-api/api/events/mock"
+	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/test"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -21,6 +25,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1161,8 +1166,86 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 	}
 }
 
-func initHandler(client kubernetes.Interface, radixclient radixclient.Interface) EnvironmentHandler {
-	return Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
+func Test_GetEnvironmentEvents_Controller(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeClient, _ := setupTest()
+	anyAppName := "any-app"
+	createEvent := func(namespace, eventName string) {
+		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: eventName,
+			},
+		})
+	}
+	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev1")
+	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev2")
+	commonTestUtils.ApplyApplication(builders.
+		ARadixApplication().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master"))
+
+	t.Run("Get events for dev environment", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "dev"))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+		events := make([]eventModels.Event, 0)
+		controllertest.GetResponseBody(response, &events)
+		assert.Len(t, events, 2)
+	})
+
+	t.Run("Get events for non-existing environment", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "prod"))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		errResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Equal(
+			t,
+			environmentModels.NonExistingEnvironment(nil, anyAppName, "prod").Error(),
+			errResponse.Message,
+		)
+	})
+
+	t.Run("Get events for non-existing application", func(t *testing.T) {
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", "noapp", "dev"))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		errResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Equal(
+			t,
+			controllertest.AppNotFoundErrorMsg("noapp"),
+			errResponse.Message,
+		)
+	})
+}
+
+func Test_GetEnvironmentEvents_Handler(t *testing.T) {
+	appName, envName := "app", "dev"
+	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	ctrl := gomock.NewController(t)
+	ctrl.Finish()
+	eventHandler := eventMock.NewMockEventHandler(ctrl)
+	handler := initHandler(kubeclient, radixclient, WithEventHandler(eventHandler))
+	raBuilder := builders.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
+	commonTestUtils.ApplyApplication(raBuilder)
+	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), envName)
+	eventHandler.EXPECT().
+		GetEvents(test.EqualsNamespaceFunc(nsFunc)).
+		Return(make([]*eventModels.Event, 0), fmt.Errorf("err")).
+		Return([]*eventModels.Event{{}, {}}, nil).
+		Times(1)
+
+	events, err := handler.GetEnvironmentEvents(appName, envName)
+	assert.Nil(t, err)
+	assert.Len(t, events, 2)
+}
+
+func initHandler(client kubernetes.Interface,
+	radixclient radixclient.Interface,
+	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
+	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{})
+	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
+	options = append(options, handlerConfig...)
+	return Init(options...)
 }
 
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {

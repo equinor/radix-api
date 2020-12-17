@@ -48,7 +48,7 @@ func Init(accounts models.Accounts) ApplicationHandler {
 	return ApplicationHandler{
 		accounts:           accounts,
 		jobHandler:         jobHandler,
-		environmentHandler: environments.Init(accounts),
+		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
 	}
 }
 

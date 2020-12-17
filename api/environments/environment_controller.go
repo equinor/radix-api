@@ -185,7 +185,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	envName := mux.Vars(r)["envName"]
 
 	// Need in cluster client in order to delete namespace using sufficient priviledges
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	_, err := environmentHandler.CreateEnvironment(appName, envName)
 
 	if err != nil {
@@ -235,7 +235,7 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
@@ -285,7 +285,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	envName := mux.Vars(r)["envName"]
 
 	// Need in cluster client in order to delete namespace using sufficient priviledges
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 
 	if err != nil {
@@ -330,7 +330,7 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
@@ -380,7 +380,7 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	events, err := environmentHandler.GetEnvironmentEvents(appName, envName)
 
 	if err != nil {
@@ -456,7 +456,7 @@ func ChangeEnvironmentComponentSecret(accounts models.Accounts, w http.ResponseW
 		return
 	}
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 
 	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
@@ -509,7 +509,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.StopComponent(appName, envName, componentName)
 
 	if err != nil {
@@ -562,7 +562,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.StartComponent(appName, envName, componentName)
 
 	if err != nil {
@@ -619,7 +619,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(accounts)
+	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.RestartComponent(appName, envName, componentName)
 
 	if err != nil {

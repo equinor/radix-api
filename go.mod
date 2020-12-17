@@ -8,6 +8,7 @@ require (
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-openapi/strfmt v0.19.2
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
+	github.com/golang/mock v1.3.1
 	github.com/gorilla/handlers v1.5.0
 	github.com/gorilla/mux v1.7.0
 	github.com/graphql-go/graphql v0.7.7

@@ -2,12 +2,16 @@ package events
 
 import (
 	eventModels "github.com/equinor/radix-api/api/events/models"
-	"github.com/equinor/radix-api/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
+
+// EventHandler defines methods for interacting with Kubernetes events
+type EventHandler interface {
+	GetEvents(namespaceFunc NamespaceFunc) ([]*eventModels.Event, error)
+}
 
 // NamespaceFunc defines a function that returns a namespace
 // Used as argument in GetEvents to filter events by namespace
@@ -20,19 +24,29 @@ func RadixEnvironmentNamespace(ra *v1.RadixApplication, envName string) Namespac
 	}
 }
 
-// EventHandler Instance variables
-type EventHandler struct {
+func NamespaceString(namespace string) NamespaceFunc {
+	return func() string {
+		return namespace
+	}
+}
+
+type eventHandler struct {
 	kubeClient kubernetes.Interface
 }
 
 // Init creates a new EventHandler
-func Init(accounts models.Accounts) *EventHandler {
-	return &EventHandler{kubeClient: accounts.UserAccount.Client}
+func Init(kubeClient kubernetes.Interface) EventHandler {
+	return &eventHandler{kubeClient: kubeClient}
 }
 
 // GetEvents return events for a namespace defined by a NamespaceFunc function
-func (eh *EventHandler) GetEvents(namespace NamespaceFunc) ([]*eventModels.Event, error) {
-	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace()).List(metav1.ListOptions{})
+func (eh *eventHandler) GetEvents(namespaceFunc NamespaceFunc) ([]*eventModels.Event, error) {
+	namespace := namespaceFunc()
+	return eh.getEvents(namespace)
+}
+
+func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error) {
+	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

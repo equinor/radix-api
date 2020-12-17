@@ -21,14 +21,6 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		assert.Equal(t, strfmt.DateTime(v), e.LastTimestamp)
 	})
 
-	t.Run("WithCount", func(t *testing.T) {
-		v := int32(2)
-		e := NewEventBuilder().
-			WithCount(v).
-			BuildEvent()
-		assert.Equal(t, v, e.Count)
-	})
-
 	t.Run("WithMessage", func(t *testing.T) {
 		v := "msg"
 		e := NewEventBuilder().
@@ -40,25 +32,25 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 	t.Run("WithObjectKind", func(t *testing.T) {
 		v := "kind"
 		e := NewEventBuilder().
-			WithObjectKind(v).
+			WithInvolvedObjectKind(v).
 			BuildEvent()
-		assert.Equal(t, v, e.ObjectKind)
+		assert.Equal(t, v, e.InvolvedObjectKind)
 	})
 
 	t.Run("WithObjectName", func(t *testing.T) {
 		v := "name"
 		e := NewEventBuilder().
-			WithObjectName(v).
+			WithInvolvedObjectName(v).
 			BuildEvent()
-		assert.Equal(t, v, e.ObjectName)
+		assert.Equal(t, v, e.InvolvedObjectName)
 	})
 
 	t.Run("WithObjectNamespace", func(t *testing.T) {
 		v := "ns"
 		e := NewEventBuilder().
-			WithObjectNamespace(v).
+			WithInvolvedObjectNamespace(v).
 			BuildEvent()
-		assert.Equal(t, v, e.ObjectNamespace)
+		assert.Equal(t, v, e.InvolvedObjectNamespace)
 	})
 
 	t.Run("WithReason", func(t *testing.T) {
@@ -82,7 +74,6 @@ func Test_EventBuilder_FluentApi_WithKubernetes(t *testing.T) {
 	lastTs := time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC)
 	v := v1.Event{
 		LastTimestamp: metav1.Time{lastTs},
-		Count:         5,
 		Message:       "msg",
 		Type:          "type",
 		Reason:        "reason",
@@ -98,11 +89,10 @@ func Test_EventBuilder_FluentApi_WithKubernetes(t *testing.T) {
 		BuildEvent()
 
 	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
-	assert.Equal(t, v.Count, e.Count)
 	assert.Equal(t, v.Message, e.Message)
-	assert.Equal(t, v.InvolvedObject.Kind, e.ObjectKind)
-	assert.Equal(t, v.InvolvedObject.Name, e.ObjectName)
-	assert.Equal(t, v.InvolvedObject.Namespace, e.ObjectNamespace)
+	assert.Equal(t, v.InvolvedObject.Kind, e.InvolvedObjectKind)
+	assert.Equal(t, v.InvolvedObject.Name, e.InvolvedObjectName)
+	assert.Equal(t, v.InvolvedObject.Namespace, e.InvolvedObjectNamespace)
 	assert.Equal(t, v.Reason, e.Reason)
 	assert.Equal(t, v.Type, e.Type)
 }

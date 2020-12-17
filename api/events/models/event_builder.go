@@ -11,10 +11,9 @@ import (
 type EventBuilder interface {
 	WithKubernetesEvent(v1.Event) EventBuilder
 	WithLastTimestamp(time.Time) EventBuilder
-	WithCount(int32) EventBuilder
-	WithObjectKind(string) EventBuilder
-	WithObjectNamespace(string) EventBuilder
-	WithObjectName(string) EventBuilder
+	WithInvolvedObjectKind(string) EventBuilder
+	WithInvolvedObjectNamespace(string) EventBuilder
+	WithInvolvedObjectName(string) EventBuilder
 	WithType(string) EventBuilder
 	WithReason(string) EventBuilder
 	WithMessage(string) EventBuilder
@@ -22,14 +21,13 @@ type EventBuilder interface {
 }
 
 type eventBuilder struct {
-	lastTimestamp   time.Time
-	count           int32
-	objectKind      string
-	objectNamespace string
-	objectName      string
-	eventType       string
-	reason          string
-	message         string
+	lastTimestamp           time.Time
+	involvedObjectKind      string
+	involvedObjectNamespace string
+	involvedObjectName      string
+	eventType               string
+	reason                  string
+	message                 string
 }
 
 // NewEventBuilder Constructor for eventBuilder
@@ -39,10 +37,9 @@ func NewEventBuilder() EventBuilder {
 
 func (eb *eventBuilder) WithKubernetesEvent(v v1.Event) EventBuilder {
 	eb.WithLastTimestamp(v.LastTimestamp.Time)
-	eb.WithCount(v.Count)
-	eb.WithObjectKind(v.InvolvedObject.Kind)
-	eb.WithObjectNamespace(v.InvolvedObject.Namespace)
-	eb.WithObjectName(v.InvolvedObject.Name)
+	eb.WithInvolvedObjectKind(v.InvolvedObject.Kind)
+	eb.WithInvolvedObjectNamespace(v.InvolvedObject.Namespace)
+	eb.WithInvolvedObjectName(v.InvolvedObject.Name)
 	eb.WithType(v.Type)
 	eb.WithReason(v.Reason)
 	eb.WithMessage(v.Message)
@@ -54,23 +51,18 @@ func (eb *eventBuilder) WithLastTimestamp(v time.Time) EventBuilder {
 	return eb
 }
 
-func (eb *eventBuilder) WithCount(v int32) EventBuilder {
-	eb.count = v
+func (eb *eventBuilder) WithInvolvedObjectKind(v string) EventBuilder {
+	eb.involvedObjectKind = v
 	return eb
 }
 
-func (eb *eventBuilder) WithObjectKind(v string) EventBuilder {
-	eb.objectKind = v
+func (eb *eventBuilder) WithInvolvedObjectNamespace(v string) EventBuilder {
+	eb.involvedObjectNamespace = v
 	return eb
 }
 
-func (eb *eventBuilder) WithObjectNamespace(v string) EventBuilder {
-	eb.objectNamespace = v
-	return eb
-}
-
-func (eb *eventBuilder) WithObjectName(v string) EventBuilder {
-	eb.objectName = v
+func (eb *eventBuilder) WithInvolvedObjectName(v string) EventBuilder {
+	eb.involvedObjectName = v
 	return eb
 }
 
@@ -91,13 +83,12 @@ func (eb *eventBuilder) WithMessage(v string) EventBuilder {
 
 func (eb *eventBuilder) BuildEvent() *Event {
 	return &Event{
-		LastTimestamp:   strfmt.DateTime(eb.lastTimestamp),
-		Count:           eb.count,
-		ObjectKind:      eb.objectKind,
-		ObjectNamespace: eb.objectNamespace,
-		ObjectName:      eb.objectName,
-		Type:            eb.eventType,
-		Reason:          eb.reason,
-		Message:         eb.message,
+		LastTimestamp:           strfmt.DateTime(eb.lastTimestamp),
+		InvolvedObjectKind:      eb.involvedObjectKind,
+		InvolvedObjectNamespace: eb.involvedObjectNamespace,
+		InvolvedObjectName:      eb.involvedObjectName,
+		Type:                    eb.eventType,
+		Reason:                  eb.reason,
+		Message:                 eb.message,
 	}
 }

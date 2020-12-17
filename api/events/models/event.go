@@ -11,25 +11,20 @@ type Event struct {
 	// example: 2020-11-05T13:25:07.000Z
 	LastTimestamp strfmt.DateTime `json:"lastTimestamp"`
 
-	// The number of times this event has occured
-	//
-	// example: 2
-	Count int32 `json:"count"`
-
 	// Kind of object involved in this event
 	//
 	// example: Pod
-	ObjectKind string `json:"objectKind"`
+	InvolvedObjectKind string `json:"involvedObjectKind"`
 
 	// Namespavce of object involved in this event
 	//
 	// example: myapp-production
-	ObjectNamespace string `json:"objectNamespace"`
+	InvolvedObjectNamespace string `json:"involvedObjectNamespace"`
 
 	// Name of object involved in this event
 	//
 	// example: www-74cb7c986-fgcrl
-	ObjectName string `json:"objectName"`
+	InvolvedObjectName string `json:"involvedObjectName"`
 
 	// Type of this event (Normal, Warning)
 	//
