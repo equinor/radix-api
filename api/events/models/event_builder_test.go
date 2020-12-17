@@ -73,7 +73,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 func Test_EventBuilder_FluentApi_WithKubernetes(t *testing.T) {
 	lastTs := time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC)
 	v := v1.Event{
-		LastTimestamp: metav1.Time{lastTs},
+		LastTimestamp: metav1.NewTime(lastTs),
 		Message:       "msg",
 		Type:          "type",
 		Reason:        "reason",
