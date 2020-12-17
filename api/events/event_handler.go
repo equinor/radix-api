@@ -24,12 +24,6 @@ func RadixEnvironmentNamespace(ra *v1.RadixApplication, envName string) Namespac
 	}
 }
 
-func NamespaceString(namespace string) NamespaceFunc {
-	return func() string {
-		return namespace
-	}
-}
-
 type eventHandler struct {
 	kubeClient kubernetes.Interface
 }
