@@ -70,13 +70,40 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 	})
 }
 
-func Test_EventBuilder_FluentApi_WithKubernetes(t *testing.T) {
+func Test_EventBuilder_FluentApi_WithKubernetes_LastTimestamp(t *testing.T) {
 	lastTs := time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC)
 	v := v1.Event{
 		LastTimestamp: metav1.NewTime(lastTs),
 		Message:       "msg",
 		Type:          "type",
 		Reason:        "reason",
+		InvolvedObject: v1.ObjectReference{
+			Kind:      "kind",
+			Name:      "name",
+			Namespace: "ns",
+		},
+	}
+
+	e := NewEventBuilder().
+		WithKubernetesEvent(v).
+		BuildEvent()
+
+	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
+	assert.Equal(t, v.Message, e.Message)
+	assert.Equal(t, v.InvolvedObject.Kind, e.InvolvedObjectKind)
+	assert.Equal(t, v.InvolvedObject.Name, e.InvolvedObjectName)
+	assert.Equal(t, v.InvolvedObject.Namespace, e.InvolvedObjectNamespace)
+	assert.Equal(t, v.Reason, e.Reason)
+	assert.Equal(t, v.Type, e.Type)
+}
+
+func Test_EventBuilder_FluentApi_WithKubernetes_EventTime(t *testing.T) {
+	lastTs := time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC)
+	v := v1.Event{
+		EventTime: metav1.NewMicroTime(lastTs),
+		Message:   "msg",
+		Type:      "type",
+		Reason:    "reason",
 		InvolvedObject: v1.ObjectReference{
 			Kind:      "kind",
 			Name:      "name",

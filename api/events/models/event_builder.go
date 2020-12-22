@@ -36,7 +36,11 @@ func NewEventBuilder() EventBuilder {
 }
 
 func (eb *eventBuilder) WithKubernetesEvent(v v1.Event) EventBuilder {
-	eb.WithLastTimestamp(v.LastTimestamp.Time)
+	if !v.LastTimestamp.IsZero() {
+		eb.WithLastTimestamp(v.LastTimestamp.Time)
+	} else {
+		eb.WithLastTimestamp(v.EventTime.Time)
+	}
 	eb.WithInvolvedObjectKind(v.InvolvedObject.Kind)
 	eb.WithInvolvedObjectNamespace(v.InvolvedObject.Namespace)
 	eb.WithInvolvedObjectName(v.InvolvedObject.Name)
