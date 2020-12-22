@@ -18,11 +18,14 @@ const (
 	// ComponentRestarting restarting component
 	ComponentRestarting
 
+	// ComponentOutdated has outdated image
+	ComponentOutdated
+
 	numComponentStatuses
 )
 
 func (p ComponentStatus) String() string {
-	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting"}[p]
+	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting", "Outdated"}[p]
 }
 
 // GetComponentStatusFromName Gets status from name
