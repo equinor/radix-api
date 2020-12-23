@@ -6,6 +6,10 @@ import (
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/api/events"
+
+	eventModels "github.com/equinor/radix-api/api/events/models"
+
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -21,25 +25,49 @@ import (
 
 const latestDeployment = true
 
+// EnvironmentHandlerOptions defines a configuration function
+type EnvironmentHandlerOptions func(*EnvironmentHandler)
+
+// WithAccounts configures all EnvironmentHandler fields
+func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.client = accounts.UserAccount.Client
+		eh.radixclient = accounts.UserAccount.RadixClient
+		eh.inClusterClient = accounts.ServiceAccount.Client
+		eh.deployHandler = deployments.Init(accounts)
+		eh.eventHandler = events.Init(accounts.UserAccount.Client)
+		eh.accounts = accounts
+	}
+}
+
+// WithEventHandler configures the eventHandler used by EnvironmentHandler
+func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.eventHandler = eventHandler
+	}
+}
+
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
 	client          kubernetes.Interface
 	radixclient     radixclient.Interface
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
+	eventHandler    events.EventHandler
 	accounts        models.Accounts
 }
 
-// Init Constructor
-func Init(accounts models.Accounts) EnvironmentHandler {
-	deployHandler := deployments.Init(accounts)
-	return EnvironmentHandler{
-		client:          accounts.UserAccount.Client,
-		radixclient:     accounts.UserAccount.RadixClient,
-		inClusterClient: accounts.ServiceAccount.Client,
-		deployHandler:   deployHandler,
-		accounts:        accounts,
+// Init Constructor.
+// Use the WithAccounts configuration function to configure a 'ready to use' EnvironmentHandler.
+// EnvironmentHandlerOptions are processed in the seqeunce they are passed to this function.
+func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
+	eh := EnvironmentHandler{}
+
+	for _, opt := range opts {
+		opt(&eh)
 	}
+
+	return eh
 }
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
@@ -171,6 +199,26 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	return nil
+}
+
+// GetEnvironmentEvents Handler for GetEnvironmentEvents
+func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = eh.getConfigurationStatus(envName, radixApplication)
+	if err != nil {
+		return nil, err
+	}
+
+	events, err := eh.eventHandler.GetEvents(events.RadixEnvironmentNamespace(radixApplication, envName))
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
