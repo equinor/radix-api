@@ -34,8 +34,6 @@ Go modules are used for dependency management. See [link](https://blog.golang.or
 
 The following env vars are needed. Useful default values in brackets.
 
-- `server_cert_path` - (`${workspaceFolder}/certs/cert.pem`)
-- `server_key_path` - (`${workspaceFolder}/certs/key.pem`)
 - `RADIX_CONTAINER_REGISTRY` - (`radixdev.azurecr.io`)
 - `PIPELINE_IMG_TAG` - (`master-latest`)
 
