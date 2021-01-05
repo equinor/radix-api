@@ -6,8 +6,8 @@ RUN apk update && \
     apk add --no-cache gcc musl-dev && \
     go get -u golang.org/x/lint/golint && \
     go get -u github.com/rakyll/statik && \
-    # Install go-swagger - 20822585=v0.21.0 - get release id from https://api.github.com/repos/go-swagger/go-swagger/releases
-    download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/20822585 | \
+    # Install go-swagger - 28704370=v0.25.0 - get release id from https://api.github.com/repos/go-swagger/go-swagger/releases
+    download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/28704370 | \
     jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url') && \
     curl -o /usr/local/bin/swagger -L'#' "$download_url" && \
     chmod +x /usr/local/bin/swagger
