@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	"testing"
 
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -31,11 +30,10 @@ func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 	appName, envName := "app", "env"
 	appNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
 	kubeClient := kubefake.NewSimpleClientset()
-	createKubernetesEvent(kubeClient, appNamespace, "ev1", "pod1")
-	createKubernetesEvent(kubeClient, appNamespace, "ev2", "pod2")
-	createKubernetesEvent(kubeClient, "app2-env", "ev3", "pod3")
-	e, err := kubeClient.CoreV1().Events("").List(metav1.ListOptions{})
-	fmt.Println(e)
+
+	createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
+	createKubernetesEvent(kubeClient, appNamespace, "ev2", "Normal", "pod2", "Pod")
+	createKubernetesEvent(kubeClient, "app2-env", "ev3", "Normal", "pod3", "Pod")
 
 	ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 	eventHandler := Init(kubeClient)
@@ -49,13 +47,70 @@ func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 	)
 }
 
-func createKubernetesEvent(client *kubefake.Clientset, ns, name, involvedObjectName string) {
-	client.CoreV1().Events(ns).CreateWithEventNamespace(&v1.Event{
+func Test_EventHandler_GetEvents_PodState(t *testing.T) {
+	appName, envName := "app", "env"
+	appNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
+
+	t.Run("ObjectState is nil for normal event type", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset()
+		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
+		createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
+		ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+		eventHandler := Init(kubeClient)
+		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		assert.Len(t, events, 1)
+		assert.Nil(t, events[0].InvolvedObjectState)
+	})
+
+	t.Run("ObjectState has Pod state for warning event type", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset()
+		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Warning", "pod1", "Pod")
+		createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
+		ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+		eventHandler := Init(kubeClient)
+		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		assert.Len(t, events, 1)
+		assert.NotNil(t, events[0].InvolvedObjectState)
+		assert.NotNil(t, events[0].InvolvedObjectState.Pod)
+	})
+
+	t.Run("ObjectState is nil for warning event type when pod not exist", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset()
+		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
+		ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+		eventHandler := Init(kubeClient)
+		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		assert.Len(t, events, 1)
+		assert.Nil(t, events[0].InvolvedObjectState)
+	})
+}
+
+func createKubernetesEvent(client *kubefake.Clientset, namespace,
+	name, eventType, involvedObjectName, involvedObjectKind string) {
+	client.CoreV1().Events(namespace).CreateWithEventNamespace(&v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		InvolvedObject: v1.ObjectReference{
-			Name: involvedObjectName,
+			Kind:      involvedObjectKind,
+			Name:      involvedObjectName,
+			Namespace: namespace,
+		},
+		Type: eventType,
+	})
+}
+
+func createKubernetesPod(client *kubefake.Clientset, name, namespace string,
+	started, ready bool,
+	restartCount int32) {
+	client.CoreV1().Pods(namespace).Create(&v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Status: v1.PodStatus{
+			ContainerStatuses: []v1.ContainerStatus{
+				{Started: &started, Ready: ready, RestartCount: restartCount},
+			},
 		},
 	})
 }
