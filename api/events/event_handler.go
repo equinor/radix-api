@@ -46,7 +46,6 @@ func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error
 		return nil, err
 	}
 
-	//objectGetter := objectGetter{kubeClient: eh.kubeClient}
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
 		builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
