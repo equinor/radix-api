@@ -14,10 +14,11 @@ type EventBuilder interface {
 	WithInvolvedObjectKind(string) EventBuilder
 	WithInvolvedObjectNamespace(string) EventBuilder
 	WithInvolvedObjectName(string) EventBuilder
+	WithInvolvedObjectState(*ObjectState) EventBuilder
 	WithType(string) EventBuilder
 	WithReason(string) EventBuilder
 	WithMessage(string) EventBuilder
-	BuildEvent() *Event
+	Build() *Event
 }
 
 type eventBuilder struct {
@@ -25,6 +26,7 @@ type eventBuilder struct {
 	involvedObjectKind      string
 	involvedObjectNamespace string
 	involvedObjectName      string
+	involvedObjectState     *ObjectState
 	eventType               string
 	reason                  string
 	message                 string
@@ -70,6 +72,11 @@ func (eb *eventBuilder) WithInvolvedObjectName(v string) EventBuilder {
 	return eb
 }
 
+func (eb *eventBuilder) WithInvolvedObjectState(v *ObjectState) EventBuilder {
+	eb.involvedObjectState = v
+	return eb
+}
+
 func (eb *eventBuilder) WithType(v string) EventBuilder {
 	eb.eventType = v
 	return eb
@@ -85,12 +92,13 @@ func (eb *eventBuilder) WithMessage(v string) EventBuilder {
 	return eb
 }
 
-func (eb *eventBuilder) BuildEvent() *Event {
+func (eb *eventBuilder) Build() *Event {
 	return &Event{
 		LastTimestamp:           strfmt.DateTime(eb.lastTimestamp),
 		InvolvedObjectKind:      eb.involvedObjectKind,
 		InvolvedObjectNamespace: eb.involvedObjectNamespace,
 		InvolvedObjectName:      eb.involvedObjectName,
+		InvolvedObjectState:     eb.involvedObjectState,
 		Type:                    eb.eventType,
 		Reason:                  eb.reason,
 		Message:                 eb.message,

@@ -4,6 +4,7 @@ import (
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	k8v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -47,9 +48,48 @@ func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error
 
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
-		event := eventModels.NewEventBuilder().WithKubernetesEvent(ev).BuildEvent()
+		builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
+		buildObjectState(builder, ev, eh.kubeClient)
+		event := builder.Build()
 		events = append(events, event)
 	}
 
 	return events, nil
+}
+
+func buildObjectState(builder eventModels.EventBuilder, event k8v1.Event, kubeClient kubernetes.Interface) {
+	if event.Type == "Normal" {
+		return
+	}
+
+	if objectState := getObjectState(event, kubeClient); objectState != nil {
+		builder.WithInvolvedObjectState(objectState)
+	}
+}
+
+func getObjectState(event k8v1.Event, kubeClient kubernetes.Interface) *eventModels.ObjectState {
+	builder := eventModels.NewObjectStateBuilder()
+	build := false
+	obj := event.InvolvedObject
+
+	switch obj.Kind {
+	case "Pod":
+		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(obj.Name, metav1.GetOptions{}); err == nil {
+			state := getPodState(pod)
+			builder.WithPodState(state)
+			build = true
+		}
+	}
+
+	if !build {
+		return nil
+	}
+
+	return builder.Build()
+}
+
+func getPodState(pod *k8v1.Pod) *eventModels.PodState {
+	return eventModels.NewPodStateBuilder().
+		WithPod(pod).
+		Build()
 }
