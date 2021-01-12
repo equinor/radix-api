@@ -265,6 +265,10 @@ func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []co
 	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
 	componentIsInconsistent := false
 	for _, pod := range actualPods {
+		if pod.DeletionTimestamp != nil {
+			// Pod is in termination phase
+			return false
+		}
 		for _, container := range pod.Spec.Containers {
 			if container.Image != component.Image {
 				// Container is running an outdate image
