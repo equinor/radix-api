@@ -267,7 +267,7 @@ func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []co
 	for _, pod := range actualPods {
 		if pod.DeletionTimestamp != nil {
 			// Pod is in termination phase
-			return false
+			continue
 		}
 		for _, container := range pod.Spec.Containers {
 			if container.Image != component.Image {
