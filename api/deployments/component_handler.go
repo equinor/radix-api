@@ -261,6 +261,25 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 	return replicaSummaryList
 }
 
+func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
+	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
+	componentIsInconsistent := false
+	for _, pod := range actualPods {
+		if pod.DeletionTimestamp != nil {
+			// Pod is in termination phase
+			continue
+		}
+		for _, container := range pod.Spec.Containers {
+			if container.Image != component.Image {
+				// Container is running an outdate image
+				componentIsInconsistent = true
+			}
+		}
+	}
+
+	return componentIsInconsistent
+}
+
 func getStatusOfActiveDeployment(
 	component v1.RadixDeployComponent,
 	deploymentStatus v1.RadixDeployStatus,
@@ -273,6 +292,8 @@ func getStatusOfActiveDeployment(
 		!runningReplicaDiffersFromSpec(component, pods) &&
 		len(pods) == 0 {
 		status = deploymentModels.StoppedComponent
+	} else if runningReplicaIsOutdated(component, pods) {
+		status = deploymentModels.ComponentOutdated
 	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
