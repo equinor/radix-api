@@ -2,6 +2,34 @@ package models
 
 import "github.com/go-openapi/strfmt"
 
+// PodState holds information about the state of the first container in a Pod
+// swagger:model PodState
+type PodState struct {
+	// Specifies whether the first container has passed its readiness probe.
+	//
+	// example: false
+	Ready bool `json:"ready"`
+
+	// Specifies whether the first container has started.
+	//
+	// example: true
+	// Extensions:
+	// x-nullable: true
+	Started *bool `json:"started,omitempty"`
+
+	// The number of times the first container has been restarted
+	//
+	// example: 1
+	RestartCount int32 `json:"restartCount"`
+}
+
+// ObjectState holds information about the state of objects involved in an event
+// swagger:model ObjectState
+type ObjectState struct {
+	// Details about the pod state for a pod related event
+	Pod *PodState `json:"pod"`
+}
+
 // Event holds information about Kubernetes events
 // swagger:model Event
 type Event struct {
@@ -16,7 +44,7 @@ type Event struct {
 	// example: Pod
 	InvolvedObjectKind string `json:"involvedObjectKind"`
 
-	// Namespavce of object involved in this event
+	// Namespace of object involved in this event
 	//
 	// example: myapp-production
 	InvolvedObjectNamespace string `json:"involvedObjectNamespace"`
@@ -26,12 +54,17 @@ type Event struct {
 	// example: www-74cb7c986-fgcrl
 	InvolvedObjectName string `json:"involvedObjectName"`
 
-	// Type of this event (Normal, Warning)
+	// The state of the involved object
+	// Currently only events with type Warning and involvedObjectKind Pod has state information
+	// The value is not set if the pod does not exist
+	InvolvedObjectState *ObjectState `json:"involvedObjectState,omitempty"`
+
+	// Type of event (Normal, Warning)
 	//
 	// example: Warning
 	Type string `json:"type"`
 
-	// A should short, machine understandable string that gives the reason for this event
+	// A short, machine understandable string that gives the reason for this event
 	//
 	// example: Unhealthy
 	Reason string `json:"reason"`

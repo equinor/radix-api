@@ -17,7 +17,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC)
 		e := NewEventBuilder().
 			WithLastTimestamp(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, strfmt.DateTime(v), e.LastTimestamp)
 	})
 
@@ -25,7 +25,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := "msg"
 		e := NewEventBuilder().
 			WithMessage(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.Message)
 	})
 
@@ -33,7 +33,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := "kind"
 		e := NewEventBuilder().
 			WithInvolvedObjectKind(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.InvolvedObjectKind)
 	})
 
@@ -41,7 +41,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := "name"
 		e := NewEventBuilder().
 			WithInvolvedObjectName(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.InvolvedObjectName)
 	})
 
@@ -49,15 +49,23 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := "ns"
 		e := NewEventBuilder().
 			WithInvolvedObjectNamespace(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.InvolvedObjectNamespace)
+	})
+
+	t.Run("WithInvolvedObjectState", func(t *testing.T) {
+		v := ObjectState{}
+		e := NewEventBuilder().
+			WithInvolvedObjectState(&v).
+			Build()
+		assert.Equal(t, &v, e.InvolvedObjectState)
 	})
 
 	t.Run("WithReason", func(t *testing.T) {
 		v := "reason"
 		e := NewEventBuilder().
 			WithReason(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.Reason)
 	})
 
@@ -65,7 +73,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		v := "type"
 		e := NewEventBuilder().
 			WithType(v).
-			BuildEvent()
+			Build()
 		assert.Equal(t, v, e.Type)
 	})
 }
@@ -86,7 +94,7 @@ func Test_EventBuilder_FluentApi_WithKubernetes_LastTimestamp(t *testing.T) {
 
 	e := NewEventBuilder().
 		WithKubernetesEvent(v).
-		BuildEvent()
+		Build()
 
 	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
 	assert.Equal(t, v.Message, e.Message)
@@ -113,7 +121,7 @@ func Test_EventBuilder_FluentApi_WithKubernetes_EventTime(t *testing.T) {
 
 	e := NewEventBuilder().
 		WithKubernetesEvent(v).
-		BuildEvent()
+		Build()
 
 	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
 	assert.Equal(t, v.Message, e.Message)
