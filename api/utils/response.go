@@ -158,6 +158,13 @@ func StringResponse(w http.ResponseWriter, r *http.Request, result string) {
 	w.Write([]byte(result))
 }
 
+// ByteArrayResponse Used for response data. I.e. image
+func ByteArrayResponse(w http.ResponseWriter, r *http.Request, contentType string, result []byte) {
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	w.Write(result)
+}
+
 // JSONResponse Marshals response with header
 func JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	body, err := json.Marshal(result)

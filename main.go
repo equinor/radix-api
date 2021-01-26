@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/buildstatus"
 	"net/http"
 	"os"
 
@@ -77,6 +78,7 @@ func getControllers() []models.Controller {
 		environments.NewEnvironmentController(),
 		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),
+		buildstatus.NewBuildStatusController(),
 	}
 }
 

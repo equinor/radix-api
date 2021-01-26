@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/handlers v1.5.0
 	github.com/gorilla/mux v1.7.0
 	github.com/graphql-go/graphql v0.7.7
+	github.com/marstr/guid v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.1.0
 	github.com/rakyll/statik v0.1.6
