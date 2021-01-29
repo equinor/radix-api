@@ -2,26 +2,76 @@ package buildstatus
 
 import (
 	"bytes"
-	"github.com/marstr/guid"
+	"fmt"
 	"html/template"
 	"log"
 	"strings"
+
+	"github.com/equinor/radix-api/models"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/marstr/guid"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type BuildStatusHandler struct {
+	accounts models.Accounts
+}
+
+func Init(accounts models.Accounts) BuildStatusHandler {
+	return BuildStatusHandler{accounts: accounts}
 }
 
 // GetBuildStatusForApplication Gets a list of build status for environments
 func (handler BuildStatusHandler) GetBuildStatusForApplication(appName string) (*[]byte, error) {
 	var output []byte
-	output = append(output, *writePassingSvg("qwertyuiopasdfghjklzxcvbnm123456789")...)
-	output = append(output, " "...)
-	output = append(output, *writeFailingSvg("qa")...)
-	output = append(output, " "...)
-	output = append(output, *writePassingSvg("ititititiiiiiijjjiiiijj111i")...)
-	output = append(output, " "...)
-	output = append(output, *writeUnknownSvg("production")...)
+
+	// Get latest RJ
+	serviceAccount := handler.getServiceAccount()
+	namespace := fmt.Sprintf("%s-app", appName)
+
+	// Get list of Jobs in the namespace
+	rj, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	mostRecentBuildJob := getLatestBuildJob(rj.Items)
+
+	buildStep := getBuildStep(mostRecentBuildJob.Status.Steps)
+
+	if buildStep.Condition == "Succeeded" {
+		output = append(output, *writePassingSvg("build")...)
+	} else if buildStep.Condition != "Succeeded" && mostRecentBuildJob.Status.Condition != "Succeeded" {
+		output = append(output, *writeFailingSvg("build")...)
+	} else {
+		output = append(output, *writeUnknownSvg("build")...)
+	}
+
 	return &output, nil
+}
+
+func getBuildStep(steps []v1.RadixJobStep) v1.RadixJobStep {
+	for _, step := range steps {
+		if step.Name == "build-server" {
+			return step
+		}
+	}
+
+	return v1.RadixJobStep{}
+}
+
+func getLatestBuildJob(jobs []v1.RadixJob) v1.RadixJob {
+	for i := len(jobs) - 1; i > 0; i-- {
+		if len(jobs[i].Status.Steps) > 4 {
+			return jobs[i]
+		}
+	}
+	return v1.RadixJob{}
+}
+
+func (handler BuildStatusHandler) getServiceAccount() models.Account {
+	return handler.accounts.ServiceAccount
 }
 
 type BuildStatus struct {
@@ -58,7 +108,7 @@ func getStatus(status BuildStatus) *[]byte {
 	status.StatusOffset = envWidth
 	status.EnvTextId = guid.NewGUID().String()
 	status.StatusTextId = guid.NewGUID().String()
-	svgTemplate, err := template.ParseFiles("build-status.svg")
+	svgTemplate, err := template.ParseFiles("/home/ole/go/src/github.com/equinor/radix-api/badges/build-status.svg")
 	if err != nil {
 		log.Fatal(err)
 	}

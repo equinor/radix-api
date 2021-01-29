@@ -1,10 +1,11 @@
 package buildstatus
 
 import (
+	"net/http"
+
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-	"net/http"
 )
 
 const rootPath = "/applications/{appName}"
@@ -22,7 +23,7 @@ func NewBuildStatusController() models.Controller {
 func (dc *buildStatusController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/buildStatus",
+			Path:        rootPath + "/buildstatus",
 			Method:      "GET",
 			HandlerFunc: GetBuildStatus,
 		},
@@ -74,8 +75,4 @@ func GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	}
 
 	utils.ByteArrayResponse(w, r, "text/html; charset=utf-8", *buildStatus)
-}
-
-func Init(accounts models.Accounts) *BuildStatusHandler {
-	return &BuildStatusHandler{}
 }
