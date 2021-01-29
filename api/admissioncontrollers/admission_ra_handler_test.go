@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	. "github.com/equinor/radix-api/api/admissioncontrollers"
 	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +62,7 @@ func Test_invalid_ra_admission_review(t *testing.T) {
 }
 
 func validRASetup() (kubernetes.Interface, radixclient.Interface, *v1.RadixApplication) {
-	validRA, _ := utils.GetRadixApplication("testdata/radixconfig.yaml")
+	validRA, _ := utils.GetRadixApplicationFromFile("testdata/radixconfig.yaml")
 	validRR, _ := utils.GetRadixRegistrationFromFile("testdata/sampleregistration.yaml")
 	kubeclient := kubefake.NewSimpleClientset()
 	client := radixfake.NewSimpleClientset(validRR)
