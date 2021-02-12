@@ -23,7 +23,7 @@ func NewBuildStatusController() models.Controller {
 func (dc *buildStatusController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/buildstatus",
+			Path:        rootPath + "/buildstatus/{env}",
 			Method:      "GET",
 			HandlerFunc: GetBuildStatus,
 		},
@@ -32,27 +32,20 @@ func (dc *buildStatusController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetBuildStatus Lists buildStatus
+// GetBuildStatus reveals build status for selected environment
 func GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /buildstatus/{appName} application getBuildStatus
+	// swagger:operation GET /applications/{appName}/buildstatus/{env} application getBuildStatus
 	// ---
-	// summary: Lists the application buildStatus
+	// summary: Show the application buildStatus
 	// parameters:
 	// - name: appName
 	//   in: path
 	//   description: name of Radix application
 	//   type: string
 	//   required: true
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
+	// - name: env
+	//   in: path
+	//   description: name of the environment
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
@@ -65,9 +58,10 @@ func GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
+	env := mux.Vars(r)["env"]
 
 	buildStatusHandler := Init(accounts)
-	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName)
+	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

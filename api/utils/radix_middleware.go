@@ -74,6 +74,22 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	handler.next(accounts, w, r)
 }
 
+func (handler *RadixMiddleware) HandleNoAuth(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	defer func() {
+		httpDuration := time.Since(start)
+		metrics.AddRequestDuration(handler.path, handler.method, httpDuration)
+	}()
+
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
+
+	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient)
+	accounts := models.Accounts{ServiceAccount: sa}
+
+	handler.next(accounts, w, r)
+}
+
 // BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header
 func BearerTokenHeaderVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	_, err := getBearerTokenFromHeader(r)

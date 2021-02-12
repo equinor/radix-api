@@ -112,6 +112,13 @@ func ValidationError(kind, message string) error {
 	}
 }
 
+func NotFoundError(message string) error {
+	return &Error{
+		Type:    Missing,
+		Message: message,
+	}
+}
+
 // CoverAllError Cover all other errors
 func CoverAllError(err error) *Error {
 	return &Error{

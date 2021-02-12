@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -18,6 +19,7 @@ import (
 const (
 	apiVersionRoute                 = "/api/v1"
 	admissionControllerRootPath     = "/admissioncontrollers"
+	buildstatusControllerRootPath   = "/buildstatus"
 	healthControllerPath            = "/health/"
 	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
@@ -56,7 +58,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	))
 
 	serveMux.Handle("/api/", negroni.New(
-		negroni.HandlerFunc(utils.BearerTokenHeaderVerifyerMiddleware),
 		negroni.Wrap(router),
 	))
 
@@ -123,6 +124,11 @@ func getHostName(componentName, namespace, clustername, radixDNSZone string) str
 func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
 	for _, controller := range controllers {
 		for _, route := range controller.GetRoutes() {
+			isBuildStatusEndpoint, _ := regexp.Match(`applications/{appName}/buildstatus/*`, []byte(route.Path))
+			if isBuildStatusEndpoint {
+				addNoAuthHandlerRoute(kubeUtil, router, route)
+				continue
+			}
 			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
@@ -138,4 +144,10 @@ func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.R
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
 		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
+}
+
+func addNoAuthHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
+	path := apiVersionRoute + route.Path
+	router.HandleFunc(path,
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).HandleNoAuth).Methods(route.Method)
 }

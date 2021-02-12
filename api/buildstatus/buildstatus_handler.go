@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"sort"
 	"strings"
 
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/marstr/guid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const BUILD_STATUS_SVG_PATH = "badges/build-status.svg"
 
 type BuildStatusHandler struct {
 	accounts models.Accounts
@@ -22,7 +26,7 @@ func Init(accounts models.Accounts) BuildStatusHandler {
 }
 
 // GetBuildStatusForApplication Gets a list of build status for environments
-func (handler BuildStatusHandler) GetBuildStatusForApplication(appName string) (*[]byte, error) {
+func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env string) (*[]byte, error) {
 	var output []byte
 
 	// Get latest RJ
@@ -30,19 +34,23 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName string) (
 	namespace := fmt.Sprintf("%s-app", appName)
 
 	// Get list of Jobs in the namespace
-	rj, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
+	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	mostRecentBuildJob := getLatestBuildJob(rj.Items)
+	latestBuildDeployJob, err := getLatestBuildJobToEnvironment(radixJobs.Items, env)
 
-	buildStep := getBuildStep(mostRecentBuildJob.Status.Steps)
+	if err != nil {
+		return nil, utils.NotFoundError(err.Error())
+	}
 
-	if buildStep.Condition == "Succeeded" {
+	buildStatus := latestBuildDeployJob.Status.Condition
+
+	if buildStatus == "Succeeded" {
 		output = append(output, *writePassingSvg("build")...)
-	} else if buildStep.Condition != "Succeeded" && mostRecentBuildJob.Status.Condition != "Succeeded" {
+	} else if buildStatus == "Failed" {
 		output = append(output, *writeFailingSvg("build")...)
 	} else {
 		output = append(output, *writeUnknownSvg("build")...)
@@ -51,23 +59,31 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName string) (
 	return &output, nil
 }
 
-func getBuildStep(steps []v1.RadixJobStep) v1.RadixJobStep {
-	for _, step := range steps {
-		if step.Name == "build-server" {
-			return step
+func getLatestBuildJobToEnvironment(jobs []v1.RadixJob, env string) (v1.RadixJob, error) {
+	// Filter out all BuildDeploy jobs
+	allBuildDeployJobs := []v1.RadixJob{}
+	for _, job := range jobs {
+		if job.Spec.PipeLineType == v1.BuildDeploy {
+			allBuildDeployJobs = append(allBuildDeployJobs, job)
 		}
 	}
 
-	return v1.RadixJobStep{}
-}
+	// Sort the slice by created date (In descending order)
+	sort.Slice(allBuildDeployJobs[:], func(i, j int) bool {
+		return allBuildDeployJobs[j].Status.Created.Before(allBuildDeployJobs[i].Status.Created)
+	})
 
-func getLatestBuildJob(jobs []v1.RadixJob) v1.RadixJob {
-	for i := len(jobs) - 1; i > 0; i-- {
-		if len(jobs[i].Status.Steps) > 4 {
-			return jobs[i]
+	// Get status of the last job to requested environment
+	for _, buildDeployJob := range allBuildDeployJobs {
+		for _, targetEnvironment := range buildDeployJob.Status.TargetEnvs {
+			if targetEnvironment == env {
+				return buildDeployJob, nil
+			}
 		}
 	}
-	return v1.RadixJob{}
+
+	return v1.RadixJob{}, fmt.Errorf("No build-deploy jobs were found in %s environment", env)
+
 }
 
 func (handler BuildStatusHandler) getServiceAccount() models.Account {
@@ -108,7 +124,7 @@ func getStatus(status BuildStatus) *[]byte {
 	status.StatusOffset = envWidth
 	status.EnvTextId = guid.NewGUID().String()
 	status.StatusTextId = guid.NewGUID().String()
-	svgTemplate, err := template.ParseFiles("/home/ole/go/src/github.com/equinor/radix-api/badges/build-status.svg")
+	svgTemplate, err := template.ParseFiles(BUILD_STATUS_SVG_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}

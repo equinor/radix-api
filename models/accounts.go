@@ -32,6 +32,13 @@ func NewAccounts(
 	}
 }
 
+func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface) Account {
+	return Account{
+		Client:      inClusterClient,
+		RadixClient: inClusterRadixClient,
+	}
+}
+
 // Accounts contains accounts for accessing k8s API.
 type Accounts struct {
 	UserAccount    Account
