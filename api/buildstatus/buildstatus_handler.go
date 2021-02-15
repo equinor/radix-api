@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const BUILD_STATUS_SVG_PATH = "badges/build-status.svg"
+const BUILD_STATUS_SVG_RELATIVE_PATH = "../../badges/build-status.svg"
 
 type BuildStatusHandler struct {
 	accounts models.Accounts
@@ -124,7 +124,7 @@ func getStatus(status BuildStatus) *[]byte {
 	status.StatusOffset = envWidth
 	status.EnvTextId = guid.NewGUID().String()
 	status.StatusTextId = guid.NewGUID().String()
-	svgTemplate, err := template.ParseFiles(BUILD_STATUS_SVG_PATH)
+	svgTemplate, err := template.ParseFiles(BUILD_STATUS_SVG_RELATIVE_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}

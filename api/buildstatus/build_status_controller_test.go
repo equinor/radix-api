@@ -51,7 +51,7 @@ func TestGetBuildStatus(t *testing.T) {
 		NewBuildStatusController(),
 	)
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/buildstatus/my-app/test")
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/buildstatus/test")
 	response := <-responseChannel
 
 	assert.Equal(t, response.Result().StatusCode, 200)
