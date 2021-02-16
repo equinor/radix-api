@@ -5,10 +5,12 @@ import (
 	"testing"
 
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-api/api/test/mock"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
@@ -20,7 +22,7 @@ const (
 	appAliasDNSZone   = "app.dev.radix.equinor.com"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset) {
+func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -30,14 +32,21 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
-	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewBuildStatusController())
-
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+	return &commonTestUtils, kubeclient, radixclient
 }
 
 func TestGetBuildStatus(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, kubeclient, radixclient := setupTest()
+
+	// Mock setup
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	fakeBuildStatus := mock.NewMockStatus(ctrl)
+
+	sampleResponse := []byte("This is a test")
+
+	fakeBuildStatus.EXPECT().WriteSvg(gomock.Any()).Return(&sampleResponse).AnyTimes()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))
@@ -48,10 +57,10 @@ func TestGetBuildStatus(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(
 		kubeclient,
 		radixclient,
-		NewBuildStatusController(),
+		NewBuildStatusController(fakeBuildStatus),
 	)
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/buildstatus/test")
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 	response := <-responseChannel
 
 	assert.Equal(t, response.Result().StatusCode, 200)

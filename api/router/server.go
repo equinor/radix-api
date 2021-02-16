@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"regexp"
 
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -124,11 +123,6 @@ func getHostName(componentName, namespace, clustername, radixDNSZone string) str
 func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controllers []models.Controller) {
 	for _, controller := range controllers {
 		for _, route := range controller.GetRoutes() {
-			isBuildStatusEndpoint, _ := regexp.Match(`applications/{appName}/buildstatus/*`, []byte(route.Path))
-			if isBuildStatusEndpoint {
-				addNoAuthHandlerRoute(kubeUtil, router, route)
-				continue
-			}
 			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
@@ -143,11 +137,5 @@ func initializeHealthEndpoint(router *mux.Router) {
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
-		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
-}
-
-func addNoAuthHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
-	path := apiVersionRoute + route.Path
-	router.HandleFunc(path,
-		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).HandleNoAuth).Methods(route.Method)
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.AllowUnauthenticatedUsers, route.HandlerFunc).Handle).Methods(route.Method)
 }

@@ -3,29 +3,32 @@ package buildstatus
 import (
 	"net/http"
 
+	build_models "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
 )
 
-const rootPath = "/applications/{appName}"
+const rootPath = "/applications/{appName}/environments/{env}"
 
 type buildStatusController struct {
 	*models.DefaultController
+	build_models.Status
 }
 
 // NewBuildStatusController Constructor
-func NewBuildStatusController() models.Controller {
-	return &buildStatusController{}
+func NewBuildStatusController(status build_models.Status) models.Controller {
+	return &buildStatusController{Status: status}
 }
 
 // GetRoutes List the supported routes of this handler
-func (dc *buildStatusController) GetRoutes() models.Routes {
+func (bsc *buildStatusController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:        rootPath + "/buildstatus/{env}",
-			Method:      "GET",
-			HandlerFunc: GetBuildStatus,
+			Path:                      rootPath + "/buildstatus",
+			Method:                    "GET",
+			HandlerFunc:               bsc.GetBuildStatus,
+			AllowUnauthenticatedUsers: true,
 		},
 	}
 
@@ -33,7 +36,7 @@ func (dc *buildStatusController) GetRoutes() models.Routes {
 }
 
 // GetBuildStatus reveals build status for selected environment
-func GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/buildstatus/{env} application getBuildStatus
 	// ---
 	// summary: Show the application buildStatus
@@ -53,14 +56,12 @@ func GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	//        type: "array"
 	//        items:
 	//           "$ref": "#/definitions/buildStatus"
-	//   "401":
-	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	env := mux.Vars(r)["env"]
 
-	buildStatusHandler := Init(accounts)
+	buildStatusHandler := Init(accounts, bsc.Status)
 	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env)
 
 	if err != nil {

@@ -7,8 +7,8 @@
         <mask id="mask">
             <rect width="{{.Width}}" height="20" rx="3" fill="#fff"/>
         </mask>
-        <g id="{{.EnvTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" >
-            <text x="0" y="120" transform="scale(.12)">{{.Env}}</text>
+        <g id="{{.OperationTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" >
+            <text x="0" y="120" transform="scale(.12)">{{.Operation}}</text>
         </g>
         <g id="{{.StatusTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" >
             <text x="0" y="120" transform="scale(.12)">{{.Status}}</text>
@@ -35,8 +35,8 @@
         <rect fill="url(#glow)" x="0" y="0" width="{{.Width}}" height="20"/>
     </g>
     <g fill="{{.ColorFont}}" transform="translate(20, 0)">
-        <use x="2" y="0" fill="{{.ColorShadow}}" fill-opacity=".3" xlink:href="#{{.EnvTextId}}"/>
-        <use x="4" y="1" xlink:href="#{{.EnvTextId}}"/>
+        <use x="2" y="0" fill="{{.ColorShadow}}" fill-opacity=".3" xlink:href="#{{.OperationTextId}}"/>
+        <use x="4" y="1" xlink:href="#{{.OperationTextId}}"/>
     </g>
     <g fill="{{.ColorFont}}" transform="translate(24, 0)">
         <use x="{{.StatusOffset}}" y="0" fill="{{.ColorShadow}}" fill-opacity=".3" xlink:href="#{{.StatusTextId}}"/>

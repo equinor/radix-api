@@ -64,9 +64,10 @@ type Routes []Route
 
 // Route Describe route
 type Route struct {
-	Path        string
-	Method      string
-	HandlerFunc RadixHandlerFunc
+	Path                      string
+	Method                    string
+	HandlerFunc               RadixHandlerFunc
+	AllowUnauthenticatedUsers bool
 }
 
 // GetUserAccountUserPrincipleName get the user principle name represented in UserAccount
