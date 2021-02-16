@@ -22,7 +22,7 @@ func Init(accounts models.Accounts, status build_models.Status) BuildStatusHandl
 
 // GetBuildStatusForApplication Gets a list of build status for environments
 func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env string) (*[]byte, error) {
-	var output []byte
+	var output *[]byte
 
 	// Get latest RJ
 	serviceAccount := handler.accounts.ServiceAccount
@@ -43,19 +43,13 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env stri
 
 	buildCondition := latestBuildDeployJob.Status.Condition
 
-	if buildCondition == "Succeeded" {
-		output = append(output, *handler.buildstatus.WriteSvg(build_models.BUILD_STATUS_PASSING)...)
-	} else if buildCondition == "Failed" {
-		output = append(output, *handler.buildstatus.WriteSvg(build_models.BUILD_STATUS_FAILING)...)
-	} else if buildCondition == "Stopped" {
-		output = append(output, *handler.buildstatus.WriteSvg(build_models.BUILD_STATUS_STOPPED)...)
-	} else if buildCondition == "Waiting" || buildCondition == "Running" {
-		output = append(output, *handler.buildstatus.WriteSvg(build_models.BUILD_STATUS_PENDING)...)
-	} else {
-		output = append(output, *handler.buildstatus.WriteSvg(build_models.BUILD_STATUS_UNKNOWN)...)
+	output, err = handler.buildstatus.WriteSvg(buildCondition)
+
+	if err != nil {
+		return nil, err
 	}
 
-	return &output, nil
+	return output, nil
 }
 
 func getLatestBuildJobToEnvironment(jobs []v1.RadixJob, env string) (v1.RadixJob, error) {

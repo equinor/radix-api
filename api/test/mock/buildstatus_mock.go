@@ -5,6 +5,7 @@
 package mock
 
 import (
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -33,15 +34,16 @@ func (m *MockStatus) EXPECT() *MockStatusMockRecorder {
 }
 
 // WriteSvg mocks base method
-func (m *MockStatus) WriteSvg(status string) *[]byte {
+func (m *MockStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteSvg", status)
+	ret := m.ctrl.Call(m, "WriteSvg", condition)
 	ret0, _ := ret[0].(*[]byte)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // WriteSvg indicates an expected call of WriteSvg
-func (mr *MockStatusMockRecorder) WriteSvg(status interface{}) *gomock.Call {
+func (mr *MockStatusMockRecorder) WriteSvg(condition interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSvg", reflect.TypeOf((*MockStatus)(nil).WriteSvg), status)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSvg", reflect.TypeOf((*MockStatus)(nil).WriteSvg), condition)
 }

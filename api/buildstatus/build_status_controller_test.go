@@ -46,7 +46,10 @@ func TestGetBuildStatus(t *testing.T) {
 
 	sampleResponse := []byte("This is a test")
 
-	fakeBuildStatus.EXPECT().WriteSvg(gomock.Any()).Return(&sampleResponse).AnyTimes()
+	fakeBuildStatus.EXPECT().
+		WriteSvg(gomock.Any()).
+		Return(&sampleResponse, nil).
+		AnyTimes()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))

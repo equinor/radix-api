@@ -2,10 +2,12 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"strings"
 	"text/template"
 
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/marstr/guid"
 )
 
@@ -17,7 +19,7 @@ const BUILD_STATUS_PENDING = "pending"
 const BUILD_STATUS_UNKNOWN = "unknown"
 
 type Status interface {
-	WriteSvg(status string) *[]byte
+	WriteSvg(condition v1.RadixJobCondition) (*[]byte, error)
 }
 
 func NewBuildStatus() Status {
@@ -43,14 +45,28 @@ type radixBuildStatus struct {
 	StatusTextId    string
 }
 
-func (rbs *radixBuildStatus) WriteSvg(status string) *[]byte {
-	color := getColor(status)
+func (rbs *radixBuildStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, error) {
+	rbs.Status = translateCondition(condition)
+	color := getColor(rbs.Status)
 	rbs.ColorRight = color
-	rbs.Status = status
 	return getStatus(rbs)
 }
 
-func getStatus(status *radixBuildStatus) *[]byte {
+func translateCondition(condition v1.RadixJobCondition) string {
+	if condition == v1.JobSucceeded {
+		return BUILD_STATUS_PASSING
+	} else if condition == v1.JobFailed {
+		return BUILD_STATUS_FAILING
+	} else if condition == v1.JobStopped {
+		return BUILD_STATUS_STOPPED
+	} else if condition == v1.JobWaiting || condition == v1.JobQueued {
+		return BUILD_STATUS_PENDING
+	} else {
+		return BUILD_STATUS_UNKNOWN
+	}
+}
+
+func getStatus(status *radixBuildStatus) (*[]byte, error) {
 	operationWidth := calculateWidth(9, status.Operation)
 	statusWidth := calculateWidth(12, status.Status)
 	status.Width = statusWidth + operationWidth
@@ -65,10 +81,10 @@ func getStatus(status *radixBuildStatus) *[]byte {
 	var buff bytes.Buffer
 	err = svgTemplate.Execute(&buff, status)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("Failed to create SVG template")
 	}
 	bytes := buff.Bytes()
-	return &bytes
+	return &bytes, nil
 }
 
 func calculateWidth(charWidth float32, value string) int {
