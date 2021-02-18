@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const rootPath = "/applications/{appName}/environments/{env}"
+const rootPath = "/applications/{appName}/environments/{envName}"
 
 type buildStatusController struct {
 	*models.DefaultController
@@ -37,7 +37,7 @@ func (bsc *buildStatusController) GetRoutes() models.Routes {
 
 // GetBuildStatus reveals build status for selected environment
 func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/buildstatus/{env} application getBuildStatus
+	// // swagger:operation GET /applications/{appName}/environments/{envName}/buildstatus environment getBuildStatus
 	// ---
 	// summary: Show the application buildStatus
 	// parameters:
@@ -46,20 +46,16 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	//   description: name of Radix application
 	//   type: string
 	//   required: true
-	// - name: env
+	// - name: envName
 	//   in: path
 	//   description: name of the environment
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
-	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/buildStatus"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	env := mux.Vars(r)["env"]
+	env := mux.Vars(r)["envName"]
 
 	buildStatusHandler := Init(accounts, bsc.Status)
 	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env)
