@@ -32,6 +32,13 @@ func NewAccounts(
 	}
 }
 
+func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface) Account {
+	return Account{
+		Client:      inClusterClient,
+		RadixClient: inClusterRadixClient,
+	}
+}
+
 // Accounts contains accounts for accessing k8s API.
 type Accounts struct {
 	UserAccount    Account
@@ -57,9 +64,10 @@ type Routes []Route
 
 // Route Describe route
 type Route struct {
-	Path        string
-	Method      string
-	HandlerFunc RadixHandlerFunc
+	Path                      string
+	Method                    string
+	HandlerFunc               RadixHandlerFunc
+	AllowUnauthenticatedUsers bool
 }
 
 // GetUserAccountUserPrincipleName get the user principle name represented in UserAccount

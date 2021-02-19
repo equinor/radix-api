@@ -13,18 +13,20 @@ import (
 
 // RadixMiddleware The middleware beween router and radix handler functions
 type RadixMiddleware struct {
-	kubeUtil KubeUtil
-	path     string
-	method   string
-	next     models.RadixHandlerFunc
+	kubeUtil    KubeUtil
+	path        string
+	method      string
+	allowNoAuth bool
+	next        models.RadixHandlerFunc
 }
 
 // NewRadixMiddleware Constructor for radix middleware
-func NewRadixMiddleware(kubeUtil KubeUtil, path, method string, next models.RadixHandlerFunc) *RadixMiddleware {
+func NewRadixMiddleware(kubeUtil KubeUtil, path, method string, allowUnauthenticatedUsers bool, next models.RadixHandlerFunc) *RadixMiddleware {
 	handler := &RadixMiddleware{
 		kubeUtil,
 		path,
 		method,
+		allowUnauthenticatedUsers,
 		next,
 	}
 
@@ -41,7 +43,8 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	token, err := getBearerTokenFromHeader(r)
-	if err != nil {
+
+	if err != nil && !handler.allowNoAuth {
 		ErrorResponse(w, r, err)
 		return
 	}
@@ -70,6 +73,22 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	handler.next(accounts, w, r)
+}
+
+func (handler *RadixMiddleware) HandleNoAuth(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	defer func() {
+		httpDuration := time.Since(start)
+		metrics.AddRequestDuration(handler.path, handler.method, httpDuration)
+	}()
+
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
+
+	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient)
+	accounts := models.Accounts{ServiceAccount: sa}
 
 	handler.next(accounts, w, r)
 }

@@ -18,6 +18,7 @@ import (
 const (
 	apiVersionRoute                 = "/api/v1"
 	admissionControllerRootPath     = "/admissioncontrollers"
+	buildstatusControllerRootPath   = "/buildstatus"
 	healthControllerPath            = "/health/"
 	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
@@ -56,7 +57,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	))
 
 	serveMux.Handle("/api/", negroni.New(
-		negroni.HandlerFunc(utils.BearerTokenHeaderVerifyerMiddleware),
 		negroni.Wrap(router),
 	))
 
@@ -137,5 +137,5 @@ func initializeHealthEndpoint(router *mux.Router) {
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
-		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.AllowUnauthenticatedUsers, route.HandlerFunc).Handle).Methods(route.Method)
 }

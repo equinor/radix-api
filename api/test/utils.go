@@ -38,6 +38,22 @@ func (tu *Utils) ExecuteRequest(method, endpoint string) <-chan *httptest.Respon
 	return tu.ExecuteRequestWithParameters(method, endpoint, nil)
 }
 
+func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *httptest.ResponseRecorder {
+	var reader io.Reader
+
+	req, _ := http.NewRequest(method, endpoint, reader)
+
+	response := make(chan *httptest.ResponseRecorder)
+	go func() {
+		rr := httptest.NewRecorder()
+		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient), tu.controllers...).ServeHTTP(rr, req)
+		response <- rr
+		close(response)
+	}()
+
+	return response
+}
+
 // ExecuteRequestWithParameters Helper method to issue a http request with payload
 func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameters interface{}) <-chan *httptest.ResponseRecorder {
 	var reader io.Reader
