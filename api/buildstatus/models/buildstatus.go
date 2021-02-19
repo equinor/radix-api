@@ -3,7 +3,6 @@ package models
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 	"text/template"
 
@@ -76,7 +75,7 @@ func getStatus(status *radixBuildStatus) (*[]byte, error) {
 	status.StatusTextId = guid.NewGUID().String()
 	svgTemplate, err := template.ParseFiles(BUILD_STATUS_SVG_RELATIVE_PATH)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	var buff bytes.Buffer
 	err = svgTemplate.Execute(&buff, status)
