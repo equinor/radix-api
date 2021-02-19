@@ -65,5 +65,5 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 		return
 	}
 
-	utils.ByteArrayResponse(w, r, "text/html; charset=utf-8", *buildStatus)
+	utils.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", *buildStatus)
 }
