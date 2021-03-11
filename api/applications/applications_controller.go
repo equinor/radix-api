@@ -99,6 +99,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "POST",
 			HandlerFunc: RegenerateMachineUserTokenHandler,
 		},
+		models.Route{
+			Path:        rootPath + "/applications/{appName}/regenerate-deploy-key",
+			Method:      "POST",
+			HandlerFunc: RegenerateDeployKeyHandler,
+		},
 	}
 
 	return routes
@@ -274,7 +279,60 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 	utils.JSONResponse(w, r, &machineUser)
 }
 
-// RegisterApplication Creates new application registation
+// RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key
+func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/regenerate-deploy-key application regenerateDeployKey
+	// ---
+	// summary: Regenerates deploy key
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: sharedSecret
+	//   in: body
+	//   description: Regenerated shared secret
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/SharedSecret"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful regenerate machine-user token
+	//     schema:
+	//       "$ref": "#/definitions/DeployKeyAndSecret"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	handler := Init(accounts)
+	var sharedSecret applicationModels.SharedSecret
+	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+	generatedDeployKey, err := handler.RegenerateDeployKey(appName, sharedSecret)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.JSONResponse(w, r, &generatedDeployKey)
+}
+
+// RegisterApplication Creates new application registration
 func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications platform registerApplication
 	// ---
