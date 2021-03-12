@@ -738,14 +738,14 @@ func AnApplicationRegistration() Builder {
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
-func (ah ApplicationHandler) RegenerateDeployKey(appName string, sharedSecret applicationModels.SharedSecret) (*applicationModels.DeployKeyAndSecret, error) {
+func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
 	// Make check that this is an existing application and user has access to it
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	sharedKey := strings.TrimSpace(sharedSecret.Value)
+	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
 	if len(sharedKey) == 0 {
 		return nil, fmt.Errorf("shared secret cannot be empty")
 	}

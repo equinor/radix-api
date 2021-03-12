@@ -1,4 +1,4 @@
-FROM golang:alpine3.10 as builder
+FROM golang:1.16.2-alpine3.13 as builder
 ENV GO111MODULE=on
 
 RUN apk update && \
@@ -34,7 +34,13 @@ RUN golint `go list ./...` && \
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
 
 FROM scratch
+
+USER 1
+
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/radix-api
+
+USER 101
+
 EXPOSE 3001
 ENTRYPOINT ["/usr/local/bin/radix-api"]

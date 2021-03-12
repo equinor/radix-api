@@ -290,12 +290,12 @@ func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter,
 	//   description: name of application
 	//   type: string
 	//   required: true
-	// - name: sharedSecret
+	// - name: regenerateDeployKeyAndSecretData
 	//   in: body
-	//   description: Regenerated shared secret
+	//   description: Regenerate deploy key and secret data
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/SharedSecret"
+	//       "$ref": "#/definitions/RegenerateDeployKeyAndSecretData"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -317,7 +317,7 @@ func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter,
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	handler := Init(accounts)
-	var sharedSecret applicationModels.SharedSecret
+	var sharedSecret applicationModels.RegenerateDeployKeyAndSecretData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
 		utils.ErrorResponse(w, r, err)
 		return
