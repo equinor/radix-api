@@ -101,6 +101,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			fmt.Sprintf("https://console.%s", radixDNSZone),
 			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
 			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-dev", apiRouter.clusterName, radixDNSZone),
 			// Due to active-cluster
 			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
 			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
