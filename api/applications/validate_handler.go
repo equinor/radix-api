@@ -12,7 +12,6 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	operatornumbers "github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
@@ -89,9 +88,10 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 	backOffLimit := int32(1)
 
 	defaultMode := int32(256)
+	privileged, allowPrivilegeEscalation := false, false
 	securityContext := corev1.SecurityContext{
-		Privileged:               operatorutils.BoolPtr(false),
-		AllowPrivilegeEscalation: operatorutils.BoolPtr(false),
+		Privileged:               &privileged,
+		AllowPrivilegeEscalation: &allowPrivilegeEscalation,
 		RunAsUser:                operatornumbers.Int64Ptr(1000),
 		RunAsGroup:               operatornumbers.Int64Ptr(1000),
 	}

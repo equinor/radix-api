@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/coreos/prometheus-operator/pkg/client/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
@@ -42,10 +44,11 @@ const (
 	anySecretName     = "TEST_SECRET"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	prometheusclient := prometheusfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
@@ -54,15 +57,15 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient
 }
 
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	anyComponent := "frontend"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
 		builders.ARadixDeployment().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment).
@@ -108,8 +111,8 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 	anyComponent := "frontend"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
 		builders.ARadixDeployment().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment).
@@ -160,7 +163,7 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
@@ -194,7 +197,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
@@ -211,7 +214,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyApplication(builders.
@@ -235,7 +238,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyDeployment(builders.
@@ -260,7 +263,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 
 func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
@@ -309,7 +312,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 
 func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
@@ -350,7 +353,7 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 
 func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyNonOrphanedEnvironment := "dev"
@@ -402,7 +405,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 
 func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 
@@ -425,7 +428,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 
 func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 
@@ -487,7 +490,7 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 		SecretValue: updateSecretValue,
 	}
 
-	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithAppName(anyAppName).
@@ -629,7 +632,7 @@ func assertSecretObject(t *testing.T, secretObject environmentModels.Secret, nam
 }
 
 func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -673,7 +676,7 @@ func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
 }
 
 func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -721,7 +724,7 @@ func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 }
 
 func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -777,7 +780,7 @@ func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -839,7 +842,7 @@ func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -909,7 +912,7 @@ func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -1003,7 +1006,7 @@ func contains(secrets []environmentModels.Secret, name string) bool {
 
 func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
@@ -1090,7 +1093,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	appName := "myApp"
 	envName := "myEnv"
@@ -1107,7 +1110,7 @@ func TestCreateEnvironment(t *testing.T) {
 }
 
 func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -1168,7 +1171,7 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 
 func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeClient, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeClient, _, _ := setupTest()
 	anyAppName := "any-app"
 	createEvent := func(namespace, eventName string) {
 		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
@@ -1220,7 +1223,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	appName, envName := "app", "dev"
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	ctrl := gomock.NewController(t)
 	ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)

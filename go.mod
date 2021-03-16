@@ -3,8 +3,9 @@ module github.com/equinor/radix-api
 go 1.13
 
 require (
+	github.com/coreos/prometheus-operator v0.33.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/equinor/radix-operator v1.8.16
+	github.com/equinor/radix-operator v1.8.8
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/go-openapi/strfmt v0.19.2
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451
