@@ -54,48 +54,67 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 	}
 
 	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
-
 	components := []*deploymentModels.Component{}
+
 	for _, component := range rd.Spec.Components {
-
-		environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.Name)
-
-		deploymentComponent, err :=
-			GetComponentStateFromSpec(deploy.kubeClient, appName, deployment, rd.Status, environmentConfig, component)
+		componentModel, err := deploy.getComponent(&component, ra, rd, deployment)
 		if err != nil {
 			return nil, err
 		}
+		components = append(components, componentModel)
+	}
 
-		hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(deploymentComponent.Name, metav1.GetOptions{})
-		if err != nil && !errors.IsNotFound(err) {
+	for _, component := range rd.Spec.Jobs {
+		componentModel, err := deploy.getComponent(&component, ra, rd, deployment)
+		if err != nil {
 			return nil, err
 		}
-		if err == nil {
-			minReplicas := int32(1)
-			if hpa.Spec.MinReplicas != nil {
-				minReplicas = *hpa.Spec.MinReplicas
-			}
-			maxReplicas := hpa.Spec.MaxReplicas
-			currentCPUUtil := int32(0)
-			if hpa.Status.CurrentCPUUtilizationPercentage != nil {
-				currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
-			}
-			targetCPUUtil := defaultTargetCPUUtilization
-			if hpa.Spec.TargetCPUUtilizationPercentage != nil {
-				targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
-			}
-			hpaSummary := deploymentModels.HorizontalScalingSummary{
-				MinReplicas:                     minReplicas,
-				MaxReplicas:                     maxReplicas,
-				CurrentCPUUtilizationPercentage: currentCPUUtil,
-				TargetCPUUtilizationPercentage:  targetCPUUtil,
-			}
-			deploymentComponent.HorizontalScalingSummary = &hpaSummary
-		}
-
-		components = append(components, deploymentComponent)
+		components = append(components, componentModel)
 	}
+
 	return components, nil
+}
+
+func (deploy DeployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
+	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
+
+	// TODO: Add interface for RA + EnvConfig
+	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
+
+	deploymentComponent, err :=
+		GetComponentStateFromSpec(deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
+	if err != nil {
+		return nil, err
+	}
+
+	hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(component.GetName(), metav1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		minReplicas := int32(1)
+		if hpa.Spec.MinReplicas != nil {
+			minReplicas = *hpa.Spec.MinReplicas
+		}
+		maxReplicas := hpa.Spec.MaxReplicas
+		currentCPUUtil := int32(0)
+		if hpa.Status.CurrentCPUUtilizationPercentage != nil {
+			currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
+		}
+		targetCPUUtil := defaultTargetCPUUtilization
+		if hpa.Spec.TargetCPUUtilizationPercentage != nil {
+			targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
+		}
+		hpaSummary := deploymentModels.HorizontalScalingSummary{
+			MinReplicas:                     minReplicas,
+			MaxReplicas:                     maxReplicas,
+			CurrentCPUUtilizationPercentage: currentCPUUtil,
+			TargetCPUUtilizationPercentage:  targetCPUUtil,
+		}
+		deploymentComponent.HorizontalScalingSummary = &hpaSummary
+	}
+
+	return deploymentComponent, nil
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
@@ -105,7 +124,7 @@ func GetComponentStateFromSpec(
 	deployment *deploymentModels.DeploymentSummary,
 	deploymentStatus v1.RadixDeployStatus,
 	environmentConfig *v1.RadixEnvironmentConfig,
-	component v1.RadixDeployComponent) (*deploymentModels.Component, error) {
+	component v1.RadixCommonDeployComponent) (*deploymentModels.Component, error) {
 
 	var environmentVariables map[string]string
 
@@ -116,7 +135,7 @@ func GetComponentStateFromSpec(
 
 	if deployment.ActiveTo == "" {
 		// current active deployment - we get existing pods
-		pods, err := getComponentPodsByNamespace(client, envNs, component.Name)
+		pods, err := getComponentPodsByNamespace(client, envNs, component.GetName())
 		if err != nil {
 			return nil, err
 		}
@@ -176,25 +195,25 @@ func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfi
 	return actualPodsLength != deployment.DefaultReplicas
 }
 
-func runningReplicaDiffersFromSpec(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
+func runningReplicaDiffersFromSpec(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
 	actualPodsLength := len(actualPods)
 	// No HPA config
-	if component.HorizontalScaling == nil {
-		if component.Replicas != nil {
-			return actualPodsLength != *component.Replicas
+	if component.GetHorizontalScaling() == nil {
+		if component.GetReplicas() != nil {
+			return actualPodsLength != *component.GetReplicas()
 		}
 		return actualPodsLength != deployment.DefaultReplicas
 	}
 	// With HPA config
-	if component.Replicas != nil && *component.Replicas == 0 {
-		return actualPodsLength != *component.Replicas
+	if component.GetReplicas() != nil && *component.GetReplicas() == 0 {
+		return actualPodsLength != *component.GetReplicas()
 	}
-	if component.HorizontalScaling.MinReplicas != nil {
-		return actualPodsLength < int(*component.HorizontalScaling.MinReplicas) ||
-			actualPodsLength > int(component.HorizontalScaling.MaxReplicas)
+	if component.GetHorizontalScaling().MinReplicas != nil {
+		return actualPodsLength < int(*component.GetHorizontalScaling().MinReplicas) ||
+			actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
 	}
 	return actualPodsLength < deployment.DefaultReplicas ||
-		actualPodsLength > int(component.HorizontalScaling.MaxReplicas)
+		actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
 }
 
 func getPodNames(pods []corev1.Pod) []string {
@@ -261,7 +280,7 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 	return replicaSummaryList
 }
 
-func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []corev1.Pod) bool {
+func runningReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
 	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
 	componentIsInconsistent := false
 	for _, pod := range actualPods {
@@ -270,7 +289,7 @@ func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []co
 			continue
 		}
 		for _, container := range pod.Spec.Containers {
-			if container.Image != component.Image {
+			if container.Image != component.GetImage() {
 				// Container is running an outdate image
 				componentIsInconsistent = true
 			}
@@ -281,7 +300,7 @@ func runningReplicaIsOutdated(component v1.RadixDeployComponent, actualPods []co
 }
 
 func getStatusOfActiveDeployment(
-	component v1.RadixDeployComponent,
+	component v1.RadixCommonDeployComponent,
 	deploymentStatus v1.RadixDeployStatus,
 	environmentConfig *v1.RadixEnvironmentConfig,
 	pods []corev1.Pod) (deploymentModels.ComponentStatus, error) {
@@ -297,7 +316,7 @@ func getStatusOfActiveDeployment(
 	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
-		restarted := component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable]
+		restarted := (*component.GetEnvironmentVariables())[defaults.RadixRestartEnvironmentVariable]
 		if !strings.EqualFold(restarted, "") {
 			restartedTime, err := utils.ParseTimestamp(restarted)
 			if err != nil {

@@ -57,6 +57,7 @@ func TestGetComponents_active_deployment(t *testing.T) {
 	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithJobComponents().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName))
@@ -85,6 +86,7 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 			WithAppName("any-app").
 			WithEnvironment("prod").
 			WithDeploymentName(anyDeployName).
+			WithJobComponents().
 			WithComponents(
 				builders.NewDeployComponentBuilder().
 					WithName("frontend").
@@ -119,6 +121,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 			WithAppName("any-app").
 			WithEnvironment("prod").
 			WithDeploymentName(anyDeployName).
+			WithJobComponents().
 			WithComponents(
 				builders.NewDeployComponentBuilder().
 					WithName("frontend").
@@ -158,6 +161,7 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 			WithAppName("any-app").
 			WithEnvironment("prod").
 			WithDeploymentName(anyDeployName).
+			WithJobComponents().
 			WithComponents(
 				builders.NewDeployComponentBuilder().
 					WithName("frontend").
@@ -209,6 +213,7 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("initial-deployment").
+		WithJobComponents().
 		WithCreated(initialDeploymentCreated).
 		WithCondition(v1.DeploymentInactive).
 		WithActiveFrom(initialDeploymentCreated).
@@ -219,6 +224,7 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("active-deployment").
+		WithJobComponents().
 		WithCreated(activeDeploymentCreated).
 		WithCondition(v1.DeploymentActive).
 		WithActiveFrom(activeDeploymentCreated))
@@ -262,7 +268,8 @@ func TestGetComponents_success(t *testing.T) {
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
-		WithDeploymentName(anyDeployName))
+		WithDeploymentName(anyDeployName).
+		WithJobComponents())
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -285,7 +292,8 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
-		WithDeploymentName(anyDeployName))
+		WithDeploymentName(anyDeployName).
+		WithJobComponents())
 
 	message := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
 	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Failing, true)
@@ -313,7 +321,8 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
-		WithDeploymentName(anyDeployName))
+		WithDeploymentName(anyDeployName).
+		WithJobComponents())
 
 	message := ""
 	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Running, true)
@@ -341,7 +350,8 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
-		WithDeploymentName(anyDeployName))
+		WithDeploymentName(anyDeployName).
+		WithJobComponents())
 
 	message := ""
 	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Running, false)
@@ -369,7 +379,8 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
-		WithDeploymentName(anyDeployName))
+		WithDeploymentName(anyDeployName).
+		WithJobComponents())
 
 	message := ""
 	createComponentPodWithContainerState(kubeclient, builders.GetEnvironmentNamespace(anyAppName, "dev"), message, deploymentModels.Pending, true)
@@ -400,6 +411,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			WithAppName("any-app").
 			WithEnvironment("prod").
 			WithDeploymentName(anyDeployName).
+			WithJobComponents().
 			WithComponents(
 				builders.NewDeployComponentBuilder().
 					WithName("frontend").

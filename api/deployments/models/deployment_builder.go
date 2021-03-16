@@ -37,11 +37,10 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 
 	components := make([]*Component, len(rd.Spec.Components))
 	for i, component := range rd.Spec.Components {
-		components[i] = NewComponentBuilder().WithComponent(component).BuildComponent()
+		components[i] = NewComponentBuilder().WithComponent(&component).BuildComponent()
 	}
 
-	b.
-		WithName(rd.GetName()).
+	b.WithName(rd.GetName()).
 		WithAppName(rd.Spec.AppName).
 		WithEnvironment(rd.Spec.Environment).
 		WithActiveFrom(rd.CreationTimestamp.Time).
