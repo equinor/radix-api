@@ -93,6 +93,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowedOrigins: []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
+			"http://localhost:8000",
 			"http://localhost:8086", // For swaggerui testing
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
