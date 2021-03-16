@@ -105,6 +105,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			// Due to active-cluster
 			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
 			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
+			getActiveClusterHostName("web", "radix-web-console-dev", radixDNSZone),
 		},
 		AllowCredentials: true,
 		MaxAge:           600,
