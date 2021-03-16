@@ -5,13 +5,15 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 
 	radixerr "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatornumbers "github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -87,7 +89,13 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 	backOffLimit := int32(1)
 
 	defaultMode := int32(256)
-	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, applicationconfig.GetConfigBranch(rr))
+	securityContext := corev1.SecurityContext{
+		Privileged:               operatorutils.BoolPtr(false),
+		AllowPrivilegeEscalation: operatorutils.BoolPtr(false),
+		RunAsUser:                operatornumbers.Int64Ptr(1000),
+		RunAsGroup:               operatornumbers.Int64Ptr(1000),
+	}
+	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, applicationconfig.GetConfigBranch(rr), securityContext)
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

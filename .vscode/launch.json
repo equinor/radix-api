@@ -13,7 +13,7 @@
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "PIPELINE_IMG_TAG": "master-latest",
-                "K8S_API_HOST": "https://weekly-47-clusters-16ede4-7b39e484.hcp.northeurope.azmk8s.io",
+                "K8S_API_HOST": "https://weekly-11-clusters-16ede4-dce7d369.hcp.northeurope.azmk8s.io",
             },
             "args": [
                 "--useOutClusterClient=false"
