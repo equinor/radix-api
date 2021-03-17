@@ -146,19 +146,34 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 	return secrets, nil
 }
 
+func (eh EnvironmentHandler) getSecretsFromComponent(component v1.RadixCommonDeployComponent) map[string]bool {
+	if len(component.GetSecrets()) <= 0 {
+		return nil
+	}
+
+	secretNamesMap := make(map[string]bool)
+	componentSecrets := component.GetSecrets()
+	for _, componentSecretName := range componentSecrets {
+		secretNamesMap[componentSecretName] = true
+	}
+
+	return secretNamesMap
+}
 func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
 	componentSecretsMap := make(map[string]map[string]bool)
 	for _, component := range activeDeployment.Spec.Components {
-		if len(component.Secrets) <= 0 {
+		secrets := eh.getSecretsFromComponent(&component)
+		if len(secrets) <= 0 {
 			continue
 		}
-
-		secretNamesMap := make(map[string]bool)
-		componentSecrets := component.Secrets
-		for _, componentSecretName := range componentSecrets {
-			secretNamesMap[componentSecretName] = true
+		componentSecretsMap[component.Name] = secrets
+	}
+	for _, job := range activeDeployment.Spec.Jobs {
+		secrets := eh.getSecretsFromComponent(&job)
+		if len(secrets) <= 0 {
+			continue
 		}
-		componentSecretsMap[component.Name] = secretNamesMap
+		componentSecretsMap[job.Name] = secrets
 	}
 
 	secretDTOsMap := make(map[string]environmentModels.Secret)
