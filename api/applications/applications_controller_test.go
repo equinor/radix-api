@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	strings "strings"
 	"testing"
 	"time"
 
@@ -1053,6 +1053,98 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 
 }
 
+func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	appName := "any-name"
+	origSharedSecret := "Orig shared secret"
+	origDeployPublicKey := "Orig public key"
+	parameters := AnApplicationRegistration().
+		withName(appName).
+		withRepository("https://github.com/Equinor/any-repo").
+		withSharedSecret(origSharedSecret).
+		withPrivateKey(origDeployPublicKey).
+		withPublicKey("Orig private key").
+		Build()
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	newSharedSecret := "new shared secret"
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret(newSharedSecret).
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+
+	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
+	controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.NotEqual(t, origDeployPublicKey, deployKeyAndSecret.PublicDeployKey)
+	assert.True(t, strings.Contains(deployKeyAndSecret.PublicDeployKey, "ssh-rsa "))
+	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
+}
+
+func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	appName := "any-name"
+	parameters := AnApplicationRegistration().
+		withName(appName).
+		withRepository("https://github.com/Equinor/any-repo").
+		withSharedSecret("Orig shared secret").
+		withPrivateKey("Orig public key").
+		withPublicKey("Orig private key").
+		Build()
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	newSharedSecret := ""
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret(newSharedSecret).
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+
+	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
+	controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	assert.NotEqual(t, http.StatusOK, response.Code)
+	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
+	assert.Empty(t, deployKeyAndSecret.SharedSecret)
+}
+
+func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		Build()
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret("new shared secret").
+		Build()
+	appName := "any-non-existing-name"
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+
+	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
+	controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
+	assert.Empty(t, deployKeyAndSecret.SharedSecret)
+}
+
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
@@ -1104,4 +1196,29 @@ func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.
 		return nil, err
 	}
 	return jobs.Items, nil
+}
+
+// RegenerateDeployKeyAndSecretDataBuilder Handles construction of DTO
+type RegenerateDeployKeyAndSecretDataBuilder interface {
+	WithSharedSecret(string) RegenerateDeployKeyAndSecretDataBuilder
+	Build() *applicationModels.RegenerateDeployKeyAndSecretData
+}
+
+type regenerateDeployKeyAndSecretDataBuilder struct {
+	sharedSecret string
+}
+
+func AnRegenerateDeployKeyAndSecretDataBuilder() RegenerateDeployKeyAndSecretDataBuilder {
+	return &regenerateDeployKeyAndSecretDataBuilder{}
+}
+
+func (builder *regenerateDeployKeyAndSecretDataBuilder) WithSharedSecret(sharedSecret string) RegenerateDeployKeyAndSecretDataBuilder {
+	builder.sharedSecret = sharedSecret
+	return builder
+}
+
+func (builder *regenerateDeployKeyAndSecretDataBuilder) Build() *applicationModels.RegenerateDeployKeyAndSecretData {
+	return &applicationModels.RegenerateDeployKeyAndSecretData{
+		SharedSecret: builder.sharedSecret,
+	}
 }

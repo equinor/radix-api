@@ -93,6 +93,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowedOrigins: []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
+			"http://localhost:8000",
 			"http://localhost:8086", // For swaggerui testing
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
@@ -100,9 +101,11 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			fmt.Sprintf("https://console.%s", radixDNSZone),
 			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
 			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-dev", apiRouter.clusterName, radixDNSZone),
 			// Due to active-cluster
 			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
 			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
+			getActiveClusterHostName("web", "radix-web-console-dev", radixDNSZone),
 		},
 		AllowCredentials: true,
 		MaxAge:           600,
