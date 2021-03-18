@@ -23,6 +23,7 @@ type ComponentBuilder interface {
 
 type componentBuilder struct {
 	componentName             string
+	componentType             string
 	status                    ComponentStatus
 	componentImage            string
 	podNames                  []string
@@ -55,6 +56,7 @@ func (b *componentBuilder) WithRadixEnvironmentVariables(radixEnvironmentVariabl
 
 func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent) ComponentBuilder {
 	b.componentName = component.GetName()
+	b.componentType = component.GetType()
 	b.componentImage = component.GetImage()
 
 	ports := []Port{}
@@ -93,6 +95,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 func (b *componentBuilder) BuildComponentSummary() *ComponentSummary {
 	return &ComponentSummary{
 		Name:  b.componentName,
+		Type:  b.componentType,
 		Image: b.componentImage,
 	}
 }
@@ -109,6 +112,7 @@ func (b *componentBuilder) BuildComponent() *Component {
 
 	return &Component{
 		Name:        b.componentName,
+		Type:        b.componentType,
 		Status:      b.status.String(),
 		Image:       b.componentImage,
 		Ports:       b.ports,

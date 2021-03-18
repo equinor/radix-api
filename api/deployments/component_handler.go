@@ -281,6 +281,17 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 }
 
 func runningReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
+	switch component.GetType() {
+	case defaults.RadixComponentTypeComponent:
+		return runningComponentReplicaIsOutdated(component, actualPods)
+	case defaults.RadixComponentTypeJobScheduler:
+		return false
+	default:
+		return false
+	}
+}
+
+func runningComponentReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
 	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
 	componentIsInconsistent := false
 	for _, pod := range actualPods {
