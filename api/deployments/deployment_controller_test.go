@@ -335,6 +335,10 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 		WithActiveTo(appDeployment2Created).
 		WithEnvironment(anyEnvironment).
 		WithImageTag(anyDeployment1Name).
+		WithJobComponents(
+			builders.NewDeployJobComponentBuilder().WithName("job1"),
+			builders.NewDeployJobComponentBuilder().WithName("job2"),
+		).
 		WithComponents(
 			builders.NewDeployComponentBuilder().
 				WithImage("radixdev.azurecr.io/some-image:imagetag").
@@ -360,6 +364,9 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 		WithActiveFrom(appDeployment2Created).
 		WithEnvironment(anyEnvironment).
 		WithImageTag(anyDeployment2Name).
+		WithJobComponents(
+			builders.NewDeployJobComponentBuilder().WithName("job1"),
+		).
 		WithComponents(
 			builders.NewDeployComponentBuilder().
 				WithImage("radixdev.azurecr.io/another-second-image:imagetag").
@@ -379,7 +386,7 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	assert.Equal(t, anyDeployment1Name, deployment.Name)
 	assert.Equal(t, utils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
 	assert.Equal(t, utils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
-	assert.Equal(t, 2, len(deployment.Components))
+	assert.Equal(t, 4, len(deployment.Components))
 
 }
 
