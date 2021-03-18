@@ -1058,7 +1058,7 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 
 func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _ := setupTest()
 
 	// Test
 	appName := "any-name"
@@ -1092,7 +1092,7 @@ func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret
 
 func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _ := setupTest()
 
 	// Test
 	appName := "any-name"
@@ -1123,7 +1123,7 @@ func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 
 func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
