@@ -10,9 +10,6 @@ spec:
     - name: qa
       build:
         from: master
-    - name: dev
-      build:
-        from: 78113-allow-regenerate-deploy-key-and-secret
   components:
     - name: "server"
       src: "."
@@ -50,7 +47,3 @@ spec:
           variables:
             PIPELINE_IMG_TAG: "release-latest"
             GOMAXPROCS: 2
-        - environment: dev
-          variables:
-            PIPELINE_IMG_TAG: "master-latest"
-            GOMAXPROCS: 1
