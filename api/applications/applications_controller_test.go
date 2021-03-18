@@ -1118,6 +1118,33 @@ func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 	assert.Empty(t, deployKeyAndSecret.SharedSecret)
 }
 
+func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _ := setupTest()
+
+	// Test
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		Build()
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret("new shared secret").
+		Build()
+	appName := "any-non-existing-name"
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+
+	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
+	controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
+	assert.Empty(t, deployKeyAndSecret.SharedSecret)
+}
+
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
