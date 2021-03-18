@@ -231,37 +231,56 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1
 	return secretDTOsMap, nil
 }
 
+func (eh EnvironmentHandler) getSecretsFromComponentVolumeMounts(component v1.RadixCommonDeployComponent, envNamespace string) []environmentModels.Secret {
+	var secrets []environmentModels.Secret
+
+	for _, volumeMount := range component.GetVolumeMounts() {
+		// The only type we currently handle
+		if volumeMount.Type == v1.MountTypeBlob {
+			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
+			accountkeyStatus := environmentModels.Consistent.String()
+			accountnameStatus := environmentModels.Consistent.String()
+
+			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
+			if err != nil {
+				log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+				accountkeyStatus = environmentModels.Pending.String()
+				accountnameStatus = environmentModels.Pending.String()
+			} else {
+				accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
+				if strings.EqualFold(accountkeyValue, secretDefaultData) {
+					accountkeyStatus = environmentModels.Pending.String()
+				}
+				accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
+				if strings.EqualFold(accountnameValue, secretDefaultData) {
+					accountnameStatus = environmentModels.Pending.String()
+				}
+			}
+
+			accountKeySecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.GetName(), Status: accountkeyStatus}
+			secrets = append(secrets, accountKeySecretDTO)
+			accountNameSecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.GetName(), Status: accountnameStatus}
+			secrets = append(secrets, accountNameSecretDTO)
+		}
+	}
+
+	return secrets
+}
+
 func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
 	secretDTOsMap := make(map[string]environmentModels.Secret)
+
 	for _, component := range activeDeployment.Spec.Components {
-		for _, volumeMount := range component.VolumeMounts {
-			// The only type we currently handle
-			if volumeMount.Type == v1.MountTypeBlob {
-				secretName := defaults.GetBlobFuseCredsSecretName(component.Name, volumeMount.Name)
-				accountkeyStatus := environmentModels.Consistent.String()
-				accountnameStatus := environmentModels.Consistent.String()
+		secrets := eh.getSecretsFromComponentVolumeMounts(&component, envNamespace)
+		for _, secret := range secrets {
+			secretDTOsMap[secret.Name] = secret
+		}
+	}
 
-				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
-				if err != nil {
-					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
-					accountkeyStatus = environmentModels.Pending.String()
-					accountnameStatus = environmentModels.Pending.String()
-				} else {
-					accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
-					if strings.EqualFold(accountkeyValue, secretDefaultData) {
-						accountkeyStatus = environmentModels.Pending.String()
-					}
-					accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
-					if strings.EqualFold(accountnameValue, secretDefaultData) {
-						accountnameStatus = environmentModels.Pending.String()
-					}
-				}
-
-				accountKeySecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.Name, Status: accountkeyStatus}
-				secretDTOsMap[accountKeySecretDTO.Name] = accountKeySecretDTO
-				accountNameSecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.Name, Status: accountnameStatus}
-				secretDTOsMap[accountNameSecretDTO.Name] = accountNameSecretDTO
-			}
+	for _, job := range activeDeployment.Spec.Jobs {
+		secrets := eh.getSecretsFromComponentVolumeMounts(&job, envNamespace)
+		for _, secret := range secrets {
+			secretDTOsMap[secret.Name] = secret
 		}
 	}
 
