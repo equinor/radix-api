@@ -20,6 +20,7 @@ spec:
       public: true
       environmentConfig:
         - environment: qa
+          runAsNonRoot: true
           horizontalScaling:
             minReplicas: 1
             maxReplicas: 2
@@ -35,6 +36,7 @@ spec:
             PIPELINE_IMG_TAG: "master-latest"
             GOMAXPROCS: 1
         - environment: prod
+          runAsNonRoot: true
           replicas: 2
           monitoring: true
           resources:
