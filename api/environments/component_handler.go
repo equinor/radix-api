@@ -42,7 +42,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 		return err
 	}
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, *componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}

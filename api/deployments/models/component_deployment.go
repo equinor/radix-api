@@ -9,6 +9,12 @@ type Component struct {
 	// example: server
 	Name string `json:"name"`
 
+	// Type of component
+	//
+	// required: true
+	// example: component
+	Type string `json:"type"`
+
 	// Status of the component
 	// required: false
 	// - Stopped = Component is stopped (no replica)
@@ -86,6 +92,12 @@ type ComponentSummary struct {
 	// required: true
 	// example: server
 	Name string `json:"name"`
+
+	// Type of component
+	//
+	// required: true
+	// example: component
+	Type string `json:"type"`
 
 	// Image name
 	//

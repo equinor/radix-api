@@ -188,6 +188,7 @@ func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploy
 		for _, component := range firstDeployment.Components {
 			componentSummary := deploymentModels.ComponentSummary{
 				Name:  component.Name,
+				Type:  component.Type,
 				Image: component.Image,
 			}
 			jobComponents = append(jobComponents, &componentSummary)
