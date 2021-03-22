@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/coreos/prometheus-operator/pkg/client/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
@@ -38,14 +40,16 @@ const (
 	containerRegistry = "any.container.registry"
 	anyAppName        = "any-app"
 	anyComponentName  = "app"
+	anyJobName        = "job"
 	anyEnvironment    = "dev"
 	anySecretName     = "TEST_SECRET"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	prometheusclient := prometheusfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
@@ -54,15 +58,15 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient
 }
 
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	anyComponent := "frontend"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
 		builders.ARadixDeployment().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment).
@@ -104,12 +108,10 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
-func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
-	anyComponent := "frontend"
-
+func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, commonTestUtils,
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
 		builders.ARadixDeployment().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment).
@@ -118,7 +120,7 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 				WithEnvironment(anyEnvironment, "master")).
 			WithComponents(
 				builders.NewDeployComponentBuilder().
-					WithName(anyComponent).
+					WithName(anyComponentName).
 					WithPort("http", 8080).
 					WithPublicPort("http").
 					WithVolumeMounts([]v1.RadixVolumeMount{
@@ -137,14 +139,55 @@ func TestUpdateSecret_AccountSecretForVolumeMount_UpdatedOk(t *testing.T) {
 	environment := environmentModels.Environment{}
 	controllertest.GetResponseBody(response, &environment)
 	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "frontend-somevolumename-blobfusecreds-accountkey"))
-	assert.True(t, contains(environment.Secrets, "frontend-somevolumename-blobfusecreds-accountname"))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyComponentName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyComponentName)))
 
 	parameters := environmentModels.SecretParameters{
 		SecretValue: "anyValue",
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+}
+
+func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
+		builders.ARadixDeployment().
+			WithAppName(anyAppName).
+			WithEnvironment(anyEnvironment).
+			WithRadixApplication(builders.ARadixApplication().
+				WithAppName(anyAppName).
+				WithEnvironment(anyEnvironment, "master")).
+			WithJobComponents(
+				builders.NewDeployJobComponentBuilder().
+					WithName(anyJobName).
+					WithVolumeMounts([]v1.RadixVolumeMount{
+						{
+							Type:      v1.MountTypeBlob,
+							Name:      "somevolumename",
+							Container: "some-container",
+							Path:      "some-path",
+						},
+					})))
+
+	// Test
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response := <-responseChannel
+
+	environment := environmentModels.Environment{}
+	controllertest.GetResponseBody(response, &environment)
+	assert.Equal(t, 2, len(environment.Secrets))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyJobName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyJobName)))
+
+	parameters := environmentModels.SecretParameters{
+		SecretValue: "anyValue",
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 }
@@ -160,7 +203,7 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
@@ -194,7 +237,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
@@ -211,7 +254,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyApplication(builders.
@@ -235,7 +278,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyDeployment(builders.
@@ -260,7 +303,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 
 func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
@@ -309,7 +352,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 
 func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
@@ -350,7 +393,7 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 
 func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyNonOrphanedEnvironment := "dev"
@@ -402,7 +445,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 
 func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 
@@ -425,7 +468,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 
 func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 
@@ -480,22 +523,60 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithActiveFrom(deploymentThreeCreated))
 }
 
-func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
+func executeUpdateComponentSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
+	response := executeUpdateSecretTest(
+		oldSecretValue,
+		updateEnvironment,
+		updateComponent,
+		updateSecretName,
+		updateSecretValue,
+		configureApplicationComponentSecret)
+
+	return response
+}
+
+func executeUpdateJobSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
+	response := executeUpdateSecretTest(
+		oldSecretValue,
+		updateEnvironment,
+		updateComponent,
+		updateSecretName,
+		updateSecretValue,
+		configureApplicationJobSecret)
+
+	return response
+}
+
+func configureApplicationComponentSecret(builder *k8sObjectUtils.ApplicationBuilder) {
+	(*builder).WithComponents(
+		builders.AnApplicationComponent().
+			WithName(anyComponentName).
+			WithSecrets(anySecretName),
+	)
+}
+
+func configureApplicationJobSecret(builder *k8sObjectUtils.ApplicationBuilder) {
+	(*builder).WithJobComponents(
+		builders.AnApplicationJobComponent().
+			WithName(anyJobName).
+			WithSecrets(anySecretName),
+	)
+}
+
+func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *k8sObjectUtils.ApplicationBuilder)) *httptest.ResponseRecorder {
 
 	// Setup
 	parameters := environmentModels.SecretParameters{
 		SecretValue: updateSecretValue,
 	}
 
-	commonTestUtils, controllerTestUtils, kubeclient, _ := setupTest()
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	appBuilder := builders.
 		ARadixApplication().
-		WithAppName(anyAppName).
-		WithComponents(
-			builders.AnApplicationComponent().
-				WithName(anyComponentName).
-				WithSecrets(anySecretName),
-		))
+		WithAppName(anyAppName)
+	appConfigurator(&appBuilder)
+
+	commonTestUtils.ApplyApplication(appBuilder)
 	ns := k8sObjectUtils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	namespace := corev1.Namespace{
@@ -505,10 +586,21 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 	}
 	kubeclient.CoreV1().Namespaces().Create(&namespace)
 
+	// Component secret
 	secretObject := corev1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
 			Name: k8sObjectUtils.GetComponentSecretName(anyComponentName),
+		},
+		Data: map[string][]byte{anySecretName: []byte(oldSecretValue)},
+	}
+	kubeclient.CoreV1().Secrets(ns).Create(&secretObject)
+
+	// Job secret
+	secretObject = corev1.Secret{
+		Type: "Opaque",
+		ObjectMeta: metav1.ObjectMeta{
+			Name: k8sObjectUtils.GetComponentSecretName(anyJobName),
 		},
 		Data: map[string][]byte{anySecretName: []byte(oldSecretValue)},
 	}
@@ -524,7 +616,10 @@ func TestUpdateSecret_OK(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anySecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -533,7 +628,10 @@ func TestUpdateSecret_NonExistingSecret_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, nonExistingSecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, nonExistingSecretName, updateSecretValue)
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, nonExistingSecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -541,9 +639,14 @@ func TestUpdateSecret_EmptySecretValue_ValidationError(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := ""
 
-	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.Equal(t, "New secret value is empty", errorResponse.Message)
+	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
 
+	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anySecretName, updateSecretValue)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	assert.Equal(t, "New secret value is empty", errorResponse.Message)
 	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
@@ -553,7 +656,10 @@ func TestUpdateSecret_NoUpdate_NoError(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "oldvalue"
 
-	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anySecretName, updateSecretValue)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -563,9 +669,14 @@ func TestUpdateSecret_NonExistingComponent_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anySecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
+	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
 
+	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anySecretName, updateSecretValue)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
@@ -575,33 +686,72 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	nonExistingEnvironment := "prod"
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
-	secretObjName := k8sObjectUtils.GetComponentSecretName(anyComponentName)
 
-	response := executeUpdateSecretTest(oldSecretValue, nonExistingEnvironment, anyComponentName, anySecretName, updateSecretValue)
+	response := executeUpdateComponentSecretTest(oldSecretValue, nonExistingEnvironment, anyComponentName, anySecretName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
+	secretObjName := k8sObjectUtils.GetComponentSecretName(anyComponentName)
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
+	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 
+	response = executeUpdateJobSecretTest(oldSecretValue, nonExistingEnvironment, anyJobName, anySecretName, updateSecretValue)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	secretObjName = k8sObjectUtils.GetComponentSecretName(anyJobName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
 
-func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+func componentBuilderFromSecretMap(secretsMap map[string][]string) func(*k8sObjectUtils.DeploymentBuilder) {
+	return func(deployBuilder *k8sObjectUtils.DeploymentBuilder) {
+		componentBuilders := make([]builders.DeployComponentBuilder, 0, len(secretsMap))
+		for componentName, componentSecrets := range secretsMap {
+			component := builders.
+				NewDeployComponentBuilder().
+				WithName(componentName).
+				WithSecrets(componentSecrets)
+			componentBuilders = append(componentBuilders, component)
+		}
+		(*deployBuilder).WithComponents(componentBuilders...)
+	}
+}
+
+func jobBuilderFromSecretMap(secretsMap map[string][]string) func(*k8sObjectUtils.DeploymentBuilder) {
+	return func(deployBuilder *k8sObjectUtils.DeploymentBuilder) {
+		jobBuilders := make([]builders.DeployJobComponentBuilder, 0, len(secretsMap))
+		for jobName, jobSecret := range secretsMap {
+			job := builders.
+				NewDeployJobComponentBuilder().
+				WithName(jobName).
+				WithSecrets(jobSecret)
+			jobBuilders = append(jobBuilders, job)
+		}
+		(*deployBuilder).WithJobComponents(jobBuilders...)
+	}
+}
+
+func applyTestEnvironmentComponentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+	configurator := componentBuilderFromSecretMap(componentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentName, buildFrom, clusterComponentSecretsMap, configurator)
+}
+
+func applyTestEnvironmentJobSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+	configurator := jobBuilderFromSecretMap(componentSecretsMap)
+	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentName, buildFrom, clusterComponentSecretsMap, configurator)
+}
+
+func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, clusterComponentSecretsMap map[string]map[string][]byte, deploymentConfigurator func(*k8sObjectUtils.DeploymentBuilder)) {
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, environmentName)
 
-	componentBuilders := make([]builders.DeployComponentBuilder, 0)
-	for componentName, componentSecrets := range componentSecretsMap {
-		component := builders.
-			NewDeployComponentBuilder().
-			WithName(componentName).
-			WithSecrets(componentSecrets)
-		componentBuilders = append(componentBuilders, component)
-	}
-	commonTestUtils.ApplyDeployment(builders.
+	deployBuilder := builders.
 		NewDeploymentBuilder().
 		WithRadixApplication(builders.ARadixApplication()).
 		WithAppName(anyAppName).
-		WithEnvironment(environmentName).
-		WithComponents(componentBuilders...))
+		WithEnvironment(environmentName)
+
+	deploymentConfigurator(&deployBuilder)
+
+	commonTestUtils.ApplyDeployment(deployBuilder)
 
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -622,372 +772,396 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 	}
 }
 
-func assertSecretObject(t *testing.T, secretObject environmentModels.Secret, name, component, status string) {
-	assert.Equal(t, name, secretObject.Name)
-	assert.Equal(t, component, secretObject.Component)
-	assert.Equal(t, status, secretObject.Status)
+func assertSecretObject(t *testing.T, secretObject environmentModels.Secret, name, component, status, testname string) {
+	assert.Equal(t, name, secretObject.Name, testname, fmt.Sprintf("%s: incorrect secret name", testname))
+	assert.Equal(t, component, secretObject.Component, fmt.Sprintf("%s: incorrect component name", testname))
+	assert.Equal(t, status, secretObject.Status, fmt.Sprintf("%s: incorrect secret status", testname))
+}
+
+type secretTestFunc func(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte)
+
+type secretTestDefinition struct {
+	name   string
+	tester secretTestFunc
+}
+
+var secretTestFunctions []secretTestDefinition = []secretTestDefinition{
+	{name: "component secrets", tester: applyTestEnvironmentComponentSecrets},
+	{name: "job secrets", tester: applyTestEnvironmentJobSecrets},
 }
 
 func TestGetEnvironmentSecrets_OneComponent_AllConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
 
-	componentSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentSecrets,
-	}
-
-	clusterComponentSecrets := map[string][]byte{
-		secretA: []byte(secretA),
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 3, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent")
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
 		}
-		if aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent")
+
+		clusterComponentSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
 		}
-		if aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
 		}
 	}
 }
 
 func TestGetEnvironmentSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
-	secretD := "d"
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
 
-	componentSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentSecrets,
-	}
-
-	clusterComponentSecrets := map[string][]byte{
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-		secretD: []byte(secretD),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 4, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Pending")
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
 		}
-		if aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent")
+
+		clusterComponentSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
 		}
-		if aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
 		}
-		if aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan")
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 4, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
+			}
 		}
 	}
 }
 
 func TestGetEnvironmentSecrets_OneComponent_NoConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
-	secretD := "d"
-	secretE := "e"
-	secretF := "f"
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+		secretE := "e"
+		secretF := "f"
 
-	componentSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentSecrets,
-	}
-
-	clusterComponentSecrets := map[string][]byte{
-		secretD: []byte(secretD),
-		secretE: []byte(secretE),
-		secretF: []byte(secretF),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 6, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Pending")
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
 		}
-		if aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Pending")
+
+		clusterComponentSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
 		}
-		if aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Pending")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
 		}
-		if aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan")
-		}
-		if aSecret.Name == secretE {
-			assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan")
-		}
-		if aSecret.Name == secretF {
-			assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan")
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
+			}
+			if aSecret.Name == secretE {
+				assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan", test.name)
+			}
+			if aSecret.Name == secretF {
+				assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan", test.name)
+			}
 		}
 	}
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_AllConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	componentTwoName := "frontend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
 
-	componentOneSecrets := []string{secretA, secretB, secretC}
-	componentTwoSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentOneSecrets,
-		componentTwoName: componentTwoSecrets,
-	}
-
-	clusterComponentOneSecrets := map[string][]byte{
-		secretA: []byte(secretA),
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-	}
-	clusterComponentTwoSecrets := map[string][]byte{
-		secretA: []byte(secretA),
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentOneSecrets,
-		componentTwoName: clusterComponentTwoSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 6, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Component == componentOneName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent")
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
 		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent")
+
+		clusterComponentOneSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
 		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent")
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentTwoName, "Consistent")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent")
-		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent")
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent", test.name)
+			}
 		}
 	}
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	componentTwoName := "frontend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
-	secretD := "d"
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
 
-	componentOneSecrets := []string{secretA, secretB, secretC}
-	componentTwoSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentOneSecrets,
-		componentTwoName: componentTwoSecrets,
-	}
-
-	clusterComponentOneSecrets := map[string][]byte{
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-		secretD: []byte(secretD),
-	}
-	clusterComponentTwoSecrets := map[string][]byte{
-		secretB: []byte(secretB),
-		secretC: []byte(secretC),
-		secretD: []byte(secretD),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentOneSecrets,
-		componentTwoName: clusterComponentTwoSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 8, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Component == componentOneName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Pending")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan")
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
 		}
 
-		if aSecret.Component == componentTwoName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending")
+		clusterComponentOneSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent")
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan")
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 8, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
+			}
+
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan", test.name)
+			}
 		}
 	}
 }
 
 func TestGetEnvironmentSecrets_TwoComponents_NoConsistent(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+		handler := initHandler(kubeclient, radixclient)
 
-	appName := "any-app"
-	componentOneName := "backend"
-	componentTwoName := "frontend"
-	environmentOne := "dev"
-	buildFrom := "master"
-	secretA := "a"
-	secretB := "b"
-	secretC := "c"
-	secretD := "d"
-	secretE := "e"
-	secretF := "f"
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+		secretE := "e"
+		secretF := "f"
 
-	componentOneSecrets := []string{secretA, secretB, secretC}
-	componentTwoSecrets := []string{secretA, secretB, secretC}
-	componentSecretsMap := map[string][]string{
-		componentOneName: componentOneSecrets,
-		componentTwoName: componentTwoSecrets,
-	}
-
-	clusterComponentOneSecrets := map[string][]byte{
-		secretD: []byte(secretD),
-		secretE: []byte(secretE),
-		secretF: []byte(secretF),
-	}
-	clusterComponentTwoSecrets := map[string][]byte{
-		secretD: []byte(secretD),
-		secretE: []byte(secretE),
-		secretF: []byte(secretF),
-	}
-	clusterComponentSecretsMap := map[string]map[string][]byte{
-		componentOneName: clusterComponentOneSecrets,
-		componentTwoName: clusterComponentTwoSecrets,
-	}
-
-	applyTestEnvironmentSecrets(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
-
-	secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
-
-	assert.Equal(t, 12, len(secrets))
-	for _, aSecret := range secrets {
-		if aSecret.Component == componentOneName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentOneName, "Pending")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentOneName, "Pending")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentOneName, "Pending")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretE {
-			assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan")
-		}
-		if aSecret.Component == componentOneName && aSecret.Name == secretF {
-			assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan")
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
 		}
 
-		if aSecret.Component == componentTwoName && aSecret.Name == secretA {
-			assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending")
+		clusterComponentOneSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretB {
-			assertSecretObject(t, aSecret, secretB, componentTwoName, "Pending")
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretC {
-			assertSecretObject(t, aSecret, secretC, componentTwoName, "Pending")
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
 		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretD {
-			assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan")
-		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretE {
-			assertSecretObject(t, aSecret, secretE, componentTwoName, "Orphan")
-		}
-		if aSecret.Component == componentTwoName && aSecret.Name == secretF {
-			assertSecretObject(t, aSecret, secretF, componentTwoName, "Orphan")
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		secrets, _ := handler.GetEnvironmentSecrets(appName, environmentOne)
+
+		assert.Equal(t, 12, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretE {
+				assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretF {
+				assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan", test.name)
+			}
+
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretD {
+				assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretE {
+				assertSecretObject(t, aSecret, secretE, componentTwoName, "Orphan", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretF {
+				assertSecretObject(t, aSecret, secretF, componentTwoName, "Orphan", test.name)
+			}
 		}
 	}
 }
@@ -1003,7 +1177,7 @@ func contains(secrets []environmentModels.Secret, name string) bool {
 
 func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
@@ -1090,7 +1264,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	appName := "myApp"
 	envName := "myEnv"
@@ -1107,7 +1281,7 @@ func TestCreateEnvironment(t *testing.T) {
 }
 
 func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -1168,7 +1342,7 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 
 func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeClient, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeClient, _, _ := setupTest()
 	anyAppName := "any-app"
 	createEvent := func(namespace, eventName string) {
 		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
@@ -1220,7 +1394,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	appName, envName := "app", "dev"
-	commonTestUtils, _, kubeclient, radixclient := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
 	ctrl := gomock.NewController(t)
 	ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)

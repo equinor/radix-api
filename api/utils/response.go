@@ -112,6 +112,13 @@ func ValidationError(kind, message string) error {
 	}
 }
 
+func NotFoundError(message string) error {
+	return &Error{
+		Type:    Missing,
+		Message: message,
+	}
+}
+
 // CoverAllError Cover all other errors
 func CoverAllError(err error) *Error {
 	return &Error{
@@ -156,6 +163,13 @@ func StringResponse(w http.ResponseWriter, r *http.Request, result string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
+}
+
+// ByteArrayResponse Used for response data. I.e. image
+func ByteArrayResponse(w http.ResponseWriter, r *http.Request, contentType string, result []byte) {
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	w.Write(result)
 }
 
 // JSONResponse Marshals response with header

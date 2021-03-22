@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/equinor/radix-api/api/buildstatus"
+
 	"github.com/gorilla/handlers"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -17,6 +19,8 @@ import (
 	"github.com/equinor/radix-api/api/environments"
 	"github.com/equinor/radix-api/api/jobs"
 	"github.com/equinor/radix-api/api/privateimagehubs"
+
+	build_models "github.com/equinor/radix-api/api/buildstatus/models"
 
 	router "github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/models"
@@ -69,6 +73,7 @@ func main() {
 }
 
 func getControllers() []models.Controller {
+	buildStatus := build_models.NewBuildStatus()
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
 		applications.NewApplicationController(nil),
@@ -77,6 +82,7 @@ func getControllers() []models.Controller {
 		environments.NewEnvironmentController(),
 		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),
+		buildstatus.NewBuildStatusController(buildStatus),
 	}
 }
 

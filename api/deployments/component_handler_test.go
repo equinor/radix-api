@@ -79,17 +79,17 @@ func TestRunningReplicaDiffersFromSpec_NoHPA(t *testing.T) {
 		Replicas: &replicas,
 	}
 	actualPods := []corev1.Pod{corev1.Pod{}}
-	isDifferent := runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent := runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.True(t, isDifferent)
 
 	// Test replicas 1, pods 1
 	replicas = 1
-	isDifferent = runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.False(t, isDifferent)
 
 	// Test replicas nil, pods 1
 	rdComponent.Replicas = nil
-	isDifferent = runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.False(t, isDifferent)
 }
 
@@ -105,22 +105,22 @@ func TestRunningReplicaDiffersFromSpec_WithHPA(t *testing.T) {
 		},
 	}
 	actualPods := []corev1.Pod{corev1.Pod{}}
-	isDifferent := runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent := runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.True(t, isDifferent)
 
 	// Test replicas 1, pods 1, minReplicas 2, maxReplicas 6
 	replicas = 1
-	isDifferent = runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.True(t, isDifferent)
 
 	// Test replicas 1, pods 3, minReplicas 2, maxReplicas 6
 	actualPods = []corev1.Pod{corev1.Pod{}, corev1.Pod{}, corev1.Pod{}}
-	isDifferent = runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.False(t, isDifferent)
 
 	// Test replicas 1, pods 3, minReplicas nil, maxReplicas 6
 	rdComponent.HorizontalScaling.MinReplicas = nil
-	isDifferent = runningReplicaDiffersFromSpec(rdComponent, actualPods)
+	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.False(t, isDifferent)
 }
 
@@ -150,7 +150,7 @@ func TestRunningReplicaOutdatedImage(t *testing.T) {
 		},
 	}
 
-	isOutdated := runningReplicaIsOutdated(rdComponent, actualPods)
+	isOutdated := runningReplicaIsOutdated(&rdComponent, actualPods)
 	assert.True(t, isOutdated)
 
 }
@@ -181,7 +181,7 @@ func TestRunningReplicaNotOutdatedImage_(t *testing.T) {
 		},
 	}
 
-	isOutdated := runningReplicaIsOutdated(rdComponent, actualPods)
+	isOutdated := runningReplicaIsOutdated(&rdComponent, actualPods)
 	assert.False(t, isOutdated)
 }
 
@@ -216,6 +216,6 @@ func TestRunningReplicaNotOutdatedImage_TerminatingPod(t *testing.T) {
 		},
 	}
 
-	isOutdated := runningReplicaIsOutdated(rdComponent, actualPods)
+	isOutdated := runningReplicaIsOutdated(&rdComponent, actualPods)
 	assert.False(t, isOutdated)
 }

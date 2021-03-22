@@ -18,6 +18,7 @@ import (
 const (
 	apiVersionRoute                 = "/api/v1"
 	admissionControllerRootPath     = "/admissioncontrollers"
+	buildstatusControllerRootPath   = "/buildstatus"
 	healthControllerPath            = "/health/"
 	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
@@ -56,7 +57,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	))
 
 	serveMux.Handle("/api/", negroni.New(
-		negroni.HandlerFunc(utils.BearerTokenHeaderVerifyerMiddleware),
 		negroni.Wrap(router),
 	))
 
@@ -93,6 +93,7 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		AllowedOrigins: []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
+			"http://localhost:8000",
 			"http://localhost:8086", // For swaggerui testing
 			// TODO: We should consider:
 			// 1. "https://*.radix.equinor.com"
@@ -100,9 +101,11 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 			fmt.Sprintf("https://console.%s", radixDNSZone),
 			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
 			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-dev", apiRouter.clusterName, radixDNSZone),
 			// Due to active-cluster
 			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
 			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
+			getActiveClusterHostName("web", "radix-web-console-dev", radixDNSZone),
 		},
 		AllowCredentials: true,
 		MaxAge:           600,
@@ -137,5 +140,5 @@ func initializeHealthEndpoint(router *mux.Router) {
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
-		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.HandlerFunc).Handle).Methods(route.Method)
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.AllowUnauthenticatedUsers, route.HandlerFunc).Handle).Methods(route.Method)
 }
