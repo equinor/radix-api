@@ -37,7 +37,7 @@ func (bsc *buildStatusController) GetRoutes() models.Routes {
 
 // GetBuildStatus reveals build status for selected environment
 func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// // swagger:operation GET /applications/{appName}/environments/{envName}/buildstatus environment getBuildStatus
+	// swagger:operation GET /applications/{appName}/environments/{envName}/buildstatus buildstatus getBuildStatus
 	// ---
 	// summary: Show the application buildStatus
 	// parameters:
@@ -49,6 +49,8 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	// - name: envName
 	//   in: path
 	//   description: name of the environment
+	//   type: string
+	//   required: true
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
