@@ -119,10 +119,10 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 		select {
 		case <-queryInterval:
 			machineUser, err := ah.getMachineUserForApp(appName)
-			if err == nil {
-				log.Debugf("got machine user for app %s of namespace %s", appName, namespace)
-				return machineUser, nil
+			if err != nil {
+				return nil, err
 			}
+			return machineUser, nil
 		case <-queryTimeout.C:
 			return nil, fmt.Errorf("Timeout getting user machine token secret")
 		}
