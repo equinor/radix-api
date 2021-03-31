@@ -15,6 +15,7 @@ type ComponentBuilder interface {
 	WithStatus(ComponentStatus) ComponentBuilder
 	WithPodNames([]string) ComponentBuilder
 	WithReplicaSummaryList([]ReplicaSummary) ComponentBuilder
+	WithScheduledJobSummaryList([]ScheduledJobSummary) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
 	BuildComponentSummary() *ComponentSummary
@@ -28,6 +29,7 @@ type componentBuilder struct {
 	componentImage            string
 	podNames                  []string
 	replicaSummaryList        []ReplicaSummary
+	scheduledJobSummaryList   []ScheduledJobSummary
 	environmentVariables      map[string]string
 	radixEnvironmentVariables map[string]string
 	secrets                   []string
@@ -46,6 +48,11 @@ func (b *componentBuilder) WithPodNames(podNames []string) ComponentBuilder {
 
 func (b *componentBuilder) WithReplicaSummaryList(replicaSummaryList []ReplicaSummary) ComponentBuilder {
 	b.replicaSummaryList = replicaSummaryList
+	return b
+}
+
+func (b *componentBuilder) WithScheduledJobSummaryList(scheduledJobSummaryList []ScheduledJobSummary) ComponentBuilder {
+	b.scheduledJobSummaryList = scheduledJobSummaryList
 	return b
 }
 
@@ -111,15 +118,16 @@ func (b *componentBuilder) BuildComponent() *Component {
 	}
 
 	return &Component{
-		Name:        b.componentName,
-		Type:        b.componentType,
-		Status:      b.status.String(),
-		Image:       b.componentImage,
-		Ports:       b.ports,
-		Secrets:     b.secrets,
-		Variables:   variables,
-		Replicas:    b.podNames,
-		ReplicaList: b.replicaSummaryList,
+		Name:             b.componentName,
+		Type:             b.componentType,
+		Status:           b.status.String(),
+		Image:            b.componentImage,
+		Ports:            b.ports,
+		Secrets:          b.secrets,
+		Variables:        variables,
+		Replicas:         b.podNames,
+		ReplicaList:      b.replicaSummaryList,
+		ScheduledJobList: b.scheduledJobSummaryList,
 	}
 }
 

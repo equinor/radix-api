@@ -1,5 +1,10 @@
 package models
 
+import (
+	corev1 "k8s.io/api/core/v1"
+	"strings"
+)
+
 // Component describe an component part of an deployment
 // swagger:model Component
 type Component struct {
@@ -66,6 +71,11 @@ type Component struct {
 	//
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
+
+	// Array of ScheduledJobList
+	//
+	// required: false
+	ScheduledJobList []ScheduledJobSummary `json:"scheduledJobList"`
 }
 
 // Port describe an component part of an deployment
@@ -167,4 +177,76 @@ type HorizontalScalingSummary struct {
 	// required: false
 	// example: 80
 	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage"`
+}
+
+// ScheduledJobSummary holds general information about scheduled job
+// swagger:model ScheduledJobSummary
+type ScheduledJobSummary struct {
+	// Name of the scheduled job
+	//
+	// required: false
+	// example: job-component-20181029135644-algpv-6hznh
+	Name string `json:"name"`
+
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
+
+	// Started timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Started string `json:"started"`
+
+	// Ended timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Ended string `json:"ended"`
+
+	// Status of the job
+	//
+	// required: false
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
+	// example: Waiting
+	Status string `json:"status"`
+
+	// Array of ReplicaSummary
+	//
+	// required: false
+	ReplicaList []ReplicaSummary `json:"replicaList"`
+}
+
+func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
+	replicaSummary := ReplicaSummary{}
+	replicaSummary.Name = pod.GetName()
+	if len(pod.Status.ContainerStatuses) > 0 {
+		// We assume one component container per component pod
+		containerStatus := pod.Status.ContainerStatuses[0]
+		containerState := containerStatus.State
+
+		// Set default Pending status
+		replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
+
+		if containerState.Waiting != nil {
+			replicaSummary.StatusMessage = containerState.Waiting.Message
+			if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
+				replicaSummary.Status = ReplicaStatus{Status: Failing.String()}
+			}
+		}
+		if containerState.Running != nil {
+			if containerStatus.Ready {
+				replicaSummary.Status = ReplicaStatus{Status: Running.String()}
+			} else {
+				replicaSummary.Status = ReplicaStatus{Status: Starting.String()}
+			}
+		}
+		if containerState.Terminated != nil {
+			replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
+			replicaSummary.StatusMessage = containerState.Terminated.Message
+		}
+	}
+	return replicaSummary
 }

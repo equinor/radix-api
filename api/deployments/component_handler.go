@@ -2,9 +2,8 @@ package deployments
 
 import (
 	"fmt"
-	"strings"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -13,10 +12,13 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"strings"
 )
 
 const (
@@ -129,46 +131,120 @@ func GetComponentStateFromSpec(
 	var environmentVariables map[string]string
 
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	podNames := []string{}
+	componentPodNames := &[]string{}
+	componentPods := &[]corev1.Pod{}
 	replicaSummaryList := []deploymentModels.ReplicaSummary{}
+	scheduledJobSummaryList := []deploymentModels.ScheduledJobSummary{}
 	status := deploymentModels.ConsistentComponent
 
 	if deployment.ActiveTo == "" {
 		// current active deployment - we get existing pods
-		pods, err := getComponentPodsByNamespace(client, envNs, component.GetName())
+		componentPodMap, podsOfScheduledJobsMap, err := getComponentPodsByNamespace(client, envNs, component.GetName())
 		if err != nil {
 			return nil, err
 		}
-		podNames = getPodNames(pods)
-		environmentVariables = getRadixEnvironmentVariables(pods)
-		replicaSummaryList = getReplicaSummaryList(pods)
+		componentPodNames, componentPods = slicePodNamesAndPodsFromMap(componentPodMap)
+		environmentVariables = getRadixEnvironmentVariables(componentPods)
+		replicaSummaryList = getReplicaSummaryList(*componentPods)
 
+		scheduledJobs, err := getComponentJobsByNamespace(client, envNs, component.GetName()) //scheduledJobs
+		if err != nil {
+			return nil, err
+		}
+		scheduledJobSummaryList = getScheduledJobSummaryList(scheduledJobs, podsOfScheduledJobsMap)
 		status, err = getStatusOfActiveDeployment(component,
-			deploymentStatus, environmentConfig, pods)
+			deploymentStatus, environmentConfig, *componentPods)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	i := *componentPodNames
 	return deploymentModels.NewComponentBuilder().
 		WithComponent(component).
 		WithStatus(status).
-		WithPodNames(podNames).
+		WithPodNames(i).
 		WithReplicaSummaryList(replicaSummaryList).
+		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
 		BuildComponent(), nil
 }
 
-func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
+func getScheduledJobSummaryList(jobs []batchv1.Job, pods *map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
+	var summaries []deploymentModels.ScheduledJobSummary
+	for _, job := range jobs {
+		creationTimestamp := job.GetCreationTimestamp()
+		summary := deploymentModels.ScheduledJobSummary{
+			Name:    job.Name,
+			Created: utils.FormatTime(&creationTimestamp),
+			Started: utils.FormatTime(job.Status.StartTime),
+			Ended:   utils.FormatTime(job.Status.CompletionTime),
+			Status:  models.GetStatusFromJobStatus(job.Status).String(),
+		}
+		if jobPods, ok := (*pods)[job.Name]; ok {
+			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
+		}
+		summaries = append(summaries, summary)
+	}
+	return summaries
+}
+
+func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.ReplicaSummary {
+	var replicaSummaries []deploymentModels.ReplicaSummary
+	for _, pod := range jobPods {
+		replicaSummaries = append(replicaSummaries, deploymentModels.GetReplicaSummary(pod))
+	}
+	return replicaSummaries
+}
+
+func slicePodNamesAndPodsFromMap(podMap *map[string]corev1.Pod) (*[]string, *[]corev1.Pod) {
+	var names []string
+	var pods []corev1.Pod
+	for name, pod := range *podMap {
+		names = append(names, name)
+		pods = append(pods, pod)
+	}
+	return &names, &pods
+}
+
+func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) (*map[string]corev1.Pod, *map[string][]corev1.Pod, error) {
 	pods, err := client.CoreV1().Pods(envNs).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
 		log.Errorf("error getting pods: %v", err)
+		return nil, nil, err
+	}
+	componentPodMap := map[string]corev1.Pod{}
+	scheduledJobPodMap := map[string][]corev1.Pod{}
+	for _, pod := range pods.Items {
+		if jobType, ok := pod.Labels[kube.RadixJobTypeLabel]; ok && jobType == kube.RadixJobTypeJobSchedule {
+			if jobName, ok := pod.Labels["job-name"]; ok {
+				list := scheduledJobPodMap[jobName]
+				scheduledJobPodMap[jobName] = append(list, pod)
+				list = list
+			}
+		} else {
+			componentPodMap[pod.GetName()] = pod
+		}
+	}
+	return &componentPodMap, &scheduledJobPodMap, nil
+}
+
+func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]batchv1.Job, error) {
+	labelSelectors := map[string]string{
+		kube.RadixComponentLabel: componentName,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+	}
+	jobList, err := client.BatchV1().Jobs(envNs).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labelSelectors).String(),
+	})
+	if err != nil {
+		log.Errorf("error getting jobs: %v", err)
 		return nil, err
 	}
 
-	return pods.Items, nil
+	return jobList.Items, nil
 }
 
 func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
@@ -216,20 +292,10 @@ func runningReplicaDiffersFromSpec(component v1.RadixCommonDeployComponent, actu
 		actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
 }
 
-func getPodNames(pods []corev1.Pod) []string {
-	podNames := []string{}
-
-	for _, pod := range pods {
-		podNames = append(podNames, pod.GetName())
-	}
-
-	return podNames
-}
-
-func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
+func getRadixEnvironmentVariables(pods *[]corev1.Pod) map[string]string {
 	radixEnvironmentVariables := make(map[string]string)
 
-	for _, pod := range pods {
+	for _, pod := range *pods {
 		for _, container := range pod.Spec.Containers {
 			for _, envVariable := range container.Env {
 				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
@@ -243,38 +309,10 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 }
 
 func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	replicaSummaryList := []deploymentModels.ReplicaSummary{}
+	var replicaSummaryList []deploymentModels.ReplicaSummary
 
 	for _, pod := range pods {
-		replicaSummary := deploymentModels.ReplicaSummary{}
-		replicaSummary.Name = pod.GetName()
-		if len(pod.Status.ContainerStatuses) > 0 {
-			// We assume one component container per component pod
-			containerStatus := pod.Status.ContainerStatuses[0]
-			containerState := containerStatus.State
-
-			// Set default Pending status
-			replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Pending.String()}
-
-			if containerState.Waiting != nil {
-				replicaSummary.StatusMessage = containerState.Waiting.Message
-				if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
-					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Failing.String()}
-				}
-			}
-			if containerState.Running != nil {
-				if containerStatus.Ready {
-					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Running.String()}
-				} else {
-					replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Starting.String()}
-				}
-			}
-			if containerState.Terminated != nil {
-				replicaSummary.Status = deploymentModels.ReplicaStatus{Status: deploymentModels.Terminated.String()}
-				replicaSummary.StatusMessage = containerState.Terminated.Message
-			}
-		}
-		replicaSummaryList = append(replicaSummaryList, replicaSummary)
+		replicaSummaryList = append(replicaSummaryList, deploymentModels.GetReplicaSummary(pod))
 	}
 
 	return replicaSummaryList
