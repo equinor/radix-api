@@ -3,6 +3,7 @@ package applications
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -272,10 +273,12 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 	machineUser, err := handler.RegenerateMachineUserToken(appName)
 
 	if err != nil {
+		log.Errorf("failed to re-generate machine user token for app %s. Error: %v", appName, err)
 		utils.ErrorResponse(w, r, err)
 		return
 	}
 
+	log.Debugf("re-generated machine user token for app %s", appName)
 	utils.JSONResponse(w, r, &machineUser)
 }
 
