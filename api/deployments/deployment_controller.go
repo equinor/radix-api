@@ -41,6 +41,11 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			HandlerFunc: GetPodLog,
 		},
 		models.Route{
+			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/scheduledjob/{jobName}/logs",
+			Method:      "GET",
+			HandlerFunc: GetScheduledJobLog,
+		},
+		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/components",
 			Method:      "GET",
 			HandlerFunc: GetComponents,
@@ -283,6 +288,82 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	deployHandler := Init(accounts)
 	log, err := deployHandler.GetLogs(appName, podName, &since)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.StringResponse(w, r, log)
+}
+
+// GetScheduledJobLog Get logs of a single pod
+func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/scheduledjob/{jobName}/logs scheduled job log
+	// ---
+	// summary: Get logs from a deployed pod
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: deploymentName
+	//   in: path
+	//   description: Name of deployment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of scheduled job
+	//   type: string
+	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = utils.ParseTimestamp(sinceTime)
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	deployHandler := Init(accounts)
+	log, err := deployHandler.GetScheduledJobLogs(appName, jobName, &since)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)

@@ -57,6 +57,28 @@ func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Tim
 	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
+// GetLogs handler for GetScheduledJobLogs
+func (deploy DeployHandler) GetScheduledJobLogs(appName, jobName string, sinceTime *time.Time) (string, error) {
+	ns := crdUtils.GetAppNamespace(appName)
+	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
+	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
+	if err != nil {
+		return "", deploymentModels.NonExistingApplication(err, appName)
+	}
+	for _, env := range ra.Spec.Environments {
+		handler := pods.Init(deploy.kubeClient)
+		log, err := handler.HandleGetEnvironmentScheduledJobLog(appName, env.Name, jobName, "", sinceTime)
+		if errors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return "", err
+		}
+
+		return log, nil
+	}
+	return "", deploymentModels.NonExistingPod(appName, jobName)
+}
+
 // GetDeploymentsForApplication Lists deployments accross environments
 func (deploy DeployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	namespace := corev1.NamespaceAll
