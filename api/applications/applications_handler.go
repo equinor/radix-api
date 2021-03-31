@@ -512,7 +512,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationModels.MachineUser, error) {
 	namespace := crdUtils.GetAppNamespace(appName)
 
-	log.Debugf("get service account for machine user in app %s of namespace %s: %s", appName, namespace)
+	log.Debugf("get service account for machine user in app %s of namespace %s", appName, namespace)
 	machineUserSA, err := ah.getMachineUserServiceAccount(appName, namespace)
 	if err != nil {
 		return nil, err
@@ -523,7 +523,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
-	log.Debugf("get secrets for machine user token %s in app %s of namespace %s: %s", tokenName, appName, namespace)
+	log.Debugf("get secrets for machine user token %s in app %s of namespace %s", tokenName, appName, namespace)
 	token, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(tokenName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
