@@ -37,6 +37,13 @@ const clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
 
 //go:generate swagger generate spec
 func main() {
+	switch os.Getenv("LOG_LEVEL") {
+	case "DEBUG":
+		log.SetLevel(log.DebugLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
+
 	fs := initializeFlagSet()
 
 	var (
