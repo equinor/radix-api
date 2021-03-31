@@ -218,14 +218,13 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 	componentPodMap := map[string]corev1.Pod{}
 	scheduledJobPodMap := map[string][]corev1.Pod{}
 	for _, pod := range pods.Items {
-		if jobType, ok := pod.Labels[kube.RadixJobTypeLabel]; ok && jobType == kube.RadixJobTypeJobSchedule {
-			if jobName, ok := pod.Labels["job-name"]; ok {
-				list := scheduledJobPodMap[jobName]
-				scheduledJobPodMap[jobName] = append(list, pod)
-				list = list
-			}
-		} else {
+		if jobType, ok := pod.Labels[kube.RadixJobTypeLabel]; !ok || jobType != kube.RadixJobTypeJobSchedule {
 			componentPodMap[pod.GetName()] = pod
+			continue
+		}
+		if jobName, ok := pod.Labels["job-name"]; ok {
+			list := scheduledJobPodMap[jobName]
+			scheduledJobPodMap[jobName] = append(list, pod)
 		}
 	}
 	return &componentPodMap, &scheduledJobPodMap, nil
