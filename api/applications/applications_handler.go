@@ -99,8 +99,9 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 
 // RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
 func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
-	appNamespace := crdUtils.GetAppNamespace(appName)
-	machineUserSA, err := ah.getMachineUserServiceAccount(appName, appNamespace)
+	log.Debugf("regenerate machine user token for app: %s", appName)
+	namespace := crdUtils.GetAppNamespace(appName)
+	machineUserSA, err := ah.getMachineUserServiceAccount(appName, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,8 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
-	err = ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Delete(tokenName, &metav1.DeleteOptions{})
+	log.Debugf("delete service account for app %s and machine user token: %s", appName, tokenName)
+	err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(tokenName, &metav1.DeleteOptions{})
 
 	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
 	queryInterval := time.Tick(time.Duration(1) * time.Second)
@@ -120,6 +122,7 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 			if err == nil {
 				return machineUser, nil
 			}
+			log.Debugf("waiting to get machine user for app %s of namespace %s, error: %v", appName, namespace, err)
 		case <-queryTimeout.C:
 			return nil, fmt.Errorf("Timeout getting user machine token secret")
 		}
@@ -279,9 +282,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		}
 	}
 
-	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
-	if strings.TrimSpace(existingRegistration.Spec.ConfigBranch) == "" {
-		existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
+	if setConfigBranchToFallbackWhenEmpty(existingRegistration) {
 		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
 		runUpdate = true
 	}
@@ -506,10 +507,11 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	return nil, nil
 }
 
-func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationModels.MachineUser, error) {
-	appNamespace := crdUtils.GetAppNamespace(name)
+func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationModels.MachineUser, error) {
+	namespace := crdUtils.GetAppNamespace(appName)
 
-	machineUserSA, err := ah.getMachineUserServiceAccount(name, appNamespace)
+	log.Debugf("get service account for machine user in app %s of namespace %s", appName, namespace)
+	machineUserSA, err := ah.getMachineUserServiceAccount(appName, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -519,12 +521,14 @@ func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationMode
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
-	token, err := ah.getUserAccount().Client.CoreV1().Secrets(appNamespace).Get(tokenName, metav1.GetOptions{})
+	log.Debugf("get secrets for machine user token %s in app %s of namespace %s", tokenName, appName, namespace)
+	token, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(tokenName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	tokenStringData := string(token.Data["token"])
+	log.Debugf("token length: %v", len(tokenStringData))
 	var tokenString *string
 	tokenString = &tokenStringData
 
@@ -535,6 +539,7 @@ func (ah ApplicationHandler) getMachineUserForApp(name string) (*applicationMode
 
 func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
 	machineUserName := defaults.GetMachineUserRoleName(appName)
+	log.Debugf("get service account for app %s in namespace %s and machine user: %s", appName, namespace, machineUserName)
 	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(machineUserName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -757,6 +762,7 @@ func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeplo
 	existingRegistration.Spec.DeployKey = deployKey.PrivateKey
 	existingRegistration.Spec.DeployKeyPublic = deployKey.PublicKey
 	existingRegistration.Spec.SharedSecret = sharedKey
+	setConfigBranchToFallbackWhenEmpty(existingRegistration)
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -771,4 +777,13 @@ func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeplo
 		PublicDeployKey: deployKey.PublicKey,
 		SharedSecret:    sharedKey,
 	}, nil
+}
+
+func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
+	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
+	if len(strings.TrimSpace(existingRegistration.Spec.ConfigBranch)) > 0 {
+		return false
+	}
+	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
+	return true
 }
