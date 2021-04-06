@@ -282,9 +282,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		}
 	}
 
-	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
-	if strings.TrimSpace(existingRegistration.Spec.ConfigBranch) == "" {
-		existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
+	if setConfigBranchToFallbackWhenEmpty(existingRegistration) {
 		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
 		runUpdate = true
 	}
@@ -764,6 +762,7 @@ func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeplo
 	existingRegistration.Spec.DeployKey = deployKey.PrivateKey
 	existingRegistration.Spec.DeployKeyPublic = deployKey.PublicKey
 	existingRegistration.Spec.SharedSecret = sharedKey
+	setConfigBranchToFallbackWhenEmpty(existingRegistration)
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -778,4 +777,13 @@ func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeplo
 		PublicDeployKey: deployKey.PublicKey,
 		SharedSecret:    sharedKey,
 	}, nil
+}
+
+func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
+	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
+	if len(strings.TrimSpace(existingRegistration.Spec.ConfigBranch)) > 0 {
+		return false
+	}
+	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
+	return true
 }
