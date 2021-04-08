@@ -58,14 +58,14 @@ func (ph PodHandler) getPodLog(namespace, podName, containerName string, sinceTi
 }
 
 // HandleGetEnvironmentScheduledJobLog Get logs from scheduled job in environment
-func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(appName, envName, podName, containerName string, sinceTime *time.Time) (string, error) {
+func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, containerName string, sinceTime *time.Time) (string, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	return ph.getScheduledJobLog(envNs, podName, containerName, sinceTime)
+	return ph.getScheduledJobLog(envNs, scheduledJobName, containerName, sinceTime)
 }
 
-func (ph PodHandler) getScheduledJobLog(namespace, jobName, containerName string, sinceTime *time.Time) (string, error) {
+func (ph PodHandler) getScheduledJobLog(namespace, scheduledJobName, containerName string, sinceTime *time.Time) (string, error) {
 	pods, err := ph.client.CoreV1().Pods(namespace).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+		LabelSelector: fmt.Sprintf("job-name=%s", scheduledJobName),
 	})
 	if err != nil {
 		return "", err

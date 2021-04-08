@@ -41,7 +41,7 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			HandlerFunc: GetPodLog,
 		},
 		models.Route{
-			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/scheduledjob/{jobName}/logs",
+			Path:        rootPath + "/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetScheduledJobLog,
 		},
@@ -297,11 +297,11 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	utils.StringResponse(w, r, log)
 }
 
-// GetScheduledJobLog Get logs of a single pod
+// GetScheduledJobLog Get log from a scheduled job
 func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/scheduledjob/{jobName}/logs component log
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs scheduled-job log
 	// ---
-	// summary: Get logs from a deployed pod
+	// summary: Get log from a scheduled job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -313,12 +313,12 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   description: Name of deployment
 	//   type: string
 	//   required: true
-	// - name: componentName
+	// - name: jobComponentName
 	//   in: path
-	//   description: Name of component
+	//   description: Name of job-component
 	//   type: string
 	//   required: true
-	// - name: jobName
+	// - name: scheduledJobName
 	//   in: path
 	//   description: Name of scheduled job
 	//   type: string
@@ -341,13 +341,13 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "pod log"
+	//     description: "scheduled job log"
 	//     schema:
 	//        type: "string"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	jobName := mux.Vars(r)["jobName"]
+	scheduledJobName := mux.Vars(r)["scheduledJobName"]
 
 	sinceTime := r.FormValue("sinceTime")
 
@@ -363,7 +363,7 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetScheduledJobLogs(appName, jobName, &since)
+	log, err := deployHandler.GetScheduledJobLogs(appName, scheduledJobName, &since)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
