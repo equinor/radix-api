@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"sort"
 	"strings"
 )
 
@@ -186,6 +187,11 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, pods *map[string][]corev1.Po
 		}
 		summaries = append(summaries, summary)
 	}
+
+	// Sort job-summaries descending
+	sort.Slice(summaries, func(i, j int) bool {
+		return utils.IsBefore(&summaries[j], &summaries[i])
+	})
 	return summaries
 }
 

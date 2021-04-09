@@ -250,3 +250,19 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	}
 	return replicaSummary
 }
+
+func (job *ScheduledJobSummary) GetCreated() string {
+	return job.Created
+}
+
+func (job *ScheduledJobSummary) GetStarted() string {
+	return job.Started
+}
+
+func (job *ScheduledJobSummary) GetEnded() string {
+	return job.Ended
+}
+
+func (job *ScheduledJobSummary) GetStatus() string {
+	return job.Status
+}

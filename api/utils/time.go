@@ -11,6 +11,15 @@ func ParseTimestamp(timestamp string) (time.Time, error) {
 	return time.Parse(time.RFC3339, timestamp)
 }
 
+// ParseTimestampNillable Converts timestamp to time or nil
+func ParseTimestampNillable(timestamp string) *time.Time {
+	t, err := ParseTimestamp(timestamp)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
 // FormatTimestamp Converts time to formatted timestamp
 func FormatTimestamp(timestamp time.Time) string {
 	emptyTime := time.Time{}
