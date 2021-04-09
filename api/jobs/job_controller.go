@@ -50,9 +50,9 @@ func (jc *jobController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetPipelineJobLogs Get logs of a job for an application
+// GetPipelineJobLogs Get logs of a pipeline-job for an application
 func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs job getApplicationJobLogs
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs pipeline-job getApplicationJobLogs
 	// ---
 	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
 	// parameters:
@@ -120,9 +120,9 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	utils.JSONResponse(w, r, pipelines)
 }
 
-// GetApplicationJobs gets job summaries
+// GetApplicationJobs gets pipeline-job summaries
 func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs job getApplicationJobs
+	// swagger:operation GET /applications/{appName}/jobs pipeline-job getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
 	// parameters:
@@ -165,11 +165,11 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	utils.JSONResponse(w, r, jobSummaries)
 }
 
-// GetApplicationJob gets specific job details
+// GetApplicationJob gets specific pipeline-job details
 func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName} job getApplicationJob
+	// swagger:operation GET /applications/{appName}/jobs/{jobName} pipeline-job getApplicationJob
 	// ---
-	// summary: Gets the detail of a given job for a given application
+	// summary: Gets the detail of a given pipeline-job for a given application
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -216,7 +216,7 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 // StopApplicationJob Stops job
 func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop job stopApplicationJob
+	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop pipeline-job stopApplicationJob
 	// ---
 	// summary: Stops job
 	// parameters:

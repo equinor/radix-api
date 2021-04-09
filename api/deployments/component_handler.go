@@ -176,7 +176,7 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, pods *map[string][]corev1.Po
 		creationTimestamp := job.GetCreationTimestamp()
 		summary := deploymentModels.ScheduledJobSummary{
 			Name:    job.Name,
-			Created: utils.FormatTime(&creationTimestamp),
+			Created: utils.FormatTimestamp(creationTimestamp.Time),
 			Started: utils.FormatTime(job.Status.StartTime),
 			Ended:   utils.FormatTime(job.Status.CompletionTime),
 			Status:  models.GetStatusFromJobStatus(job.Status).String(),

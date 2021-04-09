@@ -24,7 +24,7 @@ type Component struct {
 	// required: false
 	// - Stopped = Component is stopped (no replica)
 	// - Consistent = Component is consistent with config
-	// - Restarting = User has trigged restart, but this is not reconciled
+	// - Restarting = User has triggered restart, but this is not reconciled
 	//
 	// example: Consistent
 	Status string `json:"status"`

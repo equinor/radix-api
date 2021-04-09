@@ -299,7 +299,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 // GetScheduledJobLog Get log from a scheduled job
 func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs scheduled-job log
+	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job log
 	// ---
 	// summary: Get log from a scheduled job
 	// parameters:
