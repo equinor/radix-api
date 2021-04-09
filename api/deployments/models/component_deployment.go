@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/equinor/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
 	"strings"
 )
@@ -125,6 +126,12 @@ type ReplicaSummary struct {
 	// example: server-78fc8857c4-hm76l
 	Name string `json:"name"`
 
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created"`
+
 	// Status describes the component container status
 	//
 	// required: false
@@ -134,6 +141,11 @@ type ReplicaSummary struct {
 	//
 	// required: false
 	StatusMessage string `json:"statusMessage"`
+
+	// RestartCount count of restarts of a component container inside a pod
+	//
+	// required: false
+	RestartCount int32
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
@@ -222,6 +234,8 @@ type ScheduledJobSummary struct {
 func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary := ReplicaSummary{}
 	replicaSummary.Name = pod.GetName()
+	creationTimestamp := pod.GetCreationTimestamp()
+	replicaSummary.Created = utils.FormatTimestamp(creationTimestamp.Time)
 	if len(pod.Status.ContainerStatuses) > 0 {
 		// We assume one component container per component pod
 		containerStatus := pod.Status.ContainerStatuses[0]
@@ -247,6 +261,7 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 			replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
 			replicaSummary.StatusMessage = containerState.Terminated.Message
 		}
+		replicaSummary.RestartCount = containerStatus.RestartCount
 	}
 	return replicaSummary
 }
