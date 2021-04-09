@@ -6,7 +6,7 @@
 //     BasePath: /api/v1
 //     Version: 1.9.0
 //     Contact: https://equinor.slack.com/messages/CBKM6N2JY
-//
+//api/deployments/component_handler.go
 //     Consumes:
 //     - application/json
 //

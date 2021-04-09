@@ -236,33 +236,34 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
 	replicaSummary.Created = utils.FormatTimestamp(creationTimestamp.Time)
-	if len(pod.Status.ContainerStatuses) > 0 {
-		// We assume one component container per component pod
-		containerStatus := pod.Status.ContainerStatuses[0]
-		containerState := containerStatus.State
-
-		// Set default Pending status
-		replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
-
-		if containerState.Waiting != nil {
-			replicaSummary.StatusMessage = containerState.Waiting.Message
-			if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
-				replicaSummary.Status = ReplicaStatus{Status: Failing.String()}
-			}
-		}
-		if containerState.Running != nil {
-			if containerStatus.Ready {
-				replicaSummary.Status = ReplicaStatus{Status: Running.String()}
-			} else {
-				replicaSummary.Status = ReplicaStatus{Status: Starting.String()}
-			}
-		}
-		if containerState.Terminated != nil {
-			replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
-			replicaSummary.StatusMessage = containerState.Terminated.Message
-		}
-		replicaSummary.RestartCount = containerStatus.RestartCount
+	if len(pod.Status.ContainerStatuses) <= 0 {
+		return replicaSummary
 	}
+	// We assume one component container per component pod
+	containerStatus := pod.Status.ContainerStatuses[0]
+	containerState := containerStatus.State
+
+	// Set default Pending status
+	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
+
+	if containerState.Waiting != nil {
+		replicaSummary.StatusMessage = containerState.Waiting.Message
+		if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
+			replicaSummary.Status = ReplicaStatus{Status: Failing.String()}
+		}
+	}
+	if containerState.Running != nil {
+		if containerStatus.Ready {
+			replicaSummary.Status = ReplicaStatus{Status: Running.String()}
+		} else {
+			replicaSummary.Status = ReplicaStatus{Status: Starting.String()}
+		}
+	}
+	if containerState.Terminated != nil {
+		replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
+		replicaSummary.StatusMessage = containerState.Terminated.Message
+	}
+	replicaSummary.RestartCount = containerStatus.RestartCount
 	return replicaSummary
 }
 

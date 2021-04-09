@@ -160,11 +160,10 @@ func GetComponentStateFromSpec(
 		}
 	}
 
-	i := *componentPodNames
 	return deploymentModels.NewComponentBuilder().
 		WithComponent(component).
 		WithStatus(status).
-		WithPodNames(i).
+		WithPodNames(*componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
