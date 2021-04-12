@@ -2,16 +2,16 @@ package deployments
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/pods"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-api/api/utils"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -55,28 +55,6 @@ func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Tim
 		return log, nil
 	}
 	return "", deploymentModels.NonExistingPod(appName, podName)
-}
-
-// GetScheduledJobLogs handler for GetScheduledJobLogs
-func (deploy DeployHandler) GetScheduledJobLogs(appName, scheduledJobName string, sinceTime *time.Time) (string, error) {
-	ns := crdUtils.GetAppNamespace(appName)
-	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
-	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
-	if err != nil {
-		return "", deploymentModels.NonExistingApplication(err, appName)
-	}
-	for _, env := range ra.Spec.Environments {
-		handler := pods.Init(deploy.kubeClient)
-		log, err := handler.HandleGetEnvironmentScheduledJobLog(appName, env.Name, scheduledJobName, "", sinceTime)
-		if errors.IsNotFound(err) {
-			continue
-		} else if err != nil {
-			return "", err
-		}
-
-		return log, nil
-	}
-	return "", deploymentModels.NonExistingPod(appName, scheduledJobName)
 }
 
 // GetDeploymentsForApplication Lists deployments across environments

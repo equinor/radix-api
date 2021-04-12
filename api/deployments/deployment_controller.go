@@ -1,14 +1,13 @@
 package deployments
 
 import (
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/models"
-	"github.com/gorilla/mux"
 )
 
 const rootPath = "/applications/{appName}"
@@ -39,11 +38,6 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetPodLog,
-		},
-		models.Route{
-			Path:        rootPath + "/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
-			Method:      "GET",
-			HandlerFunc: GetScheduledJobLog,
 		},
 		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/components",
@@ -288,82 +282,6 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	deployHandler := Init(accounts)
 	log, err := deployHandler.GetLogs(appName, podName, &since)
-
-	if err != nil {
-		utils.ErrorResponse(w, r, err)
-		return
-	}
-
-	utils.StringResponse(w, r, log)
-}
-
-// GetScheduledJobLog Get log from a scheduled job
-func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job log
-	// ---
-	// summary: Get log from a scheduled job
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of application
-	//   type: string
-	//   required: true
-	// - name: deploymentName
-	//   in: path
-	//   description: Name of deployment
-	//   type: string
-	//   required: true
-	// - name: jobComponentName
-	//   in: path
-	//   description: Name of job-component
-	//   type: string
-	//   required: true
-	// - name: scheduledJobName
-	//   in: path
-	//   description: Name of scheduled job
-	//   type: string
-	//   required: true
-	// - name: sinceTime
-	//   in: query
-	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
-	//   type: string
-	//   format: date-time
-	//   required: false
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: "scheduled job log"
-	//     schema:
-	//        type: "string"
-	//   "404":
-	//     description: "Not found"
-	appName := mux.Vars(r)["appName"]
-	scheduledJobName := mux.Vars(r)["scheduledJobName"]
-
-	sinceTime := r.FormValue("sinceTime")
-
-	var since time.Time
-	var err error
-
-	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = utils.ParseTimestamp(sinceTime)
-		if err != nil {
-			utils.ErrorResponse(w, r, err)
-			return
-		}
-	}
-
-	deployHandler := Init(accounts)
-	log, err := deployHandler.GetScheduledJobLogs(appName, scheduledJobName, &since)
 
 	if err != nil {
 		utils.ErrorResponse(w, r, err)
