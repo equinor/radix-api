@@ -160,7 +160,14 @@ func GetComponentStateFromSpec(
 		}
 	}
 
-	return deploymentModels.NewComponentBuilder().
+	componentBuilder := deploymentModels.NewComponentBuilder()
+	if jobComponent, ok := component.(*v1.RadixDeployJobComponent); ok {
+		componentBuilder.WithSchedulerPort(jobComponent.SchedulerPort)
+		if jobComponent.Payload != nil {
+			componentBuilder.WithScheduledJobPayloadPath(jobComponent.Payload.Path)
+		}
+	}
+	return componentBuilder.
 		WithComponent(component).
 		WithStatus(status).
 		WithPodNames(*componentPodNames).

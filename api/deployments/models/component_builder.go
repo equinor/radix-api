@@ -16,6 +16,8 @@ type ComponentBuilder interface {
 	WithPodNames([]string) ComponentBuilder
 	WithReplicaSummaryList([]ReplicaSummary) ComponentBuilder
 	WithScheduledJobSummaryList([]ScheduledJobSummary) ComponentBuilder
+	WithSchedulerPort(schedulerPort *int32) ComponentBuilder
+	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
 	BuildComponentSummary() *ComponentSummary
@@ -34,6 +36,8 @@ type componentBuilder struct {
 	radixEnvironmentVariables map[string]string
 	secrets                   []string
 	ports                     []Port
+	schedulerPort             *int32
+	scheduledJobPayloadPath   string
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -58,6 +62,16 @@ func (b *componentBuilder) WithScheduledJobSummaryList(scheduledJobSummaryList [
 
 func (b *componentBuilder) WithRadixEnvironmentVariables(radixEnvironmentVariables map[string]string) ComponentBuilder {
 	b.radixEnvironmentVariables = radixEnvironmentVariables
+	return b
+}
+
+func (b *componentBuilder) WithSchedulerPort(schedulerPort *int32) ComponentBuilder {
+	b.schedulerPort = schedulerPort
+	return b
+}
+
+func (b *componentBuilder) WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder {
+	b.scheduledJobPayloadPath = scheduledJobPayloadPath
 	return b
 }
 
@@ -118,16 +132,18 @@ func (b *componentBuilder) BuildComponent() *Component {
 	}
 
 	return &Component{
-		Name:             b.componentName,
-		Type:             b.componentType,
-		Status:           b.status.String(),
-		Image:            b.componentImage,
-		Ports:            b.ports,
-		Secrets:          b.secrets,
-		Variables:        variables,
-		Replicas:         b.podNames,
-		ReplicaList:      b.replicaSummaryList,
-		ScheduledJobList: b.scheduledJobSummaryList,
+		Name:                    b.componentName,
+		Type:                    b.componentType,
+		Status:                  b.status.String(),
+		Image:                   b.componentImage,
+		Ports:                   b.ports,
+		Secrets:                 b.secrets,
+		Variables:               variables,
+		Replicas:                b.podNames,
+		ReplicaList:             b.replicaSummaryList,
+		ScheduledJobList:        b.scheduledJobSummaryList,
+		SchedulerPort:           b.schedulerPort,
+		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
 	}
 }
 

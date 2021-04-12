@@ -44,6 +44,18 @@ type Component struct {
 	//    "$ref": "#/definitions/Port"
 	Ports []Port `json:"ports"`
 
+	// SchedulerPort defines the port number that a Job Scheduler is exposed internally in environment
+	//
+	// required: false
+	// example: "8080"
+	SchedulerPort *int32 `json:"schedulerPort,omitempty"`
+
+	// ScheduledJobPayloadPath defines the payload path, where payload for Job Scheduler will be mapped as a file. From radixconfig.yaml
+	//
+	// required: false
+	// example: "/tmp/payload"
+	ScheduledJobPayloadPath string `json:"scheduledJobPayloadPath,omitempty"`
+
 	// Component secret names. From radixconfig.yaml
 	//
 	// required: false
