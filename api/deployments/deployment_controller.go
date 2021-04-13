@@ -1,14 +1,13 @@
 package deployments
 
 import (
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/models"
-	"github.com/gorilla/mux"
 )
 
 const rootPath = "/applications/{appName}"

@@ -114,3 +114,19 @@ func getBranchFromAnnotation(job *batchv1.Job) string {
 
 	return job.Labels[kube.RadixBranchDeprecated]
 }
+
+func (job *JobSummary) GetCreated() string {
+	return job.Created
+}
+
+func (job *JobSummary) GetStarted() string {
+	return job.Started
+}
+
+func (job *JobSummary) GetEnded() string {
+	return job.Ended
+}
+
+func (job *JobSummary) GetStatus() string {
+	return job.Status
+}

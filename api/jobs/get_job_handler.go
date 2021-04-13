@@ -1,11 +1,9 @@
 package jobs
 
 import (
-	"sort"
-	"time"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sort"
 
 	"strings"
 
@@ -96,7 +94,7 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 
 	// Sort jobs descending
 	sort.Slice(jobs, func(i, j int) bool {
-		return IsBefore(jobs[j], jobs[i])
+		return utils.IsBefore(jobs[j], jobs[i])
 	})
 
 	return jobs, nil
@@ -139,7 +137,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 			return false
 		}
 
-		return IsBefore(allJobs[j], allJobs[i])
+		return utils.IsBefore(allJobs[j], allJobs[i])
 	})
 
 	applicationJob := make(map[string]*jobModels.JobSummary)
@@ -196,32 +194,4 @@ func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploy
 	}
 
 	return jobComponents, nil
-}
-
-// IsBefore Checks that job-j is before job-i
-func IsBefore(j, i *jobModels.JobSummary) bool {
-	jCreated := getTimeFromTimestamp(j.Created)
-	if jCreated == nil {
-		return false
-	}
-
-	iCreated := getTimeFromTimestamp(i.Created)
-	if iCreated == nil {
-		return true
-	}
-
-	jStarted := getTimeFromTimestamp(j.Started)
-	iStarted := getTimeFromTimestamp(i.Started)
-
-	return (jCreated.Equal(*iCreated) && jStarted != nil && iStarted != nil && jStarted.Before(*iStarted)) ||
-		jCreated.Before(*iCreated)
-}
-
-func getTimeFromTimestamp(timestamp string) *time.Time {
-	t, err := utils.ParseTimestamp(timestamp)
-	if err != nil {
-		return nil
-	}
-
-	return &t
 }

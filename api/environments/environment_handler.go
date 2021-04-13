@@ -2,7 +2,9 @@ package environments
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/pods"
 	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -336,4 +338,26 @@ func isAppNamespace(namespace corev1.Namespace) bool {
 	}
 
 	return true
+}
+
+// GetLogs handler for GetLogs
+func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time) (string, error) {
+	podHandler := pods.Init(eh.client)
+	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime)
+	if errors.IsNotFound(err) {
+		return "", err
+	}
+
+	return log, nil
+}
+
+// GetScheduledJobLogs handler for GetScheduledJobLogs
+func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time) (string, error) {
+	handler := pods.Init(eh.client)
+	log, err := handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime)
+	if err != nil {
+		return "", err
+	}
+
+	return log, nil
 }
