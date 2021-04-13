@@ -2,16 +2,16 @@ package deployments
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/pods"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-api/api/utils"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -57,7 +57,7 @@ func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Tim
 	return "", deploymentModels.NonExistingPod(appName, podName)
 }
 
-// GetDeploymentsForApplication Lists deployments accross environments
+// GetDeploymentsForApplication Lists deployments across environments
 func (deploy DeployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	namespace := corev1.NamespaceAll
 	return deploy.getDeployments(namespace, appName, "", latest)

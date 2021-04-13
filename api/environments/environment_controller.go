@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -76,6 +77,16 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
 			Method:      "POST",
 			HandlerFunc: RestartComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/replicas/{podName}/logs",
+			Method:      "GET",
+			HandlerFunc: GetPodLog,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
+			Method:      "GET",
+			HandlerFunc: GetScheduledJobLog,
 		},
 	}
 
@@ -184,7 +195,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	// Need in cluster client in order to delete namespace using sufficient priviledges
+	// Need in cluster client in order to delete namespace using sufficient privileges
 	environmentHandler := Init(WithAccounts(accounts))
 	_, err := environmentHandler.CreateEnvironment(appName, envName)
 
@@ -284,7 +295,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	// Need in cluster client in order to delete namespace using sufficient priviledges
+	// Need in cluster client in order to delete namespace using sufficient privileges
 	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 
@@ -628,4 +639,158 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	}
 
 	utils.JSONResponse(w, r, "Success")
+}
+
+// GetPodLog Get logs of a single pod
+func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component log
+	// ---
+	// summary: Get logs from a deployed pod
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: podName
+	//   in: path
+	//   description: Name of pod
+	//   type: string
+	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	podName := mux.Vars(r)["podName"]
+
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = utils.ParseTimestamp(sinceTime)
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetLogs(appName, envName, podName, &since)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.StringResponse(w, r, log)
+}
+
+// GetScheduledJobLog Get log from a scheduled job
+func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job log
+	// ---
+	// summary: Get log from a scheduled job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: scheduledJobName
+	//   in: path
+	//   description: Name of scheduled job
+	//   type: string
+	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "scheduled job log"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	scheduledJobName := mux.Vars(r)["scheduledJobName"]
+
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = utils.ParseTimestamp(sinceTime)
+		if err != nil {
+			utils.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since)
+
+	if err != nil {
+		utils.ErrorResponse(w, r, err)
+		return
+	}
+
+	utils.StringResponse(w, r, log)
 }

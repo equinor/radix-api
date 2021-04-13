@@ -2,6 +2,7 @@ package pods
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,12 +36,36 @@ func (ph PodHandler) HandleGetEnvironmentPodLog(appName, envName, podName, conta
 	return ph.getPodLog(envNs, podName, containerName, sinceTime)
 }
 
+// HandleGetEnvironmentScheduledJobLog Get logs from scheduled job in environment
+func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, containerName string, sinceTime *time.Time) (string, error) {
+	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
+	return ph.getScheduledJobLog(envNs, scheduledJobName, containerName, sinceTime)
+}
+
 func (ph PodHandler) getPodLog(namespace, podName, containerName string, sinceTime *time.Time) (string, error) {
 	pod, err := ph.client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
+	return ph.getPodLogFor(pod, containerName, sinceTime, err)
+}
 
+func (ph PodHandler) getScheduledJobLog(namespace, scheduledJobName, containerName string, sinceTime *time.Time) (string, error) {
+	pods, err := ph.client.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", scheduledJobName),
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(pods.Items) <= 0 {
+		return "", nil
+	}
+
+	pod := &pods.Items[0]
+	return ph.getPodLogFor(pod, containerName, sinceTime, err)
+}
+
+func (ph PodHandler) getPodLogFor(pod *corev1.Pod, containerName string, sinceTime *time.Time, err error) (string, error) {
 	req := getPodLogRequest(ph.client, pod, containerName, false, sinceTime)
 	readCloser, err := req.Stream()
 	if err != nil {
@@ -71,6 +96,5 @@ func getPodLogRequest(client kubernetes.Interface, pod *corev1.Pod, containerNam
 		podLogOption.Container = containerName
 	}
 
-	req := client.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOption)
-	return req
+	return client.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOption)
 }
