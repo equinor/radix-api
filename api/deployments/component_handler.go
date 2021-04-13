@@ -39,11 +39,11 @@ func (deploy DeployHandler) GetComponentsForDeploymentName(appName, deploymentID
 		return nil, err
 	}
 
-	for _, deployment := range deployments {
-		if deployment.Name != deploymentID {
+	for _, depl := range deployments {
+		if depl.Name != deploymentID {
 			continue
 		}
-		return deploy.getComponents(appName, deployment)
+		return deploy.getComponents(appName, depl)
 	}
 
 	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
@@ -132,8 +132,8 @@ func GetComponentStateFromSpec(
 	var environmentVariables map[string]string
 
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	componentPodNames := &[]string{}
-	componentPods := &[]corev1.Pod{}
+	componentPodNames := []string{}
+	componentPods := []corev1.Pod{}
 	replicaSummaryList := []deploymentModels.ReplicaSummary{}
 	scheduledJobSummaryList := []deploymentModels.ScheduledJobSummary{}
 	status := deploymentModels.ConsistentComponent
@@ -146,7 +146,7 @@ func GetComponentStateFromSpec(
 		}
 		componentPodNames, componentPods = slicePodNamesAndPodsFromMap(componentPodMap)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
-		replicaSummaryList = getReplicaSummaryList(*componentPods)
+		replicaSummaryList = getReplicaSummaryList(componentPods)
 
 		scheduledJobs, err := getComponentJobsByNamespace(client, envNs, component.GetName()) //scheduledJobs
 		if err != nil {
@@ -154,7 +154,7 @@ func GetComponentStateFromSpec(
 		}
 		scheduledJobSummaryList = getScheduledJobSummaryList(scheduledJobs, podsOfScheduledJobsMap)
 		status, err = getStatusOfActiveDeployment(component,
-			deploymentStatus, environmentConfig, *componentPods)
+			deploymentStatus, environmentConfig, componentPods)
 		if err != nil {
 			return nil, err
 		}
@@ -170,14 +170,14 @@ func GetComponentStateFromSpec(
 	return componentBuilder.
 		WithComponent(component).
 		WithStatus(status).
-		WithPodNames(*componentPodNames).
+		WithPodNames(componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
 		BuildComponent(), nil
 }
 
-func getScheduledJobSummaryList(jobs []batchv1.Job, pods *map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
+func getScheduledJobSummaryList(jobs []batchv1.Job, pods map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
 	var summaries []deploymentModels.ScheduledJobSummary
 	for _, job := range jobs {
 		creationTimestamp := job.GetCreationTimestamp()
@@ -188,7 +188,7 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, pods *map[string][]corev1.Po
 			Ended:   utils.FormatTime(job.Status.CompletionTime),
 			Status:  models.GetStatusFromJobStatus(job.Status).String(),
 		}
-		if jobPods, ok := (*pods)[job.Name]; ok {
+		if jobPods, ok := pods[job.Name]; ok {
 			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 		}
 		summaries = append(summaries, summary)
@@ -209,17 +209,17 @@ func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.Replica
 	return replicaSummaries
 }
 
-func slicePodNamesAndPodsFromMap(podMap *map[string]corev1.Pod) (*[]string, *[]corev1.Pod) {
+func slicePodNamesAndPodsFromMap(podMap map[string]corev1.Pod) ([]string, []corev1.Pod) {
 	var names []string
 	var pods []corev1.Pod
-	for name, pod := range *podMap {
+	for name, pod := range podMap {
 		names = append(names, name)
 		pods = append(pods, pod)
 	}
-	return &names, &pods
+	return names, pods
 }
 
-func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) (*map[string]corev1.Pod, *map[string][]corev1.Pod, error) {
+func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) (map[string]corev1.Pod, map[string][]corev1.Pod, error) {
 	pods, err := client.CoreV1().Pods(envNs).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
@@ -239,7 +239,7 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 			scheduledJobPodMap[jobName] = append(list, pod)
 		}
 	}
-	return &componentPodMap, &scheduledJobPodMap, nil
+	return componentPodMap, scheduledJobPodMap, nil
 }
 
 func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]batchv1.Job, error) {
@@ -303,10 +303,10 @@ func runningReplicaDiffersFromSpec(component v1.RadixCommonDeployComponent, actu
 		actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
 }
 
-func getRadixEnvironmentVariables(pods *[]corev1.Pod) map[string]string {
+func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 	radixEnvironmentVariables := make(map[string]string)
 
-	for _, pod := range *pods {
+	for _, pod := range pods {
 		for _, container := range pod.Spec.Containers {
 			for _, envVariable := range container.Env {
 				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
