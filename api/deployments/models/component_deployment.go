@@ -1,9 +1,10 @@
 package models
 
 import (
+	"strings"
+
 	"github.com/equinor/radix-api/api/utils"
 	corev1 "k8s.io/api/core/v1"
-	"strings"
 )
 
 // Component describe an component part of an deployment
@@ -157,7 +158,7 @@ type ReplicaSummary struct {
 	// RestartCount count of restarts of a component container inside a pod
 	//
 	// required: false
-	RestartCount int32
+	RestartCount int32 `json:"restartCount"`
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
