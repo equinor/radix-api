@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -62,7 +63,7 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 
 	}
 
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(secretObjName, metav1.GetOptions{})
+	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(context.TODO(), secretObjName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return nil, utils.TypeMissingError("Secret object does not exist", err)
 	}
@@ -76,7 +77,7 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 
 	secretObject.Data[partName] = []byte(newSecretValue)
 
-	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(secretObject)
+	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(context.TODO(), secretObject, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +106,12 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName string, activeDeployment *deploymentModels.Deployment) ([]environmentModels.Secret, error) {
 	var appNamespace = k8sObjectUtils.GetAppNamespace(appName)
 	var envNamespace = k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(appName, metav1.GetOptions{})
+	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return []environmentModels.Secret{}, nil
 	}
 
-	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(activeDeployment.Name, metav1.GetOptions{})
+	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), activeDeployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return []environmentModels.Secret{}, nil
 	}
@@ -180,7 +181,7 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1
 	for componentName, secretNamesMap := range componentSecretsMap {
 		secretObjectName := k8sObjectUtils.GetComponentSecretName(componentName)
 
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretObjectName, metav1.GetOptions{})
+		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretObjectName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for secretName := range secretNamesMap {
@@ -241,7 +242,7 @@ func (eh EnvironmentHandler) getSecretsFromComponentVolumeMounts(component v1.Ra
 			accountkeyStatus := environmentModels.Consistent.String()
 			accountnameStatus := environmentModels.Consistent.String()
 
-			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(secretName, metav1.GetOptions{})
+			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 			if err != nil {
 				log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
 				accountkeyStatus = environmentModels.Pending.String()
@@ -298,7 +299,7 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 		certStatus := environmentModels.Consistent.String()
 		keyStatus := environmentModels.Consistent.String()
 
-		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(externalAlias.Alias, metav1.GetOptions{})
+		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias.Alias, metav1.GetOptions{})
 		if err != nil {
 			log.Warnf("Error on retrieving secret '%s'. Message: %s", externalAlias.Alias, err.Error())
 			certStatus = environmentModels.Pending.String()

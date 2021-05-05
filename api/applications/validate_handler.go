@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,7 +26,7 @@ const containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
 
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
 func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
-	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -46,7 +47,7 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 	namespace := utils.GetAppNamespace(rr.Name)
 	jobApplied, err := createCloneJob(client, rr)
 
-	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(metav1.ListOptions{
+	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(context.TODO(), metav1.ListOptions{
 		FieldSelector: fields.Set{"metadata.name": jobApplied.Name}.AsSelector().String(),
 	})
 	if err != nil {
@@ -131,7 +132,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		},
 	}
 
-	jobApplied, err := client.BatchV1().Jobs(namespace).Create(&job)
+	jobApplied, err := client.BatchV1().Jobs(namespace).Create(context.TODO(), &job, metav1.CreateOptions{})
 
 	if err != nil {
 		log.Errorf("%v", err)
@@ -140,6 +141,6 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 }
 
 func cleanup(client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
-	err := client.BatchV1().Jobs(namespace).Delete(jobApplied.Name, &metav1.DeleteOptions{})
+	err := client.BatchV1().Jobs(namespace).Delete(context.TODO(), jobApplied.Name, metav1.DeleteOptions{})
 	return err
 }

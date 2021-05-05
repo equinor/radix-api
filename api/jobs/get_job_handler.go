@@ -1,9 +1,11 @@
 package jobs
 
 import (
+	"context"
+	"sort"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
 
 	"strings"
 
@@ -68,7 +70,7 @@ func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSumm
 
 // GetApplicationJob Handler for GetApplicationJob
 func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
-	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), jobName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +111,7 @@ func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
 }
 
 func (jh JobHandler) getJobsInNamespace(radixClient radixclient.Interface, namespace string) ([]*jobModels.JobSummary, error) {
-	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
+	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

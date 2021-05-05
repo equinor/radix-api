@@ -1,6 +1,7 @@
 package buildstatus
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -29,7 +30,7 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env stri
 	namespace := fmt.Sprintf("%s-app", appName)
 
 	// Get list of Jobs in the namespace
-	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(metav1.ListOptions{})
+	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 
 	if err != nil {
 		return nil, err

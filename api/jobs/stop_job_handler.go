@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"fmt"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -14,7 +15,7 @@ import (
 func (jh JobHandler) StopJob(appName, jobName string) error {
 	log.Infof("Stopping job: %s, %s", jobName, appName)
 	appNamespace := crdUtils.GetAppNamespace(appName)
-	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Get(jobName, metav1.GetOptions{})
+	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 
 	if errors.IsNotFound(err) {
 		return jobModels.PipelineNotFoundError(appName, jobName)
@@ -25,7 +26,7 @@ func (jh JobHandler) StopJob(appName, jobName string) error {
 
 	job.Spec.Stop = true
 
-	_, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Update(job)
+	_, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Update(context.TODO(), job, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to patch job object: %v", err)
 	}

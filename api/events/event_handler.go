@@ -1,6 +1,8 @@
 package events
 
 import (
+	"context"
+
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -41,7 +43,7 @@ func (eh *eventHandler) GetEvents(namespaceFunc NamespaceFunc) ([]*eventModels.E
 }
 
 func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error) {
-	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(metav1.ListOptions{})
+	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +76,7 @@ func getObjectState(event k8v1.Event, kubeClient kubernetes.Interface) *eventMod
 
 	switch obj.Kind {
 	case "Pod":
-		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(obj.Name, metav1.GetOptions{}); err == nil {
+		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{}); err == nil {
 			state := getPodState(pod)
 			builder.WithPodState(state)
 			build = true
