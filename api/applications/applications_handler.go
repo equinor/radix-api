@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -62,7 +63,7 @@ func (ah ApplicationHandler) getServiceAccount() models.Account {
 
 // GetApplication handler for GetApplication
 func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +112,7 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 
 	tokenName := machineUserSA.Secrets[0].Name
 	log.Debugf("delete service account for app %s and machine user token: %s", appName, tokenName)
-	err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(tokenName, &metav1.DeleteOptions{})
+	err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(context.TODO(), tokenName, metav1.DeleteOptions{})
 
 	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
 	queryInterval := time.Tick(time.Duration(1) * time.Second)
@@ -166,7 +167,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(radixRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(context.TODO(), radixRegistration, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
 	// Make check that this is an existing application
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +295,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		}
 
 		payloadBytes, _ := json.Marshal(payload)
-		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(existingRegistration.GetName(), types.JSONPatchType, payloadBytes)
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(context.TODO(), existingRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -307,12 +308,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 // DeleteApplication handler for DeleteApplication
 func (ah ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
-	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Delete(appName, &metav1.DeleteOptions{})
+	err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Delete(context.TODO(), appName, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -428,7 +429,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +488,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	for _, environment := range environments {
 		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.getUserAccount().Client.NetworkingV1beta1().Ingresses(environmentNamespace).List(metav1.ListOptions{
+		ingresses, err := ah.getUserAccount().Client.NetworkingV1beta1().Ingresses(environmentNamespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
 		})
 
@@ -522,7 +523,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 
 	tokenName := machineUserSA.Secrets[0].Name
 	log.Debugf("get secrets for machine user token %s in app %s of namespace %s", tokenName, appName, namespace)
-	token, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(tokenName, metav1.GetOptions{})
+	token, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(context.TODO(), tokenName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +541,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
 	machineUserName := defaults.GetMachineUserRoleName(appName)
 	log.Debugf("get service account for app %s in namespace %s and machine user: %s", appName, namespace, machineUserName)
-	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(machineUserName, metav1.GetOptions{})
+	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), machineUserName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +746,7 @@ func AnApplicationRegistration() Builder {
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
 func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
 	// Make check that this is an existing application and user has access to it
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -769,7 +770,7 @@ func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeplo
 		return nil, err
 	}
 
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(existingRegistration)
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -14,12 +16,12 @@ import (
 func CreateApplicationConfig(client kubernetes.Interface,
 	radixClient radixclient.Interface,
 	appName string) (*applicationconfig.ApplicationConfig, error) {
-	radixApp, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixApp, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	registration, err := radixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	registration, err := radixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
