@@ -643,7 +643,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 
 // GetPodLog Get logs of a single pod
 func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component log
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component replicaLog
 	// ---
 	// summary: Get logs from a deployed pod
 	// parameters:
@@ -720,7 +720,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 // GetScheduledJobLog Get log from a scheduled job
 func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job log
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job jobLog
 	// ---
 	// summary: Get log from a scheduled job
 	// parameters:
