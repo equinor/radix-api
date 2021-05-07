@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 
 // HandleGetApplicationJobLogs Gets logs for an job of an application
 func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string, sinceTime *time.Time) ([]jobModels.StepLog, error) {
-	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(jobName, metav1.GetOptions{})
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), jobName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil, jobModels.PipelineNotFoundError(appName, jobName)
 	}

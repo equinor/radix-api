@@ -1,10 +1,12 @@
 package environments
 
 import (
+	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/pods"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/pods"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -74,7 +76,7 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		// This is no error, as the application may only have been just registered
 		return []*environmentModels.EnvironmentSummary{}, nil
@@ -96,7 +98,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 
 // GetEnvironment Handler for GetEnvironment
 func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -158,19 +160,20 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.RadixEnvironment, error) {
 
 	// ensure application exists
-	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// idempotent creation of RadixEnvironment
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(builders.
+	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(context.TODO(), builders.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(appName).
 		WithEnvironmentName(envName).
 		WithRegistrationOwner(rr).
-		BuildRE())
+		BuildRE(),
+		metav1.CreateOptions{})
 	// if an error is anything other than already-exist, return it
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return nil, err
@@ -183,7 +186,7 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(uniqueName, metav1.GetOptions{})
+	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(context.TODO(), uniqueName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -194,7 +197,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	}
 
 	// idempotent removal of RadixEnvironment
-	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(uniqueName, &metav1.DeleteOptions{})
+	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(context.TODO(), uniqueName, metav1.DeleteOptions{})
 	// if an error is anything other than not-found, return it
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -205,7 +208,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
 // GetEnvironmentEvents Handler for GetEnvironmentEvents
 func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +230,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(uniqueName, metav1.GetOptions{})
+	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(context.TODO(), uniqueName, metav1.GetOptions{})
 	exists := err == nil
 
 	if !exists {
@@ -240,7 +243,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 		return environmentModels.Orphan, nil
 	}
 
-	_, err = eh.client.CoreV1().Namespaces().Get(uniqueName, metav1.GetOptions{})
+	_, err = eh.client.CoreV1().Namespaces().Get(context.TODO(), uniqueName, metav1.GetOptions{})
 	if err != nil {
 		// exists but does not have underlying resources
 		return environmentModels.Pending, nil
@@ -314,7 +317,7 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 
-	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(metav1.ListOptions{
+	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(context.TODO(), metav1.ListOptions{
 		LabelSelector: appLabel,
 	})
 

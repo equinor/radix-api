@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,8 +16,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 
-	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/coreos/prometheus-operator/pkg/client/versioned/fake"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -25,6 +24,8 @@ import (
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -487,7 +488,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironmentName(anyOrphanedEnvironment))
 
 	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(re)
+	radix.RadixV1().RadixEnvironments().Update(context.TODO(), re, metav1.UpdateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))
@@ -774,7 +775,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 	rr := builders.ARadixRegistration().
 		WithName(appName).
 		WithConfigBranch("")
-	radixClient.RadixV1().RadixRegistrations().Create(rr.BuildRR())
+	radixClient.RadixV1().RadixRegistrations().Create(context.TODO(), rr.BuildRR(), metav1.CreateOptions{})
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
@@ -1158,7 +1159,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 			return
 
 		case <-tick:
-			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(metav1.ListOptions{})
+			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
 			if len(jobs.Items) > 0 {
 				job := jobs.Items[0]
 
@@ -1168,7 +1169,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 					job.Status.Failed = int32(1)
 				}
 
-				kubeclient.BatchV1().Jobs(appNamespace).Update(&job)
+				kubeclient.BatchV1().Jobs(appNamespace).Update(context.TODO(), &job, metav1.UpdateOptions{})
 			}
 		}
 	}
@@ -1194,7 +1195,7 @@ func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, 
 }
 
 func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
-	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(metav1.ListOptions{})
+	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

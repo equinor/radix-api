@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -68,7 +69,7 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
-		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{}); err != nil {
+		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{}); err != nil {
 			ErrorResponse(w, r, err)
 			return
 		}

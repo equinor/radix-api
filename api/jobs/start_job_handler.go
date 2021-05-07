@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -23,13 +24,13 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(appName, metav1.GetOptions{})
+	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 
 	job := jh.createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(job)
+	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}

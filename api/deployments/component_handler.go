@@ -1,7 +1,11 @@
 package deployments
 
 import (
+	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -18,8 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"sort"
-	"strings"
 )
 
 const (
@@ -51,12 +53,12 @@ func (deploy DeployHandler) GetComponentsForDeploymentName(appName, deploymentID
 
 func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(deployment.Name, metav1.GetOptions{})
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(appName, metav1.GetOptions{})
+	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	components := []*deploymentModels.Component{}
 
 	for _, component := range rd.Spec.Components {
@@ -90,7 +92,7 @@ func (deploy DeployHandler) getComponent(component v1.RadixCommonDeployComponent
 		return nil, err
 	}
 
-	hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(component.GetName(), metav1.GetOptions{})
+	hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -220,7 +222,7 @@ func slicePodNamesAndPodsFromMap(podMap map[string]corev1.Pod) ([]string, []core
 }
 
 func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) (map[string]corev1.Pod, map[string][]corev1.Pod, error) {
-	pods, err := client.CoreV1().Pods(envNs).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
@@ -247,7 +249,7 @@ func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentNa
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 	}
-	jobList, err := client.BatchV1().Jobs(envNs).List(metav1.ListOptions{
+	jobList, err := client.BatchV1().Jobs(envNs).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labelSelectors).String(),
 	})
 	if err != nil {
