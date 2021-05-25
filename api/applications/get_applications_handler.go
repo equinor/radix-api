@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -19,7 +20,7 @@ type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bo
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
 func (ah ApplicationHandler) GetApplications(sshRepo string, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
-	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(metav1.ListOptions{})
+	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -120,5 +121,5 @@ func hasAccess(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 }
 
 func postSelfSubjectAccessReviews(client kubernetes.Interface, sar authorizationapi.SelfSubjectAccessReview) (*authorizationapi.SelfSubjectAccessReview, error) {
-	return client.AuthorizationV1().SelfSubjectAccessReviews().Create(&sar)
+	return client.AuthorizationV1().SelfSubjectAccessReviews().Create(context.TODO(), &sar, metav1.CreateOptions{})
 }

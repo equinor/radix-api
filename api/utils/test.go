@@ -1,7 +1,6 @@
 package utils
 
 import (
-	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -10,6 +9,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"k8s.io/client-go/kubernetes"
 )
 

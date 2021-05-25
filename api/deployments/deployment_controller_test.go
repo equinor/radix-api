@@ -1,6 +1,7 @@
 package deployments
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -9,8 +10,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/stretchr/testify/assert"
 
-	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/coreos/prometheus-operator/pkg/client/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -18,6 +17,8 @@ import (
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -409,7 +410,7 @@ func createNamespace(kubeclient kubernetes.Interface, ns string) {
 		},
 	}
 
-	kubeclient.CoreV1().Namespaces().Create(&namespace)
+	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {

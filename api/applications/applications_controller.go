@@ -2,16 +2,14 @@ package applications
 
 import (
 	"encoding/json"
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-
-	"github.com/graphql-go/graphql"
 )
 
 const rootPath = ""
@@ -755,30 +753,4 @@ func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *
 	}
 
 	utils.JSONResponse(w, r, &jobSummary)
-}
-
-func getDataFromQuery(arg string, radixApplication *applicationModels.ApplicationSummary) (*graphql.Result, error) {
-	// Schema
-	fields := graphql.Fields{
-		"name": &graphql.Field{
-			Type: graphql.String,
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return radixApplication.Name, nil
-			},
-		},
-	}
-	rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
-	schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
-	schema, err := graphql.NewSchema(schemaConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	params := graphql.Params{Schema: schema, RequestString: arg}
-	r := graphql.Do(params)
-	if len(r.Errors) > 0 {
-		return nil, fmt.Errorf("Failed to execute graphql operation, errors: %+v", r.Errors)
-	}
-
-	return r, nil
 }

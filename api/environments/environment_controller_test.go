@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -8,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	prometheusclient "github.com/coreos/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/coreos/prometheus-operator/pkg/client/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
@@ -28,6 +27,8 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -584,7 +585,7 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(&namespace)
+	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
 
 	// Component secret
 	secretObject := corev1.Secret{
@@ -594,7 +595,7 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 		},
 		Data: map[string][]byte{anySecretName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(&secretObject)
+	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
 
 	// Job secret
 	secretObject = corev1.Secret{
@@ -604,7 +605,7 @@ func executeUpdateSecretTest(oldSecretValue, updateEnvironment, updateComponent,
 		},
 		Data: map[string][]byte{anySecretName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(&secretObject)
+	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, updateEnvironment, updateComponent, updateSecretName), parameters)
@@ -758,7 +759,7 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(&namespace)
+	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
 
 	for componentName, clusterComponentSecrets := range clusterComponentSecretsMap {
 		secretObject := corev1.Secret{
@@ -768,7 +769,7 @@ func applyTestEnvironmentSecrets(commonTestUtils *commontest.Utils, kubeclient k
 			},
 			Data: clusterComponentSecrets,
 		}
-		kubeclient.CoreV1().Secrets(ns).Create(&secretObject)
+		kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
 	}
 }
 
@@ -1205,7 +1206,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas == zeroReplicas)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
@@ -1237,7 +1238,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, componentName))
@@ -1257,7 +1258,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(rd.GetName(), metav1.GetOptions{})
+	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
 	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
 	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
 }
@@ -1319,11 +1320,11 @@ func TestGetEnvironmentSecretsForDeploymentForExternalAlias(t *testing.T) {
 		}
 	}
 
-	kubeclient.CoreV1().Secrets(appName + "-" + environmentName).Create(&corev1.Secret{
+	kubeclient.CoreV1().Secrets(appName+"-"+environmentName).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: alias,
 		},
-	})
+	}, metav1.CreateOptions{})
 
 	secrets, err = handler.GetEnvironmentSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
 		Name: deployment.Name,
@@ -1424,11 +1425,11 @@ func initHandler(client kubernetes.Interface,
 
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
 	podSpec := getPodSpec(componentName)
-	kubeclient.CoreV1().Pods(namespace).Create(podSpec)
+	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
 }
 
 func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
-	kubeclient.CoreV1().Pods(namespace).Delete(getComponentPodName(componentName), &metav1.DeleteOptions{})
+	kubeclient.CoreV1().Pods(namespace).Delete(context.TODO(), getComponentPodName(componentName), metav1.DeleteOptions{})
 }
 
 func getPodSpec(componentName string) *corev1.Pod {

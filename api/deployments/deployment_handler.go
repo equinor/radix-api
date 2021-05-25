@@ -1,12 +1,14 @@
 package deployments
 
 import (
+	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/pods"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/pods"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/equinor/radix-api/api/utils"
 	"k8s.io/client-go/kubernetes"
@@ -39,7 +41,7 @@ func Init(accounts models.Accounts) DeployHandler {
 func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
-	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(appName, metav1.GetOptions{})
+	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return "", deploymentModels.NonExistingApplication(err, appName)
 	}
@@ -116,7 +118,7 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 	}
 
 	namespace := crdUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
-	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +152,7 @@ func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, l
 	}
 
 	listOptions.LabelSelector = labelSelector
-	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(listOptions)
+	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(context.TODO(), listOptions)
 
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"testing"
 
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -101,14 +102,16 @@ func createKubernetesEvent(client *kubefake.Clientset, namespace,
 func createKubernetesPod(client *kubefake.Clientset, name, namespace string,
 	started, ready bool,
 	restartCount int32) {
-	client.CoreV1().Pods(namespace).Create(&v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Status: v1.PodStatus{
-			ContainerStatuses: []v1.ContainerStatus{
-				{Started: &started, Ready: ready, RestartCount: restartCount},
+	client.CoreV1().Pods(namespace).Create(context.TODO(),
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			Status: v1.PodStatus{
+				ContainerStatuses: []v1.ContainerStatus{
+					{Started: &started, Ready: ready, RestartCount: restartCount},
+				},
 			},
 		},
-	})
+		metav1.CreateOptions{})
 }
