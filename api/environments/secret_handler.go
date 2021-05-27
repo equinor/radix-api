@@ -8,6 +8,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 
@@ -23,6 +24,7 @@ const (
 	tlsCertPart       = "tls.crt"
 	keyPartSuffix     = "-key"
 	tlsKeyPart        = "tls.key"
+	clientCertSuffix  = "-clientcertca"
 )
 
 // ChangeEnvironmentComponentSecret handler for HandleChangeEnvironmentComponentSecret
@@ -55,6 +57,11 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		// This is the account name part of the blobfuse cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
 		partName = defaults.BlobFuseCredsAccountNamePart
+
+	} else if strings.HasSuffix(secretName, clientCertSuffix) {
+		// This is the account name part of the client certificate secret
+		secretObjName = secretName
+		partName = "ca.crt"
 
 	} else {
 		// This is a regular secret
@@ -131,6 +138,11 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 		return nil, err
 	}
 
+	secretsFromAuthenticationClientCertificate, err := eh.getSecretsFromAuthenticationClientCertificate(rd, envNamespace)
+	if err != nil {
+		return nil, err
+	}
+
 	secrets := make([]environmentModels.Secret, 0)
 	for _, secretFromVolumeMounts := range secretsFromVolumeMounts {
 		secrets = append(secrets, secretFromVolumeMounts)
@@ -142,6 +154,10 @@ func (eh EnvironmentHandler) GetEnvironmentSecretsForDeployment(appName, envName
 
 	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
 		secrets = append(secrets, secretFromLatestDeployment)
+	}
+
+	for _, secretFromAuthenticationClientCertificate := range secretsFromAuthenticationClientCertificate {
+		secrets = append(secrets, secretFromAuthenticationClientCertificate)
 	}
 
 	return secrets, nil
@@ -160,6 +176,7 @@ func (eh EnvironmentHandler) getSecretsForComponent(component v1.RadixCommonDepl
 
 	return secretNamesMap
 }
+
 func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
 	componentSecretsMap := make(map[string]map[string]bool)
 	for _, component := range activeDeployment.Spec.Components {
@@ -286,6 +303,44 @@ func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.Rad
 	}
 
 	return secretDTOsMap, nil
+}
+
+func (eh EnvironmentHandler) getSecretsFromAuthenticationClientCertificate(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
+	secretDTOsMap := make(map[string]environmentModels.Secret)
+
+	for _, component := range activeDeployment.Spec.Components {
+		secret := eh.getSecretsFromComponentAuthenticationClientCertificate(&component, envNamespace)
+		if secret != nil {
+			secretDTOsMap[secret.Name] = *secret
+		}
+	}
+
+	return secretDTOsMap, nil
+}
+
+func (eh EnvironmentHandler) getSecretsFromComponentAuthenticationClientCertificate(component v1.RadixCommonDeployComponent, envNamespace string) *environmentModels.Secret {
+	if auth := component.GetAuthentication(); auth != nil && component.GetPublicPort() != "" && deployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
+		secretName := k8sObjectUtils.GetComponentClientCertificateSecretName(component.GetName())
+		secretStatus := environmentModels.Consistent.String()
+
+		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		if err != nil {
+			secretStatus = environmentModels.Pending.String()
+		} else {
+			secretValue := strings.TrimSpace(string(secret.Data["ca.crt"]))
+			if strings.EqualFold(secretValue, secretDefaultData) {
+				secretStatus = environmentModels.Pending.String()
+			}
+		}
+
+		return &environmentModels.Secret{
+			Name:      secretName,
+			Component: component.GetName(),
+			Status:    secretStatus,
+		}
+	}
+
+	return nil
 }
 
 func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, envName, envNamespace string) (map[string]environmentModels.Secret, error) {
