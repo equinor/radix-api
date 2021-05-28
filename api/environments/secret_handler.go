@@ -101,12 +101,12 @@ func (eh EnvironmentHandler) GetEnvironmentSecrets(appName, envName string) ([]e
 		return nil, err
 	}
 
-	deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
+	depl, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
 	if err != nil {
 		return nil, err
 	}
 
-	return eh.GetEnvironmentSecretsForDeployment(appName, envName, deployment)
+	return eh.GetEnvironmentSecretsForDeployment(appName, envName, depl)
 }
 
 // GetEnvironmentSecretsForDeployment Lists environment secrets for application
@@ -251,38 +251,52 @@ func (eh EnvironmentHandler) getSecretsFromLatestDeployment(activeDeployment *v1
 
 func (eh EnvironmentHandler) getSecretsFromComponentVolumeMounts(component v1.RadixCommonDeployComponent, envNamespace string) []environmentModels.Secret {
 	var secrets []environmentModels.Secret
-
 	for _, volumeMount := range component.GetVolumeMounts() {
-		// The only type we currently handle
-		if volumeMount.Type == v1.MountTypeBlob {
-			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
-			accountkeyStatus := environmentModels.Consistent.String()
-			accountnameStatus := environmentModels.Consistent.String()
+		switch volumeMount.Type {
+		case v1.MountTypeBlob:
+			accountKeySecret, accountNameSecret := eh.getBlobFuseSecrets(component, envNamespace, volumeMount)
+			secrets = append(secrets, accountKeySecret)
+			secrets = append(secrets, accountNameSecret)
+		case v1.MountTypeBlobCsiAzure, v1.MountTypeFileCsiAzure:
+			accountKeySecret, accountNameSecret := eh.getCsiAzureSecrets(component, envNamespace, volumeMount)
+			secrets = append(secrets, accountKeySecret)
+			secrets = append(secrets, accountNameSecret)
+		}
+	}
+	return secrets
+}
 
-			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
-			if err != nil {
-				log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
-				accountkeyStatus = environmentModels.Pending.String()
-				accountnameStatus = environmentModels.Pending.String()
-			} else {
-				accountkeyValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountKeyPart]))
-				if strings.EqualFold(accountkeyValue, secretDefaultData) {
-					accountkeyStatus = environmentModels.Pending.String()
-				}
-				accountnameValue := strings.TrimSpace(string(secretValue.Data[defaults.BlobFuseCredsAccountNamePart]))
-				if strings.EqualFold(accountnameValue, secretDefaultData) {
-					accountnameStatus = environmentModels.Pending.String()
-				}
-			}
+func (eh EnvironmentHandler) getBlobFuseSecrets(component v1.RadixCommonDeployComponent, envNamespace string, volumeMount v1.RadixVolumeMount) (environmentModels.Secret, environmentModels.Secret) {
+	return eh.getAzureVolumeMountSecrets(component, envNamespace, defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name), defaults.BlobFuseCredsAccountNamePart, defaults.BlobFuseCredsAccountKeyPart, defaults.BlobFuseCredsAccountNamePartSuffix, defaults.BlobFuseCredsAccountKeyPartSuffix)
+}
 
-			accountKeySecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountKeyPartSuffix, Component: component.GetName(), Status: accountkeyStatus}
-			secrets = append(secrets, accountKeySecretDTO)
-			accountNameSecretDTO := environmentModels.Secret{Name: secretName + defaults.BlobFuseCredsAccountNamePartSuffix, Component: component.GetName(), Status: accountnameStatus}
-			secrets = append(secrets, accountNameSecretDTO)
+func (eh EnvironmentHandler) getCsiAzureSecrets(component v1.RadixCommonDeployComponent, envNamespace string, volumeMount v1.RadixVolumeMount) (environmentModels.Secret, environmentModels.Secret) {
+	return eh.getAzureVolumeMountSecrets(component, envNamespace, defaults.GetCsiAzureCredsSecretName(component.GetName(), volumeMount.Name), defaults.CsiAzureCredsAccountNamePart, defaults.CsiAzureCredsAccountKeyPart, defaults.CsiAzureCredsAccountNamePartSuffix, defaults.CsiAzureCredsAccountKeyPartSuffix)
+}
+
+func (eh EnvironmentHandler) getAzureVolumeMountSecrets(component v1.RadixCommonDeployComponent, envNamespace, secretName, accountNamePart, accountKeyPart, accountNamePartSuffix, accountKeyPartSuffix string) (environmentModels.Secret, environmentModels.Secret) {
+	accountkeyStatus := environmentModels.Consistent.String()
+	accountnameStatus := environmentModels.Consistent.String()
+
+	secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	if err != nil {
+		log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+		accountkeyStatus = environmentModels.Pending.String()
+		accountnameStatus = environmentModels.Pending.String()
+	} else {
+		accountkeyValue := strings.TrimSpace(string(secretValue.Data[accountKeyPart]))
+		if strings.EqualFold(accountkeyValue, secretDefaultData) {
+			accountkeyStatus = environmentModels.Pending.String()
+		}
+		accountnameValue := strings.TrimSpace(string(secretValue.Data[accountNamePart]))
+		if strings.EqualFold(accountnameValue, secretDefaultData) {
+			accountnameStatus = environmentModels.Pending.String()
 		}
 	}
 
-	return secrets
+	accountKeySecretDTO := environmentModels.Secret{Name: secretName + accountKeyPartSuffix, Component: component.GetName(), Status: accountkeyStatus}
+	accountNameSecretDTO := environmentModels.Secret{Name: secretName + accountNamePartSuffix, Component: component.GetName(), Status: accountnameStatus}
+	return accountKeySecretDTO, accountNameSecretDTO
 }
 
 func (eh EnvironmentHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]environmentModels.Secret, error) {
@@ -379,14 +393,4 @@ func (eh EnvironmentHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplicati
 	}
 
 	return secretDTOsMap, nil
-}
-
-func secretContained(secrets []environmentModels.Secret, theSecret environmentModels.Secret) bool {
-	for _, aSecret := range secrets {
-		if aSecret.Name == theSecret.Name &&
-			aSecret.Component == theSecret.Component {
-			return true
-		}
-	}
-	return false
 }
