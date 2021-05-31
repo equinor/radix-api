@@ -2,7 +2,9 @@ package models
 
 import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 const (
@@ -107,6 +109,10 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
 		}
+	}
+
+	if auth := component.GetAuthentication(); auth != nil && component.GetPublicPort() != "" && deployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
+		b.secrets = append(b.secrets, utils.GetComponentClientCertificateSecretName(component.GetName()))
 	}
 
 	b.environmentVariables = *component.GetEnvironmentVariables()
