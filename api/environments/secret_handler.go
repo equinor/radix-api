@@ -58,6 +58,16 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
 		partName = defaults.BlobFuseCredsAccountNamePart
 
+	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix) {
+		// This is the account key part of the Csi Azure cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix)
+		partName = defaults.CsiAzureCredsAccountKeyPart
+
+	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix) {
+		// This is the account name part of the Csi Azure cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix)
+		partName = defaults.CsiAzureCredsAccountNamePart
+
 	} else if strings.HasSuffix(secretName, clientCertSuffix) {
 		// This is the account name part of the client certificate secret
 		secretObjName = secretName
