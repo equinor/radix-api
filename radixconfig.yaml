@@ -10,9 +10,6 @@ spec:
     - name: qa
       build:
         from: master
-    - name: dev
-      build:
-        from: 88595-csi-volume-driver
   components:
     - name: "server"
       src: "."
@@ -52,8 +49,3 @@ spec:
           variables:
             PIPELINE_IMG_TAG: "release-latest"
             GOMAXPROCS: 2
-        - environment: dev
-          runAsNonRoot: true
-          variables:
-            PIPELINE_IMG_TAG: "master-latest"
-            GOMAXPROCS: 1
