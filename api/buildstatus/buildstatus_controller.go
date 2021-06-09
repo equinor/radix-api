@@ -2,6 +2,7 @@ package buildstatus
 
 import (
 	"net/http"
+	"time"
 
 	build_models "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -66,6 +67,10 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 		utils.ErrorResponse(w, r, err)
 		return
 	}
-
+	header := w.Header()
+	header.Set("Cache-Control", "no-cache")
+	// Set expires to a time in the past to disable Github caching when embedding in markdown files
+	cacheUntil := time.Now().Add(-24 * time.Hour).Format(http.TimeFormat)
+	header.Set("Expires", cacheUntil)
 	utils.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", *buildStatus)
 }
