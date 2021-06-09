@@ -12,7 +12,7 @@ spec:
         from: master
     - name: dev
       build:
-        from: 88595-csi-volume-driver
+        from: 47198-embed-badge-svg
   components:
     - name: "server"
       src: "."
