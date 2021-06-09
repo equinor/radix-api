@@ -68,9 +68,10 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 		return
 	}
 	header := w.Header()
-	header.Set("Cache-Control", "no-cache")
+	header.Add("Cache-Control", "no-cache")
+	header.Add("Cache-Control", "no-store")
 	// Set expires to a time in the past to disable Github caching when embedding in markdown files
-	cacheUntil := time.Now().Add(-24 * time.Hour).Format(http.TimeFormat)
+	cacheUntil := time.Date(1984, 1, 1, 0, 0, 0, 0, time.UTC).Format(http.TimeFormat)
 	header.Set("Expires", cacheUntil)
 	utils.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", *buildStatus)
 }

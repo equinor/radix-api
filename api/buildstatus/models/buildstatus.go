@@ -19,6 +19,7 @@ const buildStatusFailing = "failing"
 const buildStatusPassing = "passing"
 const buildStatusStopped = "stopped"
 const buildStatusPending = "pending"
+const buildStatusRunning = "running"
 const buildStatusUnknown = "unknown"
 
 type Status interface {
@@ -56,15 +57,18 @@ func (rbs *radixBuildStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, 
 }
 
 func translateCondition(condition v1.RadixJobCondition) string {
-	if condition == v1.JobSucceeded {
+	switch condition {
+	case v1.JobSucceeded:
 		return buildStatusPassing
-	} else if condition == v1.JobFailed {
+	case v1.JobFailed:
 		return buildStatusFailing
-	} else if condition == v1.JobStopped {
+	case v1.JobStopped:
 		return buildStatusStopped
-	} else if condition == v1.JobWaiting || condition == v1.JobQueued {
+	case v1.JobWaiting, v1.JobQueued:
 		return buildStatusPending
-	} else {
+	case v1.JobRunning:
+		return buildStatusRunning
+	default:
 		return buildStatusUnknown
 	}
 }
@@ -109,12 +113,14 @@ func getColor(status string) string {
 	case buildStatusFailing:
 		return "#e05d44"
 	case buildStatusPending:
-		return "9f9f9f"
+		return "#9f9f9f"
 	case buildStatusStopped:
 		return "#e05d44"
 	case buildStatusUnknown:
-		return "9f9f9f"
+		return "#9f9f9f"
+	case buildStatusRunning:
+		return "#33cccc"
 	default:
-		return "9f9f9f"
+		return "#9f9f9f"
 	}
 }
