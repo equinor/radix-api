@@ -15,12 +15,11 @@ import (
 //go:embed badges/build-status.svg
 var statusBadge string
 
-const BUILD_STATUS_SVG_RELATIVE_PATH = "badges/build-status.svg"
-const BUILD_STATUS_FAILING = "failing"
-const BUILD_STATUS_PASSING = "passing"
-const BUILD_STATUS_STOPPED = "stopped"
-const BUILD_STATUS_PENDING = "pending"
-const BUILD_STATUS_UNKNOWN = "unknown"
+const buildStatusFailing = "failing"
+const buildStatusPassing = "passing"
+const buildStatusStopped = "stopped"
+const buildStatusPending = "pending"
+const buildStatusUnknown = "unknown"
 
 type Status interface {
 	WriteSvg(condition v1.RadixJobCondition) (*[]byte, error)
@@ -58,15 +57,15 @@ func (rbs *radixBuildStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, 
 
 func translateCondition(condition v1.RadixJobCondition) string {
 	if condition == v1.JobSucceeded {
-		return BUILD_STATUS_PASSING
+		return buildStatusPassing
 	} else if condition == v1.JobFailed {
-		return BUILD_STATUS_FAILING
+		return buildStatusFailing
 	} else if condition == v1.JobStopped {
-		return BUILD_STATUS_STOPPED
+		return buildStatusStopped
 	} else if condition == v1.JobWaiting || condition == v1.JobQueued {
-		return BUILD_STATUS_PENDING
+		return buildStatusPending
 	} else {
-		return BUILD_STATUS_UNKNOWN
+		return buildStatusUnknown
 	}
 }
 
@@ -105,15 +104,15 @@ func calculateWidth(charWidth float32, value string) int {
 
 func getColor(status string) string {
 	switch status {
-	case BUILD_STATUS_PASSING:
+	case buildStatusPassing:
 		return "#4c1"
-	case BUILD_STATUS_FAILING:
+	case buildStatusFailing:
 		return "#e05d44"
-	case BUILD_STATUS_PENDING:
+	case buildStatusPending:
 		return "9f9f9f"
-	case BUILD_STATUS_STOPPED:
+	case buildStatusStopped:
 		return "#e05d44"
-	case BUILD_STATUS_UNKNOWN:
+	case buildStatusUnknown:
 		return "9f9f9f"
 	default:
 		return "9f9f9f"
