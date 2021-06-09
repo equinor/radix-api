@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"strings"
 	"text/template"
@@ -10,7 +11,11 @@ import (
 	"github.com/marstr/guid"
 )
 
-const BUILD_STATUS_SVG_RELATIVE_PATH = "./badges/build-status.svg"
+// embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
+//go:embed badges/build-status.svg
+var statusBadge string
+
+const BUILD_STATUS_SVG_RELATIVE_PATH = "badges/build-status.svg"
 const BUILD_STATUS_FAILING = "failing"
 const BUILD_STATUS_PASSING = "passing"
 const BUILD_STATUS_STOPPED = "stopped"
@@ -73,12 +78,11 @@ func getStatus(status *radixBuildStatus) (*[]byte, error) {
 	status.StatusOffset = operationWidth
 	status.OperationTextId = guid.NewGUID().String()
 	status.StatusTextId = guid.NewGUID().String()
-	svgTemplate, err := template.ParseFiles(BUILD_STATUS_SVG_RELATIVE_PATH)
-	if err != nil {
-		return nil, err
-	}
+
+	svgTemplate := template.New("status-badge.svg")
+	svgTemplate.Parse(statusBadge)
 	var buff bytes.Buffer
-	err = svgTemplate.Execute(&buff, status)
+	err := svgTemplate.Execute(&buff, status)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create SVG template")
 	}
