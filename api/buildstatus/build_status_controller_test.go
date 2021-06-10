@@ -1,6 +1,7 @@
 package buildstatus
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -76,6 +77,7 @@ func TestGetBuildStatus(t *testing.T) {
 	)
 
 	t.Run("return success status and badge data", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -83,7 +85,7 @@ func TestGetBuildStatus(t *testing.T) {
 		expected := []byte("badge")
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any()).
+			BuildBadge(gomock.Any(), gomock.Any()).
 			Return(expected, nil).
 			Times(1)
 
@@ -103,17 +105,20 @@ func TestGetBuildStatus(t *testing.T) {
 	})
 
 	t.Run("build-deploy in master - JobRunning", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
 
-		var calledStatus v1.RadixJobCondition
+		var actualCondition v1.RadixJobCondition
+		var actualPipline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
-				calledStatus = c
+			BuildBadge(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
+				actualCondition = c
+				actualPipline = p
 				return nil, nil
 			})
 
@@ -127,21 +132,25 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobRunning, calledStatus)
+		assert.Equal(t, v1.JobRunning, actualCondition)
+		assert.Equal(t, v1.BuildDeploy, actualPipline)
 	})
 
 	t.Run("deploy in master - JobRunning", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
 
-		var calledStatus v1.RadixJobCondition
+		var actualCondition v1.RadixJobCondition
+		var actualPipline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
-				calledStatus = c
+			BuildBadge(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
+				actualCondition = c
+				actualPipline = p
 				return nil, nil
 			})
 
@@ -155,21 +164,25 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobSucceeded, calledStatus)
+		assert.Equal(t, v1.JobSucceeded, actualCondition)
+		assert.Equal(t, v1.Deploy, actualPipline)
 	})
 
 	t.Run("promote in master - JobFailed", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
 
-		var calledStatus v1.RadixJobCondition
+		var actualCondition v1.RadixJobCondition
+		var actualPipline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
-				calledStatus = c
+			BuildBadge(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
+				actualCondition = c
+				actualPipline = p
 				return nil, nil
 			})
 
@@ -183,6 +196,31 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobFailed, calledStatus)
+		assert.Equal(t, v1.JobFailed, actualCondition)
+		assert.Equal(t, v1.Promote, actualPipline)
+	})
+
+	t.Run("return status 500", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+
+		fakeBuildStatus.EXPECT().
+			BuildBadge(gomock.Any(), gomock.Any()).
+			Return(nil, errors.New("error")).
+			Times(1)
+
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewBuildStatusController(fakeBuildStatus),
+		)
+
+		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
+		response := <-responseChannel
+
+		assert.Equal(t, response.Result().StatusCode, 500)
 	})
 }

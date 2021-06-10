@@ -75,7 +75,7 @@ func main() {
 
 	err := <-errs
 	if err != nil {
-		log.Fatalf("Web api server crached: %v", err)
+		log.Fatalf("Web api server crashed: %v", err)
 	}
 }
 

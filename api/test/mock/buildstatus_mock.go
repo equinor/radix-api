@@ -35,16 +35,16 @@ func (m *MockPiplineBadgeBuilder) EXPECT() *MockPiplineBadgeBuilderMockRecorder 
 }
 
 // BuildBadge mocks base method.
-func (m *MockPiplineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition) ([]byte, error) {
+func (m *MockPiplineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildBadge", condition)
+	ret := m.ctrl.Call(m, "BuildBadge", condition, pipeline)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BuildBadge indicates an expected call of BuildBadge.
-func (mr *MockPiplineBadgeBuilderMockRecorder) BuildBadge(condition interface{}) *gomock.Call {
+func (mr *MockPiplineBadgeBuilderMockRecorder) BuildBadge(condition, pipeline interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBadge", reflect.TypeOf((*MockPiplineBadgeBuilder)(nil).BuildBadge), condition)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBadge", reflect.TypeOf((*MockPiplineBadgeBuilder)(nil).BuildBadge), condition, pipeline)
 }

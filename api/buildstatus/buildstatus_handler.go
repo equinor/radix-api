@@ -2,12 +2,10 @@ package buildstatus
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
 	build_models "github.com/equinor/radix-api/api/buildstatus/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -33,20 +31,16 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env, pip
 
 	// Get list of Jobs in the namespace
 	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
-
 	if err != nil {
 		return nil, err
 	}
 
-	latestBuildDeployJob, err := getLatestBuildJobToEnvironment(radixJobs.Items, env, pipeline)
-
-	if err != nil {
-		return nil, utils.NotFoundError(err.Error())
+	var buildCondition v1.RadixJobCondition
+	if latestPipelineJob := getLatestPipelineJobToEnvironment(radixJobs.Items, env, pipeline); latestPipelineJob != nil {
+		buildCondition = latestPipelineJob.Status.Condition
 	}
 
-	buildCondition := latestBuildDeployJob.Status.Condition
-	output, err = handler.buildstatus.BuildBadge(buildCondition)
-
+	output, err = handler.buildstatus.BuildBadge(buildCondition, v1.RadixPipelineType(pipeline))
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +48,7 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env, pip
 	return output, nil
 }
 
-func getLatestBuildJobToEnvironment(jobs []v1.RadixJob, env, pipeline string) (v1.RadixJob, error) {
+func getLatestPipelineJobToEnvironment(jobs []v1.RadixJob, env, pipeline string) *v1.RadixJob {
 	// Filter out all BuildDeploy jobs
 	allBuildDeployJobs := []v1.RadixJob{}
 	for _, job := range jobs {
@@ -72,11 +66,11 @@ func getLatestBuildJobToEnvironment(jobs []v1.RadixJob, env, pipeline string) (v
 	for _, buildDeployJob := range allBuildDeployJobs {
 		for _, targetEnvironment := range buildDeployJob.Status.TargetEnvs {
 			if targetEnvironment == env {
-				return buildDeployJob, nil
+				return &buildDeployJob
 			}
 		}
 	}
 
-	return v1.RadixJob{}, fmt.Errorf("No build-deploy jobs were found in %s environment", env)
+	return nil
 
 }

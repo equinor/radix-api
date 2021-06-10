@@ -1,6 +1,7 @@
 package buildstatus
 
 import (
+	"html"
 	"net/http"
 	"time"
 
@@ -63,20 +64,21 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
-	//   "404":
-	//     description: "Not found"
+	//   "500":
+	//     description: "Internal Server Error"
 	appName := mux.Vars(r)["appName"]
 	env := mux.Vars(r)["envName"]
 	pipeline := string(radixv1.BuildDeploy)
 	if queryPipline := r.URL.Query().Get("pipeline"); len(queryPipline) > 0 {
-		pipeline = queryPipline
+
+		pipeline = html.EscapeString(queryPipline)
 	}
 
 	buildStatusHandler := Init(accounts, bsc.PiplineBadgeBuilder)
 	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env, pipeline)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

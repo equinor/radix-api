@@ -4,8 +4,8 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"html/template"
 	"strings"
-	"text/template"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/marstr/guid"
@@ -13,7 +13,7 @@ import (
 
 // embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
 //go:embed badges/build-status.svg
-var statusBadge string
+var defaultBadgeTemplate string
 
 const buildStatusFailing = "failing"
 const buildStatusSuccess = "success"
@@ -23,19 +23,19 @@ const buildStatusRunning = "running"
 const buildStatusUnknown = "unknown"
 
 type PiplineBadgeBuilder interface {
-	BuildBadge(condition v1.RadixJobCondition) ([]byte, error)
+	BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
 }
 
 func NewPiplineBadgeBuilder() PiplineBadgeBuilder {
-	return &pipelineBadgeBuilder{
-		Operation:   "build",
-		ColorLeft:   "#aaa",
-		ColorShadow: "#010101",
-		ColorFont:   "#fff",
+	return &PipelineBadgeBuilder{
+		// ColorLeft:     "#aaa",
+		// ColorShadow:   "#010101",
+		// ColorFont:     "#fff",
+		BadgeTemplate: defaultBadgeTemplate,
 	}
 }
 
-type pipelineBadgeBuilder struct {
+type pipelineBadgeData struct {
 	Operation       string
 	Status          string
 	ColorLeft       string
@@ -49,43 +49,39 @@ type pipelineBadgeBuilder struct {
 	StatusTextId    string
 }
 
-func (rbs *pipelineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition) ([]byte, error) {
-	rbs.Status = translateCondition(condition)
-	color := getColor(rbs.Status)
-	rbs.ColorRight = color
-	return getStatus(rbs)
+type PipelineBadgeBuilder struct {
+	BadgeTemplate string
 }
 
-func translateCondition(condition v1.RadixJobCondition) string {
-	switch condition {
-	case v1.JobSucceeded:
-		return buildStatusSuccess
-	case v1.JobFailed:
-		return buildStatusFailing
-	case v1.JobStopped:
-		return buildStatusStopped
-	case v1.JobWaiting, v1.JobQueued:
-		return buildStatusPending
-	case v1.JobRunning:
-		return buildStatusRunning
-	default:
-		return buildStatusUnknown
+func (rbs *PipelineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+	return rbs.buildBadge(condition, pipeline)
+}
+
+func (rbs *PipelineBadgeBuilder) buildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+	operation := translatePipeline(pipeline)
+	status := translateCondition(condition)
+	color := getColor(condition)
+	operationWidth := calculateWidth(10, operation)
+	statusWidth := calculateWidth(10, status) + 24
+
+	badgeData := pipelineBadgeData{
+		Operation:       operation,
+		Status:          status,
+		ColorRight:      color,
+		ColorLeft:       "#aaa",
+		ColorShadow:     "#010101",
+		ColorFont:       "#fff",
+		Width:           statusWidth + operationWidth,
+		Height:          30,
+		StatusOffset:    operationWidth,
+		OperationTextId: guid.NewGUID().String(),
+		StatusTextId:    guid.NewGUID().String(),
 	}
-}
-
-func getStatus(status *pipelineBadgeBuilder) ([]byte, error) {
-	operationWidth := calculateWidth(9, status.Operation)
-	statusWidth := calculateWidth(12, status.Status)
-	status.Width = statusWidth + operationWidth
-	status.Height = 30
-	status.StatusOffset = operationWidth
-	status.OperationTextId = guid.NewGUID().String()
-	status.StatusTextId = guid.NewGUID().String()
 
 	svgTemplate := template.New("status-badge.svg")
-	svgTemplate.Parse(statusBadge)
+	svgTemplate.Parse(rbs.BadgeTemplate)
 	var buff bytes.Buffer
-	err := svgTemplate.Execute(&buff, status)
+	err := svgTemplate.Execute(&buff, &badgeData)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create SVG template")
 	}
@@ -106,19 +102,41 @@ func calculateWidth(charWidth float32, value string) int {
 	return int(width + 5)
 }
 
-func getColor(status string) string {
-	switch status {
-	case buildStatusSuccess:
+func translateCondition(condition v1.RadixJobCondition) string {
+	switch condition {
+	case v1.JobSucceeded:
+		return buildStatusSuccess
+	case v1.JobFailed:
+		return buildStatusFailing
+	case v1.JobStopped:
+		return buildStatusStopped
+	case v1.JobWaiting, v1.JobQueued:
+		return buildStatusPending
+	case v1.JobRunning:
+		return buildStatusRunning
+	default:
+		return buildStatusUnknown
+	}
+}
+
+func translatePipeline(pipeline v1.RadixPipelineType) string {
+	switch pipeline {
+	case v1.BuildDeploy, v1.Build, v1.Deploy, v1.Promote:
+		return string(pipeline)
+	default:
+		return ""
+	}
+}
+
+func getColor(condition v1.RadixJobCondition) string {
+	switch condition {
+	case v1.JobSucceeded:
 		return "#4c1"
-	case buildStatusFailing:
+	case v1.JobFailed:
 		return "#e05d44"
-	case buildStatusPending:
-		return "#9f9f9f"
-	case buildStatusStopped:
+	case v1.JobStopped:
 		return "#e05d44"
-	case buildStatusUnknown:
-		return "#9f9f9f"
-	case buildStatusRunning:
+	case v1.JobRunning:
 		return "#33cccc"
 	default:
 		return "#9f9f9f"
