@@ -16,18 +16,18 @@ import (
 var statusBadge string
 
 const buildStatusFailing = "failing"
-const buildStatusPassing = "passing"
+const buildStatusSuccess = "success"
 const buildStatusStopped = "stopped"
 const buildStatusPending = "pending"
 const buildStatusRunning = "running"
 const buildStatusUnknown = "unknown"
 
-type Status interface {
-	WriteSvg(condition v1.RadixJobCondition) (*[]byte, error)
+type PiplineBadgeBuilder interface {
+	BuildBadge(condition v1.RadixJobCondition) ([]byte, error)
 }
 
-func NewBuildStatus() Status {
-	return &radixBuildStatus{
+func NewPiplineBadgeBuilder() PiplineBadgeBuilder {
+	return &pipelineBadgeBuilder{
 		Operation:   "build",
 		ColorLeft:   "#aaa",
 		ColorShadow: "#010101",
@@ -35,7 +35,7 @@ func NewBuildStatus() Status {
 	}
 }
 
-type radixBuildStatus struct {
+type pipelineBadgeBuilder struct {
 	Operation       string
 	Status          string
 	ColorLeft       string
@@ -49,7 +49,7 @@ type radixBuildStatus struct {
 	StatusTextId    string
 }
 
-func (rbs *radixBuildStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, error) {
+func (rbs *pipelineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition) ([]byte, error) {
 	rbs.Status = translateCondition(condition)
 	color := getColor(rbs.Status)
 	rbs.ColorRight = color
@@ -59,7 +59,7 @@ func (rbs *radixBuildStatus) WriteSvg(condition v1.RadixJobCondition) (*[]byte, 
 func translateCondition(condition v1.RadixJobCondition) string {
 	switch condition {
 	case v1.JobSucceeded:
-		return buildStatusPassing
+		return buildStatusSuccess
 	case v1.JobFailed:
 		return buildStatusFailing
 	case v1.JobStopped:
@@ -73,7 +73,7 @@ func translateCondition(condition v1.RadixJobCondition) string {
 	}
 }
 
-func getStatus(status *radixBuildStatus) (*[]byte, error) {
+func getStatus(status *pipelineBadgeBuilder) ([]byte, error) {
 	operationWidth := calculateWidth(9, status.Operation)
 	statusWidth := calculateWidth(12, status.Status)
 	status.Width = statusWidth + operationWidth
@@ -90,7 +90,7 @@ func getStatus(status *radixBuildStatus) (*[]byte, error) {
 		return nil, fmt.Errorf("Failed to create SVG template")
 	}
 	bytes := buff.Bytes()
-	return &bytes, nil
+	return bytes, nil
 }
 
 func calculateWidth(charWidth float32, value string) int {
@@ -108,7 +108,7 @@ func calculateWidth(charWidth float32, value string) int {
 
 func getColor(status string) string {
 	switch status {
-	case buildStatusPassing:
+	case buildStatusSuccess:
 		return "#4c1"
 	case buildStatusFailing:
 		return "#e05d44"

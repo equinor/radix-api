@@ -1,12 +1,15 @@
 package buildstatus
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -38,33 +41,148 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
 func TestGetBuildStatus(t *testing.T) {
 	commonTestUtils, kubeclient, radixclient := setupTest()
 
-	// Mock setup
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	fakeBuildStatus := mock.NewMockStatus(ctrl)
-
-	sampleResponse := []byte("This is a test")
-
-	fakeBuildStatus.EXPECT().
-		WriteSvg(gomock.Any()).
-		Return(&sampleResponse, nil).
-		AnyTimes()
-
+	jobStartReferenceTime := time.Date(2020, 1, 10, 0, 0, 0, 0, time.UTC)
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))
-	commonTestUtils.ApplyJob(builders.ARadixBuildDeployJob().
-		WithAppName("my-app").
-		WithStatus(builders.ACompletedJobStatus()))
-
-	controllerTestUtils := controllertest.NewTestUtils(
-		kubeclient,
-		radixclient,
-		NewBuildStatusController(fakeBuildStatus),
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
+			WithBranch("master").WithJobName("bd-test-1").WithPipeline(v1.BuildDeploy).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
+	)
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
+			WithBranch("master").WithJobName("bd-test-2").WithPipeline(v1.BuildDeploy).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobRunning).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
+	)
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
+			WithBranch("master").WithJobName("d-test-1").WithPipeline(v1.Deploy).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
+	)
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
+			WithBranch("master").WithJobName("d-test-2").WithPipeline(v1.Deploy).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
+	)
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
+			WithBranch("master").WithJobName("p-test-1").WithPipeline(v1.Promote).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobStopped).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
+	)
+	commonTestUtils.ApplyJob(
+		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
+			WithBranch("master").WithJobName("p-test-2").WithPipeline(v1.Promote).WithAppName("my-app").
+			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
-	response := <-responseChannel
+	t.Run("return success status and badge data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-	assert.Equal(t, response.Result().StatusCode, 200)
+		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		expected := []byte("badge")
+
+		fakeBuildStatus.EXPECT().
+			BuildBadge(gomock.Any()).
+			Return(expected, nil).
+			Times(1)
+
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewBuildStatusController(fakeBuildStatus),
+		)
+
+		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
+		response := <-responseChannel
+
+		assert.Equal(t, response.Result().StatusCode, 200)
+		actual, _ := ioutil.ReadAll(response.Body)
+		assert.Equal(t, string(expected), string(actual))
+
+	})
+
+	t.Run("build-deploy in master - JobRunning", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+
+		var calledStatus v1.RadixJobCondition
+
+		fakeBuildStatus.EXPECT().
+			BuildBadge(gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
+				calledStatus = c
+				return nil, nil
+			})
+
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewBuildStatusController(fakeBuildStatus),
+		)
+
+		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
+		response := <-responseChannel
+
+		assert.Equal(t, response.Result().StatusCode, 200)
+		assert.Equal(t, v1.JobRunning, calledStatus)
+	})
+
+	t.Run("deploy in master - JobRunning", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+
+		var calledStatus v1.RadixJobCondition
+
+		fakeBuildStatus.EXPECT().
+			BuildBadge(gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
+				calledStatus = c
+				return nil, nil
+			})
+
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewBuildStatusController(fakeBuildStatus),
+		)
+
+		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=deploy")
+		response := <-responseChannel
+
+		assert.Equal(t, response.Result().StatusCode, 200)
+		assert.Equal(t, v1.JobSucceeded, calledStatus)
+	})
+
+	t.Run("promote in master - JobFailed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+
+		var calledStatus v1.RadixJobCondition
+
+		fakeBuildStatus.EXPECT().
+			BuildBadge(gomock.Any()).
+			DoAndReturn(func(c v1.RadixJobCondition) ([]byte, error) {
+				calledStatus = c
+				return nil, nil
+			})
+
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewBuildStatusController(fakeBuildStatus),
+		)
+
+		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=promote")
+		response := <-responseChannel
+
+		assert.Equal(t, response.Result().StatusCode, 200)
+		assert.Equal(t, v1.JobFailed, calledStatus)
+	})
 }
