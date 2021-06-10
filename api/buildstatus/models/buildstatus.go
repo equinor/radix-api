@@ -15,12 +15,22 @@ import (
 //go:embed badges/build-status.svg
 var defaultBadgeTemplate string
 
-const buildStatusFailing = "failing"
-const buildStatusSuccess = "success"
-const buildStatusStopped = "stopped"
-const buildStatusPending = "pending"
-const buildStatusRunning = "running"
-const buildStatusUnknown = "unknown"
+const (
+	buildStatusFailing = "failing"
+	buildStatusSuccess = "success"
+	buildStatusStopped = "stopped"
+	buildStatusPending = "pending"
+	buildStatusRunning = "running"
+	buildStatusUnknown = "unknown"
+)
+
+const (
+	pipelineStatusSuccessColor = "#4c1"
+	pipelineStatusFailedColor  = "#e05d44"
+	pipelineStatusStoppedColor = "#e05d44"
+	pipelineStatusRunningColor = "#33cccc"
+	pipelineStatusUnknownColor = "#9f9f9f"
+)
 
 type PiplineBadgeBuilder interface {
 	BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
@@ -28,9 +38,6 @@ type PiplineBadgeBuilder interface {
 
 func NewPiplineBadgeBuilder() PiplineBadgeBuilder {
 	return &PipelineBadgeBuilder{
-		// ColorLeft:     "#aaa",
-		// ColorShadow:   "#010101",
-		// ColorFont:     "#fff",
 		BadgeTemplate: defaultBadgeTemplate,
 	}
 }
@@ -131,14 +138,14 @@ func translatePipeline(pipeline v1.RadixPipelineType) string {
 func getColor(condition v1.RadixJobCondition) string {
 	switch condition {
 	case v1.JobSucceeded:
-		return "#4c1"
+		return pipelineStatusSuccessColor
 	case v1.JobFailed:
-		return "#e05d44"
+		return pipelineStatusFailedColor
 	case v1.JobStopped:
-		return "#e05d44"
+		return pipelineStatusStoppedColor
 	case v1.JobRunning:
-		return "#33cccc"
+		return pipelineStatusRunningColor
 	default:
-		return "#9f9f9f"
+		return pipelineStatusUnknownColor
 	}
 }
