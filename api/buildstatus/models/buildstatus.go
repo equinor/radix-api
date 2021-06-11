@@ -32,13 +32,13 @@ const (
 	pipelineStatusUnknownColor = "#9f9f9f"
 )
 
-type PiplineBadgeBuilder interface {
-	BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
+type PipelineBadge interface {
+	GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
 }
 
-func NewPiplineBadgeBuilder() PiplineBadgeBuilder {
-	return &PipelineBadgeBuilder{
-		BadgeTemplate: defaultBadgeTemplate,
+func NewPipelineBadge() PipelineBadge {
+	return &pipelineBadge{
+		badgeTemplate: defaultBadgeTemplate,
 	}
 }
 
@@ -56,15 +56,15 @@ type pipelineBadgeData struct {
 	StatusTextId    string
 }
 
-type PipelineBadgeBuilder struct {
-	BadgeTemplate string
+type pipelineBadge struct {
+	badgeTemplate string
 }
 
-func (rbs *PipelineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
-	return rbs.buildBadge(condition, pipeline)
+func (rbs *pipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+	return rbs.getBadge(condition, pipeline)
 }
 
-func (rbs *PipelineBadgeBuilder) buildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	operation := translatePipeline(pipeline)
 	status := translateCondition(condition)
 	color := getColor(condition)
@@ -86,7 +86,7 @@ func (rbs *PipelineBadgeBuilder) buildBadge(condition v1.RadixJobCondition, pipe
 	}
 
 	svgTemplate := template.New("status-badge.svg")
-	svgTemplate.Parse(rbs.BadgeTemplate)
+	svgTemplate.Parse(rbs.badgeTemplate)
 	var buff bytes.Buffer
 	err := svgTemplate.Execute(&buff, &badgeData)
 	if err != nil {

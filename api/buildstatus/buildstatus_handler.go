@@ -13,12 +13,12 @@ import (
 )
 
 type BuildStatusHandler struct {
-	accounts    models.Accounts
-	buildstatus build_models.PiplineBadgeBuilder
+	accounts      models.Accounts
+	pipelineBadge build_models.PipelineBadge
 }
 
-func Init(accounts models.Accounts, status build_models.PiplineBadgeBuilder) BuildStatusHandler {
-	return BuildStatusHandler{accounts: accounts, buildstatus: status}
+func Init(accounts models.Accounts, pipelineBadge build_models.PipelineBadge) BuildStatusHandler {
+	return BuildStatusHandler{accounts: accounts, pipelineBadge: pipelineBadge}
 }
 
 // GetBuildStatusForApplication Gets a list of build status for environments
@@ -40,7 +40,7 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env, pip
 		buildCondition = latestPipelineJob.Status.Condition
 	}
 
-	output, err = handler.buildstatus.BuildBadge(buildCondition, v1.RadixPipelineType(pipeline))
+	output, err = handler.pipelineBadge.GetBadge(buildCondition, v1.RadixPipelineType(pipeline))
 	if err != nil {
 		return nil, err
 	}

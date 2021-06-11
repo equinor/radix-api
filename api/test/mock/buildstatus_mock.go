@@ -11,40 +11,40 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockPiplineBadgeBuilder is a mock of PiplineBadgeBuilder interface.
-type MockPiplineBadgeBuilder struct {
+// MockPipelineBadge is a mock of PipelineBadge interface.
+type MockPipelineBadge struct {
 	ctrl     *gomock.Controller
-	recorder *MockPiplineBadgeBuilderMockRecorder
+	recorder *MockPipelineBadgeMockRecorder
 }
 
-// MockPiplineBadgeBuilderMockRecorder is the mock recorder for MockPiplineBadgeBuilder.
-type MockPiplineBadgeBuilderMockRecorder struct {
-	mock *MockPiplineBadgeBuilder
+// MockPipelineBadgeMockRecorder is the mock recorder for MockPipelineBadge.
+type MockPipelineBadgeMockRecorder struct {
+	mock *MockPipelineBadge
 }
 
-// NewMockPiplineBadgeBuilder creates a new mock instance.
-func NewMockPiplineBadgeBuilder(ctrl *gomock.Controller) *MockPiplineBadgeBuilder {
-	mock := &MockPiplineBadgeBuilder{ctrl: ctrl}
-	mock.recorder = &MockPiplineBadgeBuilderMockRecorder{mock}
+// NewMockPipelineBadge creates a new mock instance.
+func NewMockPipelineBadge(ctrl *gomock.Controller) *MockPipelineBadge {
+	mock := &MockPipelineBadge{ctrl: ctrl}
+	mock.recorder = &MockPipelineBadgeMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPiplineBadgeBuilder) EXPECT() *MockPiplineBadgeBuilderMockRecorder {
+func (m *MockPipelineBadge) EXPECT() *MockPipelineBadgeMockRecorder {
 	return m.recorder
 }
 
-// BuildBadge mocks base method.
-func (m *MockPiplineBadgeBuilder) BuildBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+// GetBadge mocks base method.
+func (m *MockPipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildBadge", condition, pipeline)
+	ret := m.ctrl.Call(m, "GetBadge", condition, pipeline)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// BuildBadge indicates an expected call of BuildBadge.
-func (mr *MockPiplineBadgeBuilderMockRecorder) BuildBadge(condition, pipeline interface{}) *gomock.Call {
+// GetBadge indicates an expected call of GetBadge.
+func (mr *MockPipelineBadgeMockRecorder) GetBadge(condition, pipeline interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBadge", reflect.TypeOf((*MockPiplineBadgeBuilder)(nil).BuildBadge), condition, pipeline)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBadge", reflect.TypeOf((*MockPipelineBadge)(nil).GetBadge), condition, pipeline)
 }

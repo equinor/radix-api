@@ -80,7 +80,7 @@ func main() {
 }
 
 func getControllers() []models.Controller {
-	buildStatus := build_models.NewPiplineBadgeBuilder()
+	buildStatus := build_models.NewPipelineBadge()
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
 		applications.NewApplicationController(nil),

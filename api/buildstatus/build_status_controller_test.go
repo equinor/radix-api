@@ -81,11 +81,11 @@ func TestGetBuildStatus(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 		expected := []byte("badge")
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any()).
 			Return(expected, nil).
 			Times(1)
 
@@ -109,16 +109,16 @@ func TestGetBuildStatus(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		var actualCondition v1.RadixJobCondition
-		var actualPipline v1.RadixPipelineType
+		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
-				actualPipline = p
+				actualPipeline = p
 				return nil, nil
 			})
 
@@ -133,7 +133,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		assert.Equal(t, response.Result().StatusCode, 200)
 		assert.Equal(t, v1.JobRunning, actualCondition)
-		assert.Equal(t, v1.BuildDeploy, actualPipline)
+		assert.Equal(t, v1.BuildDeploy, actualPipeline)
 	})
 
 	t.Run("deploy in master - JobRunning", func(t *testing.T) {
@@ -141,16 +141,16 @@ func TestGetBuildStatus(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		var actualCondition v1.RadixJobCondition
-		var actualPipline v1.RadixPipelineType
+		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
-				actualPipline = p
+				actualPipeline = p
 				return nil, nil
 			})
 
@@ -165,7 +165,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		assert.Equal(t, response.Result().StatusCode, 200)
 		assert.Equal(t, v1.JobSucceeded, actualCondition)
-		assert.Equal(t, v1.Deploy, actualPipline)
+		assert.Equal(t, v1.Deploy, actualPipeline)
 	})
 
 	t.Run("promote in master - JobFailed", func(t *testing.T) {
@@ -173,16 +173,16 @@ func TestGetBuildStatus(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		var actualCondition v1.RadixJobCondition
-		var actualPipline v1.RadixPipelineType
+		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
-				actualPipline = p
+				actualPipeline = p
 				return nil, nil
 			})
 
@@ -197,7 +197,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		assert.Equal(t, response.Result().StatusCode, 200)
 		assert.Equal(t, v1.JobFailed, actualCondition)
-		assert.Equal(t, v1.Promote, actualPipline)
+		assert.Equal(t, v1.Promote, actualPipeline)
 	})
 
 	t.Run("return status 500", func(t *testing.T) {
@@ -205,10 +205,10 @@ func TestGetBuildStatus(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		fakeBuildStatus := mock.NewMockPiplineBadgeBuilder(ctrl)
+		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		fakeBuildStatus.EXPECT().
-			BuildBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("error")).
 			Times(1)
 

@@ -16,12 +16,12 @@ const rootPath = "/applications/{appName}/environments/{envName}"
 
 type buildStatusController struct {
 	*models.DefaultController
-	build_models.PiplineBadgeBuilder
+	build_models.PipelineBadge
 }
 
 // NewBuildStatusController Constructor
-func NewBuildStatusController(status build_models.PiplineBadgeBuilder) models.Controller {
-	return &buildStatusController{PiplineBadgeBuilder: status}
+func NewBuildStatusController(status build_models.PipelineBadge) models.Controller {
+	return &buildStatusController{PipelineBadge: status}
 }
 
 // GetRoutes List the supported routes of this handler
@@ -69,12 +69,12 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	appName := mux.Vars(r)["appName"]
 	env := mux.Vars(r)["envName"]
 	pipeline := string(radixv1.BuildDeploy)
-	if queryPipline := r.URL.Query().Get("pipeline"); len(queryPipline) > 0 {
+	if queryPipeline := r.URL.Query().Get("pipeline"); len(queryPipeline) > 0 {
 
-		pipeline = html.EscapeString(queryPipline)
+		pipeline = html.EscapeString(queryPipeline)
 	}
 
-	buildStatusHandler := Init(accounts, bsc.PiplineBadgeBuilder)
+	buildStatusHandler := Init(accounts, bsc.PipelineBadge)
 	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env, pipeline)
 
 	if err != nil {
