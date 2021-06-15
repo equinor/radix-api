@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -43,9 +42,18 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 		metrics.AddRequestDuration(handler.path, handler.method, httpDuration)
 	}()
 
+	switch {
+	case handler.allowNoAuth:
+		handler.handleAnonymous(w, r)
+	default:
+		handler.handleAuthorization(w, r)
+	}
+}
+
+func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
 	token, err := getBearerTokenFromHeader(r)
 
-	if err != nil && !handler.allowNoAuth {
+	if err != nil {
 		ErrorResponse(w, r, err)
 		return
 	}
@@ -78,42 +86,11 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 	handler.next(accounts, w, r)
 }
 
-func (handler *RadixMiddleware) HandleNoAuth(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-
-	defer func() {
-		httpDuration := time.Since(start)
-		metrics.AddRequestDuration(handler.path, handler.method, httpDuration)
-	}()
-
+func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
 	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
 
 	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient)
 	accounts := models.Accounts{ServiceAccount: sa}
 
 	handler.next(accounts, w, r)
-}
-
-// BearerTokenHeaderVerifyerMiddleware Will verify that the request has a bearer token in header
-func BearerTokenHeaderVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	_, err := getBearerTokenFromHeader(r)
-
-	if err != nil {
-		ErrorResponse(w, r, err)
-		return
-	}
-
-	next(w, r)
-}
-
-// BearerTokenQueryVerifyerMiddleware Will verify that the request has a bearer token as query variable
-func BearerTokenQueryVerifyerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	// For socket connections it should be in the query
-	jwtToken := GetTokenFromQuery(r)
-	if jwtToken == "" {
-		ErrorResponse(w, r, errors.New("Authentication token is required"))
-		return
-	}
-
-	next(w, r)
 }
