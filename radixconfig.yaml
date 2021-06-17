@@ -10,6 +10,9 @@ spec:
     - name: qa
       build:
         from: master
+    - name: dev
+      build:
+        from: 47198-embed-badge-svg
   components:
     - name: "server"
       src: "."
@@ -49,3 +52,8 @@ spec:
           variables:
             PIPELINE_IMG_TAG: "release-latest"
             GOMAXPROCS: 2
+        - environment: dev
+          runAsNonRoot: true
+          variables:
+            PIPELINE_IMG_TAG: "master-latest"
+            GOMAXPROCS: 1

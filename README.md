@@ -30,6 +30,15 @@ Go modules are used for dependency management. See [link](https://blog.golang.or
 - list versions: `go list -m -versions github.com/equinor/radix-operator`
 - update: `go get github.com/equinor/radix-operator@v1.3.1`
 
+### Generating mocks
+We use gomock to generate mocks used in unit test.
+You need to regenerate mocks if you make changes to any of the interface types used by the application; **Status**
+
+Status:
+```
+$ mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
+```
+
 ### Running locally
 
 The following env vars are needed. Useful default values in brackets.

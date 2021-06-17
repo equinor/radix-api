@@ -75,12 +75,12 @@ func main() {
 
 	err := <-errs
 	if err != nil {
-		log.Fatalf("Web api server crached: %v", err)
+		log.Fatalf("Web api server crashed: %v", err)
 	}
 }
 
 func getControllers() []models.Controller {
-	buildStatus := build_models.NewBuildStatus()
+	buildStatus := build_models.NewPipelineBadge()
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
 		applications.NewApplicationController(nil),
