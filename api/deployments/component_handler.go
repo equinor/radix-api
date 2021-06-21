@@ -27,6 +27,7 @@ import (
 const (
 	radixEnvVariablePrefix      = "RADIX_"
 	defaultTargetCPUUtilization = int32(80)
+	k8sJobNameLabel             = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
@@ -135,26 +136,29 @@ func GetComponentStateFromSpec(
 
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	componentPodNames := []string{}
-	componentPods := []corev1.Pod{}
+
 	replicaSummaryList := []deploymentModels.ReplicaSummary{}
 	scheduledJobSummaryList := []deploymentModels.ScheduledJobSummary{}
 	status := deploymentModels.ConsistentComponent
 
 	if deployment.ActiveTo == "" {
 		// current active deployment - we get existing pods
-		componentPodMap, podsOfScheduledJobsMap, err := getComponentPodsByNamespace(client, envNs, component.GetName())
+		componentPods, err := getComponentPodsByNamespace(client, envNs, component.GetName())
 		if err != nil {
 			return nil, err
 		}
-		componentPodNames, componentPods = slicePodNamesAndPodsFromMap(componentPodMap)
+		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		replicaSummaryList = getReplicaSummaryList(componentPods)
 
-		scheduledJobs, err := getComponentJobsByNamespace(client, envNs, component.GetName()) //scheduledJobs
-		if err != nil {
-			return nil, err
+		if component.GetType() == defaults.RadixComponentTypeJobScheduler {
+			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(client, envNs, component.GetName()) //scheduledJobs
+			if err != nil {
+				return nil, err
+			}
+			scheduledJobSummaryList = getScheduledJobSummaryList(scheduledJobs, scheduledJobPodMap)
 		}
-		scheduledJobSummaryList = getScheduledJobSummaryList(scheduledJobs, podsOfScheduledJobsMap)
+
 		status, err = getStatusOfActiveDeployment(component,
 			deploymentStatus, environmentConfig, componentPods)
 		if err != nil {
@@ -179,7 +183,7 @@ func GetComponentStateFromSpec(
 		BuildComponent(), nil
 }
 
-func getScheduledJobSummaryList(jobs []batchv1.Job, pods map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
+func getScheduledJobSummaryList(jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
 	var summaries []deploymentModels.ScheduledJobSummary
 	for _, job := range jobs {
 		creationTimestamp := job.GetCreationTimestamp()
@@ -190,7 +194,7 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, pods map[string][]corev1.Pod
 			Ended:   utils.FormatTime(job.Status.CompletionTime),
 			Status:  models.GetStatusFromJobStatus(job.Status).String(),
 		}
-		if jobPods, ok := pods[job.Name]; ok {
+		if jobPods, ok := jobPodsMap[job.Name]; ok {
 			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 		}
 		summaries = append(summaries, summary)
@@ -211,53 +215,75 @@ func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.Replica
 	return replicaSummaries
 }
 
-func slicePodNamesAndPodsFromMap(podMap map[string]corev1.Pod) ([]string, []corev1.Pod) {
+func getPodNames(pods []corev1.Pod) []string {
 	var names []string
-	var pods []corev1.Pod
-	for name, pod := range podMap {
-		names = append(names, name)
-		pods = append(pods, pod)
+	for _, pod := range pods {
+		names = append(names, pod.GetName())
 	}
-	return names, pods
+	return names
 }
 
-func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) (map[string]corev1.Pod, map[string][]corev1.Pod, error) {
+func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
+	var componentPods []corev1.Pod
 	pods, err := client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
 		log.Errorf("error getting pods: %v", err)
-		return nil, nil, err
+		return nil, err
 	}
-	componentPodMap := map[string]corev1.Pod{}
-	scheduledJobPodMap := map[string][]corev1.Pod{}
+
 	for _, pod := range pods.Items {
-		if jobType, ok := pod.Labels[kube.RadixJobTypeLabel]; !ok || jobType != kube.RadixJobTypeJobSchedule {
-			componentPodMap[pod.GetName()] = pod
-			continue
-		}
-		if jobName, ok := pod.Labels["job-name"]; ok {
-			list := scheduledJobPodMap[jobName]
-			scheduledJobPodMap[jobName] = append(list, pod)
+		pod := pod
+
+		// A previous version of the job-scheduler added the "radix-component" label to job pods.
+		// For backward compatibilitry, we need to ignore these pods in the list of pods returned for a component
+		if _, isScheduledJobPod := pod.GetLabels()[kube.RadixJobTypeLabel]; !isScheduledJobPod {
+			componentPods = append(componentPods, pod)
 		}
 	}
-	return componentPodMap, scheduledJobPodMap, nil
+
+	return componentPods, nil
 }
 
-func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]batchv1.Job, error) {
-	labelSelectors := map[string]string{
+func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]batchv1.Job, map[string][]corev1.Pod, error) {
+	jobLabelSelector := map[string]string{
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 	}
 	jobList, err := client.BatchV1().Jobs(envNs).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelSelectors).String(),
+		LabelSelector: labels.SelectorFromSet(jobLabelSelector).String(),
 	})
 	if err != nil {
 		log.Errorf("error getting jobs: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return jobList.Items, nil
+	jobPodMap := make(map[string][]corev1.Pod)
+
+	// Make API call to k8s only if there are actual jobs
+	if len(jobList.Items) > 0 {
+		jobPodLabelSelector := labels.Set{
+			kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
+		}
+		podList, err := client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(jobPodLabelSelector).String(),
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for _, pod := range podList.Items {
+			pod := pod
+			if jobName, labelExist := pod.GetLabels()[k8sJobNameLabel]; labelExist {
+				jobPodList := jobPodMap[jobName]
+				jobPodMap[jobName] = append(jobPodList, pod)
+			}
+		}
+
+	}
+
+	return jobList.Items, jobPodMap, nil
 }
 
 func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {

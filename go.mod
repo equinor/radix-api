@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/equinor/radix-operator v1.12.0
+	github.com/equinor/radix-operator v1.13.2
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang/gddo v0.0.0-20190301051549-9dbec5838451

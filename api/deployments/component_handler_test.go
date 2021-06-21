@@ -16,12 +16,12 @@ func TestRunningReplicaDiffersFromConfig_NoHPA(t *testing.T) {
 	raEnvironmentConfig := &v1.RadixEnvironmentConfig{
 		Replicas: &replicas,
 	}
-	actualPods := []corev1.Pod{corev1.Pod{}, corev1.Pod{}, corev1.Pod{}}
+	actualPods := []corev1.Pod{{}, {}, {}}
 	isDifferent := runningReplicaDiffersFromConfig(raEnvironmentConfig, actualPods)
 	assert.True(t, isDifferent)
 
 	// Test replicas 2, pods 2
-	actualPods = []corev1.Pod{corev1.Pod{}, corev1.Pod{}}
+	actualPods = []corev1.Pod{{}, {}}
 	isDifferent = runningReplicaDiffersFromConfig(raEnvironmentConfig, actualPods)
 	assert.False(t, isDifferent)
 
@@ -52,7 +52,7 @@ func TestRunningReplicaDiffersFromConfig_WithHPA(t *testing.T) {
 			MaxReplicas: 6,
 		},
 	}
-	actualPods := []corev1.Pod{corev1.Pod{}, corev1.Pod{}, corev1.Pod{}}
+	actualPods := []corev1.Pod{{}, {}, {}}
 	isDifferent := runningReplicaDiffersFromConfig(raEnvironmentConfig, actualPods)
 	assert.True(t, isDifferent)
 
@@ -62,7 +62,7 @@ func TestRunningReplicaDiffersFromConfig_WithHPA(t *testing.T) {
 	assert.False(t, isDifferent)
 
 	// Test replicas 4, pods 1, minReplicas 2, maxReplicas 6
-	actualPods = []corev1.Pod{corev1.Pod{}}
+	actualPods = []corev1.Pod{{}}
 	isDifferent = runningReplicaDiffersFromConfig(raEnvironmentConfig, actualPods)
 	assert.True(t, isDifferent)
 
@@ -78,7 +78,7 @@ func TestRunningReplicaDiffersFromSpec_NoHPA(t *testing.T) {
 	rdComponent := v1.RadixDeployComponent{
 		Replicas: &replicas,
 	}
-	actualPods := []corev1.Pod{corev1.Pod{}}
+	actualPods := []corev1.Pod{{}}
 	isDifferent := runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.True(t, isDifferent)
 
@@ -104,7 +104,7 @@ func TestRunningReplicaDiffersFromSpec_WithHPA(t *testing.T) {
 			MaxReplicas: 6,
 		},
 	}
-	actualPods := []corev1.Pod{corev1.Pod{}}
+	actualPods := []corev1.Pod{{}}
 	isDifferent := runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.True(t, isDifferent)
 
@@ -114,7 +114,7 @@ func TestRunningReplicaDiffersFromSpec_WithHPA(t *testing.T) {
 	assert.True(t, isDifferent)
 
 	// Test replicas 1, pods 3, minReplicas 2, maxReplicas 6
-	actualPods = []corev1.Pod{corev1.Pod{}, corev1.Pod{}, corev1.Pod{}}
+	actualPods = []corev1.Pod{{}, {}, {}}
 	isDifferent = runningReplicaDiffersFromSpec(&rdComponent, actualPods)
 	assert.False(t, isDifferent)
 
