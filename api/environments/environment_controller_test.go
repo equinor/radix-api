@@ -3,6 +3,7 @@ package environments
 import (
 	"context"
 	"fmt"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,8 @@ import (
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixmodels "github.com/equinor/radix-common/models"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -215,16 +218,16 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
 }
 
 func TestGetEnvironmentDeployments_Latest(t *testing.T) {
@@ -249,7 +252,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 }
 
@@ -433,7 +436,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := environmentModels.CannotDeleteNonOrphanedEnvironment(anyAppName, anyNonOrphanedEnvironment)
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Only one remaining environment after delete
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -463,7 +466,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := environmentModels.NonExistingEnvironment(nil, anyAppName, anyNonExistingEnvironment)
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 }
 
@@ -485,7 +488,8 @@ func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
+	err := controllertest.GetResponseBody(response, &environment)
+	assert.Nil(t, err)
 	assert.Equal(t, "dev", environment.Name)
 	assert.Equal(t, environmentModels.Pending.String(), environment.Status)
 }
@@ -1216,7 +1220,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.StoppedComponent.String())
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Create pod
 	createComponentPod(client, rd.GetNamespace(), componentName)
@@ -1229,7 +1233,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError = environmentModels.CannotStartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Emulate a stopped component
 	deleteComponentPod(client, rd.GetNamespace(), componentName)
@@ -1249,7 +1253,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError = environmentModels.CannotRestartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Emulate a started component
 	createComponentPod(client, rd.GetNamespace(), componentName)
@@ -1417,7 +1421,7 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)

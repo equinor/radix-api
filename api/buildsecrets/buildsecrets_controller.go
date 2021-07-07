@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 )
 
@@ -77,11 +77,11 @@ func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, buildSecrets)
+	radixhttp.JSONResponse(w, r, buildSecrets)
 }
 
 // ChangeBuildSecret Modifies an application build secret
@@ -132,7 +132,7 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -140,9 +140,9 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 	err := buildSecretsHandler.ChangeBuildSecret(appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }

@@ -3,6 +3,7 @@ package applications
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,17 +11,17 @@ import (
 	"testing"
 	"time"
 
+	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	controllertest "github.com/equinor/radix-api/api/test"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
-
-	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	controllertest "github.com/equinor/radix-api/api/test"
-	"github.com/equinor/radix-api/api/utils"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -209,7 +210,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.OnePartOfDeployKeyIsNotAllowed()
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	parameters = AnApplicationRegistration().
 		withName("any-name-2").
@@ -222,7 +223,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError = applicationModels.OnePartOfDeployKeyIsNotAllowed()
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 }
 
 func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.T) {
@@ -398,10 +399,10 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	commontest.CreateAppNamespace(kubeclient, "app-2")
 	commontest.CreateAppNamespace(kubeclient, "app-3")
 
-	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
-	app2Job1Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14Z")
-	app2Job2Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
-	app2Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:01Z")
+	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
+	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	app2Job2Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
+	app2Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:01Z")
 
 	createRadixJob(commonTestUtils, "app-1", "app-1-job-1", app1Job1Started)
 	createRadixJob(commonTestUtils, "app-2", "app-2-job-1", app2Job1Started)
@@ -435,9 +436,9 @@ func TestGetApplication_WithJobs(t *testing.T) {
 		WithName("any-name"))
 
 	commontest.CreateAppNamespace(kubeclient, "any-name")
-	app1Job1Started, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
-	app1Job2Started, _ := utils.ParseTimestamp("2018-11-12T12:30:14Z")
-	app1Job3Started, _ := utils.ParseTimestamp("2018-11-20T09:00:00Z")
+	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
+	app1Job2Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	app1Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
 
 	createRadixJob(commonTestUtils, "any-name", "any-name-job-1", app1Job1Started)
 	createRadixJob(commonTestUtils, "any-name", "any-name-job-2", app1Job2Started)
@@ -819,7 +820,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.UnmatchedBranchToEnvironment(unmappedBranch)
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Mapped branch should start job
 	parameters = applicationModels.PipelineParametersBuild{Branch: "dev"}
@@ -862,7 +863,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	expectedError := applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	parameters = applicationModels.PipelineParametersBuild{Branch: "maincfg", CommitID: pushCommitID}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", "any-app", v1.BuildDeploy), parameters)

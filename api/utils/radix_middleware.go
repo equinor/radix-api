@@ -7,11 +7,12 @@ import (
 
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RadixMiddleware The middleware beween router and radix handler functions
+// RadixMiddleware The middleware between router and radix handler functions
 type RadixMiddleware struct {
 	kubeUtil    KubeUtil
 	path        string
@@ -51,16 +52,16 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
-	token, err := getBearerTokenFromHeader(r)
+	token, err := radixhttp.GetBearerTokenFromHeader(r)
 
 	if err != nil {
-		ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	impersonation, err := getImpersonationFromHeader(r)
+	impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 	if err != nil {
-		ErrorResponse(w, r, UnexpectedError("Problems impersonating", err))
+		radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err))
 		return
 	}
 
@@ -78,7 +79,7 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
 		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{}); err != nil {
-			ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}

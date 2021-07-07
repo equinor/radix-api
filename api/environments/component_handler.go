@@ -10,7 +10,7 @@ import (
 	"github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -166,7 +166,7 @@ func (eh EnvironmentHandler) patchRdForRestart(appName string,
 		environmentVariables = make(map[string]string)
 	}
 
-	environmentVariables[defaults.RadixRestartEnvironmentVariable] = utils.FormatTimestamp(time.Now())
+	environmentVariables[defaults.RadixRestartEnvironmentVariable] = radixutils.FormatTimestamp(time.Now())
 	rd.Spec.Components[componentIndex].EnvironmentVariables = environmentVariables
 
 	newJSON, err := json.Marshal(rd)

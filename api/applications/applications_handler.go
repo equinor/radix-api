@@ -14,6 +14,7 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -178,7 +179,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
 func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
 	if appName != application.Name {
-		return nil, utils.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
+		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
 
 	// Make check that this is an existing application
@@ -364,7 +365,7 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 	toEnvironment := pipelineParameters.ToEnvironment
 
 	if strings.TrimSpace(deploymentName) == "" || strings.TrimSpace(fromEnvironment) == "" || strings.TrimSpace(toEnvironment) == "" {
-		return nil, utils.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
+		return nil, radixhttp.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
 	}
 
 	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
@@ -394,7 +395,7 @@ func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Reque
 	toEnvironment := pipelineParameters.ToEnvironment
 
 	if strings.TrimSpace(toEnvironment) == "" {
-		return nil, utils.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
+		return nil, radixhttp.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
 	}
 
 	log.Infof("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)

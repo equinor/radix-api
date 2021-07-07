@@ -6,7 +6,7 @@ import (
 
 	"github.com/equinor/radix-api/api/metrics"
 
-	"github.com/equinor/radix-api/models"
+	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -21,7 +21,7 @@ import (
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
 	GetOutClusterKubernetesClient(string) (kubernetes.Interface, radixclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, models.Impersonation) (kubernetes.Interface, radixclient.Interface)
+	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface)
 	GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface)
 }
 
@@ -44,13 +44,13 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 	}
 }
 
-// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
+//GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	return ku.GetOutClusterKubernetesClientWithImpersonation(token, models.Impersonation{})
+	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{})
 }
 
-// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation models.Impersonation) (kubernetes.Interface, radixclient.Interface) {
+//GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
+func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface) {
 	if ku.useOutClusterClient {
 		config := getOutClusterClientConfig(token, impersonation)
 		return getKubernetesClientFromConfig(config)
@@ -65,7 +65,7 @@ func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixc
 	return getKubernetesClientFromConfig(config)
 }
 
-func getOutClusterClientConfig(token string, impersonation models.Impersonation) *restclient.Config {
+func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation) *restclient.Config {
 	host := os.Getenv("K8S_API_HOST")
 	if host == "" {
 		host = "https://kubernetes.default.svc"

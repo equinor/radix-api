@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/equinor/radix-api/api/utils"
-
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
@@ -14,9 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/equinor/radix-api/api/jobs"
-	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixmodels "github.com/equinor/radix-common/models"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -51,8 +51,8 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 }
 
 func TestIsBefore(t *testing.T) {
-	job1 := jobModels.JobSummary{}
-	job2 := jobModels.JobSummary{}
+	job1 := jobmodels.JobSummary{}
+	job2 := jobmodels.JobSummary{}
 
 	job1.Created = ""
 	job2.Created = ""
@@ -88,14 +88,14 @@ func TestGetApplicationJob(t *testing.T) {
 		WithName(anyAppName).
 		WithCloneURL(anyCloneURL))
 
-	jobParameters := &jobModels.JobParameters{
+	jobParameters := &jobmodels.JobParameters{
 		Branch:      anyBranch,
 		CommitID:    anyPushCommitID,
 		PushImage:   true,
 		TriggeredBy: anyUser,
 	}
 
-	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", models.Impersonation{}))
+	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{}))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters)
@@ -105,7 +105,7 @@ func TestGetApplicationJob(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response := <-responseChannel
 
-	job := jobModels.Job{}
+	job := jobmodels.Job{}
 	controllertest.GetResponseBody(response, &job)
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
@@ -125,7 +125,7 @@ func TestGetApplicationJob(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response = <-responseChannel
 
-	job = jobModels.Job{}
+	job = jobmodels.Job{}
 	controllertest.GetResponseBody(response, &job)
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
@@ -147,7 +147,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, anyJobName))
 	response := <-responseChannel
 
-	jobSummary := jobModels.Job{}
+	jobSummary := jobmodels.Job{}
 	controllertest.GetResponseBody(response, &jobSummary)
 	assert.Equal(t, job.Name, jobSummary.Name)
 	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch)
@@ -174,7 +174,7 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 		responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
 		response = <-responseChannel
 
-		pipelineNotFoundError := jobModels.PipelineNotFoundError(anyAppName, aJobName)
+		pipelineNotFoundError := jobmodels.PipelineNotFoundError(anyAppName, aJobName)
 		err, _ = controllertest.GetErrorResponse(response)
 		assert.NotNil(t, err)
 		assert.Equal(t, pipelineNotFoundError.Error(), err.Error())

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	build_models "github.com/equinor/radix-api/api/buildstatus/models"
-	"github.com/equinor/radix-api/api/utils"
+	buildmodels "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
 )
@@ -16,11 +16,11 @@ const rootPath = "/applications/{appName}/environments/{envName}"
 
 type buildStatusController struct {
 	*models.DefaultController
-	build_models.PipelineBadge
+	buildmodels.PipelineBadge
 }
 
 // NewBuildStatusController Constructor
-func NewBuildStatusController(status build_models.PipelineBadge) models.Controller {
+func NewBuildStatusController(status buildmodels.PipelineBadge) models.Controller {
 	return &buildStatusController{PipelineBadge: status}
 }
 
@@ -83,7 +83,7 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	}
 
 	disableClientCaching(w)
-	utils.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
+	radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
 }
 
 func disableClientCaching(w http.ResponseWriter) {

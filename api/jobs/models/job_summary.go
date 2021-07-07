@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -80,14 +80,15 @@ type JobSummary struct {
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
+// GetSummaryFromRadixJob Used to get job summary from a radix job
 func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	status := job.Status
-	ended := utils.FormatTime(status.Ended)
-	created := utils.FormatTime(&job.CreationTimestamp)
+	ended := radixutils.FormatTime(status.Ended)
+	created := radixutils.FormatTime(&job.CreationTimestamp)
 	if status.Created != nil {
 		// Use this instead, because in a migration this may be more correct
 		// as migrated jobs will have the same creation timestamp in the new cluster
-		created = utils.FormatTime(status.Created)
+		created = radixutils.FormatTime(status.Created)
 	}
 
 	pipelineJob := &JobSummary{
@@ -97,7 +98,7 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		CommitID:     job.Spec.Build.CommitID,
 		Status:       GetStatusFromRadixJobStatus(status, job.Spec.Stop),
 		Created:      created,
-		Started:      utils.FormatTime(status.Started),
+		Started:      radixutils.FormatTime(status.Started),
 		Ended:        ended,
 		Pipeline:     string(job.Spec.PipeLineType),
 		Environments: job.Status.TargetEnvs,

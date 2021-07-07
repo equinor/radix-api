@@ -2,7 +2,7 @@ package models
 
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -94,11 +94,11 @@ type Job struct {
 func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
 	steps := GetJobStepsFromRadixJob(job)
 
-	created := utils.FormatTime(&job.CreationTimestamp)
+	created := radixutils.FormatTime(&job.CreationTimestamp)
 	if job.Status.Created != nil {
 		// Use this instead, because in a migration this may be more correct
 		// as migrated jobs will have the same creation timestamp in the new cluster
-		created = utils.FormatTime(job.Status.Created)
+		created = radixutils.FormatTime(job.Status.Created)
 	}
 
 	return &Job{
@@ -106,8 +106,8 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Branch:      job.Spec.Build.Branch,
 		CommitID:    job.Spec.Build.CommitID,
 		Created:     created,
-		Started:     utils.FormatTime(job.Status.Started),
-		Ended:       utils.FormatTime(job.Status.Ended),
+		Started:     radixutils.FormatTime(job.Status.Started),
+		Ended:       radixutils.FormatTime(job.Status.Ended),
 		Status:      GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
 		Pipeline:    string(job.Spec.PipeLineType),
 		Steps:       steps,
@@ -124,8 +124,8 @@ func GetJobStepsFromRadixJob(job *v1.RadixJob) []Step {
 		step := Step{
 			Name:       jobStep.Name,
 			Status:     string(jobStep.Condition),
-			Started:    utils.FormatTime(jobStep.Started),
-			Ended:      utils.FormatTime(jobStep.Ended),
+			Started:    radixutils.FormatTime(jobStep.Started),
+			Ended:      radixutils.FormatTime(jobStep.Ended),
 			PodName:    jobStep.PodName,
 			Components: jobStep.Components,
 		}

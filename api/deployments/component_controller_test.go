@@ -9,6 +9,8 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -51,7 +53,7 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := deploymentModels.NonExistingDeployment(nil, "any-non-existing-deployment")
 
-	assert.Equal(t, (expectedError.(*utils.Error)).Message, errorResponse.Message)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 }
 
 func TestGetComponents_active_deployment(t *testing.T) {
@@ -234,8 +236,8 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
 
-	initialDeploymentCreated, _ := utils.ParseTimestamp("2018-11-12T11:45:26Z")
-	activeDeploymentCreated, _ := utils.ParseTimestamp("2018-11-14T11:45:26Z")
+	initialDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
+	activeDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-14T11:45:26Z")
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().

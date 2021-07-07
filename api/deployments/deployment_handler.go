@@ -7,20 +7,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/equinor/radix-api/api/pods"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/equinor/radix-api/api/utils"
-	"k8s.io/client-go/kubernetes"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // DeployHandler Instance variables
@@ -125,7 +123,7 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 
 	var activeTo time.Time
 	if !strings.EqualFold(theDeployment.ActiveTo, "") {
-		activeTo, err = utils.ParseTimestamp(theDeployment.ActiveTo)
+		activeTo, err = radixutils.ParseTimestamp(theDeployment.ActiveTo)
 		if err != nil {
 			return nil, err
 		}
