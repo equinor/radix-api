@@ -9,6 +9,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -189,9 +190,9 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, jobPodsMap map[string][]core
 		creationTimestamp := job.GetCreationTimestamp()
 		summary := deploymentModels.ScheduledJobSummary{
 			Name:    job.Name,
-			Created: utils.FormatTimestamp(creationTimestamp.Time),
-			Started: utils.FormatTime(job.Status.StartTime),
-			Ended:   utils.FormatTime(job.Status.CompletionTime),
+			Created: radixutils.FormatTimestamp(creationTimestamp.Time),
+			Started: radixutils.FormatTime(job.Status.StartTime),
+			Ended:   radixutils.FormatTime(job.Status.CompletionTime),
 			Status:  models.GetStatusFromJobStatus(job.Status).String(),
 		}
 		if jobPods, ok := jobPodsMap[job.Name]; ok {
@@ -406,7 +407,7 @@ func getStatusOfActiveDeployment(
 	} else {
 		restarted := (*component.GetEnvironmentVariables())[defaults.RadixRestartEnvironmentVariable]
 		if !strings.EqualFold(restarted, "") {
-			restartedTime, err := utils.ParseTimestamp(restarted)
+			restartedTime, err := radixutils.ParseTimestamp(restarted)
 			if err != nil {
 				return status, err
 			}

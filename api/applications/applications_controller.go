@@ -7,8 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 )
 
@@ -147,11 +147,11 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appRegistrations)
+	radixhttp.JSONResponse(w, r, appRegistrations)
 }
 
 // GetApplication Gets application by application name
@@ -190,11 +190,11 @@ func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &application)
+	radixhttp.JSONResponse(w, r, &application)
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name
@@ -229,11 +229,11 @@ func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r 
 	isDeployKeyValid, err := IsDeployKeyValid(accounts.UserAccount, appName)
 
 	if isDeployKeyValid {
-		utils.JSONResponse(w, r, &isDeployKeyValid)
+		radixhttp.JSONResponse(w, r, &isDeployKeyValid)
 		return
 	}
 
-	utils.ErrorResponse(w, r, err)
+	radixhttp.ErrorResponse(w, r, err)
 }
 
 // RegenerateMachineUserTokenHandler Deletes the secret holding the token to force refresh and returns the new token
@@ -272,12 +272,12 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 
 	if err != nil {
 		log.Errorf("failed to re-generate machine user token for app %s. Error: %v", appName, err)
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
 	log.Debugf("re-generated machine user token for app %s", appName)
-	utils.JSONResponse(w, r, &machineUser)
+	radixhttp.JSONResponse(w, r, &machineUser)
 }
 
 // RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key
@@ -320,17 +320,17 @@ func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter,
 	handler := Init(accounts)
 	var sharedSecret applicationModels.RegenerateDeployKeyAndSecretData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 	generatedDeployKey, err := handler.RegenerateDeployKey(appName, sharedSecret)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &generatedDeployKey)
+	radixhttp.JSONResponse(w, r, &generatedDeployKey)
 }
 
 // RegisterApplication Creates new application registration
@@ -368,19 +368,19 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//     description: "Conflict"
 	var application applicationModels.ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	// Need in cluster Radix client in order to validate registration using sufficient priviledges
+	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
 	appRegistration, err := handler.RegisterApplication(application)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	radixhttp.JSONResponse(w, r, &appRegistration)
 }
 
 // ChangeRegistrationDetails Updates application registration
@@ -427,19 +427,19 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 
 	var application applicationModels.ApplicationRegistration
 	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	// Need in cluster Radix client in order to validate registration using sufficient priviledges
+	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
 	appRegistration, err := handler.ChangeRegistrationDetails(appName, application)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	radixhttp.JSONResponse(w, r, &appRegistration)
 }
 
 // ModifyRegistrationDetails Updates specific field(s) of an application registration
@@ -486,19 +486,19 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 
 	var application applicationModels.ApplicationPatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	// Need in cluster Radix client in order to validate registration using sufficient priviledges
+	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
 	appRegistration, err := handler.ModifyRegistrationDetails(appName, application)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &appRegistration)
+	radixhttp.JSONResponse(w, r, &appRegistration)
 }
 
 // DeleteApplication Deletes application
@@ -535,7 +535,7 @@ func DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -564,7 +564,7 @@ func ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
 	handler := Init(accounts)
 	supportedPipelines := handler.GetSupportedPipelines()
-	utils.JSONResponse(w, r, supportedPipelines)
+	radixhttp.JSONResponse(w, r, supportedPipelines)
 }
 
 // TriggerPipelineBuild creates a build pipeline job for the application
@@ -607,11 +607,11 @@ func TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *ht
 	jobSummary, err := handler.TriggerPipelineBuild(appName, r)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &jobSummary)
+	radixhttp.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelineBuildDeploy creates a build-deploy pipeline job for the application
@@ -654,11 +654,11 @@ func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter,
 	jobSummary, err := handler.TriggerPipelineBuildDeploy(appName, r)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &jobSummary)
+	radixhttp.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelineDeploy creates a deploy pipeline job for the application
@@ -701,11 +701,11 @@ func TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *h
 	jobSummary, err := handler.TriggerPipelineDeploy(appName, r)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &jobSummary)
+	radixhttp.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelinePromote creates a promote pipeline job for the application
@@ -748,9 +748,9 @@ func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *
 	jobSummary, err := handler.TriggerPipelinePromote(appName, r)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, &jobSummary)
+	radixhttp.JSONResponse(w, r, &jobSummary)
 }

@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	"github.com/equinor/radix-api/api/utils"
+	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/gorilla/mux"
 )
 
@@ -144,7 +145,7 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 	if strings.TrimSpace(latest) != "" {
 		useLatest, err = strconv.ParseBool(r.FormValue("latest"))
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -153,11 +154,11 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 
 	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(appName, envName, useLatest)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appEnvironmentDeployments)
+	radixhttp.JSONResponse(w, r, appEnvironmentDeployments)
 }
 
 // CreateEnvironment Creates a new environment
@@ -200,7 +201,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	_, err := environmentHandler.CreateEnvironment(appName, envName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -250,11 +251,11 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appEnvironment)
+	radixhttp.JSONResponse(w, r, appEnvironment)
 
 }
 
@@ -300,7 +301,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -345,11 +346,11 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appEnvironments)
+	radixhttp.JSONResponse(w, r, appEnvironments)
 }
 
 // GetEnvironmentEvents Get events for an application environment
@@ -395,11 +396,11 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 	events, err := environmentHandler.GetEnvironmentEvents(appName, envName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, events)
+	radixhttp.JSONResponse(w, r, events)
 
 }
 
@@ -461,9 +462,9 @@ func ChangeEnvironmentComponentSecret(accounts models.Accounts, w http.ResponseW
 	componentName := mux.Vars(r)["componentName"]
 	secretName := mux.Vars(r)["secretName"]
 
-	var secretParameters environmentModels.SecretParameters
+	var secretParameters environmentmodels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -471,11 +472,11 @@ func ChangeEnvironmentComponentSecret(accounts models.Accounts, w http.ResponseW
 
 	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }
 
 // StopComponent Stops job
@@ -524,11 +525,11 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	err := environmentHandler.StopComponent(appName, envName, componentName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }
 
 // StartComponent Starts job
@@ -577,11 +578,11 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	err := environmentHandler.StartComponent(appName, envName, componentName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }
 
 // RestartComponent Restarts job
@@ -634,11 +635,11 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	err := environmentHandler.RestartComponent(appName, envName, componentName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }
 
 // GetPodLog Get logs of a single pod
@@ -700,9 +701,9 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	var err error
 
 	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = utils.ParseTimestamp(sinceTime)
+		since, err = radixutils.ParseTimestamp(sinceTime)
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -711,11 +712,11 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	log, err := eh.GetLogs(appName, envName, podName, &since)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.StringResponse(w, r, log)
+	radixhttp.StringResponse(w, r, log)
 }
 
 // GetScheduledJobLog Get log from a scheduled job
@@ -777,9 +778,9 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	var err error
 
 	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = utils.ParseTimestamp(sinceTime)
+		since, err = radixutils.ParseTimestamp(sinceTime)
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -788,9 +789,9 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.StringResponse(w, r, log)
+	radixhttp.StringResponse(w, r, log)
 }

@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -91,8 +91,8 @@ func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 	return &DeploymentSummary{
 		Name:         b.name,
 		Environment:  b.environment,
-		ActiveFrom:   utils.FormatTimestamp(b.activeFrom),
-		ActiveTo:     utils.FormatTimestamp(b.activeTo),
+		ActiveFrom:   radixutils.FormatTimestamp(b.activeFrom),
+		ActiveTo:     radixutils.FormatTimestamp(b.activeTo),
 		CreatedByJob: b.jobName,
 	}
 }
@@ -101,8 +101,8 @@ func (b *deploymentBuilder) BuildDeployment() *Deployment {
 	return &Deployment{
 		Name:         b.name,
 		Environment:  b.environment,
-		ActiveFrom:   utils.FormatTimestamp(b.activeFrom),
-		ActiveTo:     utils.FormatTimestamp(b.activeTo),
+		ActiveFrom:   radixutils.FormatTimestamp(b.activeFrom),
+		ActiveTo:     radixutils.FormatTimestamp(b.activeTo),
 		Components:   b.components,
 		CreatedByJob: b.jobName,
 	}

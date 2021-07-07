@@ -8,10 +8,10 @@ import (
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,7 +117,7 @@ func getPipelineTag() string {
 
 func getUniqueJobName(image string) (string, string) {
 	var jobName []string
-	randomStr := strings.ToLower(utils.RandString(5))
+	randomStr := strings.ToLower(radixutils.RandString(5))
 	jobName = append(jobName, image)
 	jobName = append(jobName, "-")
 	jobName = append(jobName, getCurrentTimestamp())

@@ -3,15 +3,16 @@ package deployments
 import (
 	"context"
 	"fmt"
+	radixutils "github.com/equinor/radix-common/utils"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/stretchr/testify/assert"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -85,7 +86,7 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := deploymentModels.NonExistingPod(anyAppName, anyPodName)
 
-	assert.Equal(t, (expectedError.(*utils.Error)).Error(), errorResponse.Error())
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Error(), errorResponse.Error())
 
 }
 
@@ -204,16 +205,16 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
 }
 
 func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
@@ -237,7 +238,7 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 }
 
@@ -262,16 +263,16 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
 	assert.Equal(t, "", deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[2].ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[2].ActiveTo)
 }
 
 func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
@@ -295,11 +296,11 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	assert.Equal(t, 2, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, utils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
 	assert.Equal(t, "", deployments[1].ActiveTo)
 }
 
@@ -320,8 +321,8 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	anyEnvironment := "dev"
 	anyDeployment1Name := "abcdef"
 	anyDeployment2Name := "ghijkl"
-	appDeployment1Created, _ := utils.ParseTimestamp("2018-11-12T12:00:00Z")
-	appDeployment2Created, _ := utils.ParseTimestamp("2018-11-14T12:00:00Z")
+	appDeployment1Created, _ := radixutils.ParseTimestamp("2018-11-12T12:00:00Z")
+	appDeployment2Created, _ := radixutils.ParseTimestamp("2018-11-14T12:00:00Z")
 
 	commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
@@ -385,8 +386,8 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	controllertest.GetResponseBody(response, &deployment)
 
 	assert.Equal(t, anyDeployment1Name, deployment.Name)
-	assert.Equal(t, utils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
-	assert.Equal(t, utils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
+	assert.Equal(t, radixutils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
+	assert.Equal(t, radixutils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
 	assert.Equal(t, 4, len(deployment.Components))
 
 }

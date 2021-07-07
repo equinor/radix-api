@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/gorilla/mux"
 )
 
@@ -101,9 +102,9 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	var err error
 
 	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = utils.ParseTimestamp(sinceTime)
+		since, err = radixutils.ParseTimestamp(sinceTime)
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -112,12 +113,12 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName, &since)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
 	sort.Slice(pipelines, func(i, j int) bool { return pipelines[i].Sort < pipelines[j].Sort })
-	utils.JSONResponse(w, r, pipelines)
+	radixhttp.JSONResponse(w, r, pipelines)
 }
 
 // GetApplicationJobs gets pipeline-job summaries
@@ -158,11 +159,11 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, jobSummaries)
+	radixhttp.JSONResponse(w, r, jobSummaries)
 }
 
 // GetApplicationJob gets specific pipeline-job details
@@ -207,11 +208,11 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, jobDetail)
+	radixhttp.JSONResponse(w, r, jobDetail)
 }
 
 // StopApplicationJob Stops job
@@ -254,7 +255,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	err := handler.StopJob(appName, jobName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 

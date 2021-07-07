@@ -3,10 +3,10 @@ package models
 import (
 	"fmt"
 
-	"github.com/equinor/radix-api/api/utils"
+	radixhttp "github.com/equinor/radix-common/net/http"
 )
 
 // PipelineNotFoundError Job not found
 func PipelineNotFoundError(appName, jobName string) error {
-	return utils.TypeMissingError(fmt.Sprintf("Job %s not found for app %s", jobName, appName), nil)
+	return radixhttp.TypeMissingError(fmt.Sprintf("Job %s not found for app %s", jobName, appName), nil)
 }
