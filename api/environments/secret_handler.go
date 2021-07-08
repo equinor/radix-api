@@ -7,13 +7,12 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/equinor/radix-api/api/utils"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -31,7 +30,7 @@ const (
 func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName string, componentSecret environmentModels.SecretParameters) (*environmentModels.SecretParameters, error) {
 	newSecretValue := componentSecret.SecretValue
 	if strings.TrimSpace(newSecretValue) == "" {
-		return nil, utils.ValidationError("Secret", "New secret value is empty")
+		return nil, radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
 	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
@@ -82,10 +81,10 @@ func (eh EnvironmentHandler) ChangeEnvironmentComponentSecret(appName, envName, 
 
 	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(context.TODO(), secretObjName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		return nil, utils.TypeMissingError("Secret object does not exist", err)
+		return nil, radixhttp.TypeMissingError("Secret object does not exist", err)
 	}
 	if err != nil {
-		return nil, utils.UnexpectedError("Failed getting secret object", err)
+		return nil, radixhttp.UnexpectedError("Failed getting secret object", err)
 	}
 
 	if secretObject.Data == nil {

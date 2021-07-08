@@ -1,8 +1,9 @@
 package deployments
 
 import (
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -100,7 +101,7 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	if strings.TrimSpace(latest) != "" {
 		useLatest, err = strconv.ParseBool(r.FormValue("latest"))
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -109,11 +110,11 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appDeployments)
+	radixhttp.JSONResponse(w, r, appDeployments)
 }
 
 // GetDeployment Get deployment details
@@ -158,11 +159,11 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, appDeployment)
+	radixhttp.JSONResponse(w, r, appDeployment)
 }
 
 // GetComponents for a deployment
@@ -206,11 +207,11 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	deployHandler := Init(accounts)
 	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, components)
+	radixhttp.JSONResponse(w, r, components)
 }
 
 // GetPodLog Get logs of a single pod
@@ -273,9 +274,9 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	var err error
 
 	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = utils.ParseTimestamp(sinceTime)
+		since, err = radixutils.ParseTimestamp(sinceTime)
 		if err != nil {
-			utils.ErrorResponse(w, r, err)
+			radixhttp.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -284,9 +285,9 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	log, err := deployHandler.GetLogs(appName, podName, &since)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.StringResponse(w, r, log)
+	radixhttp.StringResponse(w, r, log)
 }

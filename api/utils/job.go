@@ -1,5 +1,7 @@
 package utils
 
+import radixutils "github.com/equinor/radix-common/utils"
+
 type Job interface {
 	GetCreated() string
 	GetStarted() string
@@ -9,18 +11,18 @@ type Job interface {
 
 // IsBefore Checks that job-j is before job-i
 func IsBefore(j, i Job) bool {
-	jCreated := ParseTimestampNillable(j.GetCreated())
+	jCreated := radixutils.ParseTimestampNillable(j.GetCreated())
 	if jCreated == nil {
 		return false
 	}
 
-	iCreated := ParseTimestampNillable(i.GetCreated())
+	iCreated := radixutils.ParseTimestampNillable(i.GetCreated())
 	if iCreated == nil {
 		return true
 	}
 
-	jStarted := ParseTimestampNillable(j.GetStarted())
-	iStarted := ParseTimestampNillable(i.GetStarted())
+	jStarted := radixutils.ParseTimestampNillable(j.GetStarted())
+	iStarted := radixutils.ParseTimestampNillable(i.GetStarted())
 
 	return (jCreated.Equal(*iCreated) && jStarted != nil && iStarted != nil && jStarted.Before(*iStarted)) ||
 		jCreated.Before(*iCreated)

@@ -6,10 +6,9 @@ import (
 
 	buildSecretsModels "github.com/equinor/radix-api/api/buildsecrets/models"
 	sharedModels "github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-
-	"github.com/equinor/radix-api/api/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -31,16 +30,16 @@ func Init(accounts sharedModels.Accounts) Handler {
 // ChangeBuildSecret handler to modify the build secret
 func (sh Handler) ChangeBuildSecret(appName, secretName, secretValue string) error {
 	if strings.TrimSpace(secretValue) == "" {
-		return utils.ValidationError("Secret", "New secret value is empty")
+		return radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
 	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		return utils.TypeMissingError("Build secrets object does not exist", err)
+		return radixhttp.TypeMissingError("Build secrets object does not exist", err)
 	}
 
 	if err != nil {
-		return utils.UnexpectedError("Failed getting build secret object", err)
+		return radixhttp.UnexpectedError("Failed getting build secret object", err)
 	}
 
 	if secretObject.Data == nil {

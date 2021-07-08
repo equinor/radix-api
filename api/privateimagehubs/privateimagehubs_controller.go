@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 )
 
@@ -77,11 +77,11 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(appName)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, imageHubSecrets)
+	radixhttp.JSONResponse(w, r, imageHubSecrets)
 }
 
 // ChangePrivateImageHubSecret Modifies an application private image hub secret
@@ -132,7 +132,7 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -140,9 +140,9 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {
-		utils.ErrorResponse(w, r, err)
+		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	utils.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, "Success")
 }

@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/equinor/radix-api/api/utils"
-
 	"github.com/equinor/radix-api/models"
-	log "github.com/sirupsen/logrus"
-
+	radixhttp "github.com/equinor/radix-common/net/http"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-
+	log "github.com/sirupsen/logrus"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,7 +80,7 @@ func serve(client kubernetes.Interface, radixclient radixclient.Interface, w htt
 	ar.Request.Object = runtime.RawExtension{}
 	ar.Request.OldObject = runtime.RawExtension{}
 
-	utils.JSONResponse(w, r, response)
+	radixhttp.JSONResponse(w, r, response)
 }
 
 func toAdmissionResponse(err error) *v1beta1.AdmissionResponse {

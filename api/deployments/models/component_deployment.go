@@ -3,7 +3,7 @@ package models
 import (
 	"strings"
 
-	"github.com/equinor/radix-api/api/utils"
+	radixutils "github.com/equinor/radix-common/utils"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -248,7 +248,7 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary := ReplicaSummary{}
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
-	replicaSummary.Created = utils.FormatTimestamp(creationTimestamp.Time)
+	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
 	if len(pod.Status.ContainerStatuses) <= 0 {
 		return replicaSummary
 	}

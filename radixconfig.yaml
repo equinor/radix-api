@@ -10,6 +10,9 @@ spec:
     - name: qa
       build:
         from: master
+    - name: v2
+      build:
+        from: v2
     - name: dev
       build:
         from: 47198-embed-badge-svg
@@ -56,4 +59,16 @@ spec:
           runAsNonRoot: true
           variables:
             PIPELINE_IMG_TAG: "master-latest"
+            GOMAXPROCS: 1
+        - environment: v2
+          runAsNonRoot: true
+          resources:
+            requests:
+              memory: "400M"
+              cpu: "250m"
+            limits:
+              memory: "400M"
+              cpu: "2000m"
+          variables:
+            PIPELINE_IMG_TAG: "release-latest"
             GOMAXPROCS: 1

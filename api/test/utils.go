@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
+	radixmodels "github.com/equinor/radix-common/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	kubernetes "k8s.io/client-go/kubernetes"
 )
 
@@ -80,8 +81,8 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 }
 
 // GetErrorResponse Gets error repsonse
-func GetErrorResponse(response *httptest.ResponseRecorder) (*utils.Error, error) {
-	errorResponse := &utils.Error{}
+func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, error) {
+	errorResponse := &radixhttp.Error{}
 	err := GetResponseBody(response, errorResponse)
 	if err != nil {
 		log.Infof("%v", err)
@@ -112,13 +113,13 @@ func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interf
 	}
 }
 
-// GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
+//GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
+func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string) (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
 }
 
-// GetOutClusterKubernetesClient Gets a kubefake client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation models.Impersonation) (kubernetes.Interface, radixclient.Interface) {
+//GetOutClusterKubernetesClientWithImpersonation Gets a kubefake client
+func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
 }
 

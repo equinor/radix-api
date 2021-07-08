@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 )
@@ -16,7 +17,7 @@ func NewAccounts(
 	outClusterClient kubernetes.Interface,
 	outClusterRadixClient radixclient.Interface,
 	token string,
-	impersonation Impersonation) Accounts {
+	impersonation radixmodels.Impersonation) Accounts {
 
 	return Accounts{
 		UserAccount: Account{
@@ -44,7 +45,7 @@ type Accounts struct {
 	UserAccount    Account
 	ServiceAccount Account
 	token          string
-	impersonation  Impersonation
+	impersonation  radixmodels.Impersonation
 }
 
 // RadixHandlerFunc Pattern for handler functions
