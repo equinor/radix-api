@@ -89,6 +89,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetScheduledJobLog,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars",
+			Method:      "GET",
+			HandlerFunc: GetComponentEnvVars,
+		},
 	}
 
 	return routes
@@ -794,4 +799,59 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	radixhttp.StringResponse(w, r, log)
+}
+
+// GetComponentEnvVars Get log from a scheduled job
+func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/envvars component envVars
+	// ---
+	// summary: Get environment variables for component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "environment variables"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/EnvVar"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	eh := Init(WithAccounts(accounts))
+	envVars, err := eh.GetComponentEnvVars(appName, envName, componentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, envVars)
 }

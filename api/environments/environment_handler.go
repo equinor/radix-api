@@ -364,3 +364,16 @@ func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobN
 
 	return log, nil
 }
+
+//GetComponentEnvVars Get environment variables with metadata for the component
+func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]environmentModels.EnvVar, error) {
+	return []environmentModels.EnvVar{
+		{
+			Name:  "VAR1",
+			Value: "val1",
+			Metadata: environmentModels.EnvVarMetadata{
+				RadixConfigValue: "orig-val1",
+			},
+		},
+	}, nil
+}
