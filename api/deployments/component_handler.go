@@ -405,7 +405,7 @@ func getStatusOfActiveDeployment(
 	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
-		restarted := (*component.GetEnvironmentVariables())[defaults.RadixRestartEnvironmentVariable]
+		restarted := component.GetEnvironmentVariables()[defaults.RadixRestartEnvironmentVariable]
 		if !strings.EqualFold(restarted, "") {
 			restartedTime, err := radixutils.ParseTimestamp(restarted)
 			if err != nil {

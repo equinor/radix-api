@@ -6,25 +6,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/equinor/radix-api/api/pods"
-
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
-
 	eventModels "github.com/equinor/radix-api/api/events/models"
-
+	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 const latestDeployment = true
@@ -367,13 +364,70 @@ func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobN
 
 //GetComponentEnvVars Get environment variables with metadata for the component
 func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]environmentModels.EnvVar, error) {
-	return []environmentModels.EnvVar{
-		{
-			Name:  "VAR1",
-			Value: "val1",
-			Metadata: environmentModels.EnvVarMetadata{
-				RadixConfigValue: "orig-val1",
-			},
-		},
-	}, nil
+	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
+	rd, err := eh.getActiveDeployment(namespace)
+	if err != nil {
+		return nil, err
+	}
+	component := getComponent(rd, componentName)
+	if component == nil {
+		return nil, fmt.Errorf("component not found by name")
+	}
+	envVarsConfigMap, err := eh.getConfigMap(err, namespace, kube.GetEnvVarsConfigMapName(componentName))
+	if err != nil {
+		return nil, err
+	}
+	envVarsMetadataConfigMap, err := eh.getConfigMap(err, namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+	if err != nil {
+		return nil, err
+	}
+	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
+	if err != nil {
+		return nil, err
+	}
+
+	var apiEnvVars []environmentModels.EnvVar
+	envVarsMap := component.GetEnvironmentVariables()
+	for envVarName, envVar := range envVarsMap {
+		apiEnvVar := environmentModels.EnvVar{Name: envVarName, Value: envVar}
+		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVarName]; foundCmEnvVar {
+			apiEnvVar.Value = cmEnvVar
+			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVarName]; foundMetadata {
+				apiEnvVar.Metadata = environmentModels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
+			}
+		}
+		apiEnvVars = append(apiEnvVars, apiEnvVar)
+	}
+	return apiEnvVars, nil
+}
+
+func (eh EnvironmentHandler) getConfigMap(err error, namespace string, envVarsConfigMapName string) (*corev1.ConfigMap, error) {
+	return eh.client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), envVarsConfigMapName, metav1.GetOptions{})
+}
+
+func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
+	for _, component := range rd.Spec.Components {
+		if strings.EqualFold(component.Name, componentName) {
+			return &component
+		}
+	}
+	for _, jobComponent := range rd.Spec.Jobs {
+		if strings.EqualFold(jobComponent.Name, componentName) {
+			return &jobComponent
+		}
+	}
+	return nil
+}
+
+func (eh EnvironmentHandler) getActiveDeployment(namespace string) (*v1.RadixDeployment, error) {
+	radixDeployments, err := eh.radixclient.RadixV1().RadixDeployments(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, rd := range radixDeployments.Items {
+		if rd.Status.ActiveTo.IsZero() {
+			return &rd, err
+		}
+	}
+	return nil, nil
 }
