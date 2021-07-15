@@ -31,7 +31,7 @@ func (ec *envVarsController) GetRoutes() models.Routes {
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars/{envVarName}",
-			Method:      "PUT",
+			Method:      "PATCH",
 			HandlerFunc: ChangeEnvVar,
 		},
 	}
@@ -96,7 +96,7 @@ func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *htt
 
 // ChangeEnvVar Modifies an environment variable
 func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/envvars/{envVarName} component changeEnvVar
+	// swagger:operation PATCH /applications/{appName}/environments/{envName}/components/{componentName}/envvars/{envVarName} component changeEnvVar
 	// ---
 	// summary: Update an environment variable
 	// parameters:
