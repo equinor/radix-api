@@ -3,6 +3,8 @@ package environments
 import (
 	"context"
 	"fmt"
+	models2 "github.com/equinor/radix-api/api/environmentvariables/models"
+	"sort"
 	"strings"
 	"time"
 
@@ -363,7 +365,7 @@ func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobN
 }
 
 //GetComponentEnvVars Get environment variables with metadata for the component
-func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]environmentModels.EnvVar, error) {
+func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]models2.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.getActiveDeployment(namespace)
 	if err != nil {
@@ -386,18 +388,19 @@ func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string,
 		return nil, err
 	}
 
-	var apiEnvVars []environmentModels.EnvVar
+	var apiEnvVars []models2.EnvVar
 	envVarsMap := component.GetEnvironmentVariables()
 	for envVarName, envVar := range envVarsMap {
-		apiEnvVar := environmentModels.EnvVar{Name: envVarName, Value: envVar}
+		apiEnvVar := models2.EnvVar{Name: envVarName, Value: envVar}
 		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVarName]; foundCmEnvVar {
 			apiEnvVar.Value = cmEnvVar
 			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVarName]; foundMetadata {
-				apiEnvVar.Metadata = environmentModels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
+				apiEnvVar.Metadata = &models2.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
 			}
 		}
 		apiEnvVars = append(apiEnvVars, apiEnvVar)
 	}
+	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
 	return apiEnvVars, nil
 }
 
