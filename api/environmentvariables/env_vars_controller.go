@@ -1,8 +1,9 @@
 package environmentvariables
 
 import (
+	"encoding/json"
 	//"encoding/json"
-	//environmentmodels "github.com/equinor/radix-api/api/environments/models"
+	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
@@ -30,7 +31,7 @@ func (ec *envVarsController) GetRoutes() models.Routes {
 			HandlerFunc: GetComponentEnvVars,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars/{envVarName}",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars",
 			Method:      "PATCH",
 			HandlerFunc: ChangeEnvVar,
 		},
@@ -96,7 +97,7 @@ func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *htt
 
 // ChangeEnvVar Modifies an environment variable
 func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PATCH /applications/{appName}/environments/{envName}/components/{componentName}/envvars/{envVarName} component changeEnvVar
+	// swagger:operation PATCH /applications/{appName}/environments/{envName}/components/{componentName}/envvars component changeEnvVar
 	// ---
 	// summary: Update an environment variable
 	// parameters:
@@ -125,7 +126,7 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 	//   description: New value and metadata
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/EnvVarParameters"
+	//       "$ref": "#/definitions/EnvVarParameter"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -150,23 +151,21 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
-	envVarName := mux.Vars(r)["envVarName"]
+	var envVarParameters []envvarsmodels.EnvVarParameter
+	if err := json.NewDecoder(r.Body).Decode(&envVarParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
 
-	log.Debugf("%s,%s,%s,%s", appName, envName, componentName, envVarName)
+	log.Debugf("Update %d environment variables for app: '%s', env: '%s', component: '%s'", appName, envName, componentName, len(envVarParameters))
 
-	//var secretParameters environmentmodels.SecretParameters
-	//if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-	//	radixhttp.ErrorResponse(w, r, err)
-	//	return
-	//}
-	//
-	//environmentHandler := Init(WithAccounts(accounts))
-	//
-	//_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
-	//if err != nil {
-	//	radixhttp.ErrorResponse(w, r, err)
-	//	return
-	//}
-	//
+	envVarsHandler := Init(WithAccounts(accounts))
+
+	_, err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
 	radixhttp.JSONResponse(w, r, "Success")
 }

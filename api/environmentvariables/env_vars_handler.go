@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/equinor/radix-api/api/deployments"
-	models2 "github.com/equinor/radix-api/api/environmentvariables/models"
+	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/api/events"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -64,7 +64,7 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 }
 
 //GetComponentEnvVars Get environment variables with metadata for the component
-func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]models2.EnvVar, error) {
+func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.getActiveDeployment(namespace)
 	if err != nil {
@@ -87,14 +87,14 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 		return nil, err
 	}
 
-	var apiEnvVars []models2.EnvVar
+	var apiEnvVars []envvarsmodels.EnvVar
 	envVarsMap := component.GetEnvironmentVariables()
 	for envVarName, envVar := range envVarsMap {
-		apiEnvVar := models2.EnvVar{Name: envVarName, Value: envVar}
+		apiEnvVar := envvarsmodels.EnvVar{Name: envVarName, Value: envVar}
 		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVarName]; foundCmEnvVar {
 			apiEnvVar.Value = cmEnvVar
 			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVarName]; foundMetadata {
-				apiEnvVar.Metadata = &models2.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
+				apiEnvVar.Metadata = &envvarsmodels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
 			}
 		}
 		apiEnvVars = append(apiEnvVars, apiEnvVar)
@@ -132,4 +132,8 @@ func (eh EnvVarsHandler) getActiveDeployment(namespace string) (*v1.RadixDeploym
 		}
 	}
 	return nil, nil
+}
+
+func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) (interface{}, error) {
+	//TODO
 }
