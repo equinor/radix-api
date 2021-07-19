@@ -315,7 +315,7 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
 func (eh EnvironmentHandler) getNotOrphanedEnvNames(app *v1.RadixApplication) []string {
-	return eh.getEnvironments(app, true)
+	return eh.getEnvironments(app, false)
 }
 
 func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, orphaned bool) []string {
@@ -431,7 +431,7 @@ func (eh EnvironmentHandler) StopApplication(appName string) error {
 	environmentNames := eh.getNotOrphanedEnvNames(radixApplication)
 	log.Infof("Stopping components in the application %s", appName)
 	for _, environmentName := range environmentNames {
-		err := eh.StartEnvironment(appName, environmentName)
+		err := eh.StopEnvironment(appName, environmentName)
 		if err != nil {
 			return err
 		}
