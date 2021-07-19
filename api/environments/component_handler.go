@@ -15,7 +15,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	jsonpatch "github.com/evanphx/json-patch"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,13 +23,7 @@ import (
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string) error {
-	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	deployment, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(appName, envName)
-	if err != nil {
-		return err
-	}
-
-	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
 	if err != nil {
 		return err
 	}
@@ -40,10 +33,10 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -54,7 +47,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 
 	log.Infof("Stopping component %s, %s", componentName, appName)
 	noReplicas := 0
-	err = eh.patchReplicasOnRD(appName, rd, index, &noReplicas)
+	err = eh.patchReplicasOnRD(rd, index, &noReplicas)
 	if err != nil {
 		return err
 	}
@@ -64,13 +57,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 
 // StartComponent Starts a component
 func (eh EnvironmentHandler) StartComponent(appName, envName, componentName string) error {
-	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	deployment, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(appName, envName)
-	if err != nil {
-		return err
-	}
-
-	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
 	if err != nil {
 		return err
 	}
@@ -80,7 +67,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
 
 	replicas, err := getReplicasForComponentInEnvironment(environmentConfig)
@@ -88,7 +75,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 		return err
 	}
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -98,7 +85,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	}
 
 	log.Infof("Starting component %s, %s", componentName, appName)
-	err = eh.patchReplicasOnRD(appName, rd, index, replicas)
+	err = eh.patchReplicasOnRD(rd, index, replicas)
 	if err != nil {
 		return err
 	}
@@ -109,13 +96,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 // RestartComponent Restarts a component
 func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName string) error {
 	log.Infof("Restarting component %s, %s", componentName, appName)
-	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	deployment, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(appName, envName)
-	if err != nil {
-		return err
-	}
-
-	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
 	if err != nil {
 		return err
 	}
@@ -125,10 +106,10 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	ra, _ := eh.radixclient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
 
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deployment, rd.Status, environmentConfig, componentToPatch)
+	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -137,7 +118,7 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
 	}
 
-	err = eh.patchRdForRestart(appName, rd, index, componentToPatch)
+	err = eh.patchRdForRestart(rd, index, componentToPatch)
 	if err != nil {
 		return err
 	}
@@ -153,8 +134,7 @@ func getReplicasForComponentInEnvironment(environmentConfig *v1.RadixEnvironment
 	return nil, nil
 }
 
-func (eh EnvironmentHandler) patchRdForRestart(appName string,
-	rd *v1.RadixDeployment, componentIndex int, componentToPatch *v1.RadixDeployComponent) error {
+func (eh EnvironmentHandler) patchRdForRestart(rd *v1.RadixDeployment, componentIndex int, componentToPatch *v1.RadixDeployComponent) error {
 
 	oldJSON, err := json.Marshal(rd)
 	if err != nil {
@@ -182,7 +162,7 @@ func (eh EnvironmentHandler) patchRdForRestart(appName string,
 	return nil
 }
 
-func (eh EnvironmentHandler) patchReplicasOnRD(appName string, rd *v1.RadixDeployment, componentIndex int, replicas *int) error {
+func (eh EnvironmentHandler) patchReplicasOnRD(rd *v1.RadixDeployment, componentIndex int, replicas *int) error {
 	oldJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
@@ -217,7 +197,7 @@ func (eh EnvironmentHandler) patch(namespace, name string, oldJSON, newJSON []by
 	if patchBytes != nil {
 		_, err := eh.radixclient.RadixV1().RadixDeployments(namespace).Patch(context.TODO(), name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
 		if err != nil {
-			return fmt.Errorf("Failed to patch deployment object: %v", err)
+			return fmt.Errorf("failed to patch deployment object: %v", err)
 		}
 	}
 
