@@ -3,21 +3,20 @@ package environments
 import (
 	"context"
 	"fmt"
-	models2 "github.com/equinor/radix-api/api/environmentvariables/models"
-	"sort"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/pods"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
 	eventModels "github.com/equinor/radix-api/api/events/models"
-	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +74,7 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
 	if err != nil {
 		// This is no error, as the application may only have been just registered
 		return []*environmentModels.EnvironmentSummary{}, nil
@@ -97,7 +96,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 
 // GetEnvironment Handler for GetEnvironment
 func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environmentModels.Environment, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +121,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		buildFrom = theEnvironment.Build.From
 	}
 
-	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
 
 	if err != nil {
 		return nil, err
@@ -133,11 +132,11 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 		Name:          envName,
 		BranchMapping: buildFrom,
 		Status:        configurationStatus.String(),
-		Deployments:   deployments,
+		Deployments:   deploymentSummaries,
 	}
 
-	if len(deployments) > 0 {
-		deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
+	if len(deploymentSummaries) > 0 {
+		deployment, err := eh.deployHandler.GetDeploymentWithName(appName, deploymentSummaries[0].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +184,7 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(context.TODO(), uniqueName, metav1.GetOptions{})
+	re, err := eh.getRadixEnvironments(uniqueName)
 	if err != nil {
 		return err
 	}
@@ -207,7 +206,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 
 // GetEnvironmentEvents Handler for GetEnvironmentEvents
 func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.radixclient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +228,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Get(context.TODO(), uniqueName, metav1.GetOptions{})
+	re, err := eh.getRadixEnvironments(uniqueName)
 	exists := err == nil
 
 	if !exists {
@@ -295,7 +294,6 @@ func (eh EnvironmentHandler) getOrphanEnvironmentSummary(appName string, envName
 
 // getOrphanedEnvironments returns a slice of Summary data of orphaned environments
 func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
-
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 
 	for _, name := range eh.getOrphanedEnvNames(radixApplication) {
@@ -312,7 +310,15 @@ func (eh EnvironmentHandler) getOrphanedEnvironments(appName string, radixApplic
 
 // getOrphanedEnvNames returns a slice of non-unique-names of orphaned environments
 func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []string {
+	return eh.getEnvironments(app, true)
+}
 
+// getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
+func (eh EnvironmentHandler) getNotOrphanedEnvNames(app *v1.RadixApplication) []string {
+	return eh.getEnvironments(app, false)
+}
+
+func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, isOrphaned bool) []string {
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 
@@ -321,7 +327,7 @@ func (eh EnvironmentHandler) getOrphanedEnvNames(app *v1.RadixApplication) []str
 	})
 
 	for _, re := range radixEnvironments.Items {
-		if re.Status.Orphaned {
+		if re.Status.Orphaned == isOrphaned {
 			envNames = append(envNames, re.Spec.EnvName)
 		}
 	}
@@ -364,73 +370,107 @@ func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobN
 	return log, nil
 }
 
-//GetComponentEnvVars Get environment variables with metadata for the component
-func (eh EnvironmentHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]models2.EnvVar, error) {
-	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
-	rd, err := eh.getActiveDeployment(namespace)
+// StopEnvironment Stops all components in the environment
+func (eh EnvironmentHandler) StopEnvironment(appName, envName string) error {
+	_, radixDeployment, err := eh.getRadixDeployment(appName, envName)
 	if err != nil {
-		return nil, err
-	}
-	component := getComponent(rd, componentName)
-	if component == nil {
-		return nil, fmt.Errorf("component not found by name")
-	}
-	envVarsConfigMap, err := eh.getConfigMap(err, namespace, kube.GetEnvVarsConfigMapName(componentName))
-	if err != nil {
-		return nil, err
-	}
-	envVarsMetadataConfigMap, err := eh.getConfigMap(err, namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
-	if err != nil {
-		return nil, err
-	}
-	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
-	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var apiEnvVars []models2.EnvVar
-	envVarsMap := component.GetEnvironmentVariables()
-	for envVarName, envVar := range envVarsMap {
-		apiEnvVar := models2.EnvVar{Name: envVarName, Value: envVar}
-		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVarName]; foundCmEnvVar {
-			apiEnvVar.Value = cmEnvVar
-			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVarName]; foundMetadata {
-				apiEnvVar.Metadata = &models2.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
-			}
-		}
-		apiEnvVars = append(apiEnvVars, apiEnvVar)
-	}
-	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
-	return apiEnvVars, nil
-}
-
-func (eh EnvironmentHandler) getConfigMap(err error, namespace string, envVarsConfigMapName string) (*corev1.ConfigMap, error) {
-	return eh.client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), envVarsConfigMapName, metav1.GetOptions{})
-}
-
-func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
-	for _, component := range rd.Spec.Components {
-		if strings.EqualFold(component.Name, componentName) {
-			return &component
-		}
-	}
-	for _, jobComponent := range rd.Spec.Jobs {
-		if strings.EqualFold(jobComponent.Name, componentName) {
-			return &jobComponent
+	log.Infof("Stopping components in environment %s, %s", envName, appName)
+	for _, deployComponent := range radixDeployment.Spec.Components {
+		err := eh.StopComponent(appName, envName, deployComponent.GetName())
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (eh EnvironmentHandler) getActiveDeployment(namespace string) (*v1.RadixDeployment, error) {
-	radixDeployments, err := eh.radixclient.RadixV1().RadixDeployments(namespace).List(context.TODO(), metav1.ListOptions{})
+// StartEnvironment Starts all components in the environment
+func (eh EnvironmentHandler) StartEnvironment(appName, envName string) error {
+	_, radixDeployment, err := eh.getRadixDeployment(appName, envName)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for _, rd := range radixDeployments.Items {
-		if rd.Status.ActiveTo.IsZero() {
-			return &rd, err
+
+	log.Infof("Starting components in environment %s, %s", envName, appName)
+	for _, deployComponent := range radixDeployment.Spec.Components {
+		err := eh.StartComponent(appName, envName, deployComponent.GetName())
+		if err != nil {
+			return err
 		}
 	}
-	return nil, nil
+	return nil
+}
+
+// RestartEnvironment Restarts all components in the environment
+func (eh EnvironmentHandler) RestartEnvironment(appName, envName string) error {
+	_, radixDeployment, err := eh.getRadixDeployment(appName, envName)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Restarting components in environment %s, %s", envName, appName)
+	for _, deployComponent := range radixDeployment.Spec.Components {
+		err := eh.RestartComponent(appName, envName, deployComponent.GetName())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StopApplication Stops all components in all environments of the application
+func (eh EnvironmentHandler) StopApplication(appName string) error {
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
+	if err != nil {
+		return err
+	}
+
+	environmentNames := eh.getNotOrphanedEnvNames(radixApplication)
+	log.Infof("Stopping components in the application %s", appName)
+	for _, environmentName := range environmentNames {
+		err := eh.StopEnvironment(appName, environmentName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StartApplication Starts all components in all environments of the application
+func (eh EnvironmentHandler) StartApplication(appName string) error {
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
+	if err != nil {
+		return err
+	}
+
+	environmentNames := eh.getNotOrphanedEnvNames(radixApplication)
+	log.Infof("Starting components in the application %s", appName)
+	for _, environmentName := range environmentNames {
+		err := eh.StartEnvironment(appName, environmentName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RestartApplication Restarts all components in all environments of the application
+func (eh EnvironmentHandler) RestartApplication(appName string) error {
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
+	if err != nil {
+		return err
+	}
+
+	environmentNames := eh.getNotOrphanedEnvNames(radixApplication)
+	log.Infof("Restarting components in the application %s", appName)
+	for _, environmentName := range environmentNames {
+		err := eh.RestartEnvironment(appName, environmentName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

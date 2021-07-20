@@ -80,6 +80,36 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: RestartComponent,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/stop",
+			Method:      "POST",
+			HandlerFunc: StopEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/start",
+			Method:      "POST",
+			HandlerFunc: StartEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/restart",
+			Method:      "POST",
+			HandlerFunc: RestartEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/stop",
+			Method:      "POST",
+			HandlerFunc: StopApplication,
+		},
+		models.Route{
+			Path:        rootPath + "/start",
+			Method:      "POST",
+			HandlerFunc: StartApplication,
+		},
+		models.Route{
+			Path:        rootPath + "/restart",
+			Method:      "POST",
+			HandlerFunc: RestartApplication,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetPodLog,
@@ -633,6 +663,278 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 
 	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.RestartComponent(appName, envName, componentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// StopEnvironment  all components in the environment
+func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/stop environment stopEnvironment
+	// ---
+	// summary: Stops all components in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Environment stopped ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StopEnvironment(appName, envName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// StartEnvironment Starts all components in the environment
+func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/start environment startEnvironment
+	// ---
+	// summary: Start all components in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Environment started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StartEnvironment(appName, envName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// RestartEnvironment Restarts all components in the environment
+func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/restart environment restartEnvironment
+	// ---
+	// summary: |
+	//   Restart all components in the environment
+	//     - Stops all running components in the environment
+	//     - Pulls new images from image hub in radix configuration
+	//     - Starts all components in the environment again using up to date image
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Environment started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartEnvironment(appName, envName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// StopApplication  all components in all environments of the application
+func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/stop application stopApplication
+	// ---
+	// summary: Stops all components in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Application stopped ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StopApplication(appName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// StartApplication Starts all components in all environments of the application
+func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/start application startApplication
+	// ---
+	// summary: Start all components in all environments of the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Application started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StartApplication(appName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// RestartApplication Restarts all components in all environments of the application
+func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/restart application restartApplication
+	// ---
+	// summary: |
+	//   Restart all components in all environments of the application
+	//     - Stops all running components in all environments of the application
+	//     - Pulls new images from image hub in radix configuration
+	//     - Starts all components in all environments of the application again using up to date image
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Application started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartApplication(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
