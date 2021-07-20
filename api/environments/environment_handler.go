@@ -318,7 +318,7 @@ func (eh EnvironmentHandler) getNotOrphanedEnvNames(app *v1.RadixApplication) []
 	return eh.getEnvironments(app, false)
 }
 
-func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, orphaned bool) []string {
+func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, isOrphaned bool) []string {
 	envNames := make([]string, 0)
 	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 
@@ -327,7 +327,7 @@ func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, orphaned 
 	})
 
 	for _, re := range radixEnvironments.Items {
-		if re.Status.Orphaned == orphaned {
+		if re.Status.Orphaned == isOrphaned {
 			envNames = append(envNames, re.Spec.EnvName)
 		}
 	}
