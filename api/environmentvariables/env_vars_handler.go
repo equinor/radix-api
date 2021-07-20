@@ -3,6 +3,9 @@ package environmentvariables
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/equinor/radix-api/api/deployments"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/api/events"
@@ -11,11 +14,11 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"sort"
-	"strings"
+	coreListers "k8s.io/client-go/listers/core/v1"
 )
 
 // EnvVarsHandlerOptions defines a configuration function
@@ -50,6 +53,21 @@ type EnvVarsHandler struct {
 	accounts        models.Accounts
 }
 
+type Kube struct {
+}
+
+func (k EnvVarsHandler) GetKubeClient() kubernetes.Interface {
+	return k.client
+}
+
+func (k EnvVarsHandler) GetRadixClient() radixclient.Interface {
+	return k.radixclient
+}
+
+func (k EnvVarsHandler) GetConfigMapLister() coreListers.ConfigMapLister {
+	return nil
+}
+
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' EnvVarsHandler.
 // EnvVarsHandlerOptions are processed in the seqeunce they are passed to this function.
@@ -74,19 +92,10 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 	if component == nil {
 		return nil, fmt.Errorf("component not found by name")
 	}
-	envVarsConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+	envVarsConfigMap, _, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
 	if err != nil {
 		return nil, err
 	}
-	envVarsMetadataConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
-	if err != nil {
-		return nil, err
-	}
-	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
-	if err != nil {
-		return nil, err
-	}
-
 	var apiEnvVars []envvarsmodels.EnvVar
 	envVarsMap := component.GetEnvironmentVariables()
 	for envVarName, envVar := range envVarsMap {
@@ -101,6 +110,52 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 	}
 	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
 	return apiEnvVars, nil
+}
+
+func (eh EnvVarsHandler) getEnvVarsConfigMapAndMetadataMap(namespace string, componentName string) (*corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
+	envVarsConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	envVarsMetadataConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
+	return envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, nil
+}
+
+//ChangeEnvVar Change environment variables
+func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) error {
+	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
+	currentEnvVarsConfigMap, currentEnvVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
+	if err != nil {
+		return err
+	}
+	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
+	hasChanges := false
+	for _, envVarParam := range envVars {
+		_, foundEnvVar := currentEnvVarsConfigMap.Data[envVarParam.Name]
+		if !foundEnvVar {
+			log.Infof("Not found variable '%s'", envVarParam.Name)
+			continue
+		}
+		newEnvVarValue := strings.TrimSpace(envVarParam.Value)
+		desiredEnvVarsConfigMap.Data[envVarParam.Name] = newEnvVarValue
+		hasChanges = true
+		metadata, foundMetadata := envVarsMetadataMap[envVarParam.Name]
+		if foundMetadata && strings.EqualFold(metadata.RadixConfigValue, newEnvVarValue) {
+			delete(envVarsMetadataMap, envVarParam.Name)
+		}
+	}
+	if !hasChanges {
+		return nil
+	}
+	err = kube.ApplyConfigMap(eh, namespace, currentEnvVarsConfigMap, desiredEnvVarsConfigMap)
+	if err != nil {
+		return err
+	}
+	return kube.ApplyEnvVarsMetadataConfigMap(eh, namespace, currentEnvVarsMetadataConfigMap, envVarsMetadataMap)
 }
 
 func (eh EnvVarsHandler) getConfigMap(namespace string, envVarsConfigMapName string) (*corev1.ConfigMap, error) {
@@ -132,8 +187,4 @@ func (eh EnvVarsHandler) getActiveDeployment(namespace string) (*v1.RadixDeploym
 		}
 	}
 	return nil, nil
-}
-
-func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) (interface{}, error) {
-	//TODO
 }

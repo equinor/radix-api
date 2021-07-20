@@ -116,16 +116,13 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 	//   description: environment component of Radix application
 	//   type: string
 	//   required: true
-	// - name: envVarName
-	//   in: path
-	//   description: environment variable name to be updated
-	//   type: string
-	//   required: true
 	// - name: environment variable value and metadata
 	//   in: body
 	//   description: New value and metadata
 	//   required: true
 	//   schema:
+	//      type: array
+	//      items:
 	//       "$ref": "#/definitions/EnvVarParameter"
 	// - name: Impersonate-User
 	//   in: header
@@ -157,11 +154,11 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	log.Debugf("Update %d environment variables for app: '%s', env: '%s', component: '%s'", appName, envName, componentName, len(envVarParameters))
+	log.Debugf("Update %d environment variables for app: '%s', env: '%s', component: '%s'", len(envVarParameters), appName, envName, componentName)
 
 	envVarsHandler := Init(WithAccounts(accounts))
 
-	_, err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
+	err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
