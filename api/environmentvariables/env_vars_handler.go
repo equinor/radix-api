@@ -1,7 +1,6 @@
 package environmentvariables
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,12 +12,9 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	coreListers "k8s.io/client-go/listers/core/v1"
 )
 
 // EnvVarsHandlerOptions defines a configuration function
@@ -27,8 +23,8 @@ type EnvVarsHandlerOptions func(*EnvVarsHandler)
 // WithAccounts configures all EnvVarsHandler fields
 func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
 	return func(eh *EnvVarsHandler) {
-		eh.client = accounts.UserAccount.Client
-		eh.radixclient = accounts.UserAccount.RadixClient
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
+		eh.kubeUtil = *kubeUtil
 		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
@@ -45,27 +41,11 @@ func WithEventHandler(eventHandler events.EventHandler) EnvVarsHandlerOptions {
 
 // EnvVarsHandler Instance variables
 type EnvVarsHandler struct {
-	client          kubernetes.Interface
-	radixclient     radixclient.Interface
+	kubeUtil        kube.Kube
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
 	eventHandler    events.EventHandler
 	accounts        models.Accounts
-}
-
-type Kube struct {
-}
-
-func (k EnvVarsHandler) GetKubeClient() kubernetes.Interface {
-	return k.client
-}
-
-func (k EnvVarsHandler) GetRadixClient() radixclient.Interface {
-	return k.radixclient
-}
-
-func (k EnvVarsHandler) GetConfigMapLister() coreListers.ConfigMapLister {
-	return nil
 }
 
 // Init Constructor.
@@ -84,7 +64,7 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 //GetComponentEnvVars Get environment variables with metadata for the component
 func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
-	rd, err := eh.getActiveDeployment(namespace)
+	rd, err := eh.kubeUtil.GetActiveDeployment(namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -113,11 +93,11 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 }
 
 func (eh EnvVarsHandler) getEnvVarsConfigMapAndMetadataMap(namespace string, componentName string) (*corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
-	envVarsConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+	envVarsConfigMap, err := eh.kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	envVarsMetadataConfigMap, err := eh.getConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+	envVarsMetadataConfigMap, err := eh.kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -151,15 +131,11 @@ func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, en
 	if !hasChanges {
 		return nil
 	}
-	err = kube.ApplyConfigMap(eh, namespace, currentEnvVarsConfigMap, desiredEnvVarsConfigMap)
+	err = eh.kubeUtil.ApplyConfigMap(namespace, currentEnvVarsConfigMap, desiredEnvVarsConfigMap)
 	if err != nil {
 		return err
 	}
-	return kube.ApplyEnvVarsMetadataConfigMap(eh, namespace, currentEnvVarsMetadataConfigMap, envVarsMetadataMap)
-}
-
-func (eh EnvVarsHandler) getConfigMap(namespace string, envVarsConfigMapName string) (*corev1.ConfigMap, error) {
-	return eh.client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), envVarsConfigMapName, metav1.GetOptions{})
+	return eh.kubeUtil.ApplyEnvVarsMetadataConfigMap(namespace, currentEnvVarsMetadataConfigMap, envVarsMetadataMap)
 }
 
 func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
@@ -174,17 +150,4 @@ func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDe
 		}
 	}
 	return nil
-}
-
-func (eh EnvVarsHandler) getActiveDeployment(namespace string) (*v1.RadixDeployment, error) {
-	radixDeployments, err := eh.radixclient.RadixV1().RadixDeployments(namespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, rd := range radixDeployments.Items {
-		if rd.Status.ActiveTo.IsZero() {
-			return &rd, err
-		}
-	}
-	return nil, nil
 }
