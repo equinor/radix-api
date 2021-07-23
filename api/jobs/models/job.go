@@ -122,16 +122,29 @@ func GetJobStepsFromRadixJob(job *v1.RadixJob) []Step {
 	var steps []Step
 	for _, jobStep := range job.Status.Steps {
 		step := Step{
-			Name:       jobStep.Name,
-			Status:     string(jobStep.Condition),
-			Started:    radixutils.FormatTime(jobStep.Started),
-			Ended:      radixutils.FormatTime(jobStep.Ended),
-			PodName:    jobStep.PodName,
-			Components: jobStep.Components,
+			Name:              jobStep.Name,
+			Status:            string(jobStep.Condition),
+			Started:           radixutils.FormatTime(jobStep.Started),
+			Ended:             radixutils.FormatTime(jobStep.Ended),
+			PodName:           jobStep.PodName,
+			Components:        jobStep.Components,
+			VulnerabilityScan: GetVulnerabilityScanFromRadixJobStep(jobStep),
 		}
 
 		steps = append(steps, step)
 	}
 
 	return steps
+}
+
+func GetVulnerabilityScanFromRadixJobStep(step v1.RadixJobStep) *VulnerabilityScan {
+	if step.Output == nil || step.Output.Scan == nil {
+		return nil
+	}
+
+	return &VulnerabilityScan{
+		Status:          step.Output.Scan.Status,
+		Reason:          step.Output.Scan.Reason,
+		Vulnerabilities: step.Output.Scan.Vulnerabilities,
+	}
 }
