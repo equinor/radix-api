@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/equinor/radix-api/api/deployments"
 	. "github.com/equinor/radix-api/api/jobs"
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
@@ -95,7 +96,8 @@ func TestGetApplicationJob(t *testing.T) {
 		TriggeredBy: anyUser,
 	}
 
-	handler := Init(models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{}))
+	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
+	handler := Init(accounts, deployments.Init(accounts))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters)

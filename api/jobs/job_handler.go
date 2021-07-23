@@ -32,15 +32,12 @@ type JobHandler struct {
 }
 
 // Init Constructor
-func Init(accounts models.Accounts) JobHandler {
-	// todo! accoutn for running deploy?
-	deploy := deployments.Init(accounts)
-
+func Init(accounts models.Accounts, deployHandler deployments.DeployHandler) JobHandler {
 	return JobHandler{
 		accounts:       accounts,
 		userAccount:    accounts.UserAccount,
 		serviceAccount: accounts.ServiceAccount,
-		deploy:         deploy,
+		deploy:         deployHandler,
 	}
 }
 
@@ -80,7 +77,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	jobComponents, err := jh.getJobComponents(appName, jobName)
+	jobComponents, err := jh.getJobComponents(appName, jobName, jobDeployments)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +166,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 	return applicationJob, nil
 }
 
-func (jh JobHandler) getJobComponents(appName string, jobName string) ([]*deploymentModels.ComponentSummary, error) {
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobName)
-	if err != nil {
-		return nil, err
-	}
-
+func (jh JobHandler) getJobComponents(appName string, jobName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
 	var jobComponents []*deploymentModels.ComponentSummary
 
 	if len(jobDeployments) > 0 {

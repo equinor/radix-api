@@ -2,6 +2,8 @@ package models
 
 import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
+// VulnerabilityScan holds information about vulnerabilities found during scan
+// swagger:model VulnerabilityScan
 type VulnerabilityScan struct {
 	// Status of the vulnerability scan
 	//

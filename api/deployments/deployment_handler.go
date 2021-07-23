@@ -21,22 +21,31 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type DeployHandler interface {
+	GetLogs(appName, podName string, sinceTime *time.Time) (string, error)
+	GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error)
+	GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
+	GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error)
+	GetLatestDeploymentForApplicationEnvironment(appName, environment string) (*deploymentModels.DeploymentSummary, error)
+	GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error)
+}
+
 // DeployHandler Instance variables
-type DeployHandler struct {
+type deployHandler struct {
 	kubeClient  kubernetes.Interface
 	radixClient radixclient.Interface
 }
 
 // Init Constructor
 func Init(accounts models.Accounts) DeployHandler {
-	return DeployHandler{
+	return &deployHandler{
 		kubeClient:  accounts.UserAccount.Client,
 		radixClient: accounts.UserAccount.RadixClient,
 	}
 }
 
 // GetLogs handler for GetLogs
-func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
+func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
 	ns := crdUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(context.TODO(), appName, metav1.GetOptions{})
@@ -58,13 +67,13 @@ func (deploy DeployHandler) GetLogs(appName, podName string, sinceTime *time.Tim
 }
 
 // GetDeploymentsForApplication Lists deployments across environments
-func (deploy DeployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	namespace := corev1.NamespaceAll
 	return deploy.getDeployments(namespace, appName, "", latest)
 }
 
 // GetLatestDeploymentForApplicationEnvironment Gets latest, active, deployment in environment
-func (deploy DeployHandler) GetLatestDeploymentForApplicationEnvironment(appName, environment string) (*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(appName, environment string) (*deploymentModels.DeploymentSummary, error) {
 	if strings.TrimSpace(environment) == "" {
 		return nil, deploymentModels.IllegalEmptyEnvironment()
 	}
@@ -79,7 +88,7 @@ func (deploy DeployHandler) GetLatestDeploymentForApplicationEnvironment(appName
 }
 
 // GetDeploymentsForApplicationEnvironment Lists deployments inside environment
-func (deploy DeployHandler) GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var namespace = corev1.NamespaceAll
 	if strings.TrimSpace(environment) != "" {
 		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
@@ -89,13 +98,13 @@ func (deploy DeployHandler) GetDeploymentsForApplicationEnvironment(appName, env
 }
 
 // GetDeploymentsForJob Lists deployments for job name
-func (deploy DeployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	namespace := corev1.NamespaceAll
 	return deploy.getDeployments(namespace, appName, jobName, false)
 }
 
 // GetDeploymentWithName Handler for GetDeploymentWithName
-func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
+func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
 	// Need to list all deployments to find active to of deployment
 	allDeployments, err := deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
@@ -141,7 +150,7 @@ func (deploy DeployHandler) GetDeploymentWithName(appName, deploymentName string
 		BuildDeployment(), nil
 }
 
-func (deploy DeployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var listOptions metav1.ListOptions
 	labelSelector := fmt.Sprintf("radix-app=%s", appName)
 
