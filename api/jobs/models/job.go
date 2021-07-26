@@ -143,7 +143,7 @@ func GetVulnerabilityScanFromRadixJobStep(step v1.RadixJobStep) *VulnerabilitySc
 	}
 
 	return &VulnerabilityScan{
-		Status:          step.Output.Scan.Status,
+		Status:          string(step.Output.Scan.Status),
 		Reason:          step.Output.Scan.Reason,
 		Vulnerabilities: step.Output.Scan.Vulnerabilities,
 	}

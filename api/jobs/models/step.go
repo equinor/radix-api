@@ -1,7 +1,5 @@
 package models
 
-import v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-
 // VulnerabilityScan holds information about vulnerabilities found during scan
 // swagger:model VulnerabilityScan
 type VulnerabilityScan struct {
@@ -10,7 +8,7 @@ type VulnerabilityScan struct {
 	// required: true
 	// Enum: Success,Missing
 	// example: Success
-	Status v1.ScanStatus `json:"status,omitempty"`
+	Status string `json:"status,omitempty"`
 
 	// Reason for the status
 	//
@@ -21,7 +19,7 @@ type VulnerabilityScan struct {
 	// Overview of severities and count from list of vulnerabilities
 	//
 	// required: false
-	Vulnerabilities v1.VulnerabilityMap `json:"vulnerabilities,omitempty"`
+	Vulnerabilities map[string]uint `json:"vulnerabilities,omitempty"`
 }
 
 // Step holds general information about job step
