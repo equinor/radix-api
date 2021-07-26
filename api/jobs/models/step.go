@@ -8,7 +8,7 @@ type VulnerabilityScan struct {
 	// required: true
 	// Enum: Success,Missing
 	// example: Success
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 
 	// Reason for the status
 	//
