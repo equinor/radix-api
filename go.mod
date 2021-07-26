@@ -28,6 +28,4 @@ require (
 )
 
 //github.com/equinor/radix-common@v1.0.0 => /home/user1/go/src/github.com/equinor/radix-common
-replace (
-	k8s.io/client-go => k8s.io/client-go v0.19.9
-)
+replace k8s.io/client-go => k8s.io/client-go v0.19.9
