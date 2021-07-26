@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	deployments "github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -109,7 +110,7 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 		}
 	}
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName, &since)
 
 	if err != nil {
@@ -155,7 +156,7 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
@@ -204,7 +205,7 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
@@ -251,7 +252,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.StopJob(appName, jobName)
 
 	if err != nil {

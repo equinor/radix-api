@@ -9,6 +9,7 @@ import (
 	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	job "github.com/equinor/radix-api/api/jobs"
@@ -46,7 +47,7 @@ type ApplicationHandler struct {
 
 // Init Constructor
 func Init(accounts models.Accounts) ApplicationHandler {
-	jobHandler := job.Init(accounts)
+	jobHandler := job.Init(accounts, deployments.Init(accounts))
 	return ApplicationHandler{
 		accounts:           accounts,
 		jobHandler:         jobHandler,

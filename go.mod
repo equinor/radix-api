@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/equinor/radix-common v1.1.5
-	github.com/equinor/radix-operator v1.13.2
+	github.com/equinor/radix-operator v1.14.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang/mock v1.5.0
