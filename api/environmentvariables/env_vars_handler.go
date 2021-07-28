@@ -2,6 +2,7 @@ package environmentvariables
 
 import (
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"sort"
 	"strings"
 
@@ -63,33 +64,101 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 
 //GetComponentEnvVars Get environment variables with metadata for the component
 func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
+	apiEnvVars, _, _, _, err := eh.getComponentEnvVars(appName, envName, componentName)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
+	return apiEnvVars, nil
+}
+
+//ChangeEnvVar Change environment variables
+func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) error {
+	apiEnvVars, currentEnvVarsConfigMap, currentEnvVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getComponentEnvVars(appName, envName, componentName)
+	apiEnvVarsMap := getEnvVarMapFromList(apiEnvVars)
+	if err != nil {
+		return err
+	}
+	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
+	hasChanges := false
+	for _, envVarParam := range envVars {
+		currentEnvVarValue, foundEnvVar := currentEnvVarsConfigMap.Data[envVarParam.Name]
+		if !foundEnvVar {
+			_, foundApiEnvVar := apiEnvVarsMap[envVarParam.Name]
+			if !foundApiEnvVar {
+				log.Infof("Not found variable '%s'", envVarParam.Name)
+				continue
+			}
+			currentEnvVarsConfigMap.Data[envVarParam.Name] = envVarParam.Value //add env-var, not existing in config-map, but existing in list of radix-deploy-component env-vars
+			hasChanges = true
+			if _, foundMetadata := envVarsMetadataMap[envVarParam.Name]; foundMetadata { //in case outdated metadata exists from past
+				delete(envVarsMetadataMap, envVarParam.Name)
+			}
+			continue
+		}
+		newEnvVarValue := strings.TrimSpace(envVarParam.Value)
+		desiredEnvVarsConfigMap.Data[envVarParam.Name] = newEnvVarValue
+		hasChanges = true
+		metadata, foundMetadata := envVarsMetadataMap[envVarParam.Name]
+		if foundMetadata {
+			if strings.EqualFold(metadata.RadixConfigValue, newEnvVarValue) {
+				delete(envVarsMetadataMap, envVarParam.Name) //delete metadata for equal value in radixconfig
+			}
+			continue
+		}
+		if !strings.EqualFold(currentEnvVarValue, newEnvVarValue) { //create metadata for changed env-var
+			envVarsMetadataMap[envVarParam.Name] = v1.EnvVarMetadata{RadixConfigValue: currentEnvVarValue}
+		}
+	}
+	if !hasChanges {
+		return nil
+	}
+	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
+	err = eh.kubeUtil.ApplyConfigMap(namespace, currentEnvVarsConfigMap, desiredEnvVarsConfigMap)
+	if err != nil {
+		return err
+	}
+	return eh.kubeUtil.ApplyEnvVarsMetadataConfigMap(namespace, currentEnvVarsMetadataConfigMap, envVarsMetadataMap)
+}
+
+func getEnvVarMapFromList(envVars []envvarsmodels.EnvVar) map[string]envvarsmodels.EnvVar {
+	envVarsMap := make(map[string]envvarsmodels.EnvVar, len(envVars))
+	for _, envVar := range envVars {
+		envVar := envVar
+		envVarsMap[envVar.Name] = envVar
+	}
+	return envVarsMap
+
+}
+
+func (eh EnvVarsHandler) getComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.kubeUtil.GetActiveDeployment(namespace)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
-	component := getComponent(rd, componentName)
-	if component == nil {
-		return nil, fmt.Errorf("component not found by name")
+	radixDeployComponent := getComponent(rd, componentName)
+	if radixDeployComponent == nil {
+		return nil, nil, nil, nil, fmt.Errorf("radixDeployComponent not found by name")
 	}
-	envVarsConfigMap, _, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
+	envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
+
 	var apiEnvVars []envvarsmodels.EnvVar
-	envVarsMap := component.GetEnvironmentVariables()
-	for envVarName, envVar := range envVarsMap {
-		apiEnvVar := envvarsmodels.EnvVar{Name: envVarName, Value: envVar}
-		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVarName]; foundCmEnvVar {
+	envVars := deployment.GetEnvironmentVariablesFrom(appName, rd, radixDeployComponent, envVarsConfigMap, envVarsMetadataMap)
+	for _, envVar := range envVars {
+		apiEnvVar := envvarsmodels.EnvVar{Name: envVar.Name, Value: envVar.Value}
+		if cmEnvVar, foundCmEnvVar := envVarsConfigMap.Data[envVar.Name]; foundCmEnvVar {
 			apiEnvVar.Value = cmEnvVar
-			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVarName]; foundMetadata {
+			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVar.Name]; foundMetadata {
 				apiEnvVar.Metadata = &envvarsmodels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
 			}
 		}
 		apiEnvVars = append(apiEnvVars, apiEnvVar)
 	}
-	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
-	return apiEnvVars, nil
+	return apiEnvVars, envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, nil
 }
 
 func (eh EnvVarsHandler) getEnvVarsConfigMapAndMetadataMap(namespace string, componentName string) (*corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
@@ -102,40 +171,10 @@ func (eh EnvVarsHandler) getEnvVarsConfigMapAndMetadataMap(namespace string, com
 		return nil, nil, nil, err
 	}
 	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	return envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, nil
-}
-
-//ChangeEnvVar Change environment variables
-func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) error {
-	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
-	currentEnvVarsConfigMap, currentEnvVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
-	if err != nil {
-		return err
-	}
-	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
-	hasChanges := false
-	for _, envVarParam := range envVars {
-		_, foundEnvVar := currentEnvVarsConfigMap.Data[envVarParam.Name]
-		if !foundEnvVar {
-			log.Infof("Not found variable '%s'", envVarParam.Name)
-			continue
-		}
-		newEnvVarValue := strings.TrimSpace(envVarParam.Value)
-		desiredEnvVarsConfigMap.Data[envVarParam.Name] = newEnvVarValue
-		hasChanges = true
-		metadata, foundMetadata := envVarsMetadataMap[envVarParam.Name]
-		if foundMetadata && strings.EqualFold(metadata.RadixConfigValue, newEnvVarValue) {
-			delete(envVarsMetadataMap, envVarParam.Name)
-		}
-	}
-	if !hasChanges {
-		return nil
-	}
-	err = eh.kubeUtil.ApplyConfigMap(namespace, currentEnvVarsConfigMap, desiredEnvVarsConfigMap)
-	if err != nil {
-		return err
-	}
-	return eh.kubeUtil.ApplyEnvVarsMetadataConfigMap(namespace, currentEnvVarsMetadataConfigMap, envVarsMetadataMap)
 }
 
 func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
