@@ -141,7 +141,7 @@ func (eh EnvVarsHandler) getComponentEnvVars(appName string, envName string, com
 	if radixDeployComponent == nil {
 		return nil, nil, nil, nil, fmt.Errorf("radixDeployComponent not found by name")
 	}
-	envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getEnvVarsConfigMapAndMetadataMap(namespace, componentName)
+	envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, err := eh.kubeUtil.GetEnvVarsConfigMapAndMetadataMap(namespace, componentName)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -159,22 +159,6 @@ func (eh EnvVarsHandler) getComponentEnvVars(appName string, envName string, com
 		apiEnvVars = append(apiEnvVars, apiEnvVar)
 	}
 	return apiEnvVars, envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, nil
-}
-
-func (eh EnvVarsHandler) getEnvVarsConfigMapAndMetadataMap(namespace string, componentName string) (*corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
-	envVarsConfigMap, err := eh.kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	envVarsMetadataConfigMap, err := eh.kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	envVarsMetadataMap, err := kube.GetEnvVarsMetadataFromConfigMap(envVarsMetadataConfigMap)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return envVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, nil
 }
 
 func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
