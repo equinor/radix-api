@@ -269,7 +269,6 @@ func (s *JobHandlerTestSuite) Test_GetPipelineJobStepScanOutput() {
 			Steps: []v1.RadixJobStep{
 				{Name: "step-no-output"},
 				{Name: "step-no-scan", Output: &v1.RadixJobStepOutput{}},
-				{Name: "step-status-missing", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{Status: v1.ScanMissing}}},
 				{Name: "step-cm-not-defined", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
 					Status:               v1.ScanSuccess,
 					VulnerabilityListKey: "any-key",
@@ -363,23 +362,17 @@ func (s *JobHandlerTestSuite) Test_GetPipelineJobStepScanOutput() {
 		s.Nil(actual)
 		s.EqualError(err, StepScanOutputNotDefined("step-no-scan").Error())
 	})
-	s.Run("Step Output.Scan.Status = Missing", func() {
-		h := Init(s.accounts, nil)
-		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-status-missing")
-		s.Nil(actual)
-		s.EqualError(err, StepScanOutputMissing("step-status-missing").Error())
-	})
 	s.Run("Step Output.Scan.VulnerabilityListConfigMap not set", func() {
 		h := Init(s.accounts, nil)
 		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-not-defined")
 		s.Nil(actual)
-		s.EqualError(err, InvalidScanOutputConfig("step-cm-not-defined").Error())
+		s.EqualError(err, StepScanOutputInvalidConfig("step-cm-not-defined").Error())
 	})
 	s.Run("Step Output.Scan.VulnerabilityListKey not set", func() {
 		h := Init(s.accounts, nil)
 		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-key-not-defined")
 		s.Nil(actual)
-		s.EqualError(err, InvalidScanOutputConfig("step-cm-key-not-defined").Error())
+		s.EqualError(err, StepScanOutputInvalidConfig("step-cm-key-not-defined").Error())
 	})
 	s.Run("ConfigMap defined in step does not exist", func() {
 		h := Init(s.accounts, nil)
@@ -391,13 +384,13 @@ func (s *JobHandlerTestSuite) Test_GetPipelineJobStepScanOutput() {
 		h := Init(s.accounts, nil)
 		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-key-missing")
 		s.Nil(actual)
-		s.EqualError(err, MissingKeyInScanOutputData("step-cm-key-missing").Error())
+		s.EqualError(err, StepScanOutputMissingKeyInConfigMap("step-cm-key-missing").Error())
 	})
 	s.Run("ConfigMap data for key is invalid", func() {
 		h := Init(s.accounts, nil)
 		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-invalid-data")
 		s.Nil(actual)
-		s.EqualError(err, InvalidScanOutputData("step-cm-invalid-data").Error())
+		s.EqualError(err, StepScanOutputInvalidConfigMapData("step-cm-invalid-data").Error())
 	})
 	s.Run("Valid step and ConfigMap data", func() {
 		h := Init(s.accounts, nil)

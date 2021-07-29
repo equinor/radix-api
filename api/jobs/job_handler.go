@@ -35,25 +35,21 @@ func StepScanOutputNotDefined(stepName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("scan output for step %s not defined", stepName))
 }
 
-func StepScanOutputMissing(stepName string) error {
-	return radixhttp.NotFoundError(fmt.Sprintf("scan output for step %s is missing", stepName))
-}
-
-func InvalidScanOutputConfig(stepName string) error {
+func StepScanOutputInvalidConfig(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output configuration for step %s is invalid", stepName),
 	}
 }
 
-func MissingKeyInScanOutputData(stepName string) error {
+func StepScanOutputMissingKeyInConfigMap(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output data for step %s not found", stepName),
 	}
 }
 
-func InvalidScanOutputData(stepName string) error {
+func StepScanOutputInvalidConfigMapData(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output data for step %s is invalid", stepName),
@@ -138,13 +134,9 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 		return nil, StepScanOutputNotDefined(stepName)
 	}
 
-	if step.Output.Scan.Status == v1.ScanMissing {
-		return nil, StepScanOutputMissing(stepName)
-	}
-
 	scanOutputName, scanOutputKey := strings.TrimSpace(step.Output.Scan.VulnerabilityListConfigMap), strings.TrimSpace(step.Output.Scan.VulnerabilityListKey)
 	if scanOutputName == "" || scanOutputKey == "" {
-		return nil, InvalidScanOutputConfig(stepName)
+		return nil, StepScanOutputInvalidConfig(stepName)
 	}
 
 	scanOutputConfigMap, err := jh.userAccount.Client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), scanOutputName, metav1.GetOptions{})
@@ -154,12 +146,12 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 
 	scanOutput, found := scanOutputConfigMap.Data[scanOutputKey]
 	if !found {
-		return nil, MissingKeyInScanOutputData(stepName)
+		return nil, StepScanOutputMissingKeyInConfigMap(stepName)
 	}
 
 	var vulnerabilities []jobModels.Vulnerability
 	if err := json.Unmarshal([]byte(scanOutput), &vulnerabilities); err != nil {
-		return nil, InvalidScanOutputData(stepName)
+		return nil, StepScanOutputInvalidConfigMapData(stepName)
 	}
 
 	return vulnerabilities, nil
