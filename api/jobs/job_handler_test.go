@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -12,26 +13,26 @@ import (
 	radixmodels "github.com/equinor/radix-common/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubernetes "k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 type JobHandlerTestSuite struct {
 	suite.Suite
-	accounts    models.Accounts
-	testUtils   *commontest.Utils
-	kubeClient  kubernetes.Interface
-	radixClient radixclient.Interface
+	accounts       models.Accounts
+	inKubeClient   *kubefake.Clientset
+	inRadixClient  *radixfake.Clientset
+	outKubeClient  *kubefake.Clientset
+	outRadixClient *radixfake.Clientset
 }
 
 type jobCreatedScenario struct {
@@ -55,8 +56,8 @@ func TestRunJobHandlerTestSuite(t *testing.T) {
 }
 
 func (s *JobHandlerTestSuite) SetupTest() {
-	s.testUtils, s.kubeClient, s.radixClient = s.getUtils()
-	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kubeClient, s.radixClient, "", radixmodels.Impersonation{})
+	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient = s.getUtils()
+	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 
@@ -89,7 +90,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 			},
 		},
 	}
-	s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
+	s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
 
 	deploymentName := "a_deployment"
 	deploySummary := deploymentModels.DeploymentSummary{
@@ -115,8 +116,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		dh := deployMock.NewMockDeployHandler(ctrl)
 		h := Init(s.accounts, dh)
 		actualJob, err := h.GetApplicationJob(appName, "missing_job")
-		assert.True(s.T(), k8serrors.IsNotFound(err))
-		assert.Nil(s.T(), actualJob)
+		s.True(k8serrors.IsNotFound(err))
+		s.Nil(actualJob)
 	})
 
 	s.Run("deployHandle.GetDeploymentsForJob return error", func() {
@@ -129,8 +130,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		assert.Equal(s.T(), assert.AnError, actualErr)
-		assert.Nil(s.T(), actualJob)
+		s.Equal(assert.AnError, actualErr)
+		s.Nil(actualJob)
 	})
 
 	s.Run("empty deploymentSummary list should not call GetDeploymentWithName", func() {
@@ -143,8 +144,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		assert.NoError(s.T(), actualErr)
-		assert.NotNil(s.T(), actualJob)
+		s.NoError(actualErr)
+		s.NotNil(actualJob)
 	})
 
 	s.Run("deployHandle.GetDeploymentWithName return error", func() {
@@ -158,8 +159,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		assert.Equal(s.T(), assert.AnError, actualErr)
-		assert.Nil(s.T(), actualJob)
+		s.Equal(assert.AnError, actualErr)
+		s.Nil(actualJob)
 
 	})
 
@@ -174,27 +175,27 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		assert.NoError(s.T(), actualErr)
-		assert.Equal(s.T(), jobName, actualJob.Name)
-		assert.Equal(s.T(), branch, actualJob.Branch)
-		assert.Equal(s.T(), commitId, actualJob.CommitID)
-		assert.Equal(s.T(), triggeredBy, actualJob.TriggeredBy)
-		assert.Equal(s.T(), radixutils.FormatTime(&started), actualJob.Started)
-		assert.Equal(s.T(), radixutils.FormatTime(&ended), actualJob.Ended)
-		assert.Equal(s.T(), string(pipeline), actualJob.Pipeline)
-		assert.ElementsMatch(s.T(), deployList, actualJob.Deployments)
+		s.NoError(actualErr)
+		s.Equal(jobName, actualJob.Name)
+		s.Equal(branch, actualJob.Branch)
+		s.Equal(commitId, actualJob.CommitID)
+		s.Equal(triggeredBy, actualJob.TriggeredBy)
+		s.Equal(radixutils.FormatTime(&started), actualJob.Started)
+		s.Equal(radixutils.FormatTime(&ended), actualJob.Ended)
+		s.Equal(string(pipeline), actualJob.Pipeline)
+		s.ElementsMatch(deployList, actualJob.Deployments)
 
 		expectedComponents := []deploymentModels.ComponentSummary{
 			{Name: comp1Name, Type: comp1Type, Image: comp1Image},
 			{Name: comp2Name, Type: comp2Type, Image: comp2Image},
 		}
 
-		assert.ElementsMatch(s.T(), slice.PointersOf(expectedComponents), actualJob.Components)
+		s.ElementsMatch(slice.PointersOf(expectedComponents), actualJob.Components)
 		expectedSteps := []jobModels.Step{
 			{Name: step1Name, PodName: step1Pod, Status: string(step1Condition), Started: radixutils.FormatTime(&step1Started), Ended: radixutils.FormatTime(&step1Ended), Components: step1Components},
 			{Name: step2Name, VulnerabilityScan: &jobModels.VulnerabilityScan{Status: string(step2ScanStatus), Reason: step2ScanReason, Vulnerabilities: step2ScanVuln}},
 		}
-		assert.ElementsMatch(s.T(), expectedSteps, actualJob.Steps)
+		s.ElementsMatch(expectedSteps, actualJob.Steps)
 	})
 }
 
@@ -218,11 +219,11 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			if scenario.jobStatusCreated != emptyTime {
 				rj.Status.Created = &scenario.jobStatusCreated
 			}
-			_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
-			assert.NoError(s.T(), err)
+			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
+			s.NoError(err)
 			actualJob, err := h.GetApplicationJob(appName, scenario.jobName)
-			assert.NoError(s.T(), err)
-			assert.Equal(s.T(), scenario.expectedCreated, actualJob.Created)
+			s.NoError(err)
+			s.Equal(scenario.expectedCreated, actualJob.Created)
 		})
 	}
 }
@@ -250,22 +251,158 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 				Status:     v1.RadixJobStatus{Condition: scenario.condition},
 			}
 
-			_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
-			assert.NoError(s.T(), err)
+			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
+			s.NoError(err)
 			actualJob, err := h.GetApplicationJob(appName, scenario.jobName)
-			assert.NoError(s.T(), err)
-			assert.Equal(s.T(), scenario.expectedStatus, actualJob.Status)
+			s.NoError(err)
+			s.Equal(scenario.expectedStatus, actualJob.Status)
 		})
 	}
 }
 
-func (s *JobHandlerTestSuite) getUtils() (*commontest.Utils, kubernetes.Interface, radixclient.Interface) {
-	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
+func (s *JobHandlerTestSuite) Test_GetPipelineJobStepScanOutput() {
+	s.T().Parallel()
 
-	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	s.outRadixClient.Tracker().Add(&v1.RadixJob{
+		ObjectMeta: metav1.ObjectMeta{Name: "anyjob", Namespace: "anyapp-app"},
+		Status: v1.RadixJobStatus{
+			Steps: []v1.RadixJobStep{
+				{Name: "step-no-output"},
+				{Name: "step-no-scan", Output: &v1.RadixJobStepOutput{}},
+				{Name: "step-cm-not-defined", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:               v1.ScanSuccess,
+					VulnerabilityListKey: "any-key",
+				}}},
+				{Name: "step-cm-key-not-defined", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:                     v1.ScanSuccess,
+					VulnerabilityListConfigMap: "any-cm",
+				}}},
+				{Name: "step-cm-missing", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:                     v1.ScanSuccess,
+					VulnerabilityListConfigMap: "any-cm",
+					VulnerabilityListKey:       "any-key",
+				}}},
+				{Name: "step-cm-key-missing", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:                     v1.ScanSuccess,
+					VulnerabilityListConfigMap: "cm",
+					VulnerabilityListKey:       "any-key",
+				}}},
+				{Name: "step-cm-invalid-data", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:                     v1.ScanSuccess,
+					VulnerabilityListConfigMap: "cm",
+					VulnerabilityListKey:       "invalid-data",
+				}}},
+				{Name: "step-cm-valid", Output: &v1.RadixJobStepOutput{Scan: &v1.RadixJobStepScanOutput{
+					Status:                     v1.ScanSuccess,
+					VulnerabilityListConfigMap: "cm",
+					VulnerabilityListKey:       "valid-data",
+				}}},
+			},
+		},
+	})
 
-	return &commonTestUtils, kubeclient, radixclient
+	vulnerabilities := []jobModels.Vulnerability{
+		{
+			PackageName:   "packageName1",
+			Version:       "version1",
+			Target:        "target1",
+			Title:         "title1",
+			Description:   "description1",
+			Serverity:     "severity1",
+			PublishedDate: "publishDate1",
+			CWE:           []string{"cwe1.1", "cwe1.2"},
+			CVE:           []string{"cve1.1", "cve1.2"},
+			CVSS:          1,
+			References:    []string{"ref1.1", "ref1.2"},
+		},
+		{
+			PackageName:   "packageName2",
+			Version:       "version2",
+			Target:        "target2",
+			Title:         "title2",
+			Description:   "description2",
+			Serverity:     "severity2",
+			PublishedDate: "publishDate2",
+			CWE:           []string{"cwe2.1", "cwe2.2"},
+			CVE:           []string{"cve2.1", "cve2.2"},
+			CVSS:          1,
+			References:    []string{"ref2.1", "ref2.2"},
+		},
+	}
+	vulnerabilityBytes, _ := json.Marshal(&vulnerabilities)
+	s.outKubeClient.Tracker().Add(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "cm", Namespace: "anyapp-app"},
+		Data: map[string]string{
+			"invalid-data": "",
+			"valid-data":   string(vulnerabilityBytes),
+		},
+	})
+
+	s.Run("RadixJob does not exist", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "non-existing-job", "anystep")
+		s.Nil(actual)
+		s.EqualError(err, k8serrors.NewNotFound(schema.GroupResource{Resource: "radixjobs.radix.equinor.com"}, "non-existing-job").Error())
+	})
+	s.Run("Step does not exist", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "non-existing-step")
+		s.Nil(actual)
+		s.EqualError(err, stepNotFoundError("non-existing-step").Error())
+	})
+	s.Run("Step Output not set", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-no-output")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputNotDefined("step-no-output").Error())
+	})
+	s.Run("Step Output.Scan not set", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-no-scan")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputNotDefined("step-no-scan").Error())
+	})
+	s.Run("Step Output.Scan.VulnerabilityListConfigMap not set", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-not-defined")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputInvalidConfig("step-cm-not-defined").Error())
+	})
+	s.Run("Step Output.Scan.VulnerabilityListKey not set", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-key-not-defined")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputInvalidConfig("step-cm-key-not-defined").Error())
+	})
+	s.Run("ConfigMap defined in step does not exist", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-missing")
+		s.Nil(actual)
+		s.EqualError(err, k8serrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "any-cm").Error())
+	})
+	s.Run("Key defined in step does not exist in ConfigMap", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-key-missing")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputMissingKeyInConfigMap("step-cm-key-missing").Error())
+	})
+	s.Run("ConfigMap data for key is invalid", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-invalid-data")
+		s.Nil(actual)
+		s.EqualError(err, stepScanOutputInvalidConfigMapData("step-cm-invalid-data").Error())
+	})
+	s.Run("Valid step and ConfigMap data", func() {
+		h := Init(s.accounts, nil)
+		actual, err := h.GetPipelineJobStepScanOutput("anyapp", "anyjob", "step-cm-valid")
+		s.ElementsMatch(vulnerabilities, actual)
+		s.NoError(err)
+	})
+
+}
+
+func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset) {
+	inKubeClient, outKubeClient = kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
+	inRadixClient, outRadixClient = radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
+	return
 }
