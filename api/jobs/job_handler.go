@@ -27,29 +27,29 @@ const workerImage = "radix-pipeline"
 // RadixJobTypeJob TODO: Move this into kube, or another central location
 const RadixJobTypeJob = "job"
 
-func StepNotFoundError(stepName string) error {
+func stepNotFoundError(stepName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("step %s not found", stepName))
 }
 
-func StepScanOutputNotDefined(stepName string) error {
+func stepScanOutputNotDefined(stepName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("scan output for step %s not defined", stepName))
 }
 
-func StepScanOutputInvalidConfig(stepName string) error {
+func stepScanOutputInvalidConfig(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output configuration for step %s is invalid", stepName),
 	}
 }
 
-func StepScanOutputMissingKeyInConfigMap(stepName string) error {
+func stepScanOutputMissingKeyInConfigMap(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output data for step %s not found", stepName),
 	}
 }
 
-func StepScanOutputInvalidConfigMapData(stepName string) error {
+func stepScanOutputInvalidConfigMapData(stepName string) error {
 	return &radixhttp.Error{
 		Type:    radixhttp.Server,
 		Message: fmt.Sprintf("scan output data for step %s is invalid", stepName),
@@ -118,6 +118,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 	return jobModels.GetJobFromRadixJob(job, jobDeployments, jobComponents), nil
 }
 
+// GetPipelineJobStepScanOutput Get vulnerability scan output from scan step
 func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName string) ([]jobModels.Vulnerability, error) {
 	namespace := crdUtils.GetAppNamespace(appName)
 	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
@@ -127,16 +128,16 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 
 	step := getStepFromRadixJob(job, stepName)
 	if step == nil {
-		return nil, StepNotFoundError(stepName)
+		return nil, stepNotFoundError(stepName)
 	}
 
 	if step.Output == nil || step.Output.Scan == nil {
-		return nil, StepScanOutputNotDefined(stepName)
+		return nil, stepScanOutputNotDefined(stepName)
 	}
 
 	scanOutputName, scanOutputKey := strings.TrimSpace(step.Output.Scan.VulnerabilityListConfigMap), strings.TrimSpace(step.Output.Scan.VulnerabilityListKey)
 	if scanOutputName == "" || scanOutputKey == "" {
-		return nil, StepScanOutputInvalidConfig(stepName)
+		return nil, stepScanOutputInvalidConfig(stepName)
 	}
 
 	scanOutputConfigMap, err := jh.userAccount.Client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), scanOutputName, metav1.GetOptions{})
@@ -146,12 +147,12 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 
 	scanOutput, found := scanOutputConfigMap.Data[scanOutputKey]
 	if !found {
-		return nil, StepScanOutputMissingKeyInConfigMap(stepName)
+		return nil, stepScanOutputMissingKeyInConfigMap(stepName)
 	}
 
 	var vulnerabilities []jobModels.Vulnerability
 	if err := json.Unmarshal([]byte(scanOutput), &vulnerabilities); err != nil {
-		return nil, StepScanOutputInvalidConfigMapData(stepName)
+		return nil, stepScanOutputInvalidConfigMapData(stepName)
 	}
 
 	return vulnerabilities, nil
