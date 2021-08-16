@@ -1,5 +1,27 @@
 package models
 
+// VulnerabilityScan holds information about vulnerabilities found during scan
+// swagger:model VulnerabilityScan
+type VulnerabilityScan struct {
+	// Status of the vulnerability scan
+	//
+	// required: true
+	// Enum: Success,Missing
+	// example: Success
+	Status string `json:"status"`
+
+	// Reason for the status
+	//
+	// required: false
+	// example: Scan results not found in output from scan job
+	Reason string `json:"reason,omitempty"`
+
+	// Overview of severities and count from list of vulnerabilities
+	//
+	// required: false
+	Vulnerabilities map[string]uint `json:"vulnerabilities,omitempty"`
+}
+
 // Step holds general information about job step
 // swagger:model Step
 type Step struct {
@@ -37,4 +59,9 @@ type Step struct {
 	//
 	// required: false
 	Components []string `json:"components,omitempty"`
+
+	// Information about vulnerabilities found in scan step
+	//
+	// required: false
+	VulnerabilityScan *VulnerabilityScan `json:"scan,omitempty"`
 }

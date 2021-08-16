@@ -249,15 +249,16 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
 	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
+
+	// Set default Pending status
+	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
+
 	if len(pod.Status.ContainerStatuses) <= 0 {
 		return replicaSummary
 	}
 	// We assume one component container per component pod
 	containerStatus := pod.Status.ContainerStatuses[0]
 	containerState := containerStatus.State
-
-	// Set default Pending status
-	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
 
 	if containerState.Waiting != nil {
 		replicaSummary.StatusMessage = containerState.Waiting.Message
