@@ -153,18 +153,18 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 }
 
 func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	appNameRequirement, err := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
+	appNameLabel, err := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
 	if err != nil {
 		return nil, err
 	}
 
-	rdLabelSelector := labels.NewSelector().Add(*appNameRequirement)
+	rdLabelSelector := labels.NewSelector().Add(*appNameLabel)
 	if jobName != "" {
-		jobNameRequirement, err := labels.NewRequirement(kube.RadixJobNameLabel, selection.Equals, []string{jobName})
+		jobNameLabel, err := labels.NewRequirement(kube.RadixJobNameLabel, selection.Equals, []string{jobName})
 		if err != nil {
 			return nil, err
 		}
-		rdLabelSelector = rdLabelSelector.Add(*jobNameRequirement)
+		rdLabelSelector = rdLabelSelector.Add(*jobNameLabel)
 	}
 	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
 	if err != nil {
@@ -180,7 +180,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		}
 		radixJobMap[radixJob.Name] = radixJob
 	} else {
-		radixJobList, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: appNameRequirement.String()})
+		radixJobList, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: appNameLabel.String()})
 		if err != nil {
 			return nil, err
 		}
