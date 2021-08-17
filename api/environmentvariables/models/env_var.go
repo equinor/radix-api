@@ -18,5 +18,5 @@ type EnvVar struct {
 	// Metadata for the environment variable
 	//
 	// required: false
-	Metadata *EnvVarMetadata `json:"metadata, omitempty"`
+	Metadata *EnvVarMetadata `json:"metadata,omitempty"`
 }

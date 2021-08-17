@@ -64,7 +64,7 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 
 //GetComponentEnvVars Get environment variables with metadata for the component
 func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
-	apiEnvVars, _, _, _, err := eh.getComponentEnvVars(appName, envName, componentName)
+	apiEnvVars, _, _, _, err := eh.buildComponentEnvVars(appName, envName, componentName)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 
 //ChangeEnvVar Change environment variables
 func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVars []envvarsmodels.EnvVarParameter) error {
-	apiEnvVars, currentEnvVarsConfigMap, currentEnvVarsMetadataConfigMap, envVarsMetadataMap, err := eh.getComponentEnvVars(appName, envName, componentName)
+	apiEnvVars, currentEnvVarsConfigMap, currentEnvVarsMetadataConfigMap, envVarsMetadataMap, err := eh.buildComponentEnvVars(appName, envName, componentName)
 	apiEnvVarsMap := getEnvVarMapFromList(apiEnvVars)
 	if err != nil {
 		return err
@@ -82,6 +82,9 @@ func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, en
 	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
 	hasChanges := false
 	for _, envVarParam := range envVars {
+		if kube.IsRadixEnvVar(envVarParam.Name) {
+			continue
+		}
 		currentEnvVarValue, foundEnvVar := currentEnvVarsConfigMap.Data[envVarParam.Name]
 		if !foundEnvVar {
 			_, foundApiEnvVar := apiEnvVarsMap[envVarParam.Name]
@@ -107,7 +110,7 @@ func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, en
 			continue
 		}
 		if !strings.EqualFold(currentEnvVarValue, newEnvVarValue) { //create metadata for changed env-var
-			envVarsMetadataMap[envVarParam.Name] = v1.EnvVarMetadata{RadixConfigValue: currentEnvVarValue}
+			envVarsMetadataMap[envVarParam.Name] = kube.EnvVarMetadata{RadixConfigValue: currentEnvVarValue}
 		}
 	}
 	if !hasChanges {
@@ -131,7 +134,7 @@ func getEnvVarMapFromList(envVars []envvarsmodels.EnvVar) map[string]envvarsmode
 
 }
 
-func (eh EnvVarsHandler) getComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, map[string]v1.EnvVarMetadata, error) {
+func (eh EnvVarsHandler) buildComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, *corev1.ConfigMap, *corev1.ConfigMap, map[string]kube.EnvVarMetadata, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.kubeUtil.GetActiveDeployment(namespace)
 	if err != nil {

@@ -338,7 +338,7 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 	for _, pod := range pods {
 		for _, container := range pod.Spec.Containers {
 			for _, envVariable := range container.Env {
-				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
+				if kube.IsRadixEnvVar(envVariable.Name) {
 					radixEnvironmentVariables[envVariable.Name] = envVariable.Value
 				}
 			}
