@@ -40,7 +40,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 			Environment: envName,
 			ActiveFrom:  radixutils.FormatTimestamp(activeFrom),
 			ActiveTo:    radixutils.FormatTimestamp(activeTo),
-			DeploySummaryPipelineJobInfo: DeploySummaryPipelineJobInfo{
+			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob: jobName,
 			},
 		}
@@ -67,7 +67,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		)
 		actual := b.BuildDeploymentSummary()
 		expected := &DeploymentSummary{
-			DeploySummaryPipelineJobInfo: DeploySummaryPipelineJobInfo{
+			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob:            jobName,
 				CommitID:                commitID,
 				PipelineJobType:         string(v1.BuildDeploy),

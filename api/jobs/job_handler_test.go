@@ -98,7 +98,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		Environment: "any_env",
 		ActiveFrom:  "any_from",
 		ActiveTo:    "any_to",
-		DeploySummaryPipelineJobInfo: deploymentModels.DeploySummaryPipelineJobInfo{
+		DeploymentSummaryPipelineJobInfo: deploymentModels.DeploymentSummaryPipelineJobInfo{
 			CreatedByJob: "any_job",
 		},
 	}

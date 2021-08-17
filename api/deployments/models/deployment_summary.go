@@ -1,6 +1,6 @@
 package models
 
-type DeploySummaryPipelineJobInfo struct {
+type DeploymentSummaryPipelineJobInfo struct {
 	// Name of job creating deployment
 	//
 	// required: false
@@ -29,7 +29,7 @@ type DeploySummaryPipelineJobInfo struct {
 // DeploymentSummary describe an deployment
 // swagger:model DeploymentSummary
 type DeploymentSummary struct {
-	DeploySummaryPipelineJobInfo `json:",inline"`
+	DeploymentSummaryPipelineJobInfo `json:",inline"`
 
 	// Name the unique name of the Radix application deployment
 	//

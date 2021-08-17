@@ -91,16 +91,16 @@ func (b *deploymentBuilder) WithActiveTo(activeTo time.Time) DeploymentBuilder {
 
 func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 	return &DeploymentSummary{
-		Name:                         b.name,
-		Environment:                  b.environment,
-		ActiveFrom:                   radixutils.FormatTimestamp(b.activeFrom),
-		ActiveTo:                     radixutils.FormatTimestamp(b.activeTo),
-		DeploySummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
+		Name:                             b.name,
+		Environment:                      b.environment,
+		ActiveFrom:                       radixutils.FormatTimestamp(b.activeFrom),
+		ActiveTo:                         radixutils.FormatTimestamp(b.activeTo),
+		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
 	}
 }
 
-func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploySummaryPipelineJobInfo {
-	jobInfo := DeploySummaryPipelineJobInfo{
+func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummaryPipelineJobInfo {
+	jobInfo := DeploymentSummaryPipelineJobInfo{
 		CreatedByJob: b.jobName,
 	}
 
