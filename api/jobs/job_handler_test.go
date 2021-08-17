@@ -94,11 +94,13 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 
 	deploymentName := "a_deployment"
 	deploySummary := deploymentModels.DeploymentSummary{
-		Name:         deploymentName,
-		CreatedByJob: "any_job",
-		Environment:  "any_env",
-		ActiveFrom:   "any_from",
-		ActiveTo:     "any_to",
+		Name:        deploymentName,
+		Environment: "any_env",
+		ActiveFrom:  "any_from",
+		ActiveTo:    "any_to",
+		DeploySummaryPipelineJobInfo: deploymentModels.DeploySummaryPipelineJobInfo{
+			CreatedByJob: "any_job",
+		},
 	}
 
 	comp1Name, comp1Type, comp1Image := "comp1", "type1", "image1"

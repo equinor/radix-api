@@ -12,11 +12,11 @@ import (
 type DeploymentBuilder interface {
 	WithRadixDeployment(v1.RadixDeployment) DeploymentBuilder
 	WithName(string) DeploymentBuilder
-	WithAppName(string) DeploymentBuilder
 	WithEnvironment(string) DeploymentBuilder
 	WithActiveFrom(time.Time) DeploymentBuilder
 	WithActiveTo(time.Time) DeploymentBuilder
 	WithJobName(string) DeploymentBuilder
+	WithPipelineJob(*v1.RadixJob) DeploymentBuilder
 	WithComponents(components []*Component) DeploymentBuilder
 	BuildDeploymentSummary() *DeploymentSummary
 	BuildDeployment() *Deployment
@@ -24,11 +24,11 @@ type DeploymentBuilder interface {
 
 type deploymentBuilder struct {
 	name        string
-	appName     string
 	environment string
 	activeFrom  time.Time
 	activeTo    time.Time
 	jobName     string
+	pipelineJob *v1.RadixJob
 	components  []*Component
 }
 
@@ -41,9 +41,7 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 	}
 
 	b.WithName(rd.GetName()).
-		WithAppName(rd.Spec.AppName).
 		WithEnvironment(rd.Spec.Environment).
-		WithActiveFrom(rd.CreationTimestamp.Time).
 		WithJobName(jobName).
 		WithComponents(components).
 		WithActiveFrom(rd.Status.ActiveFrom.Time).
@@ -57,6 +55,15 @@ func (b *deploymentBuilder) WithJobName(jobName string) DeploymentBuilder {
 	return b
 }
 
+func (b *deploymentBuilder) WithPipelineJob(job *v1.RadixJob) DeploymentBuilder {
+	if job != nil {
+		b.WithJobName(job.Name)
+	}
+
+	b.pipelineJob = job
+	return b
+}
+
 func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBuilder {
 	b.components = components
 	return b
@@ -64,11 +71,6 @@ func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBu
 
 func (b *deploymentBuilder) WithName(name string) DeploymentBuilder {
 	b.name = name
-	return b
-}
-
-func (b *deploymentBuilder) WithAppName(appName string) DeploymentBuilder {
-	b.appName = appName
 	return b
 }
 
@@ -89,12 +91,26 @@ func (b *deploymentBuilder) WithActiveTo(activeTo time.Time) DeploymentBuilder {
 
 func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
 	return &DeploymentSummary{
-		Name:         b.name,
-		Environment:  b.environment,
-		ActiveFrom:   radixutils.FormatTimestamp(b.activeFrom),
-		ActiveTo:     radixutils.FormatTimestamp(b.activeTo),
+		Name:                         b.name,
+		Environment:                  b.environment,
+		ActiveFrom:                   radixutils.FormatTimestamp(b.activeFrom),
+		ActiveTo:                     radixutils.FormatTimestamp(b.activeTo),
+		DeploySummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
+	}
+}
+
+func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploySummaryPipelineJobInfo {
+	jobInfo := DeploySummaryPipelineJobInfo{
 		CreatedByJob: b.jobName,
 	}
+
+	if b.pipelineJob != nil {
+		jobInfo.CommitID = b.pipelineJob.Spec.Build.CommitID
+		jobInfo.PipelineJobType = string(b.pipelineJob.Spec.PipeLineType)
+		jobInfo.PromotedFromEnvironment = b.pipelineJob.Spec.Promote.FromEnvironment
+	}
+
+	return jobInfo
 }
 
 func (b *deploymentBuilder) BuildDeployment() *Deployment {

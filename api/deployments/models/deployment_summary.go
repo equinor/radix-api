@@ -1,18 +1,41 @@
 package models
 
+type DeploySummaryPipelineJobInfo struct {
+	// Name of job creating deployment
+	//
+	// required: false
+	CreatedByJob string `json:"createdByJob,omitempty"`
+
+	// Type of pipeline job
+	//
+	// required: false
+	// example: build-deploy
+	PipelineJobType string `json:"pipelineJobType,omitempty"`
+
+	// Name of the environment the deployment was promoted from
+	// Applies only for pipeline jobs of type 'promote'
+	//
+	// required: false
+	// example: qa
+	PromotedFromEnvironment string `json:"promotedFromEnvironment,omitempty"`
+
+	// CommitID the commit ID of the branch to build
+	//
+	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	CommitID string `json:"commitID,omitempty"`
+}
+
 // DeploymentSummary describe an deployment
 // swagger:model DeploymentSummary
 type DeploymentSummary struct {
+	DeploySummaryPipelineJobInfo `json:",inline"`
+
 	// Name the unique name of the Radix application deployment
 	//
 	// required: false
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
-
-	// Name of job creating deployment
-	//
-	// required: false
-	CreatedByJob string `json:"createdByJob,omitempty"`
 
 	// Environment the environment this Radix application deployment runs in
 	//
