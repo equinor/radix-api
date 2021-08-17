@@ -33,19 +33,19 @@ type DeploymentSummary struct {
 
 	// Name the unique name of the Radix application deployment
 	//
-	// required: false
+	// required: true
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
 
 	// Environment the environment this Radix application deployment runs in
 	//
-	// required: false
+	// required: true
 	// example: prod
 	Environment string `json:"environment"`
 
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
-	// required: false
+	// required: true
 	// example: 2006-01-02T15:04:05Z
 	ActiveFrom string `json:"activeFrom"`
 
