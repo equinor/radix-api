@@ -338,7 +338,7 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 	for _, pod := range pods {
 		for _, container := range pod.Spec.Containers {
 			for _, envVariable := range container.Env {
-				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
+				if crdUtils.IsRadixEnvVar(envVariable.Name) {
 					radixEnvironmentVariables[envVariable.Name] = envVariable.Value
 				}
 			}
@@ -405,7 +405,7 @@ func getStatusOfActiveDeployment(
 	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
-		restarted := (*component.GetEnvironmentVariables())[defaults.RadixRestartEnvironmentVariable]
+		restarted := component.GetEnvironmentVariables()[defaults.RadixRestartEnvironmentVariable]
 		if !strings.EqualFold(restarted, "") {
 			restartedTime, err := radixutils.ParseTimestamp(restarted)
 			if err != nil {
