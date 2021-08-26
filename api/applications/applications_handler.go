@@ -9,17 +9,15 @@ import (
 	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
-	radixhttp "github.com/equinor/radix-common/net/http"
-	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -28,6 +26,9 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -46,7 +47,7 @@ type ApplicationHandler struct {
 
 // Init Constructor
 func Init(accounts models.Accounts) ApplicationHandler {
-	jobHandler := job.Init(accounts)
+	jobHandler := job.Init(accounts, deployments.Init(accounts))
 	return ApplicationHandler{
 		accounts:           accounts,
 		jobHandler:         jobHandler,
@@ -241,7 +242,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 
 	runUpdate := false
 	// Only these fields can change over time
-	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !k8sObjectUtils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !radixutils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true

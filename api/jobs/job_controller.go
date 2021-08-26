@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	deployments "github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -45,6 +46,11 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Path:        rootPath + "/jobs/{jobName}/stop",
 			Method:      "POST",
 			HandlerFunc: StopApplicationJob,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/steps/{stepName}/output/scan",
+			Method:      "GET",
+			HandlerFunc: GetPipelineJobStepScanOutput,
 		},
 	}
 
@@ -109,7 +115,7 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 		}
 	}
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	pipelines, err := handler.HandleGetApplicationJobLogs(appName, jobName, &since)
 
 	if err != nil {
@@ -155,7 +161,7 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
@@ -204,7 +210,7 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
@@ -251,7 +257,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts)
+	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.StopJob(appName, jobName)
 
 	if err != nil {
@@ -260,4 +266,61 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetPipelineJobStepScanOutput Get logs of a pipeline-job for an application
+func GetPipelineJobStepScanOutput(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/steps/{stepName}/output/scan pipeline-job getPipelineJobStepScanOutput
+	// ---
+	// summary: Gets list of vulnerabilities found by the scan step
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// - name: stepName
+	//   in: path
+	//   description: Name of the step
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/Vulnerability"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	stepName := mux.Vars(r)["stepName"]
+
+	handler := Init(accounts, deployments.Init(accounts))
+	scanDetails, err := handler.GetPipelineJobStepScanOutput(appName, jobName, stepName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, scanDetails)
 }

@@ -32,12 +32,12 @@ const (
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
-func (deploy DeployHandler) GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
+func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	return deploy.getComponents(appName, deployment)
 }
 
 // GetComponentsForDeploymentName handler for GetDeployments
-func (deploy DeployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
+func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
 	deployments, err := deploy.GetDeploymentsForApplication(appName, false)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (deploy DeployHandler) GetComponentsForDeploymentName(appName, deploymentID
 	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
 }
 
-func (deploy DeployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
+func (deploy *deployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 	if err != nil {
@@ -82,7 +82,7 @@ func (deploy DeployHandler) getComponents(appName string, deployment *deployment
 	return components, nil
 }
 
-func (deploy DeployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
+func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
 
 	// TODO: Add interface for RA + EnvConfig
@@ -338,7 +338,7 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 	for _, pod := range pods {
 		for _, container := range pod.Spec.Containers {
 			for _, envVariable := range container.Env {
-				if strings.HasPrefix(envVariable.Name, radixEnvVariablePrefix) {
+				if crdUtils.IsRadixEnvVar(envVariable.Name) {
 					radixEnvironmentVariables[envVariable.Name] = envVariable.Value
 				}
 			}
@@ -405,7 +405,7 @@ func getStatusOfActiveDeployment(
 	} else if runningReplicaDiffersFromSpec(component, pods) {
 		status = deploymentModels.ComponentReconciling
 	} else {
-		restarted := (*component.GetEnvironmentVariables())[defaults.RadixRestartEnvironmentVariable]
+		restarted := component.GetEnvironmentVariables()[defaults.RadixRestartEnvironmentVariable]
 		if !strings.EqualFold(restarted, "") {
 			restartedTime, err := radixutils.ParseTimestamp(restarted)
 			if err != nil {

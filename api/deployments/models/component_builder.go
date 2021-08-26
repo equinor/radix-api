@@ -120,7 +120,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		b.secrets = append(b.secrets, utils.GetComponentClientCertificateSecretName(component.GetName()))
 	}
 
-	b.environmentVariables = *component.GetEnvironmentVariables()
+	b.environmentVariables = component.GetEnvironmentVariables()
 	return b
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/environmentvariables"
 	"net/http"
 	"os"
 
@@ -87,6 +88,7 @@ func getControllers() []models.Controller {
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(),
+		environmentvariables.NewEnvVarsController(),
 		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),
 		buildstatus.NewBuildStatusController(buildStatus),
