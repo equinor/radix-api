@@ -152,6 +152,15 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		BuildDeployment(), nil
 }
 
+func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {
+	appNameLabel, _ := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
+	envLabel, _ := labels.NewRequirement(kube.RadixEnvLabel, selection.Exists, nil)
+
+	labelSelector := labels.NewSelector().Add(*appNameLabel).Add(*envLabel)
+
+	return deploy.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+}
+
 func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	appNameLabel, err := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
 	if err != nil {
@@ -166,9 +175,28 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		}
 		rdLabelSelector = rdLabelSelector.Add(*jobNameLabel)
 	}
-	radixDeploymentList, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
-	if err != nil {
-		return nil, err
+
+	var environmentNamespaces []string
+
+	if namespace == corev1.NamespaceAll {
+		namespaceList, err := deploy.getEnvironmentNamespaces(appName)
+		if err != nil {
+			return nil, err
+		}
+		for _, ns := range namespaceList.Items {
+			environmentNamespaces = append(environmentNamespaces, ns.Name)
+		}
+	} else {
+		environmentNamespaces = append(environmentNamespaces, namespace)
+	}
+	var radixDeploymentList []v1.RadixDeployment
+
+	for _, ns := range environmentNamespaces {
+		rdlist, err := deploy.radixClient.RadixV1().RadixDeployments(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
+		if err != nil {
+			return nil, err
+		}
+		radixDeploymentList = append(radixDeploymentList, rdlist.Items...)
 	}
 
 	appNamespace := utils.GetAppNamespace(appName)
@@ -190,7 +218,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		}
 	}
 
-	rds := sortRdsByActiveFromDesc(radixDeploymentList.Items)
+	rds := sortRdsByActiveFromDesc(radixDeploymentList)
 	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for _, rd := range rds {
 		if latest && rd.Status.Condition == v1.DeploymentInactive {
