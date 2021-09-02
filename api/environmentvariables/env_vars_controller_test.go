@@ -4,6 +4,7 @@ import (
 	"fmt"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -25,15 +26,8 @@ const (
 	componentName     = "backend"
 )
 
-func setupTest(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
-	prometheusclient := prometheusfake.NewSimpleClientset()
-
-	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _ := setupTest()
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
@@ -45,6 +39,18 @@ func setupTest(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
+func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube) {
+	// Setup
+	kubeclient := kubefake.NewSimpleClientset()
+	radixclient := fake.NewSimpleClientset()
+	prometheusclient := prometheusfake.NewSimpleClientset()
+
+	// commonTestUtils is used for creating CRDs
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil()
+}
+
 func Test_GetComponentEnvVars(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -52,8 +58,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 	url := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/envvars", appName, environmentName, componentName)
 
 	t.Run("Return env-vars", func(t *testing.T) {
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
 			Return([]envvarsmodels.EnvVar{
 				{
@@ -93,8 +99,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
 			Return(nil, fmt.Errorf("some-err"))
 
@@ -113,7 +119,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 }
 
 func Test_ChangeEnvVar(t *testing.T) {
-	//setupTest()
+	//setupTestWithMockHandler()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -133,8 +139,8 @@ func Test_ChangeEnvVar(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 
 		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
 			Return(nil)
@@ -150,8 +156,8 @@ func Test_ChangeEnvVar(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 
 		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
 			Return(fmt.Errorf("some-err"))
@@ -166,12 +172,16 @@ func Test_ChangeEnvVar(t *testing.T) {
 	})
 }
 
-func setupDeployment(commonTestUtils *commontest.Utils, appName, environmentName, componentName string) {
+func setupDeployment(commonTestUtils *commontest.Utils, appName, environmentName, componentName string, modifyComponentBuilder func(builders.DeployComponentBuilder)) {
+	componentBuilder := builders.NewDeployComponentBuilder().WithName(componentName)
+	if modifyComponentBuilder != nil {
+		modifyComponentBuilder(componentBuilder)
+	}
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithDeploymentName("some-depl").
 		WithAppName(appName).
 		WithEnvironment(environmentName).
-		WithComponent(builders.NewDeployComponentBuilder().WithName(componentName)).
+		WithComponent(componentBuilder).
 		WithImageTag("1234"))
 }

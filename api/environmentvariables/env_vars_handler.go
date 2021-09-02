@@ -27,7 +27,7 @@ type EnvVarsHandlerOptions func(*envVarsHandler)
 func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
 	return func(eh *envVarsHandler) {
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
-		eh.kubeUtil = *kubeUtil
+		eh.kubeUtil = kubeUtil
 		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.accounts = accounts
 	}
@@ -35,7 +35,7 @@ func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
 
 // EnvVarsHandler Instance variables
 type envVarsHandler struct {
-	kubeUtil        kube.Kube
+	kubeUtil        *kube.Kube
 	inClusterClient kubernetes.Interface
 	accounts        models.Accounts
 }
@@ -66,7 +66,7 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 	if err != nil || envVarsConfigMap.Data == nil || envVarsMetadataMap == nil {
 		return nil, err
 	}
-	envVars, err := deployment.GetEnvironmentVariables(&eh.kubeUtil, appName, rd, radixDeployComponent)
+	envVars, err := deployment.GetEnvironmentVariables(eh.kubeUtil, appName, rd, radixDeployComponent)
 	if err != nil {
 		return nil, err
 	}
