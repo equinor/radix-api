@@ -90,6 +90,9 @@ func Test_GetComponentEnvVars(t *testing.T) {
 	})
 
 	t.Run("Return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
 		setupDeployment(commonTestUtils, appName, environmentName, componentName)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
@@ -114,45 +117,52 @@ func Test_ChangeEnvVar(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	appName := "any-app"
-	environmentName := "dev"
-	componentName := "backend"
+	url := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/envvars", appName, environmentName, componentName)
+	envVarsParams := []envvarsmodels.EnvVarParameter{
+		{
+			Name:  "VAR1",
+			Value: "val1",
+		},
+		{
+			Name:  "VAR2",
+			Value: "val2",
+		},
+	}
 
-	t.Run("Change env-vars", func(t *testing.T) {
-		handler := NewMockEnvVarsHandler(ctrl)
-		envVarsParams := []envvarsmodels.EnvVarParameter{
-			{
-				Name:  "VAR1",
-				Value: "val1",
-			},
-			{
-				Name:  "VAR2",
-				Value: "val2",
-			},
-		}
+	t.Run("Successfully changed env-vars", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+
 		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
 			Return(nil)
-		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, envVars)
-		assert.NotEmpty(t, envVars)
-		assert.Equal(t, "VAR1", envVars[0].Name)
-		assert.Equal(t, "val1", envVars[0].Value)
-		assert.NotEmpty(t, envVars[0].Metadata)
-		assert.Equal(t, "orig-val1", envVars[0].Metadata.RadixConfigValue)
-		assert.Equal(t, "VAR2", envVars[1].Name)
-		assert.Equal(t, "val2", envVars[1].Value)
-		assert.Nil(t, envVars[1].Metadata)
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", url, envVarsParams)
+		response := <-responseChannel
+
+		assert.Equal(t, 200, response.Code)
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Nil(t, errorResponse)
 	})
 	t.Run("Return error", func(t *testing.T) {
-		handler := NewMockEnvVarsHandler(ctrl)
-		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
-			Return(nil, fmt.Errorf("err"))
-		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
 
-		assert.Error(t, err)
-		assert.Nil(t, envVars)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTest(mockCtrl)
+		setupDeployment(commonTestUtils, appName, environmentName, componentName)
+
+		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
+			Return(fmt.Errorf("some-err"))
+
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", url, envVarsParams)
+		response := <-responseChannel
+
+		assert.Equal(t, 400, response.Code)
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.NotNil(t, errorResponse)
+		assert.Equal(t, "Error: some-err", errorResponse.Message)
 	})
 }
 
