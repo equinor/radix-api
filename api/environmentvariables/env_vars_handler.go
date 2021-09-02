@@ -6,9 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/equinor/radix-api/api/deployments"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
-	"github.com/equinor/radix-api/api/events"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -17,52 +15,44 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type EnvVarsHandler interface {
+	GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error)
+	ChangeEnvVar(appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error
+}
+
 // EnvVarsHandlerOptions defines a configuration function
-type EnvVarsHandlerOptions func(*EnvVarsHandler)
+type EnvVarsHandlerOptions func(*envVarsHandler)
 
 // WithAccounts configures all EnvVarsHandler fields
 func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
-	return func(eh *EnvVarsHandler) {
+	return func(eh *envVarsHandler) {
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
 		eh.kubeUtil = *kubeUtil
 		eh.inClusterClient = accounts.ServiceAccount.Client
-		eh.deployHandler = deployments.Init(accounts)
-		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
 	}
 }
 
-// WithEventHandler configures the eventHandler used by EnvVarHandler
-func WithEventHandler(eventHandler events.EventHandler) EnvVarsHandlerOptions {
-	return func(eh *EnvVarsHandler) {
-		eh.eventHandler = eventHandler
-	}
-}
-
 // EnvVarsHandler Instance variables
-type EnvVarsHandler struct {
+type envVarsHandler struct {
 	kubeUtil        kube.Kube
 	inClusterClient kubernetes.Interface
-	deployHandler   deployments.DeployHandler
-	eventHandler    events.EventHandler
 	accounts        models.Accounts
 }
 
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' EnvVarsHandler.
-// EnvVarsHandlerOptions are processed in the seqeunce they are passed to this function.
+// EnvVarsHandlerOptions are processed in the sequence they are passed to this function.
 func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
-	eh := EnvVarsHandler{}
-
+	eh := envVarsHandler{}
 	for _, opt := range opts {
 		opt(&eh)
 	}
-
-	return eh
+	return &eh
 }
 
 //GetComponentEnvVars Get environment variables with metadata for the component
-func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
+func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.kubeUtil.GetActiveDeployment(namespace)
 	if err != nil {
@@ -98,7 +88,7 @@ func (eh EnvVarsHandler) GetComponentEnvVars(appName string, envName string, com
 }
 
 //ChangeEnvVar Change environment variables
-func (eh EnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error {
+func (eh *envVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	currentEnvVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, err := eh.kubeUtil.GetEnvVarsConfigMapAndMetadataMap(namespace, componentName)
 	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
