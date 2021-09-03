@@ -54,7 +54,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.ShowApplications,
 			KubeApiConfig: models.KubeApiConfig{
 				QPS:   50,
-				Burst: 10,
+				Burst: 100,
 			},
 		},
 		models.Route{
