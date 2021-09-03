@@ -122,9 +122,9 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	//   description: environment component of Radix application
 	//   type: string
 	//   required: true
-	// - name: environment variable value and metadata
+	// - name: EnvVarParameter
 	//   in: body
-	//   description: New value and metadata
+	//   description: Environment variables new values and metadata
 	//   required: true
 	//   schema:
 	//      type: array
