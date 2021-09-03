@@ -54,36 +54,45 @@ func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixR
 }
 
 func (ah ApplicationHandler) filterRadixRegByAccessAndSSHRepo(radixregs []v1.RadixRegistration, sshURL string, hasAccess hasAccessToRR) []v1.RadixRegistration {
-	adGroups := map[string]int{}
 	result := []v1.RadixRegistration{}
 
+	limit := 25
+	semaphore := make(chan struct{}, limit)
+	rrChan := make(chan v1.RadixRegistration, len(radixregs))
+	kubeClient := ah.getUserAccount().Client
 	for _, rr := range radixregs {
-		if rr.Status.Reconciled.IsZero() {
-			// Registration hasn't been properly reconciled, and therefore
-			// cannot be checked
-			continue
-		}
+		semaphore <- struct{}{}
+		go func(rr v1.RadixRegistration) {
+			defer func() { <-semaphore }()
 
-		if filterOnSSHRepo(&rr, sshURL) {
-			continue
-		}
+			if rr.Status.Reconciled.IsZero() {
+				return
+			}
 
-		adGroupsForApp := rr.Spec.AdGroups
-		sort.Strings(adGroupsForApp)
-		adGroupsAsKey := strings.Join(adGroupsForApp, ",")
-		if adGroups[adGroupsAsKey] == 1 {
-			result = append(result, rr)
-		} else if adGroups[adGroupsAsKey] == -1 {
-			continue
-		} else if hasAccess(ah.getUserAccount().Client, rr) {
-			adGroups[adGroupsAsKey] = 1
+			if filterOnSSHRepo(&rr, sshURL) {
+				return
+			}
 
-			result = append(result, rr)
-		} else {
-			adGroups[adGroupsAsKey] = -1
-		}
+			if hasAccess(kubeClient, rr) {
+				rrChan <- rr
+			}
+		}(rr)
 	}
 
+	// Wait for goroutines to release semaphore channel
+	for i := limit; i > 0; i-- {
+		semaphore <- struct{}{}
+	}
+	close(semaphore)
+	close(rrChan)
+
+	for rr := range rrChan {
+		result = append(result, rr)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return strings.Compare(result[i].Name, result[j].Name) == -1
+	})
 	return result
 }
 
