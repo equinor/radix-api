@@ -13,16 +13,29 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+type RestClientConfigOption func(*restclient.Config)
+
+func WithQPS(qps float32) RestClientConfigOption {
+	return func(cfg *restclient.Config) {
+		cfg.QPS = qps
+	}
+}
+
+func WithBurst(burst int) RestClientConfigOption {
+	return func(cfg *restclient.Config) {
+		cfg.Burst = burst
+	}
+}
+
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
-	GetOutClusterKubernetesClient(string) (kubernetes.Interface, radixclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface)
-	GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface)
+	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
+	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
+	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
 }
 
 type kubeUtil struct {
@@ -45,27 +58,27 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 }
 
 //GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClient(token string) (kubernetes.Interface, radixclient.Interface) {
-	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{})
+func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
+	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{}, options...)
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
 	if ku.useOutClusterClient {
-		config := getOutClusterClientConfig(token, impersonation)
+		config := getOutClusterClientConfig(token, impersonation, options)
 		return getKubernetesClientFromConfig(config)
 	}
 
-	return ku.GetInClusterKubernetesClient()
+	return ku.GetInClusterKubernetesClient(options...)
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
-func (ku *kubeUtil) GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
-	config := getInClusterClientConfig()
+func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
+	config := getInClusterClientConfig(options)
 	return getKubernetesClientFromConfig(config)
 }
 
-func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation) *restclient.Config {
+func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation, options []RestClientConfigOption) *restclient.Config {
 	host := os.Getenv("K8S_API_HOST")
 	if host == "" {
 		host = "https://kubernetes.default.svc"
@@ -88,23 +101,27 @@ func getOutClusterClientConfig(token string, impersonation radixmodels.Impersona
 		kubeConfig.Impersonate = impersonationConfig
 	}
 
-	return addCommonConfigs(kubeConfig)
+	return addCommonConfigs(kubeConfig, options)
 }
 
-func getInClusterClientConfig() *restclient.Config {
+func getInClusterClientConfig(options []RestClientConfigOption) *restclient.Config {
 	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
-		config, err = rest.InClusterConfig()
+		config, err = restclient.InClusterConfig()
 		if err != nil {
 			log.Fatalf("getClusterConfig InClusterConfig: %v", err)
 		}
 	}
 
-	return addCommonConfigs(config)
+	return addCommonConfigs(config, options)
 }
 
-func addCommonConfigs(config *restclient.Config) *restclient.Config {
+func addCommonConfigs(config *restclient.Config, options []RestClientConfigOption) *restclient.Config {
+	for _, opt := range options {
+		opt(config)
+	}
+
 	config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
 		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
 	}

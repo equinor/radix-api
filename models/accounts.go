@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	radixmodels "github.com/equinor/radix-common/models"
@@ -46,29 +45,6 @@ type Accounts struct {
 	ServiceAccount Account
 	token          string
 	impersonation  radixmodels.Impersonation
-}
-
-// RadixHandlerFunc Pattern for handler functions
-type RadixHandlerFunc func(Accounts, http.ResponseWriter, *http.Request)
-
-// Controller Pattern of an rest/stream controller
-type Controller interface {
-	GetRoutes() Routes
-}
-
-// DefaultController Default implementation
-type DefaultController struct {
-}
-
-// Routes Holder of all routes
-type Routes []Route
-
-// Route Describe route
-type Route struct {
-	Path                      string
-	Method                    string
-	HandlerFunc               RadixHandlerFunc
-	AllowUnauthenticatedUsers bool
 }
 
 // GetUserAccountUserPrincipleName get the user principle name represented in UserAccount
