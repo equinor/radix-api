@@ -140,5 +140,5 @@ func initializeHealthEndpoint(router *mux.Router) {
 func addHandlerRoute(kubeUtil utils.KubeUtil, router *mux.Router, route models.Route) {
 	path := apiVersionRoute + route.Path
 	router.HandleFunc(path,
-		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.AllowUnauthenticatedUsers, route.HandlerFunc).Handle).Methods(route.Method)
+		utils.NewRadixMiddleware(kubeUtil, path, route.Method, route.AllowUnauthenticatedUsers, route.KubeApiConfig.QPS, route.KubeApiConfig.Burst, route.HandlerFunc).Handle).Methods(route.Method)
 }
