@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 	"strings"
-	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -21,20 +20,13 @@ type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bo
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
 func (ah ApplicationHandler) GetApplications(sshRepo string, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
-	start := time.Now()
 	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})
-	log.Debugf("get all application took %s", time.Since(start))
 	if err != nil {
 		return nil, err
 	}
-
-	start = time.Now()
 	radixRegistations := ah.filterRadixRegByAccessAndSSHRepo(radixRegistationList.Items, sshRepo, hasAccess)
-	log.Debugf("check application permission took %s", time.Since(start))
 
-	start = time.Now()
 	applicationJobs, err := ah.getJobsForApplication(radixRegistations)
-	log.Debugf("get application jobs took %s", time.Since(start))
 	if err != nil {
 		return nil, err
 	}
