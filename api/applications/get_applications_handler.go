@@ -19,12 +19,20 @@ import (
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
-func (ah ApplicationHandler) GetApplications(sshRepo string, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
+func (ah ApplicationHandler) GetApplications(matcher applicationModels.ApplicationMatch, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	radixRegistations := ah.filterRadixRegByAccessAndSSHRepo(radixRegistationList.Items, sshRepo, hasAccess)
+
+	filteredRegistrations := make([]v1.RadixRegistration, 0, len(radixRegistationList.Items))
+	for _, rr := range radixRegistationList.Items {
+		if matcher(&rr) {
+			filteredRegistrations = append(filteredRegistrations, rr)
+		}
+	}
+
+	radixRegistations := ah.filterRadixRegByAccess(filteredRegistrations, hasAccess)
 
 	applicationJobs, err := ah.getJobsForApplication(radixRegistations)
 	if err != nil {
@@ -53,7 +61,7 @@ func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixR
 	return applicationJobs, nil
 }
 
-func (ah ApplicationHandler) filterRadixRegByAccessAndSSHRepo(radixregs []v1.RadixRegistration, sshURL string, hasAccess hasAccessToRR) []v1.RadixRegistration {
+func (ah ApplicationHandler) filterRadixRegByAccess(radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) []v1.RadixRegistration {
 	result := []v1.RadixRegistration{}
 
 	limit := 25
@@ -69,9 +77,9 @@ func (ah ApplicationHandler) filterRadixRegByAccessAndSSHRepo(radixregs []v1.Rad
 				return
 			}
 
-			if filterOnSSHRepo(&rr, sshURL) {
-				return
-			}
+			// if filterOnSSHRepo(&rr, sshURL) {
+			// 	return
+			// }
 
 			if hasAccess(kubeClient, rr) {
 				rrChan <- rr
@@ -94,17 +102,6 @@ func (ah ApplicationHandler) filterRadixRegByAccessAndSSHRepo(radixregs []v1.Rad
 		return strings.Compare(result[i].Name, result[j].Name) == -1
 	})
 	return result
-}
-
-func filterOnSSHRepo(rr *v1.RadixRegistration, sshURL string) bool {
-	filter := true
-
-	if strings.TrimSpace(sshURL) == "" ||
-		strings.EqualFold(rr.Spec.CloneURL, sshURL) {
-		filter = false
-	}
-
-	return filter
 }
 
 // cannot run as test - does not return correct values

@@ -3,6 +3,7 @@ package applications
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -52,6 +53,15 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        rootPath + "/applications",
 			Method:      "GET",
 			HandlerFunc: ac.ShowApplications,
+			KubeApiConfig: models.KubeApiConfig{
+				QPS:   50,
+				Burst: 100,
+			},
+		},
+		models.Route{
+			Path:        rootPath + "/applications/_search",
+			Method:      "POST",
+			HandlerFunc: ac.SearchApplications,
 			KubeApiConfig: models.KubeApiConfig{
 				QPS:   50,
 				Burst: 100,
@@ -145,10 +155,67 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
-	sshRepo := r.FormValue("sshRepo")
+
+	matcher := applicationModels.MatchAll
+	sshRepo := strings.TrimSpace(r.FormValue("sshRepo"))
+	if len(sshRepo) > 0 {
+		matcher = applicationModels.MatchBySSHRepoFunc(sshRepo)
+	}
 
 	handler := Init(accounts)
-	appRegistrations, err := handler.GetApplications(sshRepo, ac.hasAccessToRR)
+	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, appRegistrations)
+}
+
+func (ac *applicationController) SearchApplications(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/_search platform searchApplications
+	//
+	// ---
+	// summary: Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments
+	// parameters:
+	// - name: applicationSearch
+	//   in: body
+	//   description: List of application names to search for
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ApplicationsSearchRequest"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ApplicationSummary"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "500":
+	//     description: "Internal Server Error"
+
+	var appNamesRequest applicationModels.ApplicationsSearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	handler := Init(accounts)
+	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
+	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
