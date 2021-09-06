@@ -23,7 +23,8 @@ func Test_GetEnvVars(t *testing.T) {
 			"VAR2": "val2",
 		}
 		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder builders.DeployComponentBuilder) {
-			builder.WithEnvironmentVariables(envVarsMap)
+			builder.WithEnvironmentVariables(envVarsMap).
+				WithSecrets([]string{"SECRET1", "SECRET2"})
 		})
 		handler := envVarsHandler{
 			kubeUtil:        commonTestUtils.GetKubeUtil(),

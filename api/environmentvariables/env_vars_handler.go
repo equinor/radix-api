@@ -63,28 +63,48 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 		return nil, fmt.Errorf("RadixDeployComponent not found by name")
 	}
 	envVarsConfigMap, _, envVarsMetadataMap, err := eh.kubeUtil.GetEnvVarsConfigMapAndMetadataMap(namespace, componentName)
-	if err != nil || envVarsConfigMap.Data == nil || envVarsMetadataMap == nil {
+	if err != nil {
 		return nil, err
 	}
 	envVars, err := deployment.GetEnvironmentVariables(eh.kubeUtil, appName, rd, radixDeployComponent)
 	if err != nil {
 		return nil, err
 	}
+	secretNamesMap := getMapFromStrings(radixDeployComponent.GetSecrets())
 	var apiEnvVars []envvarsmodels.EnvVar
 	for _, envVar := range envVars {
 		apiEnvVar := envvarsmodels.EnvVar{Name: envVar.Name}
 		if envVar.ValueFrom == nil {
 			apiEnvVar.Value = envVar.Value
-		} else if envVarValue, foundValue := envVarsConfigMap.Data[envVar.Name]; foundValue {
+			apiEnvVars = append(apiEnvVars, apiEnvVar)
+			continue
+		}
+		if _, ok := secretNamesMap[envVar.Name]; ok {
+			continue //skip secrets
+		}
+		if envVarsConfigMap.Data == nil {
+			continue
+		}
+		if envVarValue, foundValue := envVarsConfigMap.Data[envVar.Name]; foundValue {
 			apiEnvVar.Value = envVarValue
 		}
-		if envVarMetadata, foundMetadata := envVarsMetadataMap[envVar.Name]; foundMetadata {
-			apiEnvVar.Metadata = &envvarsmodels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
+		if envVarsMetadataMap != nil {
+			if envVarMetadata, foundMetadata := envVarsMetadataMap[envVar.Name]; foundMetadata {
+				apiEnvVar.Metadata = &envvarsmodels.EnvVarMetadata{RadixConfigValue: envVarMetadata.RadixConfigValue}
+			}
 		}
 		apiEnvVars = append(apiEnvVars, apiEnvVar)
 	}
 	sort.Slice(apiEnvVars, func(i, j int) bool { return apiEnvVars[i].Name < apiEnvVars[j].Name })
 	return apiEnvVars, nil
+}
+
+func getMapFromStrings(values []string) map[string]interface{} {
+	valueMap := make(map[string]interface{}, len(values))
+	for _, value := range values {
+		valueMap[value] = true
+	}
+	return valueMap
 }
 
 //ChangeEnvVar Change environment variables
