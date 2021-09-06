@@ -193,11 +193,11 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, jobPodsMap map[string][]core
 			Created: radixutils.FormatTimestamp(creationTimestamp.Time),
 			Started: radixutils.FormatTime(job.Status.StartTime),
 			Ended:   radixutils.FormatTime(job.Status.CompletionTime),
-			Status:  models.GetStatusFromJobStatus(job.Status).String(),
 		}
 		if jobPods, ok := jobPodsMap[job.Name]; ok {
 			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 		}
+		summary.Status = models.GetStatusFromJobStatus(job.Status, summary.ReplicaList).String()
 		summaries = append(summaries, summary)
 	}
 
