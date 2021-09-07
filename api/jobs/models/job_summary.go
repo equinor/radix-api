@@ -77,25 +77,9 @@ type JobSummary struct {
 	// required: false
 	// example: dev,qa
 	Environments []string `json:"environments,omitempty"`
-
-	// List of RadixJobStepScanOutput for a job
-	//
-	// required: false
-	StepSummaryScans []v1.RadixJobStepScanOutput `json:"stepSummaryScans,omitempty"`
 }
 
-// GetStepSummaryScansFromRadixJob Used to get a list of summary scans of all steps on a job
-func GetStepSummaryScansFromRadixJob(steps []v1.RadixJobStep) []v1.RadixJobStepScanOutput {
-	var scans []v1.RadixJobStepScanOutput
-	for _, step := range steps {
-		if step.Output != nil && step.Output.Scan != nil {
-			scans = append(scans, *step.Output.Scan)
-		}
-	}
-
-	return scans
-}
-
+// GetSummaryFromRadixJob Used to get job summary from a radix job
 // GetSummaryFromRadixJob Used to get job summary from a radix job
 func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	status := job.Status
@@ -108,18 +92,17 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	}
 
 	pipelineJob := &JobSummary{
-		Name:             job.Name,
-		AppName:          job.Spec.AppName,
-		Branch:           job.Spec.Build.Branch,
-		CommitID:         job.Spec.Build.CommitID,
-		Status:           GetStatusFromRadixJobStatus(status, job.Spec.Stop),
-		Created:          created,
-		Started:          radixutils.FormatTime(status.Started),
-		Ended:            ended,
-		Pipeline:         string(job.Spec.PipeLineType),
-		Environments:     job.Status.TargetEnvs,
-		TriggeredBy:      job.Spec.TriggeredBy,
-		StepSummaryScans: GetStepSummaryScansFromRadixJob(status.Steps),
+		Name:         job.Name,
+		AppName:      job.Spec.AppName,
+		Branch:       job.Spec.Build.Branch,
+		CommitID:     job.Spec.Build.CommitID,
+		Status:       GetStatusFromRadixJobStatus(status, job.Spec.Stop),
+		Created:      created,
+		Started:      radixutils.FormatTime(status.Started),
+		Ended:        ended,
+		Pipeline:     string(job.Spec.PipeLineType),
+		Environments: job.Status.TargetEnvs,
+		TriggeredBy:  job.Spec.TriggeredBy,
 	}
 
 	return pipelineJob
