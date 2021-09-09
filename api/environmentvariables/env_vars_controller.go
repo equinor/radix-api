@@ -15,25 +15,33 @@ const rootPath = "/applications/{appName}"
 
 type envVarsController struct {
 	*models.DefaultController
+	handlerFactory envVarsHandlerFactory
 }
 
 // NewEnvVarsController Constructor
 func NewEnvVarsController() models.Controller {
-	return &envVarsController{}
+	return &envVarsController{
+		handlerFactory: &defaultEnvVarsHandlerFactory{},
+	}
+}
+
+func (controller *envVarsController) withHandlerFactory(factory envVarsHandlerFactory) *envVarsController {
+	controller.handlerFactory = factory
+	return controller
 }
 
 // GetRoutes List the supported routes of this handler
-func (ec *envVarsController) GetRoutes() models.Routes {
+func (controller *envVarsController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars",
 			Method:      "GET",
-			HandlerFunc: GetComponentEnvVars,
+			HandlerFunc: controller.GetComponentEnvVars,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/envvars",
 			Method:      "PATCH",
-			HandlerFunc: ChangeEnvVar,
+			HandlerFunc: controller.ChangeEnvVar,
 		},
 	}
 
@@ -41,7 +49,7 @@ func (ec *envVarsController) GetRoutes() models.Routes {
 }
 
 // GetComponentEnvVars Get log from a scheduled job
-func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (controller *envVarsController) GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/envvars component envVars
 	// ---
 	// summary: Get environment variables for component
@@ -80,11 +88,9 @@ func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//           "$ref": "#/definitions/EnvVar"
 	//   "404":
 	//     description: "Not found"
-	appName := mux.Vars(r)["appName"]
-	envName := mux.Vars(r)["envName"]
-	componentName := mux.Vars(r)["componentName"]
+	appName, envName, componentName := mux.Vars(r)["appName"], mux.Vars(r)["envName"], mux.Vars(r)["componentName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := controller.handlerFactory.createHandler(accounts)
 	envVars, err := eh.GetComponentEnvVars(appName, envName, componentName)
 
 	if err != nil {
@@ -96,7 +102,7 @@ func GetComponentEnvVars(accounts models.Accounts, w http.ResponseWriter, r *htt
 }
 
 // ChangeEnvVar Modifies an environment variable
-func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PATCH /applications/{appName}/environments/{envName}/components/{componentName}/envvars component changeEnvVar
 	// ---
 	// summary: Update an environment variable
@@ -116,9 +122,9 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 	//   description: environment component of Radix application
 	//   type: string
 	//   required: true
-	// - name: environment variable value and metadata
+	// - name: EnvVarParameter
 	//   in: body
-	//   description: New value and metadata
+	//   description: Environment variables new values and metadata
 	//   required: true
 	//   schema:
 	//      type: array
@@ -145,9 +151,7 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 	//     description: "Not found"
 	//   "409":
 	//     description: "Conflict"
-	appName := mux.Vars(r)["appName"]
-	envName := mux.Vars(r)["envName"]
-	componentName := mux.Vars(r)["componentName"]
+	appName, envName, componentName := mux.Vars(r)["appName"], mux.Vars(r)["envName"], mux.Vars(r)["componentName"]
 	var envVarParameters []envvarsmodels.EnvVarParameter
 	if err := json.NewDecoder(r.Body).Decode(&envVarParameters); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -156,7 +160,7 @@ func ChangeEnvVar(accounts models.Accounts, w http.ResponseWriter, r *http.Reque
 
 	log.Debugf("Update %d environment variables for app: '%s', env: '%s', component: '%s'", len(envVarParameters), appName, envName, componentName)
 
-	envVarsHandler := Init(WithAccounts(accounts))
+	envVarsHandler := controller.handlerFactory.createHandler(accounts)
 
 	err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
 	if err != nil {

@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -48,19 +49,28 @@ func GetStatusFromName(name string) (ProgressStatus, error) {
 }
 
 // GetStatusFromJobStatus Gets status from kubernetes job status
-func GetStatusFromJobStatus(jobStatus batchv1.JobStatus) ProgressStatus {
-	var status ProgressStatus
-	if jobStatus.Active > 0 {
-		status = Running
-
-	} else if jobStatus.Succeeded > 0 {
-		status = Succeeded
-
-	} else if jobStatus.Failed > 0 {
-		status = Failed
+func GetStatusFromJobStatus(jobStatus batchv1.JobStatus, replicaList []deploymentModels.ReplicaSummary) ProgressStatus {
+	if jobStatus.Failed > 0 {
+		return Failed
 	}
-
-	return status
+	for _, replicaSummary := range replicaList {
+		if replicaSummary.Status.Status == deploymentModels.Failing.String() {
+			return Failed
+		}
+	}
+	if jobStatus.Active > 0 {
+		return Running
+	} else if jobStatus.Succeeded > 0 {
+		return Succeeded
+	} else if len(jobStatus.Conditions) > 0 {
+		jobCondition := jobStatus.Conditions[len(jobStatus.Conditions)-1]
+		if jobCondition.Type == batchv1.JobComplete {
+			return Stopped
+		} else if jobCondition.Type == batchv1.JobFailed {
+			return Failed
+		}
+	}
+	return Stopped //Unconsidered status
 }
 
 // GetStatusFromRadixJobStatus Returns job status as string

@@ -94,9 +94,9 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, er
 
 // GetResponseBody Gets response payload as type
 func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) error {
-	body, _ := ioutil.ReadAll(response.Body)
+	reader := bytes.NewReader(response.Body.Bytes()) //To allow read from response body multiple times
+	body, _ := ioutil.ReadAll(reader)
 	log.Infof(string(body))
-
 	return json.Unmarshal(body, target)
 }
 
@@ -114,16 +114,16 @@ func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interf
 }
 
 //GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubefake client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
 }
 
 // GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
-func (ku *kubeUtilMock) GetInClusterKubernetesClient() (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
 	return ku.kubeFake, ku.radixFake
 }

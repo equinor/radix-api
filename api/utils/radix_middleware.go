@@ -14,20 +14,24 @@ import (
 
 // RadixMiddleware The middleware between router and radix handler functions
 type RadixMiddleware struct {
-	kubeUtil    KubeUtil
-	path        string
-	method      string
-	allowNoAuth bool
-	next        models.RadixHandlerFunc
+	kubeUtil     KubeUtil
+	path         string
+	method       string
+	allowNoAuth  bool
+	kubeApiQPS   float32
+	kubeApiBurst int
+	next         models.RadixHandlerFunc
 }
 
 // NewRadixMiddleware Constructor for radix middleware
-func NewRadixMiddleware(kubeUtil KubeUtil, path, method string, allowUnauthenticatedUsers bool, next models.RadixHandlerFunc) *RadixMiddleware {
+func NewRadixMiddleware(kubeUtil KubeUtil, path, method string, allowUnauthenticatedUsers bool, kubeApiQPS float32, kubeApiBurst int, next models.RadixHandlerFunc) *RadixMiddleware {
 	handler := &RadixMiddleware{
 		kubeUtil,
 		path,
 		method,
 		allowUnauthenticatedUsers,
+		kubeApiQPS,
+		kubeApiBurst,
 		next,
 	}
 
@@ -65,8 +69,9 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 		return
 	}
 
-	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
-	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation)
+	restOptions := handler.getRestClientOptions()
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
 
 	accounts := models.NewAccounts(
 		inClusterClient,
@@ -87,8 +92,23 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	handler.next(accounts, w, r)
 }
 
+func (handler *RadixMiddleware) getRestClientOptions() []RestClientConfigOption {
+	var options []RestClientConfigOption
+
+	if handler.kubeApiQPS > 0.0 {
+		options = append(options, WithQPS(handler.kubeApiQPS))
+	}
+
+	if handler.kubeApiBurst > 0 {
+		options = append(options, WithBurst(handler.kubeApiBurst))
+	}
+
+	return options
+}
+
 func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
-	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient()
+	restOptions := handler.getRestClientOptions()
+	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
 
 	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient)
 	accounts := models.Accounts{ServiceAccount: sa}

@@ -44,6 +44,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deployment, _ := deployment.NewDeployment(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd)
-	deployment.OnSync()
+	deployment := deployment.NewDeployment(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, false)
+	_ = deployment.OnSync()
 }

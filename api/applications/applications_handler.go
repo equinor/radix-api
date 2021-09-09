@@ -25,7 +25,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,25 +108,27 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 		return nil, err
 	}
 	if len(machineUserSA.Secrets) == 0 {
-		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
+		return nil, fmt.Errorf("unable to get secrets on machine user service account")
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
 	log.Debugf("delete service account for app %s and machine user token: %s", appName, tokenName)
-	err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(context.TODO(), tokenName, metav1.DeleteOptions{})
+	if err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(context.TODO(), tokenName, metav1.DeleteOptions{}); err != nil {
+		return nil, err
+	}
 
 	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
-	queryInterval := time.Tick(time.Duration(1) * time.Second)
+	queryInterval := time.NewTicker(time.Second)
 	for {
 		select {
-		case <-queryInterval:
+		case <-queryInterval.C:
 			machineUser, err := ah.getMachineUserForApp(appName)
 			if err == nil {
 				return machineUser, nil
 			}
 			log.Debugf("waiting to get machine user for app %s of namespace %s, error: %v", appName, namespace, err)
 		case <-queryTimeout.C:
-			return nil, fmt.Errorf("Timeout getting user machine token secret")
+			return nil, fmt.Errorf("timeout getting user machine token secret")
 		}
 	}
 }
@@ -488,7 +489,7 @@ func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistrati
 
 func (ah ApplicationHandler) getAppAlias(appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
 	for _, environment := range environments {
-		environmentNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, environment.Name)
+		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
 
 		ingresses, err := ah.getUserAccount().Client.NetworkingV1beta1().Ingresses(environmentNamespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
@@ -520,7 +521,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 	}
 
 	if len(machineUserSA.Secrets) == 0 {
-		return nil, fmt.Errorf("Unable to get secrets on machine user service account")
+		return nil, fmt.Errorf("unable to get secrets on machine user service account")
 	}
 
 	tokenName := machineUserSA.Secrets[0].Name
@@ -532,8 +533,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 
 	tokenStringData := string(token.Data["token"])
 	log.Debugf("token length: %v", len(tokenStringData))
-	var tokenString *string
-	tokenString = &tokenStringData
+	tokenString := &tokenStringData
 
 	return &applicationModels.MachineUser{
 		Token: *tokenString,
