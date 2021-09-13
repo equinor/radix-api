@@ -213,6 +213,12 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		return
 	}
 
+	// No need to perform search if names in request is empty. Just return empty list
+	if len(appNamesRequest.Names) == 0 {
+		radixhttp.JSONResponse(w, r, []interface{}{})
+		return
+	}
+
 	handler := Init(accounts)
 	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
 	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR)
