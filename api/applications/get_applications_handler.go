@@ -77,10 +77,6 @@ func (ah ApplicationHandler) filterRadixRegByAccess(radixregs []v1.RadixRegistra
 				return
 			}
 
-			// if filterOnSSHRepo(&rr, sshURL) {
-			// 	return
-			// }
-
 			if hasAccess(kubeClient, rr) {
 				rrChan <- rr
 			}
