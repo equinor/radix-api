@@ -94,9 +94,9 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, er
 
 // GetResponseBody Gets response payload as type
 func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) error {
-	body, _ := ioutil.ReadAll(response.Body)
+	reader := bytes.NewReader(response.Body.Bytes()) //To allow read from response body multiple times
+	body, _ := ioutil.ReadAll(reader)
 	log.Infof(string(body))
-
 	return json.Unmarshal(body, target)
 }
 
