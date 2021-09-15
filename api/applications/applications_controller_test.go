@@ -3,13 +3,14 @@ package applications
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/utils"
 	"net/http"
 	"net/url"
 	"os"
 	strings "strings"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-api/api/utils"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -147,6 +148,69 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 1, len(applications))
 	})
+}
+
+func TestSearchApplications(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app1"))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app2"))
+	controllerTestUtils := controllertest.NewTestUtils(
+		kubeclient,
+		radixclient,
+		NewApplicationController(
+			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+				return true
+			}))
+
+	t.Run("search for app1", func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1"}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, "app1", applications[0].Name)
+	})
+
+	t.Run("search for both apps", func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1", "app2"}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 2, len(applications))
+	})
+
+	t.Run("empty appname list", func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 0, len(applications))
+	})
+
+	t.Run("search for app1 - no access", func(t *testing.T) {
+		controllerTestUtils := controllertest.NewTestUtils(
+			kubeclient,
+			radixclient,
+			NewApplicationController(
+				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+					return false
+				}))
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1"}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 0, len(applications))
+	})
+
 }
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
