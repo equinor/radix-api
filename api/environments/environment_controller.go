@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/equinor/radix-api/api/alerting"
+	alertingModels "github.com/equinor/radix-api/api/alerting/models"
 	"github.com/equinor/radix-api/api/deployments"
 	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/models"
@@ -118,6 +120,26 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetScheduledJobLog,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/alerting",
+			Method:      "PUT",
+			HandlerFunc: UpdateAlertingConfig,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/alerting",
+			Method:      http.MethodGet,
+			HandlerFunc: GetAlertingConfig,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/alerting/enable",
+			Method:      http.MethodPost,
+			HandlerFunc: EnableAlerting,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/alerting/disable",
+			Method:      http.MethodPost,
+			HandlerFunc: DisableAlerting,
 		},
 	}
 
@@ -1096,4 +1118,233 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	radixhttp.StringResponse(w, r, log)
+}
+
+// UpdateAlertingConfig Configures alert settings
+func UpdateAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/alerting environment updateAlertingConfig
+	// ---
+	// summary: Update alerts configuration for an environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: alertsConfig
+	//   in: body
+	//   description: Alerts configuration
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/UpdateAlertingConfig"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful alerts config update
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "400":
+	//     description: "Invalid configuration"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	var updateAlertingConfig alertingModels.UpdateAlertingConfig
+	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	alertHandler := alerting.NewEnvironmentHandler(accounts, appName, envName)
+	alertsConfig, err := alertHandler.UpdateAlertingConfig(updateAlertingConfig)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// GetAlertingConfig returns alerts configuration
+func GetAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/alerting environment getAlertingConfig
+	// ---
+	// summary: Get alerts configuration for an environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful get alerts config
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	alertHandler := alerting.NewEnvironmentHandler(accounts, appName, envName)
+	alertsConfig, err := alertHandler.GetAlertingConfig()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// EnableAlerting enables alerting for application environment
+func EnableAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/alerting/enable environment enableAlerting
+	// ---
+	// summary: Enable alerting for an environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful enable alerting
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "400":
+	//     description: "Alerting already enabled"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	alertHandler := alerting.NewEnvironmentHandler(accounts, appName, envName)
+	alertsConfig, err := alertHandler.EnableAlerting()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// DisableAlerting disables alerting for application environment
+func DisableAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/alerting/disable environment disableAlerting
+	// ---
+	// summary: Disable alerting for an environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: Successful disable alerting
+	//   "400":
+	//     description: "Alerting already enabled"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	alertHandler := alerting.NewEnvironmentHandler(accounts, appName, envName)
+	err := alertHandler.DisableAlerting()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
