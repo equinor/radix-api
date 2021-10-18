@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -14,7 +15,9 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	crdutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/gorilla/mux"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const rootPath = "/applications/{appName}"
@@ -124,26 +127,43 @@ func (ec *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting",
 			Method:      "PUT",
-			HandlerFunc: UpdateAlertingConfig,
+			HandlerFunc: EnvironmentRouteWrapperFunc(UpdateAlertingConfig),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting",
 			Method:      http.MethodGet,
-			HandlerFunc: GetAlertingConfig,
+			HandlerFunc: EnvironmentRouteWrapperFunc(GetAlertingConfig),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting/enable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnableAlerting,
+			HandlerFunc: EnvironmentRouteWrapperFunc(EnableAlerting),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting/disable",
 			Method:      http.MethodPost,
-			HandlerFunc: DisableAlerting,
+			HandlerFunc: EnvironmentRouteWrapperFunc(DisableAlerting),
 		},
 	}
 
 	return routes
+}
+
+// EnvironmentRouteWrapperFunc gets appName and envName from route and verifies that environment exists
+// Returns 404 NotFound if environment is not defined, otherwise calls handler
+func EnvironmentRouteWrapperFunc(handler models.RadixHandlerFunc) models.RadixHandlerFunc {
+	return func(a models.Accounts, rw http.ResponseWriter, r *http.Request) {
+		appName := mux.Vars(r)["appName"]
+		envName := mux.Vars(r)["envName"]
+		envNamespace := crdutils.GetEnvironmentNamespace(appName, envName)
+
+		if _, err := a.UserAccount.RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), envNamespace, v1.GetOptions{}); err != nil {
+			radixhttp.ErrorResponse(rw, r, err)
+			return
+		}
+
+		handler(a, rw, r)
+	}
 }
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
