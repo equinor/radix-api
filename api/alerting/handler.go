@@ -2,6 +2,8 @@ package alerting
 
 import (
 	"context"
+	"errors"
+	"net/url"
 	"time"
 
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
@@ -52,6 +54,17 @@ func NewEnvironmentHandler(accounts models.Accounts, appName, envName string) Ha
 	}
 }
 
+func NewApplicationHandler(accounts models.Accounts, appName string) Handler {
+	return &handler{
+		accounts:              accounts,
+		appName:               appName,
+		namespace:             crdutils.GetAppNamespace(appName),
+		alertNames:            &radixOperatorAlertNames{scope: operatoralert.ApplicationScope},
+		reconcilePollInterval: defaultReconcilePollInterval,
+		reconcilePollTimeout:  defaultReconcilePollTimeout,
+	}
+}
+
 func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
 	ral, err := h.getExistingRadixAlerts()
 	if err != nil {
@@ -92,7 +105,7 @@ func (h *handler) UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) 
 }
 
 func (h *handler) updateRadixAlertFromAlertingConfig(radixAlert radixv1.RadixAlert, config alertModels.UpdateAlertingConfig) (*radixv1.RadixAlert, error) {
-	if err := h.validateUpateAlertingConfig(&config); err != nil {
+	if err := h.validateUpdateAlertingConfig(&config); err != nil {
 		return nil, err
 	}
 
@@ -136,12 +149,15 @@ func (h *handler) setSlackConfigSecret(slackConfig alertModels.UpdateSlackConfig
 	}
 }
 
-func (h *handler) validateUpateAlertingConfig(config *alertModels.UpdateAlertingConfig) error {
+func (h *handler) validateUpdateAlertingConfig(config *alertModels.UpdateAlertingConfig) error {
 	validAlertNames := h.alertNames.List()
 
-	for updateReceiverName := range config.ReceiverSecrets {
+	for updateReceiverName, updateReceiver := range config.ReceiverSecrets {
 		if _, found := config.Receivers[updateReceiverName]; !found {
 			return UpdateReceiverSecretNotDefinedError(updateReceiverName)
+		}
+		if err := h.validateUpdateSlackConfig(updateReceiver.SlackConfig); err != nil {
+			return err
 		}
 	}
 
@@ -156,6 +172,21 @@ func (h *handler) validateUpateAlertingConfig(config *alertModels.UpdateAlerting
 		}
 	}
 
+	return nil
+}
+
+func (h *handler) validateUpdateSlackConfig(slackConfig *alertModels.UpdateSlackConfigSecrets) error {
+	if slackConfig == nil || slackConfig.WebhookURL == nil {
+		return nil
+	}
+
+	url, err := url.Parse(*slackConfig.WebhookURL)
+	if err != nil {
+		return InvalidSlackURLError(err)
+	}
+	if url.Scheme != "https" {
+		return InvalidSlackURLError(errors.New("invalid scheme, must be https"))
+	}
 	return nil
 }
 

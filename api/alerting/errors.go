@@ -30,3 +30,7 @@ func AlertingAlreadyEnabledError() error {
 func UpdateReceiverSecretNotDefinedError(receiverName string) error {
 	return radixhttp.CoverAllError(fmt.Errorf("receiver %s in receiverSecrets is not defined in receivers", receiverName), radixhttp.User)
 }
+
+func InvalidSlackURLError(underlyingError error) error {
+	return radixhttp.CoverAllError(fmt.Errorf("invalid slack url: %v", underlyingError), radixhttp.User)
+}

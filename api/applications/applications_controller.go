@@ -7,6 +7,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/equinor/radix-api/api/alerting"
+	alertingModels "github.com/equinor/radix-api/api/alerting/models"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -14,6 +16,7 @@ import (
 )
 
 const rootPath = ""
+const appPath = rootPath + "/applications/{appName}"
 
 type applicationController struct {
 	*models.DefaultController
@@ -40,12 +43,12 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: RegisterApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "PUT",
 			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "PATCH",
 			HandlerFunc: ModifyRegistrationDetails,
 		},
@@ -68,54 +71,74 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			},
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "GET",
 			HandlerFunc: GetApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "DELETE",
 			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines",
+			Path:        appPath + "/pipelines",
 			Method:      "GET",
 			HandlerFunc: ListPipelines,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/build",
+			Path:        appPath + "/pipelines/build",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineBuild,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/build-deploy",
+			Path:        appPath + "/pipelines/build-deploy",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineBuildDeploy,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/promote",
+			Path:        appPath + "/pipelines/promote",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelinePromote,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/deploy",
+			Path:        appPath + "/pipelines/deploy",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineDeploy,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/deploykey-valid",
+			Path:        appPath + "/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/regenerate-machine-user-token",
+			Path:        appPath + "/regenerate-machine-user-token",
 			Method:      "POST",
 			HandlerFunc: RegenerateMachineUserTokenHandler,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/regenerate-deploy-key",
+			Path:        appPath + "/regenerate-deploy-key",
 			Method:      "POST",
 			HandlerFunc: RegenerateDeployKeyHandler,
+		},
+		models.Route{
+			Path:        appPath + "/alerting",
+			Method:      "PUT",
+			HandlerFunc: UpdateAlertingConfig,
+		},
+		models.Route{
+			Path:        appPath + "/alerting",
+			Method:      http.MethodGet,
+			HandlerFunc: GetAlertingConfig,
+		},
+		models.Route{
+			Path:        appPath + "/alerting/enable",
+			Method:      http.MethodPost,
+			HandlerFunc: EnableAlerting,
+		},
+		models.Route{
+			Path:        appPath + "/alerting/disable",
+			Method:      http.MethodPost,
+			HandlerFunc: DisableAlerting,
 		},
 	}
 
@@ -830,4 +853,209 @@ func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *
 	}
 
 	radixhttp.JSONResponse(w, r, &jobSummary)
+}
+
+// UpdateAlertingConfig Configures alert settings
+func UpdateAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/alerting application updateAlertingConfig
+	// ---
+	// summary: Update alerts configuration for application namespace
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: alertsConfig
+	//   in: body
+	//   description: Alerts configuration
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/UpdateAlertingConfig"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful alerts config update
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "400":
+	//     description: "Invalid configuration"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+
+	var updateAlertingConfig alertingModels.UpdateAlertingConfig
+	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	alertHandler := alerting.NewApplicationHandler(accounts, appName)
+	alertsConfig, err := alertHandler.UpdateAlertingConfig(updateAlertingConfig)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// GetAlertingConfig returns alerts configuration
+func GetAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/alerting application getAlertingConfig
+	// ---
+	// summary: Get alerts configuration for application namespace
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful get alerts config
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+
+	alertHandler := alerting.NewApplicationHandler(accounts, appName)
+	alertsConfig, err := alertHandler.GetAlertingConfig()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// EnableAlerting enables alerting for application
+func EnableAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/alerting/enable application enableAlerting
+	// ---
+	// summary: Enable alerting for application namespace
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful enable alerting
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
+	//   "400":
+	//     description: "Alerting already enabled"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+
+	alertHandler := alerting.NewApplicationHandler(accounts, appName)
+	alertsConfig, err := alertHandler.EnableAlerting()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, alertsConfig)
+}
+
+// DisableAlerting disables alerting for application
+func DisableAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/alerting/disable application disableAlerting
+	// ---
+	// summary: Disable alerting for application namespace
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: Successful disable alerting
+	//   "400":
+	//     description: "Alerting already enabled"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
+	appName := mux.Vars(r)["appName"]
+
+	alertHandler := alerting.NewApplicationHandler(accounts, appName)
+	err := alertHandler.DisableAlerting()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
