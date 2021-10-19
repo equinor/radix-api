@@ -20,9 +20,9 @@ func (l AlertConfigList) AsRadixAlertAlerts() []radixv1.Alert {
 type AlertConfig struct {
 	// Receiver is the name of the receiver that will handle this alert
 	// required: true
-	Receiver string
+	Receiver string `json:"receiver"`
 
 	// Alert defines the name of a predefined alert
 	// required: true
-	Alert string
+	Alert string `json:"alert"`
 }
