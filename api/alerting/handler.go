@@ -36,7 +36,7 @@ type Handler interface {
 
 type handler struct {
 	accounts              models.Accounts
-	alertNames            AlertNameLister
+	validAlertNames       []string
 	namespace             string
 	appName               string
 	reconcilePollInterval time.Duration
@@ -48,7 +48,7 @@ func NewEnvironmentHandler(accounts models.Accounts, appName, envName string) Ha
 		accounts:              accounts,
 		appName:               appName,
 		namespace:             crdutils.GetEnvironmentNamespace(appName, envName),
-		alertNames:            &radixOperatorAlertNames{scope: operatoralert.EnvironmentScope},
+		validAlertNames:       getAlertNamesForScope(operatoralert.EnvironmentScope),
 		reconcilePollInterval: defaultReconcilePollInterval,
 		reconcilePollTimeout:  defaultReconcilePollTimeout,
 	}
@@ -59,10 +59,20 @@ func NewApplicationHandler(accounts models.Accounts, appName string) Handler {
 		accounts:              accounts,
 		appName:               appName,
 		namespace:             crdutils.GetAppNamespace(appName),
-		alertNames:            &radixOperatorAlertNames{scope: operatoralert.ApplicationScope},
+		validAlertNames:       getAlertNamesForScope(operatoralert.ApplicationScope),
 		reconcilePollInterval: defaultReconcilePollInterval,
 		reconcilePollTimeout:  defaultReconcilePollTimeout,
 	}
+}
+
+func getAlertNamesForScope(scope operatoralert.AlertScope) []string {
+	var alertNames []string
+	for alertName, alertConfig := range operatoralert.GetDefaultAlertConfigs() {
+		if alertConfig.Scope == scope {
+			alertNames = append(alertNames, alertName)
+		}
+	}
+	return alertNames
 }
 
 func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
@@ -150,8 +160,6 @@ func (h *handler) setSlackConfigSecret(slackConfig alertModels.UpdateSlackConfig
 }
 
 func (h *handler) validateUpdateAlertingConfig(config *alertModels.UpdateAlertingConfig) error {
-	validAlertNames := h.alertNames.List()
-
 	for updateReceiverName, updateReceiver := range config.ReceiverSecrets {
 		if _, found := config.Receivers[updateReceiverName]; !found {
 			return UpdateReceiverSecretNotDefinedError(updateReceiverName)
@@ -167,7 +175,7 @@ func (h *handler) validateUpdateAlertingConfig(config *alertModels.UpdateAlertin
 			return InvalidAlertReceiverError(alert.Alert, alert.Receiver)
 		}
 		// Verify alert name is valid
-		if !slice.ContainsString(validAlertNames, alert.Alert) {
+		if !slice.ContainsString(h.validAlertNames, alert.Alert) {
 			return InvalidAlertError(alert.Alert)
 		}
 	}
@@ -280,7 +288,7 @@ func (h *handler) buildDefaultRadixAlertReceivers() radixv1.ReceiverMap {
 func (h *handler) buildDefaultRadixAlertAlerts() []radixv1.Alert {
 	var alerts []radixv1.Alert
 
-	for _, alertName := range h.alertNames.List() {
+	for _, alertName := range h.validAlertNames {
 		alerts = append(alerts, radixv1.Alert{Alert: alertName, Receiver: defaultReceiverName})
 	}
 
@@ -311,7 +319,7 @@ func (h *handler) getAlertingConfigFromRadixAlert(ral *radixv1.RadixAlert) (*ale
 		Receivers:            h.getReceiverConfigFromRadixAlert(ral),
 		ReceiverSecretStatus: h.getReceiverConfigSecretStatusFromRadixAlert(ral, configSecret),
 		Alerts:               h.getAlertConfigFromRadixAlert(ral),
-		AlertNames:           h.alertNames.List(),
+		AlertNames:           h.validAlertNames,
 		Enabled:              true,
 		Ready:                ral.Status.Reconciled != nil,
 	}
