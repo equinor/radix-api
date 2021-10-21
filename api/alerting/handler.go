@@ -27,10 +27,12 @@ const (
 	defaultReconcilePollTimeout  = 5 * time.Second
 )
 
+var alertConfigNotConfigured = alertModels.AlertingConfig{}
+
 type Handler interface {
 	GetAlertingConfig() (*alertModels.AlertingConfig, error)
 	EnableAlerting() (*alertModels.AlertingConfig, error)
-	DisableAlerting() error
+	DisableAlerting() (*alertModels.AlertingConfig, error)
 	UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) (*alertModels.AlertingConfig, error)
 }
 
@@ -86,7 +88,7 @@ func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
 	}
 
 	if len(ral.Items) == 0 {
-		return &alertModels.AlertingConfig{}, nil
+		return &alertConfigNotConfigured, nil
 	}
 
 	return h.getAlertingConfigFromRadixAlert(&ral.Items[0])
@@ -209,19 +211,19 @@ func (h *handler) EnableAlerting() (*alertModels.AlertingConfig, error) {
 	return h.getAlertingConfigFromRadixAlert(radixAlert)
 }
 
-func (h *handler) DisableAlerting() error {
+func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
 	alerts, err := h.getExistingRadixAlerts()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, alert := range alerts.Items {
 		if err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(alert.Namespace).Delete(context.TODO(), alert.Name, metav1.DeleteOptions{}); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &alertConfigNotConfigured, nil
 }
 
 func (h *handler) waitForRadixAlertReconciled(source *radixv1.RadixAlert) (*radixv1.RadixAlert, bool) {

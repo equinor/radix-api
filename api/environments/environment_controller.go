@@ -1359,12 +1359,11 @@ func DisableAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	envName := mux.Vars(r)["envName"]
 
 	alertHandler := alerting.NewEnvironmentHandler(accounts, appName, envName)
-	err := alertHandler.DisableAlerting()
-
+	alertsConfig, err := alertHandler.DisableAlerting()
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	radixhttp.JSONResponse(w, r, alertsConfig)
 }
