@@ -334,7 +334,7 @@ func (h *handler) getReceiverConfigFromRadixAlert(radixAlert *radixv1.RadixAlert
 
 	for receiverName, receiver := range radixAlert.Spec.Receivers {
 		receiversMap[receiverName] = alertModels.ReceiverConfig{
-			SlackConfig: alertModels.SlackConfig{
+			SlackConfig: &alertModels.SlackConfig{
 				Enabled: receiver.SlackConfig.Enabled,
 			},
 		}
@@ -348,7 +348,7 @@ func (h *handler) getReceiverConfigSecretStatusFromRadixAlert(radixAlert *radixv
 
 	for receiverName := range radixAlert.Spec.Receivers {
 		receiverStatus := alertModels.ReceiverConfigSecretStatus{
-			SlackConfig: alertModels.SlackConfigSecretStatus{
+			SlackConfig: &alertModels.SlackConfigSecretStatus{
 				WebhookURLConfigured: h.isReceiverSlackURLConfigured(receiverName, configSecret),
 			},
 		}

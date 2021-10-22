@@ -24,7 +24,7 @@ func (m ReceiverConfigMap) AsRadixAlertReceiverMap() radixv1.ReceiverMap {
 type ReceiverConfig struct {
 	// SlackConfig defines Slack configuration options for this receiver
 	// required: true
-	SlackConfig SlackConfig `json:"slackConfig"`
+	SlackConfig *SlackConfig `json:"slackConfig,omitempty"`
 }
 
 // SlackConfig configuration options for Slack
@@ -36,7 +36,7 @@ type SlackConfig struct {
 }
 
 type ReceiverConfigSecretStatus struct {
-	SlackConfig SlackConfigSecretStatus `json:"slackConfig,omitempty"`
+	SlackConfig *SlackConfigSecretStatus `json:"slackConfig,omitempty"`
 }
 
 // SlackConfigSecretStatus
