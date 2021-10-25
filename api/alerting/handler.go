@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strings"
 	"time"
 
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
@@ -154,10 +155,12 @@ func (h *handler) updateConfigSecret(secret corev1.Secret, config *alertModels.U
 
 func (h *handler) setSlackConfigSecret(slackConfig alertModels.UpdateSlackConfigSecrets, receiverName string, secret *corev1.Secret) {
 	secretKey := operatoralert.GetSlackConfigSecretKeyName(receiverName)
-	if slackConfig.WebhookURL == nil {
-		delete(secret.Data, secretKey)
-	} else {
-		secret.Data[secretKey] = []byte(*slackConfig.WebhookURL)
+	if slackConfig.WebhookURL != nil {
+		if len(strings.TrimSpace(*slackConfig.WebhookURL)) == 0 {
+			delete(secret.Data, secretKey)
+		} else {
+			secret.Data[secretKey] = []byte(strings.TrimSpace(*slackConfig.WebhookURL))
+		}
 	}
 }
 
@@ -313,7 +316,7 @@ func (h *handler) applyRadixAlert(radixAlert *radixv1.RadixAlert) (*radixv1.Radi
 
 func (h *handler) getAlertingConfigFromRadixAlert(ral *radixv1.RadixAlert) (*alertModels.AlertingConfig, error) {
 	configSecret, err := h.getConfigSecret(ral.Name)
-	if err != nil && kubeErrors.IsNotFound(err) {
+	if err != nil && !kubeErrors.IsNotFound(err) {
 		return nil, err
 	}
 
