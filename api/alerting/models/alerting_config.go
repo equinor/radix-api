@@ -1,7 +1,5 @@
 package models
 
-type AlertingConfigStatus string
-
 // AlertingConfig current alert settings
 // swagger:model AlertingConfig
 type AlertingConfig struct {
@@ -17,7 +15,7 @@ type AlertingConfig struct {
 	Receivers ReceiverConfigMap `json:"receivers,omitempty"`
 
 	// ReceiverSecretStatus has status of required secrets for each receiver
-	ReceiverSecretStatus map[string]ReceiverConfigSecretStatus `json:"receiverSecretStatus,omitempty"`
+	ReceiverSecretStatus ReceiverConfigSecretStatusMap `json:"receiverSecretStatus,omitempty"`
 
 	// Alerts is the list of configured alerts
 	Alerts AlertConfigList `json:"alerts,omitempty"`

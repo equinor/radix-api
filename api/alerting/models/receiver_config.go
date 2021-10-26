@@ -2,7 +2,7 @@ package models
 
 import radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
-// ReceiverConfigMap defines a map of ReceiverConfig where key defines the receiver
+// ReceiverConfigMap defines a map of ReceiverConfig where key is the name of the receiver
 type ReceiverConfigMap map[string]ReceiverConfig
 
 // AsRadixAlertReceiverMap converts map of ReceiverConfigs to map of Receivers to be used in RadixAlert spec
@@ -34,6 +34,9 @@ type SlackConfig struct {
 	// required: true
 	Enabled bool `json:"enabled"`
 }
+
+// ReceiverConfigSecretStatusMap defines a map of ReceiverConfigSecretStatus where key is the name of the receiver
+type ReceiverConfigSecretStatusMap map[string]ReceiverConfigSecretStatus
 
 type ReceiverConfigSecretStatus struct {
 	SlackConfig *SlackConfigSecretStatus `json:"slackConfig,omitempty"`

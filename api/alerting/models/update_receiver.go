@@ -1,5 +1,8 @@
 package models
 
+// UpdateReceiverConfigSecretsMap defines a map of UpdateReceiverConfigSecrets where key is the name of the receiver
+type UpdateReceiverConfigSecretsMap map[string]UpdateReceiverConfigSecrets
+
 // UpdateReceiverConfigSecrets defines secrets to be updated
 type UpdateReceiverConfigSecrets struct {
 	// SlackConfig defines Slack secrets to update for this receiver

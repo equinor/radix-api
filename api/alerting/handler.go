@@ -332,8 +332,8 @@ func (h *handler) getAlertingConfigFromRadixAlert(ral *radixv1.RadixAlert) (*ale
 	return &alertsConfig, nil
 }
 
-func (h *handler) getReceiverConfigFromRadixAlert(radixAlert *radixv1.RadixAlert) map[string]alertModels.ReceiverConfig {
-	receiversMap := make(map[string]alertModels.ReceiverConfig)
+func (h *handler) getReceiverConfigFromRadixAlert(radixAlert *radixv1.RadixAlert) alertModels.ReceiverConfigMap {
+	receiversMap := make(alertModels.ReceiverConfigMap)
 
 	for receiverName, receiver := range radixAlert.Spec.Receivers {
 		receiversMap[receiverName] = alertModels.ReceiverConfig{
@@ -346,8 +346,8 @@ func (h *handler) getReceiverConfigFromRadixAlert(radixAlert *radixv1.RadixAlert
 	return receiversMap
 }
 
-func (h *handler) getReceiverConfigSecretStatusFromRadixAlert(radixAlert *radixv1.RadixAlert, configSecret *corev1.Secret) map[string]alertModels.ReceiverConfigSecretStatus {
-	receiversMap := make(map[string]alertModels.ReceiverConfigSecretStatus)
+func (h *handler) getReceiverConfigSecretStatusFromRadixAlert(radixAlert *radixv1.RadixAlert, configSecret *corev1.Secret) alertModels.ReceiverConfigSecretStatusMap {
+	receiversMap := make(alertModels.ReceiverConfigSecretStatusMap)
 
 	for receiverName := range radixAlert.Spec.Receivers {
 		receiverStatus := alertModels.ReceiverConfigSecretStatus{

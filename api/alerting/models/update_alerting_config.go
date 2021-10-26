@@ -10,7 +10,7 @@ type UpdateAlertingConfig struct {
 	// ReceiverSecrets defines receiver secrets to be updated
 	//
 	// required: true
-	ReceiverSecrets map[string]UpdateReceiverConfigSecrets `json:"receiverSecrets,omitempty"`
+	ReceiverSecrets UpdateReceiverConfigSecretsMap `json:"receiverSecrets,omitempty"`
 
 	// Alerts sets the list of alerts and mapping to a defined receiver
 	//
