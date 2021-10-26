@@ -127,31 +127,31 @@ func (ec *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting",
 			Method:      "PUT",
-			HandlerFunc: EnvironmentRouteWrapperFunc(UpdateAlertingConfig),
+			HandlerFunc: EnvironmentRouteAccessCheck(UpdateAlertingConfig),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting",
 			Method:      http.MethodGet,
-			HandlerFunc: EnvironmentRouteWrapperFunc(GetAlertingConfig),
+			HandlerFunc: EnvironmentRouteAccessCheck(GetAlertingConfig),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting/enable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnvironmentRouteWrapperFunc(EnableAlerting),
+			HandlerFunc: EnvironmentRouteAccessCheck(EnableAlerting),
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/alerting/disable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnvironmentRouteWrapperFunc(DisableAlerting),
+			HandlerFunc: EnvironmentRouteAccessCheck(DisableAlerting),
 		},
 	}
 
 	return routes
 }
 
-// EnvironmentRouteWrapperFunc gets appName and envName from route and verifies that environment exists
+// EnvironmentRouteAccessCheck gets appName and envName from route and verifies that environment exists
 // Returns 404 NotFound if environment is not defined, otherwise calls handler
-func EnvironmentRouteWrapperFunc(handler models.RadixHandlerFunc) models.RadixHandlerFunc {
+func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHandlerFunc {
 	return func(a models.Accounts, rw http.ResponseWriter, r *http.Request) {
 		appName := mux.Vars(r)["appName"]
 		envName := mux.Vars(r)["envName"]
