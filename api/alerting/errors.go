@@ -34,3 +34,7 @@ func UpdateReceiverSecretNotDefinedError(receiverName string) error {
 func InvalidSlackURLError(underlyingError error) error {
 	return radixhttp.CoverAllError(fmt.Errorf("invalid slack url: %v", underlyingError), radixhttp.User)
 }
+
+func InvalidSlackURLSchemeError() error {
+	return InvalidSlackURLError(errors.New("invalid scheme, must be https"))
+}

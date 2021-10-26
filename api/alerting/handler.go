@@ -2,7 +2,6 @@ package alerting
 
 import (
 	"context"
-	"errors"
 	"net/url"
 	"strings"
 	"time"
@@ -68,16 +67,6 @@ func NewApplicationHandler(accounts models.Accounts, appName string) Handler {
 	}
 }
 
-func getAlertNamesForScope(scope operatoralert.AlertScope) []string {
-	var alertNames []string
-	for alertName, alertConfig := range operatoralert.GetDefaultAlertConfigs() {
-		if alertConfig.Scope == scope {
-			alertNames = append(alertNames, alertName)
-		}
-	}
-	return alertNames
-}
-
 func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
 	ral, err := h.getExistingRadixAlerts()
 	if err != nil {
@@ -115,6 +104,32 @@ func (h *handler) UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) 
 	}
 
 	return h.getAlertingConfigFromRadixAlert(updatedAlert)
+}
+
+func (h *handler) EnableAlerting() (*alertModels.AlertingConfig, error) {
+	radixAlert, err := h.createDefaultRadixAlert()
+	if err != nil {
+		return nil, err
+	}
+	if reconciledAlert, reconciled := h.waitForRadixAlertReconciled(radixAlert); reconciled {
+		radixAlert = reconciledAlert
+	}
+	return h.getAlertingConfigFromRadixAlert(radixAlert)
+}
+
+func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
+	alerts, err := h.getExistingRadixAlerts()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, alert := range alerts.Items {
+		if err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(alert.Namespace).Delete(context.TODO(), alert.Name, metav1.DeleteOptions{}); err != nil {
+			return nil, err
+		}
+	}
+
+	return &alertConfigNotConfigured, nil
 }
 
 func (h *handler) updateRadixAlertFromAlertingConfig(radixAlert radixv1.RadixAlert, config alertModels.UpdateAlertingConfig) (*radixv1.RadixAlert, error) {
@@ -189,44 +204,19 @@ func (h *handler) validateUpdateAlertingConfig(config *alertModels.UpdateAlertin
 }
 
 func (h *handler) validateUpdateSlackConfig(slackConfig *alertModels.UpdateSlackConfigSecrets) error {
-	if slackConfig == nil || slackConfig.WebhookURL == nil {
+	if slackConfig == nil || slackConfig.WebhookURL == nil || len(strings.TrimSpace(*slackConfig.WebhookURL)) == 0 {
 		return nil
 	}
 
-	url, err := url.Parse(*slackConfig.WebhookURL)
+	slackUrl, err := url.Parse(*slackConfig.WebhookURL)
 	if err != nil {
 		return InvalidSlackURLError(err)
 	}
-	if url.Scheme != "https" {
-		return InvalidSlackURLError(errors.New("invalid scheme, must be https"))
+
+	if slackUrl.Scheme != "https" {
+		return InvalidSlackURLSchemeError()
 	}
 	return nil
-}
-
-func (h *handler) EnableAlerting() (*alertModels.AlertingConfig, error) {
-	radixAlert, err := h.createDefaultRadixAlert()
-	if err != nil {
-		return nil, err
-	}
-	if reconciledAlert, reconciled := h.waitForRadixAlertReconciled(radixAlert); reconciled {
-		radixAlert = reconciledAlert
-	}
-	return h.getAlertingConfigFromRadixAlert(radixAlert)
-}
-
-func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
-	alerts, err := h.getExistingRadixAlerts()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, alert := range alerts.Items {
-		if err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(alert.Namespace).Delete(context.TODO(), alert.Name, metav1.DeleteOptions{}); err != nil {
-			return nil, err
-		}
-	}
-
-	return &alertConfigNotConfigured, nil
 }
 
 func (h *handler) waitForRadixAlertReconciled(source *radixv1.RadixAlert) (*radixv1.RadixAlert, bool) {
@@ -393,4 +383,14 @@ func (h *handler) getReceiverSlackURLFromSecret(receiverName string, configSecre
 func (h *handler) getConfigSecret(alertName string) (*corev1.Secret, error) {
 	return h.accounts.UserAccount.Client.CoreV1().Secrets(h.namespace).
 		Get(context.TODO(), operatoralert.GetAlertSecretName(alertName), metav1.GetOptions{})
+}
+
+func getAlertNamesForScope(scope operatoralert.AlertScope) []string {
+	var alertNames []string
+	for alertName, alertConfig := range operatoralert.GetDefaultAlertConfigs() {
+		if alertConfig.Scope == scope {
+			alertNames = append(alertNames, alertName)
+		}
+	}
+	return alertNames
 }
