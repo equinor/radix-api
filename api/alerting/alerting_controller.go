@@ -293,8 +293,10 @@ func DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter,
 	//   type: string
 	//   required: false
 	// responses:
-	//   "204":
+	//   "200":
 	//     description: Successful disable alerting
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
 	//   "400":
 	//     description: "Alerting already enabled"
 	//   "401":
@@ -498,8 +500,10 @@ func DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter,
 	//   type: string
 	//   required: false
 	// responses:
-	//   "204":
+	//   "200":
 	//     description: Successful disable alerting
+	//     schema:
+	//        "$ref": "#/definitions/AlertingConfig"
 	//   "400":
 	//     description: "Alerting already enabled"
 	//   "401":
