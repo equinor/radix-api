@@ -27,7 +27,7 @@ const (
 	defaultReconcilePollTimeout  = 5 * time.Second
 )
 
-var alertConfigNotConfigured = alertModels.AlertingConfig{}
+var alertConfigDisabled = alertModels.AlertingConfig{Enabled: false, Ready: false}
 
 type Handler interface {
 	GetAlertingConfig() (*alertModels.AlertingConfig, error)
@@ -78,7 +78,7 @@ func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
 	}
 
 	if len(ral.Items) == 0 {
-		return &alertConfigNotConfigured, nil
+		return &alertConfigDisabled, nil
 	}
 
 	return h.getAlertingConfigFromRadixAlert(&ral.Items[0])
@@ -129,7 +129,7 @@ func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
 		}
 	}
 
-	return &alertConfigNotConfigured, nil
+	return &alertConfigDisabled, nil
 }
 
 func (h *handler) updateRadixAlertFromAlertingConfig(radixAlert radixv1.RadixAlert, config alertModels.UpdateAlertingConfig) (*radixv1.RadixAlert, error) {
