@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/equinor/radix-api/api/environmentvariables"
 	"net/http"
 	"os"
+
+	"github.com/equinor/radix-api/api/environmentvariables"
 
 	"github.com/equinor/radix-api/api/buildstatus"
 
@@ -14,6 +15,7 @@ import (
 
 	// Controllers
 	"github.com/equinor/radix-api/api/admissioncontrollers"
+	"github.com/equinor/radix-api/api/alerting"
 	"github.com/equinor/radix-api/api/applications"
 	"github.com/equinor/radix-api/api/buildsecrets"
 	"github.com/equinor/radix-api/api/deployments"
@@ -92,6 +94,7 @@ func getControllers() []models.Controller {
 		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),
 		buildstatus.NewBuildStatusController(buildStatus),
+		alerting.NewAlertingController(),
 	}
 }
 
