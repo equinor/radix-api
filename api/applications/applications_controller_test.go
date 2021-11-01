@@ -443,7 +443,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
 	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
-	assert.Equal(t, "RADIX@equinor.com", application.Registration.Creator)
+	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 }
