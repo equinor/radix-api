@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/equinor/radix-common v1.1.6
+	github.com/equinor/radix-job-scheduler v1.1.0
 	github.com/equinor/radix-operator v1.16.3
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/go-openapi/strfmt v0.20.1
@@ -27,4 +28,6 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.19.9
+replace (
+	k8s.io/client-go => k8s.io/client-go v0.19.9
+)

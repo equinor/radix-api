@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	radixutils "github.com/equinor/radix-common/utils"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -26,7 +26,6 @@ import (
 )
 
 const (
-	radixEnvVariablePrefix      = "RADIX_"
 	defaultTargetCPUUtilization = int32(80)
 	k8sJobNameLabel             = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
@@ -61,7 +60,7 @@ func (deploy *deployHandler) getComponents(appName string, deployment *deploymen
 	}
 
 	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
-	components := []*deploymentModels.Component{}
+	var components []*deploymentModels.Component
 
 	for _, component := range rd.Spec.Components {
 		componentModel, err := deploy.getComponent(&component, ra, rd, deployment)
@@ -126,7 +125,7 @@ func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponen
 
 // GetComponentStateFromSpec Returns a component with the current state
 func GetComponentStateFromSpec(
-	client kubernetes.Interface,
+	kubeClient kubernetes.Interface,
 	appName string,
 	deployment *deploymentModels.DeploymentSummary,
 	deploymentStatus v1.RadixDeployStatus,
@@ -136,15 +135,15 @@ func GetComponentStateFromSpec(
 	var environmentVariables map[string]string
 
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	componentPodNames := []string{}
+	var componentPodNames []string
 
-	replicaSummaryList := []deploymentModels.ReplicaSummary{}
-	scheduledJobSummaryList := []deploymentModels.ScheduledJobSummary{}
+	var replicaSummaryList []deploymentModels.ReplicaSummary
+	var scheduledJobSummaryList []deploymentModels.ScheduledJobSummary
 	status := deploymentModels.ConsistentComponent
 
 	if deployment.ActiveTo == "" {
 		// current active deployment - we get existing pods
-		componentPods, err := getComponentPodsByNamespace(client, envNs, component.GetName())
+		componentPods, err := getComponentPodsByNamespace(kubeClient, envNs, component.GetName())
 		if err != nil {
 			return nil, err
 		}
@@ -153,11 +152,11 @@ func GetComponentStateFromSpec(
 		replicaSummaryList = getReplicaSummaryList(componentPods)
 
 		if component.GetType() == defaults.RadixComponentTypeJobScheduler {
-			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(client, envNs, component.GetName()) //scheduledJobs
+			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(kubeClient, envNs, component.GetName()) //scheduledJobs
 			if err != nil {
 				return nil, err
 			}
-			scheduledJobSummaryList = getScheduledJobSummaryList(scheduledJobs, scheduledJobPodMap)
+			scheduledJobSummaryList = getScheduledJobSummaryList(kubeClient, scheduledJobs, scheduledJobPodMap)
 		}
 
 		status, err = getStatusOfActiveDeployment(component,
@@ -184,7 +183,7 @@ func GetComponentStateFromSpec(
 		BuildComponent(), nil
 }
 
-func getScheduledJobSummaryList(jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
+func getScheduledJobSummaryList(kubeClient kubernetes.Interface, jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
 	var summaries []deploymentModels.ScheduledJobSummary
 	for _, job := range jobs {
 		creationTimestamp := job.GetCreationTimestamp()
@@ -197,7 +196,10 @@ func getScheduledJobSummaryList(jobs []batchv1.Job, jobPodsMap map[string][]core
 		if jobPods, ok := jobPodsMap[job.Name]; ok {
 			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 		}
-		summary.Status = models.GetStatusFromJobStatus(job.Status, summary.ReplicaList).String()
+		jobStatus := jobSchedulerModels.GetJobStatusFromJob(kubeClient, &job, jobPodsMap[job.Name])
+		summary.Status = jobStatus.Status
+		summary.Message = jobStatus.Message
+		//summary.Status = models.GetStatusFromJobStatus(job.Status, summary.ReplicaList).String()
 		summaries = append(summaries, summary)
 	}
 
@@ -238,7 +240,7 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 		pod := pod
 
 		// A previous version of the job-scheduler added the "radix-component" label to job pods.
-		// For backward compatibilitry, we need to ignore these pods in the list of pods returned for a component
+		// For backward compatibility, we need to ignore these pods in the list of pods returned for a component
 		if _, isScheduledJobPod := pod.GetLabels()[kube.RadixJobTypeLabel]; !isScheduledJobPod {
 			componentPods = append(componentPods, pod)
 		}
@@ -379,7 +381,7 @@ func runningComponentReplicaIsOutdated(component v1.RadixCommonDeployComponent, 
 		}
 		for _, container := range pod.Spec.Containers {
 			if container.Image != component.GetImage() {
-				// Container is running an outdate image
+				// Container is running an outdated image
 				componentIsInconsistent = true
 			}
 		}
