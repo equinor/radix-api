@@ -199,7 +199,6 @@ func getScheduledJobSummaryList(kubeClient kubernetes.Interface, jobs []batchv1.
 		jobStatus := jobSchedulerModels.GetJobStatusFromJob(kubeClient, &job, jobPodsMap[job.Name])
 		summary.Status = jobStatus.Status
 		summary.Message = jobStatus.Message
-		//summary.Status = models.GetStatusFromJobStatus(job.Status, summary.ReplicaList).String()
 		summaries = append(summaries, summary)
 	}
 
