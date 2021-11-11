@@ -238,6 +238,12 @@ type ScheduledJobSummary struct {
 	// example: Waiting
 	Status string `json:"status"`
 
+	// Status message, if any, of the job
+	//
+	// required: false
+	// example: "Error occurred"
+	Message string `json:"message"`
+
 	// Array of ReplicaSummary
 	//
 	// required: false

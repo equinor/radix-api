@@ -14,6 +14,7 @@ import (
 )
 
 const rootPath = ""
+const appPath = rootPath + "/applications/{appName}"
 
 type applicationController struct {
 	*models.DefaultController
@@ -40,12 +41,12 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: RegisterApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "PUT",
 			HandlerFunc: ChangeRegistrationDetails,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "PATCH",
 			HandlerFunc: ModifyRegistrationDetails,
 		},
@@ -68,52 +69,52 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			},
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "GET",
 			HandlerFunc: GetApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}",
+			Path:        appPath,
 			Method:      "DELETE",
 			HandlerFunc: DeleteApplication,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines",
+			Path:        appPath + "/pipelines",
 			Method:      "GET",
 			HandlerFunc: ListPipelines,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/build",
+			Path:        appPath + "/pipelines/build",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineBuild,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/build-deploy",
+			Path:        appPath + "/pipelines/build-deploy",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineBuildDeploy,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/promote",
+			Path:        appPath + "/pipelines/promote",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelinePromote,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/pipelines/deploy",
+			Path:        appPath + "/pipelines/deploy",
 			Method:      "POST",
 			HandlerFunc: TriggerPipelineDeploy,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/deploykey-valid",
+			Path:        appPath + "/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: IsDeployKeyValidHandler,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/regenerate-machine-user-token",
+			Path:        appPath + "/regenerate-machine-user-token",
 			Method:      "POST",
 			HandlerFunc: RegenerateMachineUserTokenHandler,
 		},
 		models.Route{
-			Path:        rootPath + "/applications/{appName}/regenerate-deploy-key",
+			Path:        appPath + "/regenerate-deploy-key",
 			Method:      "POST",
 			HandlerFunc: RegenerateDeployKeyHandler,
 		},

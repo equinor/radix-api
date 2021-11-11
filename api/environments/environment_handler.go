@@ -3,9 +3,10 @@ package environments
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/equinor/radix-api/api/pods"
 
@@ -16,10 +17,8 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -164,7 +163,7 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 	}
 
 	// idempotent creation of RadixEnvironment
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(context.TODO(), builders.
+	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(context.TODO(), k8sObjectUtils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(appName).
@@ -337,15 +336,6 @@ func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, isOrphane
 
 func (eh EnvironmentHandler) getServiceAccount() models.Account {
 	return eh.accounts.ServiceAccount
-}
-
-func isAppNamespace(namespace corev1.Namespace) bool {
-	environment := namespace.Labels[kube.RadixEnvLabel]
-	if !strings.EqualFold(environment, "app") {
-		return false
-	}
-
-	return true
 }
 
 // GetLogs handler for GetLogs
