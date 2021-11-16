@@ -3,9 +3,9 @@ package models
 import (
 	"fmt"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"k8s.io/client-go/kubernetes"
 )
 
