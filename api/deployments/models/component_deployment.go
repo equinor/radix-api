@@ -34,7 +34,7 @@ type Component struct {
 	// Image name
 	//
 	// required: true
-	// example: radixdev.azurecr.io/radix-api-server:cdgkg
+	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image"`
 
 	// Ports defines the port number and protocol that a component is exposed for internally in environment
@@ -126,7 +126,7 @@ type ComponentSummary struct {
 	// Image name
 	//
 	// required: true
-	// example: radixdev.azurecr.io/radix-api-server:cdgkg
+	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image"`
 }
 
@@ -163,13 +163,13 @@ type ReplicaSummary struct {
 	// The image the container is running.
 	//
 	// required: false
-	// example: radixdev.azurecr.io/radix-api-server:cdgkg
+	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image"`
 
 	// ImageID of the container's image.
 	//
 	// required: false
-	// example: radixdev.azurecr.io/radix-api-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f
+	// example: radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f
 	ImageId string `json:"imageId"`
 }
 
