@@ -36,5 +36,5 @@ func GetComponentStatusFromName(name string) (ComponentStatus, error) {
 		}
 	}
 
-	return numComponentStatuses, fmt.Errorf("No component status found by name %s", name)
+	return numComponentStatuses, fmt.Errorf("no component status found by name %s", name)
 }

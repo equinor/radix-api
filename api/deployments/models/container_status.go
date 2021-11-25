@@ -38,5 +38,5 @@ func GetStatusFromName(name string) (ContainerStatus, error) {
 		}
 	}
 
-	return numStatuses, fmt.Errorf("No container status found by name %s", name)
+	return numStatuses, fmt.Errorf("no container status found by name %s", name)
 }
