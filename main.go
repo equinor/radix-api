@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/equinor/radix-api/api/secrets"
 	"net/http"
 	"os"
 
@@ -95,6 +96,7 @@ func getControllers() []models.Controller {
 		buildsecrets.NewBuildSecretsController(),
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
+		secrets.NewSecretController(),
 	}
 }
 

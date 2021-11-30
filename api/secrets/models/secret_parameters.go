@@ -8,4 +8,10 @@ type SecretParameters struct {
 	// required: true
 	// example: p4$sW0rDz
 	SecretValue string `json:"secretValue"`
+
+	// Type of the secret
+	//
+	// required: false
+	// example: csi-az-blob
+	Type SecretType `json:"type,omitempty"`
 }

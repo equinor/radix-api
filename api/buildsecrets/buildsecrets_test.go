@@ -2,11 +2,11 @@ package buildsecrets
 
 import (
 	"fmt"
+	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
 	"testing"
 
 	"github.com/equinor/radix-api/api/buildsecrets/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"

@@ -2,6 +2,7 @@ package models
 
 import (
 	deployModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/secrets/models"
 )
 
 // Environment holds detail information about environment
@@ -31,7 +32,7 @@ type Environment struct {
 	// Secrets All secrets in environment
 	//
 	// required: false
-	Secrets []Secret `json:"secrets,omitempty"`
+	Secrets []models.Secret `json:"secrets,omitempty"`
 
 	// ActiveDeployment The latest deployment in the environment
 	//

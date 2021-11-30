@@ -3,16 +3,14 @@ package deployments
 import (
 	"context"
 	"fmt"
-	radixutils "github.com/equinor/radix-common/utils"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -20,10 +18,13 @@ import (
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -40,11 +41,12 @@ func createGetLogEndpoint(appName, podName string) string {
 	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
 }
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
@@ -53,12 +55,12 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
 func TestGetPodLog_no_radixconfig(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
@@ -72,7 +74,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 }
 
 func TestGetPodLog_No_Pod(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
 	commonTestUtils.ApplyApplication(builders.
@@ -92,7 +94,7 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 
 func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -175,7 +177,7 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 }
 
 func TestGetDeployments_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
@@ -194,7 +196,7 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
@@ -227,7 +229,7 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
@@ -252,7 +254,7 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
@@ -285,7 +287,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
@@ -305,7 +307,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 }
 
 func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployName))
 	response := <-responseChannel
 
@@ -316,7 +318,7 @@ func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
 
 func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
 	anyDeployment1Name := "abcdef"

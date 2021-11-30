@@ -11,7 +11,16 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"k8s.io/client-go/kubernetes"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
+
+type clientSet struct {
+	client               kubernetes.Interface
+	radixclient          radixclient.Interface
+	promclient           prometheusclient.Interface
+	commonTestUtils      *commontest.Utils
+	secretproviderplient secretsstorevclient.Interface
+}
 
 // ApplyRegistrationWithSync syncs based on registration builder
 func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder utils.RegistrationBuilder) {
@@ -36,13 +45,14 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, deploymentBuilder builders.DeploymentBuilder) {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder builders.DeploymentBuilder) {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
 	ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
 
-	kubeUtils, _ := kube.New(client, radixclient)
+	k, _ := kube.New(client, radixclient)
+	kubeUtils := k.WithSecretsProvider(secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
 	deployment := deployment.NewDeployment(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, false)
 	_ = deployment.OnSync()

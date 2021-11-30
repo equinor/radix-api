@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	strings "strings"
 	"testing"
 	"time"
@@ -46,6 +47,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
@@ -1076,18 +1078,17 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithDNSAppAlias(true),
-				builders.NewDeployComponentBuilder().
-					WithName("backend")))
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSAppAlias(true),
+			builders.NewDeployComponentBuilder().
+				WithName("backend")))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
