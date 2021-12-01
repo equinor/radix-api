@@ -40,7 +40,7 @@ func (ec *secretController) GetRoutes() models.Routes {
 
 // ChangeComponentSecret Modifies an application environment component secret
 func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} secret changeComponentSecret
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeComponentSecret
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:

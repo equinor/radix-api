@@ -3,6 +3,7 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/environments"
 	models2 "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	_ "github.com/equinor/radix-api/api/events"
-	eventModels "github.com/equinor/radix-api/api/events/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -47,7 +47,7 @@ const (
 	anyEnvironmentName = "TEST_SECRET"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -58,37 +58,37 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
 
+	// secretControllerTestUtils is used for issuing HTTP request and processing responses
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewSecretController())
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewSecretController())
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, environments.NewEnvironmentController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
+	return &commonTestUtils, &secretControllerTestUtils, &environmentControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	anyComponent := "frontend"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient,
-		builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithRadixApplication(builders.ARadixApplication().
 			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment).
-			WithEnvironment(anyEnvironment).
-			WithRadixApplication(builders.ARadixApplication().
-				WithAppName(anyAppName).
-				WithEnvironment(anyEnvironment, "master").
-				WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
-				WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName(anyComponent).
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithDNSExternalAlias("some.alias.com").
-					WithDNSExternalAlias("another.alias.com")))
+			WithEnvironment(anyEnvironment, "master").
+			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
+			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName(anyComponent).
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSExternalAlias("some.alias.com").
+				WithDNSExternalAlias("another.alias.com")))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	environment := environmentModels.Environment{}
@@ -115,8 +115,8 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 
 func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, _ := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
 		WithRadixApplication(builders.ARadixApplication().
@@ -137,7 +137,7 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 				})))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	environment := environmentModels.Environment{}
@@ -157,8 +157,8 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, _ := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
 		WithRadixApplication(builders.ARadixApplication().
@@ -177,7 +177,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 				})))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	environment := environmentModels.Environment{}
@@ -206,10 +206,10 @@ func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -240,10 +240,10 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -257,7 +257,7 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyApplication(builders.
@@ -267,7 +267,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 		WithEnvironment("dev", "master"))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
@@ -281,7 +281,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	commonTestUtils.ApplyDeployment(builders.
@@ -295,7 +295,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *tes
 		WithEnvironment("dev"))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
@@ -306,7 +306,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *tes
 
 func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedSecret := "feature"
@@ -340,7 +340,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 		WithEnvironment("dev", "master"))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
@@ -355,7 +355,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 
 func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedSecret := "feature-1"
@@ -378,7 +378,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 		WithOrphaned(true))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
@@ -396,7 +396,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 
 func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
 
@@ -406,7 +406,7 @@ func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 		WithEnvironment("dev", "master"))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -499,7 +499,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		SecretValue: updateSecretValue,
 	}
 
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, kubeclient, _, _, _ := setupTest()
 	appBuilder := builders.
 		ARadixApplication().
 		WithAppName(anyAppName)
@@ -721,7 +721,7 @@ var secretTestFunctions []secretTestDefinition = []secretTestDefinition{
 
 func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -767,7 +767,7 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -817,7 +817,7 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -875,7 +875,7 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -939,7 +939,7 @@ func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -1011,7 +1011,7 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -1106,7 +1106,7 @@ func contains(secrets []models2.Secret, name string) bool {
 
 func TestCreateSecret(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
+	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
 
 	appName := "myApp"
 	envName := "myEnv"
@@ -1116,14 +1116,14 @@ func TestCreateSecret(t *testing.T) {
 		WithAppName(appName))
 
 	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
+	commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -1180,58 +1180,6 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 			assert.Equal(t, "Consistent", s.Status)
 		}
 	}
-}
-
-func Test_GetEnvironmentEvents_Controller(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeClient, _, _, _ := setupTest()
-	anyAppName := "any-app"
-	createEvent := func(namespace, eventName string) {
-		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: eventName,
-			},
-		})
-	}
-	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev1")
-	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev2")
-	commonTestUtils.ApplyApplication(builders.
-		ARadixApplication().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	t.Run("Get events for dev environment", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "dev"))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-		events := make([]eventModels.Event, 0)
-		controllertest.GetResponseBody(response, &events)
-		assert.Len(t, events, 2)
-	})
-
-	t.Run("Get events for non-existing environment", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "prod"))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusNotFound, response.Code)
-		errResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(
-			t,
-			environmentModels.NonExistingEnvironment(nil, anyAppName, "prod").Error(),
-			errResponse.Message,
-		)
-	})
-
-	t.Run("Get events for non-existing application", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", "noapp", "dev"))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusNotFound, response.Code)
-		errResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(
-			t,
-			controllertest.AppNotFoundErrorMsg("noapp"),
-			errResponse.Message,
-		)
-	})
 }
 
 func initHandler(client kubernetes.Interface,

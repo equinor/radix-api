@@ -69,56 +69,10 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
-func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
-	anyComponent := "frontend"
-
-	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, _ := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName(anyComponent).
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com")))
-
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
-	response := <-responseChannel
-
-	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
-	assert.Equal(t, 4, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-key"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-key"))
-
-	parameters := models2.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
 func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, _ := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
 		WithRadixApplication(builders.ARadixApplication().
@@ -159,8 +113,8 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, _ := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, nil, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
 		WithRadixApplication(builders.ARadixApplication().
