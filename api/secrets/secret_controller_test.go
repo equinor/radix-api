@@ -3,22 +3,16 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/environments"
-	models2 "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	_ "github.com/equinor/radix-api/api/events"
+	"github.com/equinor/radix-api/api/secrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
-	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/models"
+	apiModels "github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
@@ -47,7 +41,7 @@ const (
 	anyEnvironmentName = "TEST_SECRET"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -60,362 +54,8 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Util
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewSecretController())
-	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, environments.NewEnvironmentController())
 
-	return &commonTestUtils, &secretControllerTestUtils, &environmentControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
-}
-
-func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
-	anyComponent := "frontend"
-
-	// Setup
-	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName(anyComponent).
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com")))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
-	response := <-responseChannel
-
-	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
-	assert.Equal(t, 4, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-key"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-key"))
-
-	parameters := models2.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
-	putUrl := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name)
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", putUrl, parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master")).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithName(anyComponentName).
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename",
-						Container: "some-container",
-						Path:      "some-path",
-					},
-				})))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
-	response := <-responseChannel
-
-	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
-	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyComponentName)))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyComponentName)))
-
-	parameters := models2.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, environmentControllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master")).
-		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().
-				WithName(anyJobName).
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename",
-						Container: "some-container",
-						Path:      "some-path",
-					},
-				})))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
-	response := <-responseChannel
-
-	environment := environmentModels.Environment{}
-	controllertest.GetResponseBody(response, &environment)
-	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyJobName)))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyJobName)))
-
-	parameters := models2.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
-	deploymentOneImage := "abcdef"
-	deploymentTwoImage := "ghijkl"
-	deploymentThreeImage := "mnopqr"
-	layout := "2006-01-02T15:04:05.000Z"
-	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
-	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
-	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
-
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
-
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
-	response := <-responseChannel
-
-	deployments := make([]*deploymentModels.DeploymentSummary, 0)
-	controllertest.GetResponseBody(response, &deployments)
-	assert.Equal(t, 3, len(deployments))
-
-	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
-
-	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
-
-	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
-}
-
-func TestGetSecretDeployments_Latest(t *testing.T) {
-	deploymentOneImage := "abcdef"
-	deploymentTwoImage := "ghijkl"
-	deploymentThreeImage := "mnopqr"
-	layout := "2006-01-02T15:04:05.000Z"
-	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
-	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
-	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
-
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
-
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
-	response := <-responseChannel
-
-	deployments := make([]*deploymentModels.DeploymentSummary, 0)
-	controllertest.GetResponseBody(response, &deployments)
-	assert.Equal(t, 1, len(deployments))
-
-	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
-}
-
-func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
-		WithRadixRegistration(builders.ARadixRegistration()).
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-	response := <-responseChannel
-	environments := make([]*environmentModels.EnvironmentSummary, 0)
-	controllertest.GetResponseBody(response, &environments)
-
-	assert.Equal(t, 1, len(environments))
-	assert.Equal(t, "dev", environments[0].Name)
-	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
-	assert.Equal(t, "master", environments[0].BranchMapping)
-	assert.Nil(t, environments[0].ActiveDeployment)
-}
-
-func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithRadixApplication(builders.
-			NewRadixApplicationBuilder().
-			WithRadixRegistration(builders.ARadixRegistration()).
-			WithAppName(anyAppName).
-			WithEnvironment("dev", "master")).
-		WithAppName(anyAppName).
-		WithEnvironment("dev"))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-	response := <-responseChannel
-	environments := make([]*environmentModels.EnvironmentSummary, 0)
-	controllertest.GetResponseBody(response, &environments)
-
-	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status)
-	assert.NotNil(t, environments[0].ActiveDeployment)
-}
-
-func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyOrphanedSecret := "feature"
-
-	commonTestUtils.ApplyRegistration(builders.
-		NewRegistrationBuilder().
-		WithName(anyAppName))
-
-	commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
-		WithEnvironment(anyOrphanedSecret, "feature"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev").
-		WithImageTag("someimageindev"))
-
-	commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedSecret).
-		WithImageTag("someimageinfeature"))
-
-	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-	response := <-responseChannel
-	environments := make([]*environmentModels.EnvironmentSummary, 0)
-	controllertest.GetResponseBody(response, &environments)
-
-	for _, environment := range environments {
-		if strings.EqualFold(environment.Name, anyOrphanedSecret) {
-			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
-			assert.NotNil(t, environment.ActiveDeployment)
-		}
-	}
-}
-
-func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyOrphanedSecret := "feature-1"
-
-	rr, _ := commonTestUtils.ApplyRegistration(builders.
-		NewRegistrationBuilder().
-		WithName(anyAppName))
-
-	commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	commonTestUtils.ApplyEnvironment(builders.
-		NewEnvironmentBuilder().
-		WithAppLabel().
-		WithAppName(anyAppName).
-		WithEnvironmentName(anyOrphanedSecret).
-		WithRegistrationOwner(rr).
-		WithOrphaned(true))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-	response := <-responseChannel
-	environments := make([]*environmentModels.EnvironmentSummary, 0)
-	controllertest.GetResponseBody(response, &environments)
-
-	environmentListed := false
-	for _, environment := range environments {
-		if strings.EqualFold(environment.Name, anyOrphanedSecret) {
-			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
-			environmentListed = true
-		}
-	}
-
-	assert.True(t, environmentListed)
-}
-
-func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-
-	commonTestUtils.ApplyApplication(builders.
-		ARadixApplication().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	environment := environmentModels.Environment{}
-	err := controllertest.GetResponseBody(response, &environment)
-	assert.Nil(t, err)
-	assert.Equal(t, "dev", environment.Name)
-	assert.Equal(t, environmentModels.Pending.String(), environment.Status)
+	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
@@ -495,11 +135,11 @@ func configureApplicationJobSecret(builder *k8sObjectUtils.ApplicationBuilder) {
 func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *k8sObjectUtils.ApplicationBuilder)) *httptest.ResponseRecorder {
 
 	// Setup
-	parameters := models2.SecretParameters{
+	parameters := models.SecretParameters{
 		SecretValue: updateSecretValue,
 	}
 
-	commonTestUtils, controllerTestUtils, _, kubeclient, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	appBuilder := builders.
 		ARadixApplication().
 		WithAppName(anyAppName)
@@ -701,7 +341,7 @@ func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubern
 	}
 }
 
-func assertSecretObject(t *testing.T, secretObject models2.Secret, name, component, status, testname string) {
+func assertSecretObject(t *testing.T, secretObject models.Secret, name, component, status, testname string) {
 	assert.Equal(t, name, secretObject.Name, testname, fmt.Sprintf("%s: incorrect secret name", testname))
 	assert.Equal(t, component, secretObject.Component, fmt.Sprintf("%s: incorrect component name", testname))
 	assert.Equal(t, status, secretObject.Status, fmt.Sprintf("%s: incorrect secret status", testname))
@@ -721,7 +361,7 @@ var secretTestFunctions []secretTestDefinition = []secretTestDefinition{
 
 func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -767,7 +407,7 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -817,7 +457,7 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -875,7 +515,7 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -939,7 +579,7 @@ func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -1011,7 +651,7 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 		handler := initHandler(kubeclient, radixclient)
 
 		appName := "any-app"
@@ -1095,35 +735,8 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	}
 }
 
-func contains(secrets []models2.Secret, name string) bool {
-	for _, secret := range secrets {
-		if secret.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-func TestCreateSecret(t *testing.T) {
-	// Setup
-	commonTestUtils, _, environmentControllerTestUtils, _, _, _, _ := setupTest()
-
-	appName := "myApp"
-	envName := "myEnv"
-
-	commonTestUtils.ApplyApplication(builders.
-		ARadixApplication().
-		WithAppName(appName))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
 func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 	handler := initHandler(kubeclient, radixclient)
 
 	appName := "any-app"
@@ -1147,9 +760,7 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 			WithName(componentName)).
 		WithDNSExternalAlias(alias, environmentName, componentName))
 
-	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
-		Name: deployment.Name,
-	})
+	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
 	assert.Len(t, secrets, 2)
@@ -1167,9 +778,7 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 		},
 	}, metav1.CreateOptions{})
 
-	secrets, err = handler.GetSecretsForDeployment(appName, environmentName, &deploymentModels.Deployment{
-		Name: deployment.Name,
-	})
+	secrets, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
 	assert.Len(t, secrets, 2)
@@ -1185,7 +794,7 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	handlerConfig ...SecretHandlerOptions) SecretHandler {
-	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
+	accounts := apiModels.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
 	options := []SecretHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)
