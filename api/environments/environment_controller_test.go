@@ -3,12 +3,13 @@ package environments
 import (
 	"context"
 	"fmt"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	radixhttp "github.com/equinor/radix-common/net/http"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -47,6 +48,7 @@ const (
 	anyJobName        = "job"
 	anyEnvironment    = "dev"
 	anySecretName     = "TEST_SECRET"
+	egressIps         = "0.0.0.0"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface) {
@@ -57,7 +59,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
