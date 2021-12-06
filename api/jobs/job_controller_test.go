@@ -3,6 +3,8 @@ package jobs_test
 import (
 	"context"
 	"fmt"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"testing"
 
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
@@ -36,10 +38,11 @@ const (
 	anyUser         = "a_user@equinor.com"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
@@ -47,12 +50,12 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewJobController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, secretproviderclient
 }
 
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, secretproviderclient := setupTest()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -65,7 +68,7 @@ func TestGetApplicationJob(t *testing.T) {
 		TriggeredBy: anyUser,
 	}
 
-	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, secretproviderclient, client, radixclient, secretproviderclient, "", radixmodels.Impersonation{})
 	handler := Init(accounts, deployments.Init(accounts))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
@@ -111,7 +114,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	anyJobName := "any-job"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 	job, _ := commonTestUtils.ApplyJob(builders.AStartedBuildDeployJob().WithAppName(anyAppName).WithJobName(anyJobName))
 
 	// Test
@@ -128,7 +131,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 }
 
 func TestGetPipelineJobLogsError(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
 
 	t.Run("job doesn't exist", func(t *testing.T) {
 		aJobName := "aJobName"

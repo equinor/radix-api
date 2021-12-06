@@ -361,8 +361,8 @@ var secretTestFunctions []secretTestDefinition = []secretTestDefinition{
 
 func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -407,8 +407,8 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -457,8 +457,8 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -515,8 +515,8 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -579,8 +579,8 @@ func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -651,8 +651,8 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	for _, test := range secretTestFunctions {
-		commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-		handler := initHandler(kubeclient, radixclient)
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 		appName := "any-app"
 		componentOneName := "backend"
@@ -736,8 +736,8 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 }
 
 func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
-	handler := initHandler(kubeclient, radixclient)
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+	handler := initHandler(kubeclient, radixclient, secretproviderclient)
 
 	appName := "any-app"
 	componentName := "backend"
@@ -793,8 +793,9 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
+	secretproviderclient secretsstorevclient.Interface,
 	handlerConfig ...SecretHandlerOptions) SecretHandler {
-	accounts := apiModels.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
+	accounts := apiModels.NewAccounts(client, radixclient, secretproviderclient, client, radixclient, secretproviderclient, "", radixmodels.Impersonation{})
 	options := []SecretHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)

@@ -70,14 +70,16 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	}
 
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
-	outClusterClient, outClusterRadixClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	outClusterClient, outClusterRadixClient, outClusterSecretProviderClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
 
 	accounts := models.NewAccounts(
 		inClusterClient,
 		inClusterRadixClient,
+		inClusterSecretProviderClient,
 		outClusterClient,
 		outClusterRadixClient,
+		outClusterSecretProviderClient,
 		token,
 		impersonation)
 
@@ -108,9 +110,9 @@ func (handler *RadixMiddleware) getRestClientOptions() []RestClientConfigOption 
 
 func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
 
-	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient)
+	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterSecretProviderClient)
 	accounts := models.Accounts{ServiceAccount: sa}
 
 	handler.next(accounts, w, r)

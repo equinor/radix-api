@@ -41,6 +41,7 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
+		kubeUtil.WithSecretsProvider(accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
 	}
 }

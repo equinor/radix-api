@@ -932,11 +932,11 @@ func TestCreateSecret(t *testing.T) {
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	appName, envName := "app", "dev"
-	commonTestUtils, _, _, kubeclient, radixclient, _, _ := setupTest()
+	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
 	ctrl := gomock.NewController(t)
 	ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
-	handler := initHandler(kubeclient, radixclient, WithEventHandler(eventHandler))
+	handler := initHandler(kubeclient, radixclient, secretproviderclient, WithEventHandler(eventHandler))
 	raBuilder := builders.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
 	commonTestUtils.ApplyApplication(raBuilder)
 	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), envName)
@@ -953,8 +953,9 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
+	secretproviderclient secretsstorevclient.Interface,
 	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, client, radixclient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, secretproviderclient, client, radixclient, secretproviderclient, "", radixmodels.Impersonation{})
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)

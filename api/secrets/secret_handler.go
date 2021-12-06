@@ -44,6 +44,7 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
+		kubeUtil.WithSecretsProvider(accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
 	}
 }
@@ -111,14 +112,24 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 		partName = defaults.BlobFuseCredsAccountNamePart
 
 	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix) {
-		// This is the account key part of the Csi Azure cred secret
+		// This is the account key part of the Csi Azure volume cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix)
 		partName = defaults.CsiAzureCredsAccountKeyPart
 
 	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix) {
-		// This is the account name part of the Csi Azure cred secret
+		// This is the account name part of the Csi Azure volume cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix)
 		partName = defaults.CsiAzureCredsAccountNamePart
+
+	} else if strings.HasSuffix(secretName, defaults.CsiAzureKeyVaultCredsClientIdSuffix) {
+		// This is the client-id part of the Csi Azure KeyVault cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureKeyVaultCredsClientIdSuffix)
+		partName = defaults.CsiAzureKeyVaultCredsClientIdPart
+
+	} else if strings.HasSuffix(secretName, defaults.CsiAzureKeyVaultCredsClientSecretSuffix) {
+		// This is the client secret part of the Csi Azure KeyVault cred secret
+		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
+		partName = defaults.CsiAzureKeyVaultCredsClientSecretPart
 
 	} else if strings.HasSuffix(secretName, clientCertSuffix) {
 		// This is the account name part of the client certificate secret
@@ -155,82 +166,10 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 	return &componentSecret, nil
 }
 
-// ChangeComponentSecretProperty handler for HandleChangeComponentSecret
-func (eh SecretHandler) ChangeComponentSecretProperty(appName, envName, componentName, secretName, resource string, secretType models.SecretType, componentSecret models.SecretParameters) (*models.SecretParameters, error) {
-	//TODO change
-	newSecretValue := componentSecret.SecretValue
-	if strings.TrimSpace(newSecretValue) == "" {
-		return nil, radixhttp.ValidationError("Secret", "New secret value is empty")
-	}
-
-	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-
-	var secretObjName, partName string
-
-	if strings.HasSuffix(secretName, certPartSuffix) {
-		// This is the cert part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, certPartSuffix)
-		partName = tlsCertPart
-
-	} else if strings.HasSuffix(secretName, keyPartSuffix) {
-		// This is the key part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, keyPartSuffix)
-		partName = tlsKeyPart
-
-	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
-		// This is the account key part of the blobfuse cred secret
-		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
-		partName = defaults.BlobFuseCredsAccountKeyPart
-
-	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix) {
-		// This is the account name part of the blobfuse cred secret
-		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountNamePartSuffix)
-		partName = defaults.BlobFuseCredsAccountNamePart
-
-	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix) {
-		// This is the account key part of the Csi Azure cred secret
-		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountKeyPartSuffix)
-		partName = defaults.CsiAzureCredsAccountKeyPart
-
-	} else if strings.HasSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix) {
-		// This is the account name part of the Csi Azure cred secret
-		secretObjName = strings.TrimSuffix(secretName, defaults.CsiAzureCredsAccountNamePartSuffix)
-		partName = defaults.CsiAzureCredsAccountNamePart
-
-	} else if strings.HasSuffix(secretName, clientCertSuffix) {
-		// This is the account name part of the client certificate secret
-		secretObjName = secretName
-		partName = "ca.crt"
-
-	} else {
-		// This is a regular secret
-		secretObjName = k8sObjectUtils.GetComponentSecretName(componentName)
-		partName = secretName
-
-	}
-
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(context.TODO(), secretObjName, metav1.GetOptions{})
-	if err != nil && errors.IsNotFound(err) {
-		return nil, radixhttp.TypeMissingError("Secret object does not exist", err)
-	}
-	if err != nil {
-		return nil, radixhttp.UnexpectedError("Failed getting secret object", err)
-	}
-
-	if secretObject.Data == nil {
-		secretObject.Data = make(map[string][]byte)
-	}
-
-	secretObject.Data[partName] = []byte(newSecretValue)
-
-	updatedSecret, err := eh.client.CoreV1().Secrets(ns).Update(context.TODO(), secretObject, metav1.UpdateOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	componentSecret.SecretValue = string(updatedSecret.Data[partName])
-	return &componentSecret, nil
-}
+//// ChangeComponentSecretProperty handler for HandleChangeComponentSecret
+//func (eh SecretHandler) ChangeComponentSecretProperty(appName, envName, componentName, secretName, resource string, secretType models.SecretType, componentSecret models.SecretParameters) (*models.SecretParameters, error) {
+//	//TODO change
+//}
 
 // GetSecrets Lists environment secrets for application
 func (eh SecretHandler) GetSecrets(appName, envName string) ([]models.Secret, error) {
@@ -391,11 +330,11 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *v1.Radi
 func (eh SecretHandler) getSecretsFromComponentObjects(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
 	var secrets []models.Secret
 	secrets = append(secrets, eh.getCredentialSecretsForBlobVolumes(component, envNamespace)...)
-	//secretsForSecretRefs, err := eh.getCredentialSecretsForSecretRefs(component, envNamespace)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//secrets = append(secrets, secretsForSecretRefs...)
+	secretsForSecretRefs, err := eh.getCredentialSecretsForSecretRefs(component, envNamespace)
+	if err != nil {
+		return nil, err
+	}
+	secrets = append(secrets, secretsForSecretRefs...)
 	return secrets, nil
 }
 
@@ -416,46 +355,50 @@ func (eh SecretHandler) getCredentialSecretsForBlobVolumes(component v1.RadixCom
 	return secrets
 }
 
-//func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
-//	var secrets []models.Secret
-//	for _, secretRef := range component.GetSecretRefs() {
-//		if len(secretRef.AzureKeyVaults) > 0 {
-//			for _, radixAzureKeyVault := range secretRef.AzureKeyVaults {
-//				labelSelector := kube.GetLabelSelectorForSecretRefObject(component.GetName(), string(v1.RadixSecretRefAzureKeyVault), radixAzureKeyVault.Name)
-//				credSecrets, err := eh.kubeUtil.ListSecretExistsForLabels(envNamespace, labelSelector)
-//				if err != nil {
-//					return nil, err
-//				}
-//
-//				group := fmt.Sprintf("Credentials for Azure Key Vault %s", radixAzureKeyVault.Name)
-//				for _, secret := range credSecrets {
-//					clientIdStatus := models.Consistent.String()
-//					clientSecretStatus := models.Consistent.String()
-//
-//					secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secret.Name, metav1.GetOptions{})
-//					if err != nil {
-//						log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
-//						clientIdStatus = models.Pending.String()
-//						clientSecretStatus = models.Pending.String()
-//					} else {
-//						clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
-//						if strings.EqualFold(clientIdValue, secretDefaultData) {
-//							clientIdStatus = models.Pending.String()
-//						}
-//						clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
-//						if strings.EqualFold(clientSecretValue, secretDefaultData) {
-//							clientSecretStatus = models.Pending.String()
-//						}
-//					}
-//
-//					secrets = append(secrets, models.Secret{Name: secret.Name, DisplayName: fmt.Sprintf("Client ID"), Group: group, Component: component.GetName(), Status: clientIdStatus, Type: models.SecretTypeCsiAzureKeyVault})
-//					secrets = append(secrets, models.Secret{Name: secret.Name, DisplayName: fmt.Sprintf("Client Secret"), Group: group, Component: component.GetName(), Status: clientSecretStatus, Type: models.SecretTypeCsiAzureKeyVault})
-//				}
-//			}
-//		}
-//	}
-//	return secrets, nil
-//}
+func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
+	var secrets []models.Secret
+	for _, secretRef := range component.GetSecretRefs() {
+		if len(secretRef.AzureKeyVaults) > 0 {
+			for _, azureKeyVault := range secretRef.AzureKeyVaults {
+				secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
+				clientIdStatus := models.Consistent.String()
+				clientSecretStatus := models.Consistent.String()
+
+				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+					clientIdStatus = models.Pending.String()
+					clientSecretStatus = models.Pending.String()
+				} else {
+					clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
+					if strings.EqualFold(clientIdValue, secretDefaultData) {
+						clientIdStatus = models.Pending.String()
+					}
+					clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
+					if strings.EqualFold(clientSecretValue, secretDefaultData) {
+						clientSecretStatus = models.Pending.String()
+					}
+				}
+
+				secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+					DisplayName: fmt.Sprintf("Client ID"),
+					Resource:    azureKeyVault.Name,
+					Component:   component.GetName(),
+					Status:      clientIdStatus,
+					Type:        models.SecretTypeCsiAzureKeyVault},
+				)
+				secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+					DisplayName: fmt.Sprintf("Client Secret"),
+					Resource:    azureKeyVault.Name,
+					Component:   component.GetName(),
+					Status:      clientSecretStatus,
+					Type:        models.SecretTypeCsiAzureKeyVault},
+				)
+			}
+		}
+	}
+	return secrets, nil
+}
 
 func (eh SecretHandler) getBlobFuseSecrets(component v1.RadixCommonDeployComponent, envNamespace string, volumeMount v1.RadixVolumeMount) (models.Secret, models.Secret) {
 	return eh.getAzureVolumeMountSecrets(envNamespace, component,

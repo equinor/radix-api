@@ -116,6 +116,16 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		}
 	}
 
+	for _, secretRef := range component.GetSecretRefs() {
+		if secretRef.AzureKeyVaults != nil {
+			for _, azureKeyVault := range secretRef.AzureKeyVaults {
+				secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientIdSuffix)
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
+			}
+		}
+	}
+
 	if auth := component.GetAuthentication(); auth != nil && component.GetPublicPort() != "" && deployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
 		b.secrets = append(b.secrets, utils.GetComponentClientCertificateSecretName(component.GetName()))
 	}
