@@ -2,6 +2,8 @@ package environmentvariables
 
 import (
 	"fmt"
+	"testing"
+
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -15,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	"testing"
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	appName           = "any-app"
 	environmentName   = "dev"
 	componentName     = "backend"
+	egressIps         = "0.0.0.0"
 )
 
 func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
@@ -47,7 +49,7 @@ func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientse
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil()
 }
 

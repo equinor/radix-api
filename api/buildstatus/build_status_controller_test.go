@@ -24,6 +24,7 @@ const (
 	containerRegistry = "any.container.registry"
 	dnsZone           = "dev.radix.equinor.com"
 	appAliasDNSZone   = "app.dev.radix.equinor.com"
+	egressIps         = "0.0.0.0"
 )
 
 func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
@@ -33,7 +34,7 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	return &commonTestUtils, kubeclient, radixclient
