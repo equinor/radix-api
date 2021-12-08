@@ -46,11 +46,12 @@ type Secret struct {
 type SecretType string
 
 const (
-	SecretTypeGeneric             SecretType = "generic"
-	SecretTypeClientCert          SecretType = "client-cert"
-	SecretTypeAzureBlobFuseVolume SecretType = "azure-blob-fuse-volume"
-	SecretTypeCsiAzureBlobVolume  SecretType = "csi-azure-blob-volume"
-	SecretTypeCsiAzureKeyVault    SecretType = "csi-azure-key-vault"
-	SecretTypeOrphaned            SecretType = "orphaned"
-	SecretTypePending             SecretType = "pending"
+	SecretTypeGeneric               SecretType = "generic"
+	SecretTypeClientCert            SecretType = "client-cert"
+	SecretTypeAzureBlobFuseVolume   SecretType = "azure-blob-fuse-volume"
+	SecretTypeCsiAzureBlobVolume    SecretType = "csi-azure-blob-volume"
+	SecretTypeCsiAzureKeyVaultCreds SecretType = "csi-azure-key-vault-creds"
+	SecretTypeCsiAzureKeyVaultItem  SecretType = "csi-azure-key-vault-item"
+	SecretTypeOrphaned              SecretType = "orphaned"
+	SecretTypePending               SecretType = "pending"
 )

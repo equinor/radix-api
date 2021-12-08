@@ -71,7 +71,9 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 	if err != nil {
 		return nil, err
 	}
-	secretNamesMap := getMapFromStrings(radixDeployComponent.GetSecrets())
+	secretNamesMap := make(map[string]interface{})
+	secretNamesMap = appendKeysToMap(secretNamesMap, radixDeployComponent.GetSecrets())
+	secretNamesMap = appendSecretRefsKeysToMap(secretNamesMap, radixDeployComponent.GetSecretRefs())
 	var apiEnvVars []envvarsmodels.EnvVar
 	for _, envVar := range envVars {
 		apiEnvVar := envvarsmodels.EnvVar{Name: envVar.Name}
@@ -100,12 +102,22 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 	return apiEnvVars, nil
 }
 
-func getMapFromStrings(values []string) map[string]interface{} {
-	valueMap := make(map[string]interface{}, len(values))
+func appendKeysToMap(namesMap map[string]interface{}, values []string) map[string]interface{} {
 	for _, value := range values {
-		valueMap[value] = true
+		namesMap[value] = true
 	}
-	return valueMap
+	return namesMap
+}
+
+func appendSecretRefsKeysToMap(namesMap map[string]interface{}, secretRefs []v1.RadixSecretRef) map[string]interface{} {
+	for _, secretRef := range secretRefs {
+		for _, azureKeyVault := range secretRef.AzureKeyVaults {
+			for _, keyVaultItem := range azureKeyVault.Items {
+				namesMap[keyVaultItem.EnvVar] = true
+			}
+		}
+	}
+	return namesMap
 }
 
 //ChangeEnvVar Change environment variables

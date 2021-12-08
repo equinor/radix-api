@@ -221,6 +221,11 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 		return nil, err
 	}
 
+	secretRefsSecrets, err := eh.getSecretRefsSecrets(rd, envNamespace)
+	if err != nil {
+		return nil, err
+	}
+
 	secrets := make([]models.Secret, 0)
 	for _, secretFromVolumeMounts := range secretsFromVolumeMounts {
 		secrets = append(secrets, secretFromVolumeMounts)
@@ -236,6 +241,10 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 
 	for _, secretFromAuthenticationClientCertificate := range secretsFromAuthenticationClientCertificate {
 		secrets = append(secrets, secretFromAuthenticationClientCertificate)
+	}
+
+	for _, secretRefsSecret := range secretRefsSecrets {
+		secrets = append(secrets, secretRefsSecret)
 	}
 
 	return secrets, nil
@@ -385,14 +394,14 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 					Resource:    azureKeyVault.Name,
 					Component:   component.GetName(),
 					Status:      clientIdStatus,
-					Type:        models.SecretTypeCsiAzureKeyVault},
+					Type:        models.SecretTypeCsiAzureKeyVaultCreds},
 				)
 				secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 					DisplayName: fmt.Sprintf("Client Secret"),
 					Resource:    azureKeyVault.Name,
 					Component:   component.GetName(),
 					Status:      clientSecretStatus,
-					Type:        models.SecretTypeCsiAzureKeyVault},
+					Type:        models.SecretTypeCsiAzureKeyVaultCreds},
 				)
 			}
 		}
@@ -510,6 +519,32 @@ func (eh SecretHandler) getSecretsFromAuthenticationClientCertificate(activeDepl
 	}
 
 	return secretDTOsMap, nil
+}
+
+func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
+	secretsMap := make(map[string]models.Secret)
+	for _, component := range radixDeployment.Spec.Components {
+		for _, secretRef := range component.GetSecretRefs() {
+			for _, azureKeyVault := range secretRef.AzureKeyVaults {
+				for _, item := range azureKeyVault.Items {
+					itemType := string(v1.RadixAzureKeyVaultObjectTypeSecret)
+					if item.Type != nil {
+						itemType = string(*item.Type)
+					}
+					secret := &models.Secret{
+						Name:        item.EnvVar,
+						DisplayName: fmt.Sprintf("%s '%s'", itemType, item.Name),
+						Type:        models.SecretTypeCsiAzureKeyVaultItem,
+						Resource:    azureKeyVault.Name,
+						Component:   component.GetName(),
+						Status:      models.External.String(),
+					}
+					secretsMap[secret.Name] = *secret
+				}
+			}
+		}
+	}
+	return secretsMap, nil
 }
 
 func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(component v1.RadixCommonDeployComponent, envNamespace string) *models.Secret {
