@@ -7,10 +7,10 @@
         <mask id="mask">
             <rect width="{{.Width}}" height="20" rx="3" fill="#fff"/>
         </mask>
-        <g id="{{.OperationTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" >
+        <g id="{{.OperationTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="92" >
             <text x="0" y="120" transform="scale(.12)">{{.Operation}}</text>
         </g>
-        <g id="{{.StatusTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" >
+        <g id="{{.StatusTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="92" >
             <text x="0" y="120" transform="scale(.12)">{{.Status}}</text>
         </g>
     </defs>
