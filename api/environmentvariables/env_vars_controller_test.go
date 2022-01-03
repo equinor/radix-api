@@ -27,6 +27,7 @@ const (
 	appName           = "any-app"
 	environmentName   = "dev"
 	componentName     = "backend"
+	egressIps         = "0.0.0.0"
 )
 
 func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
@@ -51,7 +52,7 @@ func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientse
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient
 }
 

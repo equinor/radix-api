@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	radixutils "github.com/equinor/radix-common/utils"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	radixhttp "github.com/equinor/radix-common/net/http"
-	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -35,6 +35,7 @@ const (
 	anyPodName        = "any-pod"
 	anyDeployName     = "any-deploy"
 	anyEnv            = "any-env"
+	egressIps         = "0.0.0.0"
 )
 
 func createGetLogEndpoint(appName, podName string) string {
@@ -50,7 +51,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())

@@ -41,6 +41,7 @@ const (
 	containerRegistry = "any.container.registry"
 	dnsZone           = "dev.radix.equinor.com"
 	appAliasDNSZone   = "app.dev.radix.equinor.com"
+	egressIps         = "0.0.0.0"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -52,7 +53,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
