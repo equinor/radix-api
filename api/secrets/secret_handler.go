@@ -365,46 +365,46 @@ func (eh SecretHandler) getCredentialSecretsForBlobVolumes(component v1.RadixCom
 }
 
 func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
+	secretRefs := component.GetSecretRefs()
+	if len(secretRefs.AzureKeyVaults) == 0 {
+		return nil, nil
+	}
 	var secrets []models.Secret
-	for _, secretRef := range component.GetSecretRefs() {
-		if len(secretRef.AzureKeyVaults) > 0 {
-			for _, azureKeyVault := range secretRef.AzureKeyVaults {
-				secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
-				clientIdStatus := models.Consistent.String()
-				clientSecretStatus := models.Consistent.String()
+	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
+		secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
+		clientIdStatus := models.Consistent.String()
+		clientSecretStatus := models.Consistent.String()
 
-				secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
-				if err != nil {
-					log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
-					clientIdStatus = models.Pending.String()
-					clientSecretStatus = models.Pending.String()
-				} else {
-					clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
-					if strings.EqualFold(clientIdValue, secretDefaultData) {
-						clientIdStatus = models.Pending.String()
-					}
-					clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
-					if strings.EqualFold(clientSecretValue, secretDefaultData) {
-						clientSecretStatus = models.Pending.String()
-					}
-				}
-
-				secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
-					DisplayName: fmt.Sprintf("Client ID"),
-					Resource:    azureKeyVault.Name,
-					Component:   component.GetName(),
-					Status:      clientIdStatus,
-					Type:        models.SecretTypeCsiAzureKeyVaultCreds},
-				)
-				secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
-					DisplayName: fmt.Sprintf("Client Secret"),
-					Resource:    azureKeyVault.Name,
-					Component:   component.GetName(),
-					Status:      clientSecretStatus,
-					Type:        models.SecretTypeCsiAzureKeyVaultCreds},
-				)
+		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
+		if err != nil {
+			log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+			clientIdStatus = models.Pending.String()
+			clientSecretStatus = models.Pending.String()
+		} else {
+			clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
+			if strings.EqualFold(clientIdValue, secretDefaultData) {
+				clientIdStatus = models.Pending.String()
+			}
+			clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
+			if strings.EqualFold(clientSecretValue, secretDefaultData) {
+				clientSecretStatus = models.Pending.String()
 			}
 		}
+
+		secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+			DisplayName: fmt.Sprintf("Client ID"),
+			Resource:    azureKeyVault.Name,
+			Component:   component.GetName(),
+			Status:      clientIdStatus,
+			Type:        models.SecretTypeCsiAzureKeyVaultCreds},
+		)
+		secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+			DisplayName: fmt.Sprintf("Client Secret"),
+			Resource:    azureKeyVault.Name,
+			Component:   component.GetName(),
+			Status:      clientSecretStatus,
+			Type:        models.SecretTypeCsiAzureKeyVaultCreds},
+		)
 	}
 	return secrets, nil
 }
@@ -524,23 +524,22 @@ func (eh SecretHandler) getSecretsFromAuthenticationClientCertificate(activeDepl
 func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
 	secretsMap := make(map[string]models.Secret)
 	for _, component := range radixDeployment.Spec.Components {
-		for _, secretRef := range component.GetSecretRefs() {
-			for _, azureKeyVault := range secretRef.AzureKeyVaults {
-				for _, item := range azureKeyVault.Items {
-					itemType := string(v1.RadixAzureKeyVaultObjectTypeSecret)
-					if item.Type != nil {
-						itemType = string(*item.Type)
-					}
-					secret := &models.Secret{
-						Name:        item.EnvVar,
-						DisplayName: fmt.Sprintf("%s '%s'", itemType, item.Name),
-						Type:        models.SecretTypeCsiAzureKeyVaultItem,
-						Resource:    azureKeyVault.Name,
-						Component:   component.GetName(),
-						Status:      models.External.String(),
-					}
-					secretsMap[secret.Name] = *secret
+		secretRefs := component.GetSecretRefs()
+		for _, azureKeyVault := range secretRefs.AzureKeyVaults {
+			for _, item := range azureKeyVault.Items {
+				itemType := string(v1.RadixAzureKeyVaultObjectTypeSecret)
+				if item.Type != nil {
+					itemType = string(*item.Type)
 				}
+				secret := &models.Secret{
+					Name:        item.EnvVar,
+					DisplayName: fmt.Sprintf("%s '%s'", itemType, item.Name),
+					Type:        models.SecretTypeCsiAzureKeyVaultItem,
+					Resource:    azureKeyVault.Name,
+					Component:   component.GetName(),
+					Status:      models.External.String(),
+				}
+				secretsMap[secret.Name] = *secret
 			}
 		}
 	}

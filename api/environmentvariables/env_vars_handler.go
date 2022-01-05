@@ -109,12 +109,10 @@ func appendKeysToMap(namesMap map[string]interface{}, values []string) map[strin
 	return namesMap
 }
 
-func appendSecretRefsKeysToMap(namesMap map[string]interface{}, secretRefs []v1.RadixSecretRef) map[string]interface{} {
-	for _, secretRef := range secretRefs {
-		for _, azureKeyVault := range secretRef.AzureKeyVaults {
-			for _, keyVaultItem := range azureKeyVault.Items {
-				namesMap[keyVaultItem.EnvVar] = true
-			}
+func appendSecretRefsKeysToMap(namesMap map[string]interface{}, secretRefs v1.RadixSecretRefs) map[string]interface{} {
+	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
+		for _, keyVaultItem := range azureKeyVault.Items {
+			namesMap[keyVaultItem.EnvVar] = true
 		}
 	}
 	return namesMap
