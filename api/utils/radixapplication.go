@@ -25,7 +25,6 @@ func CreateApplicationConfig(client kubernetes.Interface, radixClient radixclien
 		return nil, err
 	}
 
-	kubeUtils, _ := kube.New(client, radixClient)
-	kubeUtils.WithSecretsProvider(secretProviderClient)
+	kubeUtils, _ := kube.New(client, radixClient, secretProviderClient)
 	return applicationconfig.NewApplicationConfig(client, kubeUtils, radixClient, registration, radixApp)
 }

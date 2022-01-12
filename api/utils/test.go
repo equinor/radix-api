@@ -24,7 +24,7 @@ type clientSet struct {
 
 // ApplyRegistrationWithSync syncs based on registration builder
 func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder utils.RegistrationBuilder) {
-	kubeUtils, _ := kube.New(client, radixclient)
+	kubeUtils, _ := kube.New(client, radixclient, nil)
 	commonTestUtils.ApplyRegistration(registrationBuilder)
 
 	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
@@ -37,7 +37,7 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 
 	ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
 
-	kubeUtils, _ := kube.New(client, radixclient)
+	kubeUtils, _ := kube.New(client, radixclient, nil)
 	commonTestUtils.ApplyApplication(applicationBuilder)
 
 	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
@@ -51,8 +51,7 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
 
-	k, _ := kube.New(client, radixclient)
-	kubeUtils := k.WithSecretsProvider(secretproviderclient)
+	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
 	deployment := deployment.NewDeployment(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, false)
 	_ = deployment.OnSync()

@@ -26,8 +26,7 @@ type EnvVarsHandlerOptions func(*envVarsHandler)
 // WithAccounts configures all EnvVarsHandler fields
 func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
 	return func(eh *envVarsHandler) {
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
-		kubeUtil.WithSecretsProvider(accounts.UserAccount.SecretProviderClient)
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
 		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.accounts = accounts

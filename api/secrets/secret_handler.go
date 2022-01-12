@@ -43,8 +43,7 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
-		kubeUtil.WithSecretsProvider(accounts.UserAccount.SecretProviderClient)
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
 	}
 }
