@@ -2,12 +2,12 @@ package models
 
 import (
 	"fmt"
-	secretProviderClient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"k8s.io/client-go/kubernetes"
+	secretProviderClient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
 // NewAccounts creates a new Accounts struct

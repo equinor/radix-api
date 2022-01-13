@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	radixutils "github.com/equinor/radix-common/utils"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -50,7 +50,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses

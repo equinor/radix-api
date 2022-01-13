@@ -61,7 +61,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Util
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses

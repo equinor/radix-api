@@ -52,7 +52,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset,
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 

@@ -45,7 +45,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewJobController())
