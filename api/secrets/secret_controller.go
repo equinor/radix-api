@@ -87,10 +87,15 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	//   "409":
 	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]

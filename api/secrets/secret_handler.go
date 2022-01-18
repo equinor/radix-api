@@ -165,11 +165,6 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 	return &componentSecret, nil
 }
 
-//// ChangeComponentSecretProperty handler for HandleChangeComponentSecret
-//func (eh SecretHandler) ChangeComponentSecretProperty(appName, envName, componentName, secretName, resource string, secretType models.SecretType, componentSecret models.SecretParameters) (*models.SecretParameters, error) {
-//	//TODO change
-//}
-
 // GetSecrets Lists environment secrets for application
 func (eh SecretHandler) GetSecrets(appName, envName string) ([]models.Secret, error) {
 	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
@@ -455,31 +450,6 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 	accountNameSecretDTO := models.Secret{Name: secretName + accountNamePartSuffix, DisplayName: fmt.Sprintf("Account Name"), Resource: volumeMountName, Component: component.GetName(), Status: accountnameStatus, Type: secretType}
 	return accountKeySecretDTO, accountNameSecretDTO
 }
-
-//func (eh SecretHandler) getAzureKeyVaultSecret(component v1.RadixCommonDeployComponent, envNamespace, secretName, keyVaultNamePart string) (models.Secret, models.Secret) {
-//	clientIdStatus := models.Consistent.String()
-//	clientSecretStatus := models.Consistent.String()
-//
-//	secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
-//	if err != nil {
-//		log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
-//		clientIdStatus = models.Pending.String()
-//		clientSecretStatus = models.Pending.String()
-//	} else {
-//		accountkeyValue := strings.TrimSpace(string(secretValue.Data[accountKeyPart]))
-//		if strings.EqualFold(accountkeyValue, secretDefaultData) {
-//			clientIdStatus = models.Pending.String()
-//		}
-//		accountnameValue := strings.TrimSpace(string(secretValue.Data[accountNamePart]))
-//		if strings.EqualFold(accountnameValue, secretDefaultData) {
-//			clientSecretStatus = models.Pending.String()
-//		}
-//	}
-//
-//	accountKeySecretDTO := models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretPart, Component: component.GetName(), Status: clientIdStatus}
-//	accountNameSecretDTO := models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientIdPart, Component: component.GetName(), Status: clientSecretStatus}
-//	return accountKeySecretDTO, accountNameSecretDTO
-//}
 
 func (eh SecretHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
 	secretDTOsMap := make(map[string]models.Secret)

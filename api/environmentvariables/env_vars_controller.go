@@ -147,10 +147,15 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	//   "409":
 	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	appName, envName, componentName := mux.Vars(r)["appName"], mux.Vars(r)["envName"], mux.Vars(r)["componentName"]
 	var envVarParameters []envvarsmodels.EnvVarParameter
 	if err := json.NewDecoder(r.Body).Decode(&envVarParameters); err != nil {

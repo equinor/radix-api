@@ -1,7 +1,5 @@
 package models
 
-import "fmt"
-
 // ComponentStatus Enumeration of the statuses of component
 type ComponentStatus int
 
@@ -26,15 +24,4 @@ const (
 
 func (p ComponentStatus) String() string {
 	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting", "Outdated"}[p]
-}
-
-// GetComponentStatusFromName Gets status from name
-func GetComponentStatusFromName(name string) (ComponentStatus, error) {
-	for status := StoppedComponent; status < numComponentStatuses; status++ {
-		if status.String() == name {
-			return status, nil
-		}
-	}
-
-	return numComponentStatuses, fmt.Errorf("no component status found by name %s", name)
 }
