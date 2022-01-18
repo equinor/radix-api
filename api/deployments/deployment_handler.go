@@ -96,7 +96,8 @@ func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(appName, en
 		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
 	}
 
-	return deploy.getDeployments(namespace, appName, "", latest)
+	deployments, err := deploy.getDeployments(namespace, appName, "", latest)
+	return deployments, err
 }
 
 // GetDeploymentsForJob Lists deployments for job name

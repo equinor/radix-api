@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	strings "strings"
 	"testing"
 	"time"
@@ -42,25 +44,26 @@ const (
 	egressIps         = "0.0.0.0"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }))
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
 func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
@@ -118,7 +121,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
 
@@ -152,7 +155,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 }
 
 func TestSearchApplications(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _ := setupTest()
+	commonTestUtils, _, kubeclient, radixclient, _, _ := setupTest()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app1"))
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app2"))
@@ -216,7 +219,7 @@ func TestSearchApplications(t *testing.T) {
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().withName("").Build()
@@ -230,7 +233,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 
 func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().withRepository("").Build()
@@ -244,7 +247,7 @@ func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T)
 
 func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
@@ -261,7 +264,7 @@ func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *te
 
 func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
@@ -293,7 +296,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 
 func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
@@ -312,7 +315,7 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 
 func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
@@ -333,7 +336,7 @@ func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
 
 func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().
@@ -354,7 +357,7 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 
 func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	configBranch := "main.."
@@ -376,7 +379,7 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 
 func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
@@ -394,7 +397,7 @@ func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 
 func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").
@@ -418,7 +421,7 @@ func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").
@@ -451,7 +454,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 
 func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("app-1"))
@@ -496,7 +499,7 @@ func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 func TestGetApplication_WithJobs(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("any-name"))
 
@@ -520,7 +523,7 @@ func TestGetApplication_WithJobs(t *testing.T) {
 
 func TestGetApplication_WithEnvironments(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, radix, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, radix, _, _ := setupTest()
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
@@ -581,7 +584,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 
 func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").
@@ -615,7 +618,7 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().withName("any-name").Build()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -646,7 +649,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 
 func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	builder := AnApplicationRegistration().
 		withName("any-name").
@@ -711,7 +714,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	builder := AnApplicationRegistration().
 		withName("any-name").
@@ -809,7 +812,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	builder := AnApplicationRegistration().
 		withName("any-name").
@@ -837,7 +840,7 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 	// Setup
 	appName := "any-name"
-	_, controllerTestUtils, _, radixClient, _ := setupTest()
+	_, controllerTestUtils, _, radixClient, _, _ := setupTest()
 	rr := builders.ARadixRegistration().
 		WithName(appName).
 		WithConfigBranch("")
@@ -862,7 +865,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	anyAppName := "any-app"
 	configBranch := "magic"
 
@@ -904,7 +907,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedForExisting(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().
 		withName("any-app").withConfigBranch("maincfg").Build())
@@ -943,7 +946,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 }
 
 func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
-	_, controllerTestUtils, _, radixclient, _ := setupTest()
+	_, controllerTestUtils, _, radixclient, _, _ := setupTest()
 
 	appName := "an-app"
 
@@ -962,7 +965,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 }
 
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
-	_, controllerTestUtils, _, radixclient, _ := setupTest()
+	_, controllerTestUtils, _, radixclient, _, _ := setupTest()
 
 	appName := "an-app"
 
@@ -986,7 +989,7 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 
 func TestIsDeployKeyValid(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
@@ -1051,7 +1054,7 @@ func TestIsDeployKeyValid(t *testing.T) {
 
 func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").Build()
@@ -1076,19 +1079,18 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithDNSAppAlias(true),
-				builders.NewDeployComponentBuilder().
-					WithName("backend")))
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSAppAlias(true),
+			builders.NewDeployComponentBuilder().
+				WithName("backend")))
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
@@ -1107,7 +1109,7 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 	supportedPipelines := jobPipeline.GetSupportedPipelines()
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
@@ -1125,7 +1127,7 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 
 func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	appName := "any-name"
@@ -1159,7 +1161,7 @@ func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret
 
 func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	appName := "any-name"
@@ -1190,7 +1192,7 @@ func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 
 func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
 	parameters := AnApplicationRegistration().

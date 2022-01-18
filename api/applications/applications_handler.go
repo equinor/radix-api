@@ -439,7 +439,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 
 	// Check if branch is mapped
 	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
-		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, appName)
+		application, err := utils.CreateApplicationConfig(ah.getUserAccount().Client, ah.getUserAccount().RadixClient, ah.getUserAccount().SecretProviderClient, appName)
 		if err != nil {
 			return nil, err
 		}

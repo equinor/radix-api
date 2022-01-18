@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"testing"
 	"time"
 
@@ -28,11 +29,13 @@ import (
 
 type JobHandlerTestSuite struct {
 	suite.Suite
-	accounts       models.Accounts
-	inKubeClient   *kubefake.Clientset
-	inRadixClient  *radixfake.Clientset
-	outKubeClient  *kubefake.Clientset
-	outRadixClient *radixfake.Clientset
+	accounts                models.Accounts
+	inKubeClient            *kubefake.Clientset
+	inRadixClient           *radixfake.Clientset
+	outKubeClient           *kubefake.Clientset
+	outRadixClient          *radixfake.Clientset
+	inSecretProviderClient  *secretproviderfake.Clientset
+	outSecretProviderClient *secretproviderfake.Clientset
 }
 
 type jobCreatedScenario struct {
@@ -56,8 +59,8 @@ func TestRunJobHandlerTestSuite(t *testing.T) {
 }
 
 func (s *JobHandlerTestSuite) SetupTest() {
-	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient = s.getUtils()
-	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, "", radixmodels.Impersonation{})
+	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, s.inSecretProviderClient, s.outSecretProviderClient = s.getUtils()
+	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 
@@ -403,8 +406,9 @@ func (s *JobHandlerTestSuite) Test_GetPipelineJobStepScanOutput() {
 
 }
 
-func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset) {
+func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset, inSecretProviderClient *secretproviderfake.Clientset, outSecretProviderClient *secretproviderfake.Clientset) {
 	inKubeClient, outKubeClient = kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
 	inRadixClient, outRadixClient = radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
+	inSecretProviderClient, outSecretProviderClient = secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
 	return
 }

@@ -154,8 +154,14 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	//           "$ref": "#/definitions/ApplicationSummary"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
 
 	matcher := applicationModels.MatchAll
 	sshRepo := strings.TrimSpace(r.FormValue("sshRepo"))
@@ -205,8 +211,14 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//           "$ref": "#/definitions/ApplicationSummary"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
 	//   "500":
-	//     description: "Internal Server Error"
+	//     description: "Internal server error"
 
 	var appNamesRequest applicationModels.ApplicationsSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
@@ -260,8 +272,15 @@ func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	//       "$ref": "#/definitions/Application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	appName := mux.Vars(r)["appName"]
 
 	handler := Init(accounts)
@@ -301,8 +320,15 @@ func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r 
 	//     description: "Deploy key is valid"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	appName := mux.Vars(r)["appName"]
 	isDeployKeyValid, err := IsDeployKeyValid(accounts.UserAccount, appName)
 
@@ -342,8 +368,15 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 	//       "$ref": "#/definitions/MachineUser"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	appName := mux.Vars(r)["appName"]
 	handler := Init(accounts)
 	machineUser, err := handler.RegenerateMachineUserToken(appName)

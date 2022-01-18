@@ -2,9 +2,9 @@ package buildsecrets
 
 import (
 	"encoding/json"
+	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
 
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"

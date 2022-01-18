@@ -26,7 +26,7 @@ type EnvVarsHandlerOptions func(*envVarsHandler)
 // WithAccounts configures all EnvVarsHandler fields
 func WithAccounts(accounts models.Accounts) EnvVarsHandlerOptions {
 	return func(eh *envVarsHandler) {
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
 		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.accounts = accounts
@@ -70,7 +70,9 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 	if err != nil {
 		return nil, err
 	}
-	secretNamesMap := getMapFromStrings(radixDeployComponent.GetSecrets())
+	secretNamesMap := make(map[string]interface{})
+	secretNamesMap = appendKeysToMap(secretNamesMap, radixDeployComponent.GetSecrets())
+	secretNamesMap = appendSecretRefsKeysToMap(secretNamesMap, radixDeployComponent.GetSecretRefs())
 	var apiEnvVars []envvarsmodels.EnvVar
 	for _, envVar := range envVars {
 		apiEnvVar := envvarsmodels.EnvVar{Name: envVar.Name}
@@ -99,12 +101,20 @@ func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, co
 	return apiEnvVars, nil
 }
 
-func getMapFromStrings(values []string) map[string]interface{} {
-	valueMap := make(map[string]interface{}, len(values))
+func appendKeysToMap(namesMap map[string]interface{}, values []string) map[string]interface{} {
 	for _, value := range values {
-		valueMap[value] = true
+		namesMap[value] = true
 	}
-	return valueMap
+	return namesMap
+}
+
+func appendSecretRefsKeysToMap(namesMap map[string]interface{}, secretRefs v1.RadixSecretRefs) map[string]interface{} {
+	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
+		for _, keyVaultItem := range azureKeyVault.Items {
+			namesMap[keyVaultItem.EnvVar] = true
+		}
+	}
+	return namesMap
 }
 
 //ChangeEnvVar Change environment variables

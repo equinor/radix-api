@@ -1,14 +1,12 @@
 package environments
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
-	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -58,11 +56,6 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/events",
 			Method:      "GET",
 			HandlerFunc: GetEnvironmentEvents,
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
-			Method:      "PUT",
-			HandlerFunc: ChangeEnvironmentComponentSecret,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
@@ -432,81 +425,6 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 
 	radixhttp.JSONResponse(w, r, events)
 
-}
-
-// ChangeEnvironmentComponentSecret Modifies an application environment component secret
-func ChangeEnvironmentComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeEnvironmentComponentSecret
-	// ---
-	// summary: Update an application environment component secret
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of application
-	//   type: string
-	//   required: true
-	// - name: envName
-	//   in: path
-	//   description: environment of Radix application
-	//   type: string
-	//   required: true
-	// - name: componentName
-	//   in: path
-	//   description: environment component of Radix application
-	//   type: string
-	//   required: true
-	// - name: secretName
-	//   in: path
-	//   description: environment component secret name to be updated
-	//   type: string
-	//   required: true
-	// - name: componentSecret
-	//   in: body
-	//   description: New secret value
-	//   required: true
-	//   schema:
-	//       "$ref": "#/definitions/SecretParameters"
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: success
-	//   "400":
-	//     description: "Invalid application"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "404":
-	//     description: "Not found"
-	//   "409":
-	//     description: "Conflict"
-	appName := mux.Vars(r)["appName"]
-	envName := mux.Vars(r)["envName"]
-	componentName := mux.Vars(r)["componentName"]
-	secretName := mux.Vars(r)["secretName"]
-
-	var secretParameters environmentmodels.SecretParameters
-	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
-		return
-	}
-
-	environmentHandler := Init(WithAccounts(accounts))
-
-	_, err := environmentHandler.ChangeEnvironmentComponentSecret(appName, envName, componentName, secretName, secretParameters)
-	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
-		return
-	}
-
-	radixhttp.JSONResponse(w, r, "Success")
 }
 
 // StopComponent Stops job
