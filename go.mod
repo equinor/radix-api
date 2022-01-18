@@ -4,8 +4,8 @@ go 1.17
 
 require (
 	github.com/equinor/radix-common v1.1.8
-	github.com/equinor/radix-job-scheduler v1.3.1
-	github.com/equinor/radix-operator v1.16.18
+	github.com/equinor/radix-job-scheduler v1.4.0
+	github.com/equinor/radix-operator v1.17.2
 	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang-jwt/jwt/v4 v4.1.0
@@ -86,7 +86,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
-replace (
-	github.com/equinor/radix-operator => /home/user1/go/src/github.com/equinor/radix-operator
-	k8s.io/client-go => k8s.io/client-go v0.22.4
-)
+replace k8s.io/client-go => k8s.io/client-go v0.22.4
