@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -227,6 +228,38 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 	assert.Contains(t, secrets, "frontend-somevolumename1-blobfusecreds-accountname")
 	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountkey")
 	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountname")
+}
+
+func TestGetComponents_OAuth2(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			builders.NewDeployComponentBuilder().WithName("c1").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			builders.NewDeployComponentBuilder().WithName("c2").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+			builders.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
+			builders.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+		))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, getComponentByName("c1", components).Secrets)
+	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, getComponentByName("c2", components).Secrets)
+	assert.Empty(t, getComponentByName("c3", components).Secrets)
+	assert.Empty(t, getComponentByName("c4", components).Secrets)
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {

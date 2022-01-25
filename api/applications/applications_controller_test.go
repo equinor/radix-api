@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	strings "strings"
 	"testing"
 	"time"
+
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	"github.com/equinor/radix-api/api/utils"
 
@@ -416,7 +417,7 @@ func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: Repository is in use by any-name", errorResponse.Message)
+	assert.Equal(t, "Error: repository is in use by any-name", errorResponse.Message)
 }
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
@@ -613,7 +614,7 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: Repository is in use by any-name", errorResponse.Message)
+	assert.Equal(t, "Error: repository is in use by any-name", errorResponse.Message)
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {

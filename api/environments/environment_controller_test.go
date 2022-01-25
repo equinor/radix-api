@@ -3,22 +3,23 @@ package environments
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/secrets"
-	secretModels "github.com/equinor/radix-api/api/secrets/models"
-	"github.com/equinor/radix-api/api/utils"
 	"net/http"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-api/api/secrets"
+	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
+	"github.com/equinor/radix-api/api/utils"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
 	eventMock "github.com/equinor/radix-api/api/events/mock"
 	eventModels "github.com/equinor/radix-api/api/events/models"
-	"github.com/equinor/radix-api/api/test"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
@@ -28,8 +29,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
@@ -137,9 +137,9 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
-		WithRadixRegistration(builders.ARadixRegistration()).
+		WithRadixRegistration(operatorutils.ARadixRegistration()).
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
@@ -161,11 +161,11 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
-		WithRadixApplication(builders.
+		WithRadixApplication(operatorutils.
 			NewRadixApplicationBuilder().
-			WithRadixRegistration(builders.ARadixRegistration()).
+			WithRadixRegistration(operatorutils.ARadixRegistration()).
 			WithAppName(anyAppName).
 			WithEnvironment("dev", "master")).
 		WithAppName(anyAppName).
@@ -188,30 +188,30 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
 
-	commonTestUtils.ApplyRegistration(builders.
+	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master").
 		WithEnvironment(anyOrphanedEnvironment, "feature"))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithImageTag("someimageindev"))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
 
 	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
+	commonTestUtils.ApplyApplicationUpdate(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -237,16 +237,16 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
 
-	rr, _ := commonTestUtils.ApplyRegistration(builders.
+	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
-	commonTestUtils.ApplyEnvironment(builders.
+	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
@@ -279,15 +279,15 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	anyNonOrphanedEnvironment := "dev"
 	anyOrphanedEnvironment := "feature"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyNonOrphanedEnvironment, "master").
-		WithRadixRegistration(builders.
+		WithRadixRegistration(operatorutils.
 			NewRegistrationBuilder().
 			WithName(anyAppName)))
 
-	commonTestUtils.ApplyEnvironment(builders.
+	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
@@ -329,7 +329,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 
 	anyAppName := "any-app"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -352,7 +352,7 @@ func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t
 
 	anyAppName := "any-app"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -371,7 +371,7 @@ func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithDeploymentName(deploymentOneImage).
 		WithAppName(appName).
@@ -382,7 +382,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithActiveFrom(deploymentOneCreated).
 		WithActiveTo(deploymentTwoCreated))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithDeploymentName(deploymentTwoImage).
 		WithAppName(appName).
@@ -393,7 +393,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithActiveFrom(deploymentTwoCreated).
 		WithActiveTo(deploymentThreeCreated))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithDeploymentName(deploymentThreeImage).
 		WithAppName(appName).
@@ -411,11 +411,11 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
 
-	rd, _ := commonTestUtils.ApplyDeployment(builders.
+	rd, _ := commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
-		WithRadixApplication(builders.
+		WithRadixApplication(operatorutils.
 			ARadixApplication().
-			WithRadixRegistration(builders.ARadixRegistration()).
+			WithRadixRegistration(operatorutils.ARadixRegistration()).
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master")).
 		WithAppName(anyAppName).
@@ -498,7 +498,7 @@ func TestCreateEnvironment(t *testing.T) {
 	appName := "myApp"
 	envName := "myEnv"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(appName))
 
@@ -520,9 +520,9 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 			},
 		})
 	}
-	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev1")
-	createEvent(k8sObjectUtils.GetEnvironmentNamespace(anyAppName, "dev"), "ev2")
-	commonTestUtils.ApplyApplication(builders.
+	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, "dev"), "ev1")
+	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, "dev"), "ev2")
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -567,16 +567,16 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
+		WithRadixApplication(operatorutils.ARadixApplication().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master").
 			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
 			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorutils.NewDeployComponentBuilder().
 				WithName(anyComponent).
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -612,14 +612,14 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
+		WithRadixApplication(operatorutils.ARadixApplication().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master")).
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorutils.NewDeployComponentBuilder().
 				WithName(anyComponentName).
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -654,14 +654,14 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
-		WithRadixApplication(builders.ARadixApplication().
+		WithRadixApplication(operatorutils.ARadixApplication().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master")).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().
+			operatorutils.NewDeployJobComponentBuilder().
 				WithName(anyJobName).
 				WithVolumeMounts([]v1.RadixVolumeMount{
 					{
@@ -689,6 +689,75 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
+}
+
+func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
+	// Setup
+	envNs := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithRadixApplication(operatorutils.ARadixApplication().
+			WithAppName(anyAppName).
+			WithEnvironment(anyEnvironment, "master")).
+		WithComponents(
+			operatorutils.NewDeployComponentBuilder().WithName(anyComponentName).WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+		),
+	)
+
+	// Test
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response := <-responseChannel
+
+	environment := environmentModels.Environment{}
+	controllertest.GetResponseBody(response, &environment)
+	assert.ElementsMatch(t, []string{anyComponentName + suffix.OAuth2ClientSecret, anyComponentName + suffix.OAuth2CookieSecret, anyComponentName + suffix.OAuth2RedisPassword}, environment.ActiveDeployment.Components[0].Secrets)
+
+	// Update secret when k8s secret object is missing should return 404
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
+		"PUT",
+		fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, anyComponentName+suffix.OAuth2ClientSecret),
+		secretModels.SecretParameters{SecretValue: "clientsecret"},
+	)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+
+	// Update client secret when k8s secret exists should set Data
+	secretName := operatorutils.GetAuxiliaryComponentSecretName(anyComponentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
+	client.CoreV1().Secrets(envNs).Create(context.Background(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName}}, metav1.CreateOptions{})
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
+		"PUT",
+		fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, anyComponentName+suffix.OAuth2ClientSecret),
+		secretModels.SecretParameters{SecretValue: "clientsecret"},
+	)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	actualSecret, _ := client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret")})
+
+	// Update client secret when k8s secret exists should set Data
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
+		"PUT",
+		fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, anyComponentName+suffix.OAuth2CookieSecret),
+		secretModels.SecretParameters{SecretValue: "cookiesecret"},
+	)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	actualSecret, _ = client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret"), defaults.OAuthCookieSecretKeyName: []byte("cookiesecret")})
+
+	// Update client secret when k8s secret exists should set Data
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
+		"PUT",
+		fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, anyComponentName+suffix.OAuth2RedisPassword),
+		secretModels.SecretParameters{SecretValue: "redispassword"},
+	)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	actualSecret, _ = client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret"), defaults.OAuthCookieSecretKeyName: []byte("cookiesecret"), defaults.OAuthRedisPasswordKeyName: []byte("redispassword")})
 }
 
 func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
@@ -756,9 +825,9 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
-		WithRadixRegistration(builders.ARadixRegistration()).
+		WithRadixRegistration(operatorutils.ARadixRegistration()).
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
@@ -780,11 +849,11 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *tes
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 
 	anyAppName := "any-app"
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
-		WithRadixApplication(builders.
+		WithRadixApplication(operatorutils.
 			NewRadixApplicationBuilder().
-			WithRadixRegistration(builders.ARadixRegistration()).
+			WithRadixRegistration(operatorutils.ARadixRegistration()).
 			WithAppName(anyAppName).
 			WithEnvironment("dev", "master")).
 		WithAppName(anyAppName).
@@ -807,30 +876,30 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 	anyAppName := "any-app"
 	anyOrphanedSecret := "feature"
 
-	commonTestUtils.ApplyRegistration(builders.
+	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master").
 		WithEnvironment(anyOrphanedSecret, "feature"))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithImageTag("someimageindev"))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyOrphanedSecret).
 		WithImageTag("someimageinfeature"))
 
 	// Remove feature environment from application config
-	commonTestUtils.ApplyApplicationUpdate(builders.
+	commonTestUtils.ApplyApplicationUpdate(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -856,16 +925,16 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 	anyAppName := "any-app"
 	anyOrphanedSecret := "feature-1"
 
-	rr, _ := commonTestUtils.ApplyRegistration(builders.
+	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
 
-	commonTestUtils.ApplyEnvironment(builders.
+	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
@@ -896,7 +965,7 @@ func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 
 	anyAppName := "any-app"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master"))
@@ -921,7 +990,7 @@ func TestCreateSecret(t *testing.T) {
 	appName := "myApp"
 	envName := "myEnv"
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(appName))
 
@@ -939,11 +1008,11 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
 	handler := initHandler(kubeclient, radixclient, secretproviderclient, WithEventHandler(eventHandler))
-	raBuilder := builders.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
+	raBuilder := operatorutils.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
 	commonTestUtils.ApplyApplication(raBuilder)
 	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), envName)
 	eventHandler.EXPECT().
-		GetEvents(test.EqualsNamespaceFunc(nsFunc)).
+		GetEvents(controllertest.EqualsNamespaceFunc(nsFunc)).
 		Return(make([]*eventModels.Event, 0), fmt.Errorf("err")).
 		Return([]*eventModels.Event{{}, {}}, nil).
 		Times(1)

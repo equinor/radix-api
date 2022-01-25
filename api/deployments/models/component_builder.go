@@ -1,16 +1,14 @@
 package models
 
 import (
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
-const (
-	certPartSuffix = "-cert"
-	keyPartSuffix  = "-key"
-)
+const ()
 
 // ComponentBuilder Builds DTOs
 type ComponentBuilder interface {
@@ -79,7 +77,7 @@ func (b *componentBuilder) WithScheduledJobPayloadPath(scheduledJobPayloadPath s
 
 func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent) ComponentBuilder {
 	b.componentName = component.GetName()
-	b.componentType = component.GetType()
+	b.componentType = string(component.GetType())
 	b.componentImage = component.GetImage()
 
 	ports := []Port{}
@@ -99,8 +97,8 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	}
 
 	for _, externalAlias := range component.GetDNSExternalAlias() {
-		b.secrets = append(b.secrets, externalAlias+certPartSuffix)
-		b.secrets = append(b.secrets, externalAlias+keyPartSuffix)
+		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSCert)
+		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSKeyPart)
 	}
 
 	for _, volumeMount := range component.GetVolumeMounts() {
@@ -128,8 +126,19 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		}
 	}
 
-	if auth := component.GetAuthentication(); auth != nil && component.GetPublicPort() != "" && deployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
-		b.secrets = append(b.secrets, utils.GetComponentClientCertificateSecretName(component.GetName()))
+	if auth := component.GetAuthentication(); auth != nil && component.IsPublic() {
+		if deployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
+			b.secrets = append(b.secrets, utils.GetComponentClientCertificateSecretName(component.GetName()))
+		}
+		if auth.OAuth2 != nil {
+			oauth2, _ := defaults.NewOAuth2Config(defaults.WithOAuth2Defaults()).MergeWith(auth.OAuth2)
+			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2ClientSecret)
+			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2CookieSecret)
+
+			if oauth2.SessionStoreType == v1.SessionStoreRedis {
+				b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2RedisPassword)
+			}
+		}
 	}
 
 	b.environmentVariables = component.GetEnvironmentVariables()
