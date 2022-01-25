@@ -221,7 +221,7 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 		return nil, err
 	}
 
-	secretRefsSecrets, err := eh.getSecretRefsSecrets(rd)
+	secretRefsSecrets, err := eh.getSecretRefsSecrets(rd, envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -241,9 +241,7 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 
 	secrets = append(secrets, secretsFromAuthentication...)
 
-	for _, secretRefsSecret := range secretRefsSecrets {
-		secrets = append(secrets, secretRefsSecret)
-	}
+	secrets = append(secrets, secretRefsSecrets...)
 
 	return secrets, nil
 }
@@ -332,17 +330,6 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *v1.Radi
 	}
 
 	return secretDTOsMap, nil
-}
-
-func (eh SecretHandler) getSecretsFromComponentObjects(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
-	var secrets []models.Secret
-	secrets = append(secrets, eh.getCredentialSecretsForBlobVolumes(component, envNamespace)...)
-	secretsForSecretRefs, err := eh.getCredentialSecretsForSecretRefs(component, envNamespace)
-	if err != nil {
-		return nil, err
-	}
-	secrets = append(secrets, secretsForSecretRefs...)
-	return secrets, nil
 }
 
 func (eh SecretHandler) getCredentialSecretsForBlobVolumes(component v1.RadixCommonDeployComponent, envNamespace string) []models.Secret {
@@ -455,30 +442,15 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 	return accountKeySecretDTO, accountNameSecretDTO
 }
 
-func (eh SecretHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
-	secretDTOsMap := make(map[string]models.Secret)
-
+func (eh SecretHandler) getSecretsFromVolumeMounts(activeDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
+	var secrets []models.Secret
 	for _, component := range activeDeployment.Spec.Components {
-		secrets, err := eh.getSecretsFromComponentObjects(&component, envNamespace)
-		if err != nil {
-			return nil, err
-		}
-		for _, secret := range secrets {
-			secretDTOsMap[secret.Name] = secret
-		}
+		secrets = append(secrets, eh.getCredentialSecretsForBlobVolumes(&component, envNamespace)...)
 	}
-
 	for _, job := range activeDeployment.Spec.Jobs {
-		secrets, err := eh.getSecretsFromComponentObjects(&job, envNamespace)
-		if err != nil {
-			return nil, err
-		}
-		for _, secret := range secrets {
-			secretDTOsMap[secret.Name] = secret
-		}
+		secrets = append(secrets, eh.getCredentialSecretsForBlobVolumes(&job, envNamespace)...)
 	}
-
-	return secretDTOsMap, nil
+	return secrets, nil
 }
 
 func (eh SecretHandler) getSecretsFromAuthentication(activeDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
@@ -508,18 +480,31 @@ func (eh SecretHandler) getSecretsFromComponentAuthentication(component v1.Radix
 	return secrets, nil
 }
 
-func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment) (map[string]models.Secret, error) {
-	secretsMap := make(map[string]models.Secret)
+func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
+	var secrets []models.Secret
 	for _, component := range radixDeployment.Spec.Components {
-		getRadixCommonComponentSecretRefs(&component, secretsMap)
+		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&component, envNamespace)
+		if err != nil {
+			return nil, err
+		}
+		secrets = append(secrets, componentSecrets...)
 	}
 	for _, jobComponent := range radixDeployment.Spec.Jobs {
-		getRadixCommonComponentSecretRefs(&jobComponent, secretsMap)
+		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&jobComponent, envNamespace)
+		if err != nil {
+			return nil, err
+		}
+		secrets = append(secrets, componentSecrets...)
 	}
-	return secretsMap, nil
+	return secrets, nil
 }
 
-func getRadixCommonComponentSecretRefs(component v1.RadixCommonDeployComponent, secretsMap map[string]models.Secret) {
+func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
+	secrets, err := eh.getCredentialSecretsForSecretRefs(component, envNamespace)
+	if err != nil {
+		return nil, err
+	}
+
 	secretRefs := component.GetSecretRefs()
 	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
 		for _, item := range azureKeyVault.Items {
@@ -527,17 +512,18 @@ func getRadixCommonComponentSecretRefs(component v1.RadixCommonDeployComponent, 
 			if item.Type != nil {
 				itemType = string(*item.Type)
 			}
-			secret := &models.Secret{
+			secrets = append(secrets, models.Secret{
 				Name:        item.EnvVar,
 				DisplayName: fmt.Sprintf("%s '%s'", itemType, item.Name),
 				Type:        models.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    azureKeyVault.Name,
 				Component:   component.GetName(),
 				Status:      models.External.String(),
-			}
-			secretsMap[secret.Name] = *secret
+			})
 		}
 	}
+
+	return secrets, nil
 }
 
 func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(component v1.RadixCommonDeployComponent, envNamespace string) []models.Secret {
