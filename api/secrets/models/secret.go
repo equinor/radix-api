@@ -52,6 +52,7 @@ const (
 	SecretTypeCsiAzureBlobVolume    SecretType = "csi-azure-blob-volume"
 	SecretTypeCsiAzureKeyVaultCreds SecretType = "csi-azure-key-vault-creds"
 	SecretTypeCsiAzureKeyVaultItem  SecretType = "csi-azure-key-vault-item"
+	SecretTypeClientCertificateAuth SecretType = "client-cert-auth"
 	SecretTypeOAuth2Proxy           SecretType = "oauth2-proxy"
 	SecretTypeOrphaned              SecretType = "orphaned"
 	SecretTypePending               SecretType = "pending"

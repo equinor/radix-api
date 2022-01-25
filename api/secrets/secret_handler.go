@@ -556,7 +556,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(c
 			}
 		}
 
-		secrets = append(secrets, models.Secret{Name: secretName, Component: component.GetName(), Status: secretStatus})
+		secrets = append(secrets, models.Secret{Name: secretName, Type: models.SecretTypeClientCertificateAuth, Component: component.GetName(), Status: secretStatus})
 	}
 
 	return secrets
