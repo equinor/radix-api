@@ -151,7 +151,7 @@ func GetComponentStateFromSpec(
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		replicaSummaryList = getReplicaSummaryList(componentPods)
 
-		if component.GetType() == defaults.RadixComponentTypeJobScheduler {
+		if component.GetType() == v1.RadixComponentTypeJobScheduler {
 			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(kubeClient, envNs, component.GetName()) //scheduledJobs
 			if err != nil {
 				return nil, err
@@ -173,6 +173,7 @@ func GetComponentStateFromSpec(
 			componentBuilder.WithScheduledJobPayloadPath(jobComponent.Payload.Path)
 		}
 	}
+
 	return componentBuilder.
 		WithComponent(component).
 		WithStatus(status).
@@ -180,7 +181,8 @@ func GetComponentStateFromSpec(
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
-		BuildComponent(), nil
+		BuildComponent()
+
 }
 
 func getScheduledJobSummaryList(kubeClient kubernetes.Interface, jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
@@ -361,9 +363,9 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 
 func runningReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
 	switch component.GetType() {
-	case defaults.RadixComponentTypeComponent:
+	case v1.RadixComponentTypeComponent:
 		return runningComponentReplicaIsOutdated(component, actualPods)
-	case defaults.RadixComponentTypeJobScheduler:
+	case v1.RadixComponentTypeJobScheduler:
 		return false
 	default:
 		return false

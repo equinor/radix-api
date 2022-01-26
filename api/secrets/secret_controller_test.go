@@ -6,18 +6,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	_ "github.com/equinor/radix-api/api/events"
 	"github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	apiModels "github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
@@ -59,40 +59,6 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
-func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environment string) {
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName(deploymentOneImage).
-		WithAppName(appName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated).
-		WithCondition(v1.DeploymentInactive).
-		WithActiveFrom(deploymentOneCreated).
-		WithActiveTo(deploymentTwoCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName(deploymentTwoImage).
-		WithAppName(appName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated).
-		WithCondition(v1.DeploymentInactive).
-		WithActiveFrom(deploymentTwoCreated).
-		WithActiveTo(deploymentThreeCreated))
-
-	commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName(deploymentThreeImage).
-		WithAppName(appName).
-		WithEnvironment(environment).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated).
-		WithCondition(v1.DeploymentActive).
-		WithActiveFrom(deploymentThreeCreated))
-}
-
 func executeUpdateComponentSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
 	response := executeUpdateSecretTest(
 		oldSecretValue,
@@ -117,23 +83,23 @@ func executeUpdateJobSecretTest(oldSecretValue, updateSecret, updateComponent, u
 	return response
 }
 
-func configureApplicationComponentSecret(builder *k8sObjectUtils.ApplicationBuilder) {
+func configureApplicationComponentSecret(builder *operatorutils.ApplicationBuilder) {
 	(*builder).WithComponents(
-		builders.AnApplicationComponent().
+		operatorutils.AnApplicationComponent().
 			WithName(anyComponentName).
 			WithSecrets(anyEnvironmentName),
 	)
 }
 
-func configureApplicationJobSecret(builder *k8sObjectUtils.ApplicationBuilder) {
+func configureApplicationJobSecret(builder *operatorutils.ApplicationBuilder) {
 	(*builder).WithJobComponents(
-		builders.AnApplicationJobComponent().
+		operatorutils.AnApplicationJobComponent().
 			WithName(anyJobName).
 			WithSecrets(anyEnvironmentName),
 	)
 }
 
-func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *k8sObjectUtils.ApplicationBuilder)) *httptest.ResponseRecorder {
+func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *operatorutils.ApplicationBuilder)) *httptest.ResponseRecorder {
 
 	// Setup
 	parameters := models.SecretParameters{
@@ -141,13 +107,13 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 	}
 
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	appBuilder := builders.
+	appBuilder := operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName)
 	appConfigurator(&appBuilder)
 
 	commonTestUtils.ApplyApplication(appBuilder)
-	ns := k8sObjectUtils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+	ns := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -160,7 +126,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 	secretObject := corev1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
-			Name: k8sObjectUtils.GetComponentSecretName(anyComponentName),
+			Name: operatorutils.GetComponentSecretName(anyComponentName),
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
@@ -170,7 +136,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 	secretObject = corev1.Secret{
 		Type: "Opaque",
 		ObjectMeta: metav1.ObjectMeta{
-			Name: k8sObjectUtils.GetComponentSecretName(anyJobName),
+			Name: operatorutils.GetComponentSecretName(anyJobName),
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
@@ -235,7 +201,7 @@ func TestUpdateSecret_NoUpdate_NoError(t *testing.T) {
 
 func TestUpdateSecret_NonExistingComponent_Missing(t *testing.T) {
 	nonExistingComponent := "frontend"
-	nonExistingSecretObjName := k8sObjectUtils.GetComponentSecretName(nonExistingComponent)
+	nonExistingSecretObjName := operatorutils.GetComponentSecretName(nonExistingComponent)
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
@@ -259,24 +225,24 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 
 	response := executeUpdateComponentSecretTest(oldSecretValue, nonExistingSecret, anyComponentName, anyEnvironmentName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	secretObjName := k8sObjectUtils.GetComponentSecretName(anyComponentName)
+	secretObjName := operatorutils.GetComponentSecretName(anyComponentName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 
 	response = executeUpdateJobSecretTest(oldSecretValue, nonExistingSecret, anyJobName, anyEnvironmentName, updateSecretValue)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
-	secretObjName = k8sObjectUtils.GetComponentSecretName(anyJobName)
+	secretObjName = operatorutils.GetComponentSecretName(anyJobName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
 
-func componentBuilderFromSecretMap(secretsMap map[string][]string) func(*k8sObjectUtils.DeploymentBuilder) {
-	return func(deployBuilder *k8sObjectUtils.DeploymentBuilder) {
-		componentBuilders := make([]builders.DeployComponentBuilder, 0, len(secretsMap))
+func componentBuilderFromSecretMap(secretsMap map[string][]string) func(*operatorutils.DeploymentBuilder) {
+	return func(deployBuilder *operatorutils.DeploymentBuilder) {
+		componentBuilders := make([]operatorutils.DeployComponentBuilder, 0, len(secretsMap))
 		for componentName, componentSecrets := range secretsMap {
-			component := builders.
+			component := operatorutils.
 				NewDeployComponentBuilder().
 				WithName(componentName).
 				WithSecrets(componentSecrets)
@@ -286,11 +252,11 @@ func componentBuilderFromSecretMap(secretsMap map[string][]string) func(*k8sObje
 	}
 }
 
-func jobBuilderFromSecretMap(secretsMap map[string][]string) func(*k8sObjectUtils.DeploymentBuilder) {
-	return func(deployBuilder *k8sObjectUtils.DeploymentBuilder) {
-		jobBuilders := make([]builders.DeployJobComponentBuilder, 0, len(secretsMap))
+func jobBuilderFromSecretMap(secretsMap map[string][]string) func(*operatorutils.DeploymentBuilder) {
+	return func(deployBuilder *operatorutils.DeploymentBuilder) {
+		jobBuilders := make([]operatorutils.DeployJobComponentBuilder, 0, len(secretsMap))
 		for jobName, jobSecret := range secretsMap {
-			job := builders.
+			job := operatorutils.
 				NewDeployJobComponentBuilder().
 				WithName(jobName).
 				WithSecrets(jobSecret)
@@ -310,12 +276,12 @@ func applyTestSecretJobSecrets(commonTestUtils *commontest.Utils, kubeclient kub
 	applyTestSecretSecrets(commonTestUtils, kubeclient, appName, environmentName, buildFrom, clusterComponentSecretsMap, configurator)
 }
 
-func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, clusterComponentSecretsMap map[string]map[string][]byte, deploymentConfigurator func(*k8sObjectUtils.DeploymentBuilder)) {
-	ns := k8sObjectUtils.GetEnvironmentNamespace(appName, environmentName)
+func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, clusterComponentSecretsMap map[string]map[string][]byte, deploymentConfigurator func(*operatorutils.DeploymentBuilder)) {
+	ns := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 
-	deployBuilder := builders.
+	deployBuilder := operatorutils.
 		NewDeploymentBuilder().
-		WithRadixApplication(builders.ARadixApplication()).
+		WithRadixApplication(operatorutils.ARadixApplication()).
 		WithAppName(anyAppName).
 		WithEnvironment(environmentName)
 
@@ -334,7 +300,7 @@ func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubern
 		secretObject := corev1.Secret{
 			Type: "Opaque",
 			ObjectMeta: metav1.ObjectMeta{
-				Name: k8sObjectUtils.GetComponentSecretName(componentName),
+				Name: operatorutils.GetComponentSecretName(componentName),
 			},
 			Data: clusterComponentSecrets,
 		}
@@ -746,17 +712,17 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	buildFrom := "master"
 	alias := "cdn.myalias.com"
 
-	deployment, err := commonTestUtils.ApplyDeployment(builders.
+	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(appName).
 		WithEnvironment(environmentName).
 		WithImageTag(buildFrom))
 
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(appName).
 		WithEnvironment(environmentName, buildFrom).
-		WithComponent(builders.
+		WithComponent(operatorutils.
 			AnApplicationComponent().
 			WithName(componentName)).
 		WithDNSExternalAlias(alias, environmentName, componentName))
@@ -792,6 +758,96 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	}
 }
 
+func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+	handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+	appName := "appname"
+	component1Name := "c1"
+	component2Name := "c2"
+	component3Name := "c3"
+	component4Name := "c4"
+	environmentName := "dev"
+	envNs := operatorutils.GetEnvironmentNamespace(appName, environmentName)
+
+	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(appName).
+		WithComponents(
+			operatorutils.NewDeployComponentBuilder().WithName(component1Name).WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component2Name).WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component3Name).WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component4Name).WithPublicPort("http"),
+		).
+		WithEnvironment(environmentName))
+
+	commonTestUtils.ApplyApplication(operatorutils.
+		ARadixApplication().
+		WithAppName(appName).
+		WithEnvironment(environmentName, "branch1").
+		WithComponents(
+			operatorutils.NewApplicationComponentBuilder().WithName(component1Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component2Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component3Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component4Name),
+		))
+
+	// No secret objects exist
+	secretDtos, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected := []models.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+	// k8s secrets with clientsecret set for component1 and cookiesecret set for component2
+	kubeclient.CoreV1().Secrets(envNs).Create(
+		context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: k8sObjectUtils.GetAuxiliaryComponentSecretName(component1Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			Data:       map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("client secret")},
+		},
+		metav1.CreateOptions{},
+	)
+	comp2Secret, _ := kubeclient.CoreV1().Secrets(envNs).Create(
+		context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: k8sObjectUtils.GetAuxiliaryComponentSecretName(component2Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			Data:       map[string][]byte{defaults.OAuthCookieSecretKeyName: []byte("cookie secret")},
+		},
+		metav1.CreateOptions{},
+	)
+	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected = []models.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+	// RedisPassword should have status Consistent
+	comp2Secret.Data[defaults.OAuthRedisPasswordKeyName] = []byte("redis pwd")
+	kubeclient.CoreV1().Secrets(envNs).Update(context.Background(), comp2Secret, metav1.UpdateOptions{})
+	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected = []models.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+}
+
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	secretproviderclient secretsstorevclient.Interface,
@@ -800,28 +856,4 @@ func initHandler(client kubernetes.Interface,
 	options := []SecretHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)
-}
-
-func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
-	podSpec := getPodSpec(componentName)
-	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
-}
-
-func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
-	kubeclient.CoreV1().Pods(namespace).Delete(context.TODO(), getComponentPodName(componentName), metav1.DeleteOptions{})
-}
-
-func getPodSpec(componentName string) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getComponentPodName(componentName),
-			Labels: map[string]string{
-				kube.RadixComponentLabel: componentName,
-			},
-		},
-	}
-}
-
-func getComponentPodName(componentName string) string {
-	return fmt.Sprintf("%s-pod", componentName)
 }

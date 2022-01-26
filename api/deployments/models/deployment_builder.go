@@ -4,6 +4,7 @@ import (
 	"time"
 
 	radixutils "github.com/equinor/radix-common/utils"
+	errorutils "github.com/equinor/radix-common/utils/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -18,8 +19,8 @@ type DeploymentBuilder interface {
 	WithJobName(string) DeploymentBuilder
 	WithPipelineJob(*v1.RadixJob) DeploymentBuilder
 	WithComponents(components []*Component) DeploymentBuilder
-	BuildDeploymentSummary() *DeploymentSummary
-	BuildDeployment() *Deployment
+	BuildDeploymentSummary() (*DeploymentSummary, error)
+	BuildDeployment() (*Deployment, error)
 }
 
 type deploymentBuilder struct {
@@ -30,6 +31,7 @@ type deploymentBuilder struct {
 	jobName     string
 	pipelineJob *v1.RadixJob
 	components  []*Component
+	errors      []error
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
@@ -37,7 +39,12 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 
 	components := make([]*Component, len(rd.Spec.Components))
 	for i, component := range rd.Spec.Components {
-		components[i] = NewComponentBuilder().WithComponent(&component).BuildComponent()
+		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponent()
+		if err != nil {
+			b.errors = append(b.errors, err)
+			continue
+		}
+		components[i] = componentDto
 	}
 
 	b.WithName(rd.GetName()).
@@ -89,14 +96,22 @@ func (b *deploymentBuilder) WithActiveTo(activeTo time.Time) DeploymentBuilder {
 	return b
 }
 
-func (b *deploymentBuilder) BuildDeploymentSummary() *DeploymentSummary {
+func (b *deploymentBuilder) buildError() error {
+	if len(b.errors) == 0 {
+		return nil
+	}
+
+	return errorutils.Concat(b.errors)
+}
+
+func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error) {
 	return &DeploymentSummary{
 		Name:                             b.name,
 		Environment:                      b.environment,
 		ActiveFrom:                       radixutils.FormatTimestamp(b.activeFrom),
 		ActiveTo:                         radixutils.FormatTimestamp(b.activeTo),
 		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
-	}
+	}, b.buildError()
 }
 
 func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummaryPipelineJobInfo {
@@ -113,7 +128,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 	return jobInfo
 }
 
-func (b *deploymentBuilder) BuildDeployment() *Deployment {
+func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 	return &Deployment{
 		Name:         b.name,
 		Environment:  b.environment,
@@ -121,7 +136,7 @@ func (b *deploymentBuilder) BuildDeployment() *Deployment {
 		ActiveTo:     radixutils.FormatTimestamp(b.activeTo),
 		Components:   b.components,
 		CreatedByJob: b.jobName,
-	}
+	}, b.buildError()
 }
 
 // NewDeploymentBuilder Constructor for application deploymentBuilder
