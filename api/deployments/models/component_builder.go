@@ -8,8 +8,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
-const ()
-
 // ComponentBuilder Builds DTOs
 type ComponentBuilder interface {
 	WithStatus(ComponentStatus) ComponentBuilder
