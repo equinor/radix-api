@@ -18,7 +18,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 
 	t.Run("build with deployment", func(t *testing.T) {
 		t.Parallel()
-		b, err := NewDeploymentBuilder().WithRadixDeployment(
+		b := NewDeploymentBuilder().WithRadixDeployment(
 			v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   deploymentName,
@@ -33,9 +33,9 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				},
 			},
 		)
-		assert.NoError(t, err)
 
-		actual := b.BuildDeploymentSummary()
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
 		expected := &DeploymentSummary{
 			Name:        deploymentName,
 			Environment: envName,
@@ -66,7 +66,8 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				},
 			},
 		)
-		actual := b.BuildDeploymentSummary()
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
 		expected := &DeploymentSummary{
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob:            jobName,

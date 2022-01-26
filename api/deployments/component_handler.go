@@ -173,19 +173,15 @@ func GetComponentStateFromSpec(
 			componentBuilder.WithScheduledJobPayloadPath(jobComponent.Payload.Path)
 		}
 	}
-	builder := componentBuilder.
+
+	return componentBuilder.
 		WithStatus(status).
 		WithPodNames(componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
-		WithRadixEnvironmentVariables(environmentVariables)
-
-	builder, err := builder.WithComponent(component)
-	if err != nil {
-		return nil, err
-	}
-
-	return builder.BuildComponent(), nil
+		WithRadixEnvironmentVariables(environmentVariables).
+		WithComponent(component).
+		BuildComponent()
 
 }
 
