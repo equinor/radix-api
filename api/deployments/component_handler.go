@@ -175,12 +175,12 @@ func GetComponentStateFromSpec(
 	}
 
 	return componentBuilder.
+		WithComponent(component).
 		WithStatus(status).
 		WithPodNames(componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
-		WithComponent(component).
 		BuildComponent()
 
 }

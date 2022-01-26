@@ -146,8 +146,7 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, err
 	}
 
-	return deploymentModels.
-		NewDeploymentBuilder().
+	return deploymentModels.NewDeploymentBuilder().
 		WithRadixDeployment(*rd).
 		WithActiveTo(activeTo).
 		WithComponents(components).
@@ -228,7 +227,8 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 			continue
 		}
 
-		deploySummary, err := deploymentModels.NewDeploymentBuilder().
+		deploySummary, err := deploymentModels.
+			NewDeploymentBuilder().
 			WithRadixDeployment(rd).
 			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]]).
 			BuildDeploymentSummary()
