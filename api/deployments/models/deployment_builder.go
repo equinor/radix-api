@@ -10,7 +10,7 @@ import (
 
 // DeploymentBuilder Builds DTOs
 type DeploymentBuilder interface {
-	WithRadixDeployment(v1.RadixDeployment) DeploymentBuilder
+	WithRadixDeployment(v1.RadixDeployment) (DeploymentBuilder, error)
 	WithName(string) DeploymentBuilder
 	WithEnvironment(string) DeploymentBuilder
 	WithActiveFrom(time.Time) DeploymentBuilder
@@ -32,12 +32,16 @@ type deploymentBuilder struct {
 	components  []*Component
 }
 
-func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
+func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) (DeploymentBuilder, error) {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
 
 	components := make([]*Component, len(rd.Spec.Components))
 	for i, component := range rd.Spec.Components {
-		components[i] = NewComponentBuilder().WithComponent(&component).BuildComponent()
+		builder, err := NewComponentBuilder().WithComponent(&component)
+		if err != nil {
+			return nil, err
+		}
+		components[i] = builder.BuildComponent()
 	}
 
 	b.WithName(rd.GetName()).
@@ -47,7 +51,7 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 		WithActiveFrom(rd.Status.ActiveFrom.Time).
 		WithActiveTo(rd.Status.ActiveTo.Time)
 
-	return b
+	return b, nil
 }
 
 func (b *deploymentBuilder) WithJobName(jobName string) DeploymentBuilder {

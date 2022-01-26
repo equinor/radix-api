@@ -17,7 +17,7 @@ type ComponentBuilder interface {
 	WithSchedulerPort(schedulerPort *int32) ComponentBuilder
 	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
-	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
+	WithComponent(v1.RadixCommonDeployComponent) (ComponentBuilder, error)
 	BuildComponentSummary() *ComponentSummary
 	BuildComponent() *Component
 }
@@ -73,7 +73,7 @@ func (b *componentBuilder) WithScheduledJobPayloadPath(scheduledJobPayloadPath s
 	return b
 }
 
-func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent) ComponentBuilder {
+func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent) (ComponentBuilder, error) {
 	b.componentName = component.GetName()
 	b.componentType = string(component.GetType())
 	b.componentImage = component.GetImage()
@@ -140,7 +140,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	}
 
 	b.environmentVariables = component.GetEnvironmentVariables()
-	return b
+	return b, nil
 }
 
 func (b *componentBuilder) BuildComponentSummary() *ComponentSummary {

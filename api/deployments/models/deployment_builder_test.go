@@ -18,7 +18,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 
 	t.Run("build with deployment", func(t *testing.T) {
 		t.Parallel()
-		b := NewDeploymentBuilder().WithRadixDeployment(
+		b, err := NewDeploymentBuilder().WithRadixDeployment(
 			v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   deploymentName,
@@ -33,6 +33,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				},
 			},
 		)
+		assert.NoError(t, err)
 
 		actual := b.BuildDeploymentSummary()
 		expected := &DeploymentSummary{

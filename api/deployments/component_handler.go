@@ -173,14 +173,20 @@ func GetComponentStateFromSpec(
 			componentBuilder.WithScheduledJobPayloadPath(jobComponent.Payload.Path)
 		}
 	}
-	return componentBuilder.
-		WithComponent(component).
+	builder := componentBuilder.
 		WithStatus(status).
 		WithPodNames(componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
-		WithRadixEnvironmentVariables(environmentVariables).
-		BuildComponent(), nil
+		WithRadixEnvironmentVariables(environmentVariables)
+
+	builder, err := builder.WithComponent(component)
+	if err != nil {
+		return nil, err
+	}
+
+	return builder.BuildComponent(), nil
+
 }
 
 func getScheduledJobSummaryList(kubeClient kubernetes.Interface, jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {

@@ -146,11 +146,16 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, err
 	}
 
-	return deploymentModels.NewDeploymentBuilder().
-		WithRadixDeployment(*rd).
+	builder, err := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(*rd)
+	if err != nil {
+		return nil, err
+	}
+
+	builder = builder.
 		WithActiveTo(activeTo).
-		WithComponents(components).
-		BuildDeployment(), nil
+		WithComponents(components)
+
+	return builder.BuildDeployment(), nil
 }
 
 func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {
@@ -226,10 +231,12 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 			continue
 		}
 
-		builder := deploymentModels.
-			NewDeploymentBuilder().
-			WithRadixDeployment(rd).
-			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]])
+		builder, err := deploymentModels.NewDeploymentBuilder().WithRadixDeployment(rd)
+		if err != nil {
+			return nil, err
+		}
+
+		builder = builder.WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]])
 
 		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
 	}
