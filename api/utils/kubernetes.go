@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/equinor/radix-api/api/metrics"
-
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	secretProviderClient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
 type RestClientConfigOption func(*restclient.Config)
@@ -33,9 +33,9 @@ func WithBurst(burst int) RestClientConfigOption {
 
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
-	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
-	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface)
+	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface)
+	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface)
+	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface)
 }
 
 type kubeUtil struct {
@@ -58,12 +58,12 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 }
 
 //GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface) {
 	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{}, options...)
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface) {
 	if ku.useOutClusterClient {
 		config := getOutClusterClientConfig(token, impersonation, options)
 		return getKubernetesClientFromConfig(config)
@@ -73,7 +73,7 @@ func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string,
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
-func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
+func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface) {
 	config := getInClusterClientConfig(options)
 	return getKubernetesClientFromConfig(config)
 }
@@ -128,7 +128,7 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 	return config
 }
 
-func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface) {
+func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface, secretProviderClient.Interface) {
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("getClusterConfig k8s client: %v", err)
@@ -139,5 +139,9 @@ func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interf
 		log.Fatalf("getClusterConfig radix client: %v", err)
 	}
 
-	return client, radixClient
+	secretProviderClient, err := secretProviderClient.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("getClusterConfig secret provider client client: %v", err)
+	}
+	return client, radixClient, secretProviderClient
 }

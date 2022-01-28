@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -29,7 +31,7 @@ const (
 )
 
 func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _ := setupTest()
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _, _ := setupTest()
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
@@ -41,16 +43,17 @@ func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
-func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube) {
+func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
-	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil()
+	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient
 }
 
 func Test_GetComponentEnvVars(t *testing.T) {

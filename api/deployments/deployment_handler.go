@@ -96,7 +96,8 @@ func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(appName, en
 		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
 	}
 
-	return deploy.getDeployments(namespace, appName, "", latest)
+	deployments, err := deploy.getDeployments(namespace, appName, "", latest)
+	return deployments, err
 }
 
 // GetDeploymentsForJob Lists deployments for job name
@@ -149,7 +150,8 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		WithRadixDeployment(*rd).
 		WithActiveTo(activeTo).
 		WithComponents(components).
-		BuildDeployment(), nil
+		BuildDeployment()
+
 }
 
 func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {
@@ -225,12 +227,16 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 			continue
 		}
 
-		builder := deploymentModels.
+		deploySummary, err := deploymentModels.
 			NewDeploymentBuilder().
 			WithRadixDeployment(rd).
-			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]])
+			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]]).
+			BuildDeploymentSummary()
+		if err != nil {
+			return nil, err
+		}
 
-		radixDeployments = append(radixDeployments, builder.BuildDeploymentSummary())
+		radixDeployments = append(radixDeployments, deploySummary)
 	}
 
 	return radixDeployments, nil

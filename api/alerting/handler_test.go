@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 type HandlerTestSuite struct {
@@ -27,7 +28,8 @@ type HandlerTestSuite struct {
 func (s *HandlerTestSuite) SetupTest() {
 	inKubeClient, outKubeClient := kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
 	inRadixClient, outRadixClient := radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
-	s.accounts = models.NewAccounts(inKubeClient, inRadixClient, outKubeClient, outRadixClient, "", radixmodels.Impersonation{})
+	inSecretProviderClient, outSecretProviderClient := secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
+	s.accounts = models.NewAccounts(inKubeClient, inRadixClient, inSecretProviderClient, outKubeClient, outRadixClient, outSecretProviderClient, "", radixmodels.Impersonation{})
 }
 
 func TestHandlerTestSuite(t *testing.T) {

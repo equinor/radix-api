@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -26,7 +27,7 @@ func createGetComponentsEndpoint(appName, deployName string) string {
 
 func TestGetComponents_non_existing_app(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _ := setupTest()
+	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -39,7 +40,7 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 }
 
 func TestGetComponents_non_existing_deployment(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithAppName(anyAppName))
@@ -58,7 +59,7 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 
 func TestGetComponents_active_deployment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithJobComponents(
@@ -92,20 +93,19 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithDeploymentName(anyDeployName).
-			WithJobComponents().
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithDNSExternalAlias("some.alias.com").
-					WithDNSExternalAlias("another.alias.com")))
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithDNSExternalAlias("some.alias.com").
+				WithDNSExternalAlias("another.alias.com")))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -128,37 +128,36 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithDeploymentName(anyDeployName).
-			WithJobComponents(
-				builders.NewDeployJobComponentBuilder().
-					WithName("job").
-					WithVolumeMounts([]v1.RadixVolumeMount{
-						{
-							Type:      v1.MountTypeBlob,
-							Name:      "jobvol",
-							Container: "jobcont",
-							Path:      "jobpath",
-						},
-					}),
-			).
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithVolumeMounts([]v1.RadixVolumeMount{
-						{
-							Type:      v1.MountTypeBlob,
-							Name:      "somevolumename",
-							Container: "some-container",
-							Path:      "some-path",
-						},
-					})))
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents(
+			builders.NewDeployJobComponentBuilder().
+				WithName("job").
+				WithVolumeMounts([]v1.RadixVolumeMount{
+					{
+						Type:      v1.MountTypeBlob,
+						Name:      "jobvol",
+						Container: "jobcont",
+						Path:      "jobpath",
+					},
+				}),
+		).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithVolumeMounts([]v1.RadixVolumeMount{
+					{
+						Type:      v1.MountTypeBlob,
+						Name:      "somevolumename",
+						Container: "some-container",
+						Path:      "some-path",
+					},
+				})))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -186,32 +185,31 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 
 func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithDeploymentName(anyDeployName).
-			WithJobComponents().
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithVolumeMounts([]v1.RadixVolumeMount{
-						{
-							Type:      v1.MountTypeBlob,
-							Name:      "somevolumename1",
-							Container: "some-container1",
-							Path:      "some-path1",
-						},
-						{
-							Type:      v1.MountTypeBlob,
-							Name:      "somevolumename2",
-							Container: "some-container2",
-							Path:      "some-path2",
-						},
-					})))
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithVolumeMounts([]v1.RadixVolumeMount{
+					{
+						Type:      v1.MountTypeBlob,
+						Name:      "somevolumename1",
+						Container: "some-container1",
+						Path:      "some-path1",
+					},
+					{
+						Type:      v1.MountTypeBlob,
+						Name:      "somevolumename2",
+						Container: "some-container2",
+						Path:      "some-path2",
+					},
+				})))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -232,9 +230,41 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountname")
 }
 
+func TestGetComponents_OAuth2(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			builders.NewDeployComponentBuilder().WithName("c1").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			builders.NewDeployComponentBuilder().WithName("c2").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+			builders.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
+			builders.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+		))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, getComponentByName("c1", components).Secrets)
+	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, getComponentByName("c2", components).Secrets)
+	assert.Empty(t, getComponentByName("c3", components).Secrets)
+	assert.Empty(t, getComponentByName("c4", components).Secrets)
+}
+
 func TestGetComponents_inactive_deployment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 
 	initialDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
 	activeDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-14T11:45:26Z")
@@ -308,7 +338,7 @@ func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
 
 func TestGetComponents_success(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -331,7 +361,7 @@ func TestGetComponents_success(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -372,7 +402,7 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -412,7 +442,7 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -452,7 +482,7 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -492,21 +522,20 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 
 func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
 	minReplicas := int32(2)
 	maxReplicas := int32(6)
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils,
-		builders.ARadixDeployment().
-			WithAppName("any-app").
-			WithEnvironment("prod").
-			WithDeploymentName(anyDeployName).
-			WithJobComponents().
-			WithComponents(
-				builders.NewDeployComponentBuilder().
-					WithName("frontend").
-					WithPort("http", 8080).
-					WithPublicPort("http").
-					WithHorizontalScaling(&minReplicas, maxReplicas)))
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithHorizontalScaling(&minReplicas, maxReplicas)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)

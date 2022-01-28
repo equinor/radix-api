@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 
 	"github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/api/utils"
@@ -119,16 +120,16 @@ func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interf
 }
 
 //GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
-	return ku.kubeFake, ku.radixFake
+func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubefake client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
-	return ku.kubeFake, ku.radixFake
+func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil
 }
 
 // GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
-func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface) {
-	return ku.kubeFake, ku.radixFake
+func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil
 }

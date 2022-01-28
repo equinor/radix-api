@@ -163,7 +163,7 @@ func (h *handler) updateConfigSecret(secret corev1.Secret, config *alertModels.U
 		}
 	}
 
-	kubeUtil, _ := kube.New(h.accounts.UserAccount.Client, h.accounts.UserAccount.RadixClient)
+	kubeUtil, _ := kube.New(h.accounts.UserAccount.Client, h.accounts.UserAccount.RadixClient, h.accounts.UserAccount.SecretProviderClient)
 	_, err := kubeUtil.ApplySecret(h.namespace, &secret)
 	return err
 }

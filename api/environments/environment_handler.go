@@ -3,6 +3,7 @@ package environments
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/secrets"
 	"strings"
 	"time"
 
@@ -36,8 +37,11 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.radixclient = accounts.UserAccount.RadixClient
 		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.deployHandler = deployments.Init(accounts)
+		eh.secretHandler = secrets.Init(secrets.WithAccounts(accounts))
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
+		eh.kubeUtil = kubeUtil
 	}
 }
 
@@ -54,8 +58,10 @@ type EnvironmentHandler struct {
 	radixclient     radixclient.Interface
 	inClusterClient kubernetes.Interface
 	deployHandler   deployments.DeployHandler
+	secretHandler   secrets.SecretHandler
 	eventHandler    events.EventHandler
 	accounts        models.Accounts
+	kubeUtil        *kube.Kube
 }
 
 // Init Constructor.
@@ -142,7 +148,7 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 
 		environmentDto.ActiveDeployment = deployment
 
-		secrets, err := eh.GetEnvironmentSecretsForDeployment(appName, envName, deployment)
+		secrets, err := eh.secretHandler.GetSecretsForDeployment(appName, envName, deployment.Name)
 		if err != nil {
 			return nil, err
 		}

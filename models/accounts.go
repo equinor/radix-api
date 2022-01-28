@@ -7,35 +7,41 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"k8s.io/client-go/kubernetes"
+	secretProviderClient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
 // NewAccounts creates a new Accounts struct
 func NewAccounts(
 	inClusterClient kubernetes.Interface,
 	inClusterRadixClient radixclient.Interface,
+	inClusterSecretProviderClient secretProviderClient.Interface,
 	outClusterClient kubernetes.Interface,
 	outClusterRadixClient radixclient.Interface,
+	outClusterSecretProviderClient secretProviderClient.Interface,
 	token string,
 	impersonation radixmodels.Impersonation) Accounts {
 
 	return Accounts{
 		UserAccount: Account{
-			Client:      outClusterClient,
-			RadixClient: outClusterRadixClient,
+			Client:               outClusterClient,
+			RadixClient:          outClusterRadixClient,
+			SecretProviderClient: outClusterSecretProviderClient,
 		},
 		ServiceAccount: Account{
-			Client:      inClusterClient,
-			RadixClient: inClusterRadixClient,
+			Client:               inClusterClient,
+			RadixClient:          inClusterRadixClient,
+			SecretProviderClient: inClusterSecretProviderClient,
 		},
 		token:         token,
 		impersonation: impersonation,
 	}
 }
 
-func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface) Account {
+func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface, inClusterSecretProviderClient secretProviderClient.Interface) Account {
 	return Account{
-		Client:      inClusterClient,
-		RadixClient: inClusterRadixClient,
+		Client:               inClusterClient,
+		RadixClient:          inClusterRadixClient,
+		SecretProviderClient: inClusterSecretProviderClient,
 	}
 }
 

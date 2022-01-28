@@ -34,7 +34,8 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 			},
 		)
 
-		actual := b.BuildDeploymentSummary()
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
 		expected := &DeploymentSummary{
 			Name:        deploymentName,
 			Environment: envName,
@@ -65,7 +66,8 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				},
 			},
 		)
-		actual := b.BuildDeploymentSummary()
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
 		expected := &DeploymentSummary{
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob:            jobName,

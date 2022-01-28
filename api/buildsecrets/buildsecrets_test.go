@@ -2,11 +2,12 @@ package buildsecrets
 
 import (
 	"fmt"
+	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"testing"
 
 	"github.com/equinor/radix-api/api/buildsecrets/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
@@ -29,9 +30,10 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	secretproviderclient := secretproviderfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
