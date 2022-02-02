@@ -38,6 +38,7 @@ Status:
 ```
 $ mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
 $ mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
+$ mockgen -source ./api/secrets/secret_handler.go -destination ./api/secrets/mock/secret_handler_mock.go -package mock
 ```
 
 ### Running locally
