@@ -1,788 +1,190 @@
 package secrets
 
 import (
-	"fmt"
-	"github.com/equinor/radix-api/api/deployments"
-	"github.com/equinor/radix-api/api/events"
-	"github.com/equinor/radix-api/api/secrets/models"
-	apiModels "github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"context"
+	deployMock "github.com/equinor/radix-api/api/deployments/mock"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	eventsMock "github.com/equinor/radix-api/api/events/mock"
+	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
+	"github.com/stretchr/testify/suite"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"testing"
 )
 
-func TestInit(t *testing.T) {
-	type args struct {
-		opts []SecretHandlerOptions
-	}
-	var tests []struct {
-		name string
-		args args
-		want SecretHandler
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, Init(tt.args.opts...), "Init()")
-		})
-	}
+type secretHandlerTestSuite struct {
+	suite.Suite
 }
 
-func TestSecretHandler_ChangeComponentSecret(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
+func TestRunSecretHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(secretHandlerTestSuite))
+}
+
+func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
+	ctrl := gomock.NewController(s.T())
+	defer ctrl.Finish()
+	deploymentName1 := "deploymentName1"
+	type testScenario struct {
+		name            string
 		appName         string
 		envName         string
-		componentName   string
-		secretName      string
-		componentSecret models.SecretParameters
+		deploymentName  string
+		Components      []v1.RadixDeployComponent
+		Jobs            []v1.RadixDeployJobComponent
+		externalAliases []v1.ExternalAlias
+		want            []secretModels.Secret
+		wantErr         assert.ErrorAssertionFunc
+		initScenario    func(scenario testScenario)
+		expectedError   bool
+		expectedSecrets []secretModels.Secret
 	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr assert.ErrorAssertionFunc
+	scenarios := []testScenario{
+		{
+			name:           "regular secrets",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			Components: []v1.RadixDeployComponent{{
+				Name: anyComponentName,
+				Secrets: []string{
+					"SECRET_C1",
+				},
+			}},
+			Jobs: []v1.RadixDeployJobComponent{{
+				Name: anyJobName,
+				Secrets: []string{
+					"SECRET_J1",
+				},
+			}},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "SECRET_C1",
+					DisplayName: "SECRET_C1",
+					Type:        secretModels.SecretTypeGeneric,
+					Resource:    "",
+					Component:   anyComponentName,
+					Status:      "Pending",
+				},
+				{
+					Name:        "SECRET_J1",
+					DisplayName: "SECRET_J1",
+					Type:        secretModels.SecretTypeGeneric,
+					Resource:    "",
+					Component:   anyJobName,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name:           "External alias secrets",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			Components:     []v1.RadixDeployComponent{{Name: anyComponentName}},
+			externalAliases: []v1.ExternalAlias{{
+				Alias:       "someExternalAlias",
+				Environment: anyEnvironment,
+				Component:   anyComponentName,
+			},
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "someExternalAlias-key",
+					DisplayName: "someExternalAlias key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "",
+					Component:   anyComponentName,
+					Status:      "Pending",
+				},
+				{
+					Name:        "someExternalAlias-cert",
+					DisplayName: "someExternalAlias certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "",
+					Component:   anyComponentName,
+					Status:      "Pending",
+				},
+			},
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
+
+	for _, scenario := range scenarios {
+		s.Run(scenario.name, func() {
+			kubeClient, radixClient, _ := s.getUtils()
+			deployHandler := deployMock.NewMockDeployHandler(ctrl)
+			eventHandler := eventsMock.NewMockEventHandler(ctrl)
+			handler := SecretHandler{
+				client:        kubeClient,
+				radixclient:   radixClient,
+				deployHandler: deployHandler,
+				eventHandler:  eventHandler,
 			}
-			tt.wantErr(t, eh.ChangeComponentSecret(tt.args.appName, tt.args.envName, tt.args.componentName, tt.args.secretName, tt.args.componentSecret), fmt.Sprintf("ChangeComponentSecret(%v, %v, %v, %v, %v)", tt.args.appName, tt.args.envName, tt.args.componentName, tt.args.secretName, tt.args.componentSecret))
+			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(scenario.appName, scenario.envName, false).
+				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName}}, nil)
+			deployHandler.EXPECT().GetDeploymentWithName(scenario.appName, deploymentName1).
+				Return(&deploymentModels.Deployment{
+					Name:       scenario.deploymentName,
+					Components: getComponents(scenario.Components),
+				}, nil)
+			appAppNamespace := utils.GetAppNamespace(scenario.appName)
+			ra := &v1.RadixApplication{
+				ObjectMeta: metav1.ObjectMeta{Name: scenario.appName, Namespace: appAppNamespace},
+				Spec:       v1.RadixApplicationSpec{DNSExternalAlias: scenario.externalAliases},
+			}
+			radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
+			radixDeployment := v1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{Name: scenario.deploymentName},
+				Spec: v1.RadixDeploymentSpec{
+					Components: scenario.Components,
+					Jobs:       scenario.Jobs,
+				},
+			}
+			appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
+			radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+			secrets, err := handler.GetSecrets(scenario.appName, scenario.envName)
+			s.Equal(scenario.expectedError, err != nil)
+			s.Equal(len(scenario.expectedSecrets), len(secrets))
+			secretMap := getSecretMap(secrets)
+			for _, expectedSecret := range scenario.expectedSecrets {
+				secret, exists := secretMap[expectedSecret.Name]
+				s.True(exists, "Missed secret '%s'", expectedSecret.Name)
+				s.Equal(expectedSecret.Type, secret.Type, "Not expected secret Type")
+				s.Equal(expectedSecret.Component, secret.Component, "Not expected secret Component")
+				s.Equal(expectedSecret.DisplayName, secret.DisplayName, "Not expected secret Component")
+				s.Equal(expectedSecret.Status, secret.Status, "Not expected secret Status")
+				s.Equal(expectedSecret.Resource, secret.Resource, "Not expected secret Resource")
+			}
 		})
 	}
 }
 
-func TestSecretHandler_GetSecrets(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
+func getSecretMap(secrets []secretModels.Secret) map[string]secretModels.Secret {
+	secretMap := make(map[string]secretModels.Secret, len(secrets))
+	for _, secret := range secrets {
+		secret := secret
+		secretMap[secret.Name] = secret
 	}
-	type args struct {
-		appName string
-		envName string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.GetSecrets(tt.args.appName, tt.args.envName)
-			if !tt.wantErr(t, err, fmt.Sprintf("GetSecrets(%v, %v)", tt.args.appName, tt.args.envName)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "GetSecrets(%v, %v)", tt.args.appName, tt.args.envName)
-		})
-	}
+	return secretMap
 }
 
-func TestSecretHandler_GetSecretsForDeployment(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		appName        string
-		envName        string
-		deploymentName string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.GetSecretsForDeployment(tt.args.appName, tt.args.envName, tt.args.deploymentName)
-			if !tt.wantErr(t, err, fmt.Sprintf("GetSecretsForDeployment(%v, %v, %v)", tt.args.appName, tt.args.envName, tt.args.deploymentName)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "GetSecretsForDeployment(%v, %v, %v)", tt.args.appName, tt.args.envName, tt.args.deploymentName)
+func getComponents(radixDeployComponents []v1.RadixDeployComponent) []*deploymentModels.Component {
+	var deploymentComponents []*deploymentModels.Component
+	for _, radixDeployComponent := range radixDeployComponents {
+		deploymentComponents = append(deploymentComponents, &deploymentModels.Component{
+			Name: radixDeployComponent.Name,
 		})
 	}
+	return deploymentComponents
 }
 
-func TestSecretHandler_getAzureVolumeMountSecrets(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		envNamespace          string
-		component             v1.RadixCommonDeployComponent
-		secretName            string
-		volumeMountName       string
-		accountNamePart       string
-		accountKeyPart        string
-		accountNamePartSuffix string
-		accountKeyPartSuffix  string
-		secretType            models.SecretType
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   models.Secret
-		want1  models.Secret
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, got1 := eh.getAzureVolumeMountSecrets(tt.args.envNamespace, tt.args.component, tt.args.secretName, tt.args.volumeMountName, tt.args.accountNamePart, tt.args.accountKeyPart, tt.args.accountNamePartSuffix, tt.args.accountKeyPartSuffix, tt.args.secretType)
-			assert.Equalf(t, tt.want, got, "getAzureVolumeMountSecrets(%v, %v, %v, %v, %v, %v, %v, %v, %v)", tt.args.envNamespace, tt.args.component, tt.args.secretName, tt.args.volumeMountName, tt.args.accountNamePart, tt.args.accountKeyPart, tt.args.accountNamePartSuffix, tt.args.accountKeyPartSuffix, tt.args.secretType)
-			assert.Equalf(t, tt.want1, got1, "getAzureVolumeMountSecrets(%v, %v, %v, %v, %v, %v, %v, %v, %v)", tt.args.envNamespace, tt.args.component, tt.args.secretName, tt.args.volumeMountName, tt.args.accountNamePart, tt.args.accountKeyPart, tt.args.accountNamePartSuffix, tt.args.accountKeyPartSuffix, tt.args.secretType)
-		})
-	}
-}
-
-func TestSecretHandler_getBlobFuseSecrets(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-		volumeMount  v1.RadixVolumeMount
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   models.Secret
-		want1  models.Secret
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, got1 := eh.getBlobFuseSecrets(tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-			assert.Equalf(t, tt.want, got, "getBlobFuseSecrets(%v, %v, %v)", tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-			assert.Equalf(t, tt.want1, got1, "getBlobFuseSecrets(%v, %v, %v)", tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-		})
-	}
-}
-
-func TestSecretHandler_getCredentialSecretsForBlobVolumes(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   []models.Secret
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			assert.Equalf(t, tt.want, eh.getCredentialSecretsForBlobVolumes(tt.args.component, tt.args.envNamespace), "getCredentialSecretsForBlobVolumes(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getCredentialSecretsForSecretRefs(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getCredentialSecretsForSecretRefs(tt.args.component, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getCredentialSecretsForSecretRefs(%v, %v)", tt.args.component, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getCredentialSecretsForSecretRefs(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getCsiAzureSecrets(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-		volumeMount  v1.RadixVolumeMount
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   models.Secret
-		want1  models.Secret
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, got1 := eh.getCsiAzureSecrets(tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-			assert.Equalf(t, tt.want, got, "getCsiAzureSecrets(%v, %v, %v)", tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-			assert.Equalf(t, tt.want1, got1, "getCsiAzureSecrets(%v, %v, %v)", tt.args.component, tt.args.envNamespace, tt.args.volumeMount)
-		})
-	}
-}
-
-func TestSecretHandler_getRadixCommonComponentSecretRefs(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getRadixCommonComponentSecretRefs(tt.args.component, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getRadixCommonComponentSecretRefs(%v, %v)", tt.args.component, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getRadixCommonComponentSecretRefs(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretRefsSecrets(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		radixDeployment *v1.RadixDeployment
-		envNamespace    string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretRefsSecrets(tt.args.radixDeployment, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretRefsSecrets(%v, %v)", tt.args.radixDeployment, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretRefsSecrets(%v, %v)", tt.args.radixDeployment, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsForComponent(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component v1.RadixCommonDeployComponent
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   map[string]bool
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			assert.Equalf(t, tt.want, eh.getSecretsForComponent(tt.args.component), "getSecretsForComponent(%v)", tt.args.component)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromAuthentication(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		activeDeployment *v1.RadixDeployment
-		envNamespace     string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromAuthentication(tt.args.activeDeployment, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromAuthentication(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromAuthentication(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromComponentAuthentication(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromComponentAuthentication(tt.args.component, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromComponentAuthentication(%v, %v)", tt.args.component, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromComponentAuthentication(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromComponentAuthenticationClientCertificate(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-		want   []models.Secret
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			assert.Equalf(t, tt.want, eh.getSecretsFromComponentAuthenticationClientCertificate(tt.args.component, tt.args.envNamespace), "getSecretsFromComponentAuthenticationClientCertificate(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromComponentAuthenticationOAuth2(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		component    v1.RadixCommonDeployComponent
-		envNamespace string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromComponentAuthenticationOAuth2(tt.args.component, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromComponentAuthenticationOAuth2(%v, %v)", tt.args.component, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromComponentAuthenticationOAuth2(%v, %v)", tt.args.component, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromLatestDeployment(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		activeDeployment *v1.RadixDeployment
-		envNamespace     string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    map[string]models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromLatestDeployment(tt.args.activeDeployment, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromLatestDeployment(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromLatestDeployment(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromTLSCertificates(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		ra           *v1.RadixApplication
-		envName      string
-		envNamespace string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    map[string]models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromTLSCertificates(tt.args.ra, tt.args.envName, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromTLSCertificates(%v, %v, %v)", tt.args.ra, tt.args.envName, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromTLSCertificates(%v, %v, %v)", tt.args.ra, tt.args.envName, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestSecretHandler_getSecretsFromVolumeMounts(t *testing.T) {
-	type fields struct {
-		client          kubernetes.Interface
-		radixclient     versioned.Interface
-		inClusterClient kubernetes.Interface
-		deployHandler   deployments.DeployHandler
-		eventHandler    events.EventHandler
-		accounts        apiModels.Accounts
-		kubeUtil        *kube.Kube
-	}
-	type args struct {
-		activeDeployment *v1.RadixDeployment
-		envNamespace     string
-	}
-	var tests []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []models.Secret
-		wantErr assert.ErrorAssertionFunc
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			eh := SecretHandler{
-				client:          tt.fields.client,
-				radixclient:     tt.fields.radixclient,
-				inClusterClient: tt.fields.inClusterClient,
-				deployHandler:   tt.fields.deployHandler,
-				eventHandler:    tt.fields.eventHandler,
-				accounts:        tt.fields.accounts,
-				kubeUtil:        tt.fields.kubeUtil,
-			}
-			got, err := eh.getSecretsFromVolumeMounts(tt.args.activeDeployment, tt.args.envNamespace)
-			if !tt.wantErr(t, err, fmt.Sprintf("getSecretsFromVolumeMounts(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "getSecretsFromVolumeMounts(%v, %v)", tt.args.activeDeployment, tt.args.envNamespace)
-		})
-	}
-}
-
-func TestWithAccounts(t *testing.T) {
-	type args struct {
-		accounts apiModels.Accounts
-	}
-	var tests []struct {
-		name string
-		args args
-		want SecretHandlerOptions
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, WithAccounts(tt.args.accounts), "WithAccounts(%v)", tt.args.accounts)
-		})
-	}
-}
-
-func TestWithEventHandler(t *testing.T) {
-	type args struct {
-		eventHandler events.EventHandler
-	}
-	var tests []struct {
-		name string
-		args args
-		want SecretHandlerOptions
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, WithEventHandler(tt.args.eventHandler), "WithEventHandler(%v)", tt.args.eventHandler)
-		})
-	}
+func (s *secretHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset) {
+	return kubefake.NewSimpleClientset(), radixfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
 }

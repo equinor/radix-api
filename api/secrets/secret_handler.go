@@ -13,7 +13,6 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -37,12 +36,8 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	return func(eh *SecretHandler) {
 		eh.client = accounts.UserAccount.Client
 		eh.radixclient = accounts.UserAccount.RadixClient
-		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
-		eh.accounts = accounts
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
-		eh.kubeUtil = kubeUtil
 	}
 }
 
@@ -55,13 +50,10 @@ func WithEventHandler(eventHandler events.EventHandler) SecretHandlerOptions {
 
 // SecretHandler Instance variables
 type SecretHandler struct {
-	client          kubernetes.Interface
-	radixclient     radixclient.Interface
-	inClusterClient kubernetes.Interface
-	deployHandler   deployments.DeployHandler
-	eventHandler    events.EventHandler
-	accounts        apiModels.Accounts
-	kubeUtil        *kube.Kube
+	client        kubernetes.Interface
+	radixclient   radixclient.Interface
+	deployHandler deployments.DeployHandler
+	eventHandler  events.EventHandler
 }
 
 // Init Constructor.
@@ -617,10 +609,22 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, e
 			}
 		}
 
-		secretDTO := models.Secret{Name: externalAlias.Alias + suffix.ExternalDNSCert, Component: externalAlias.Component, Status: certStatus}
+		secretDTO := models.Secret{
+			Name:        externalAlias.Alias + suffix.ExternalDNSCert,
+			DisplayName: fmt.Sprintf("%s certificate", externalAlias.Alias),
+			Type:        models.SecretTypeClientCert,
+			Component:   externalAlias.Component,
+			Status:      certStatus,
+		}
 		secretDTOsMap[secretDTO.Name] = secretDTO
 
-		secretDTO = models.Secret{Name: externalAlias.Alias + suffix.ExternalDNSKeyPart, Component: externalAlias.Component, Status: keyStatus}
+		secretDTO = models.Secret{
+			Name:        externalAlias.Alias + suffix.ExternalDNSKeyPart,
+			DisplayName: fmt.Sprintf("%s key", externalAlias.Alias),
+			Type:        models.SecretTypeClientCert,
+			Component:   externalAlias.Component,
+			Status:      keyStatus,
+		}
 		secretDTOsMap[secretDTO.Name] = secretDTO
 	}
 
