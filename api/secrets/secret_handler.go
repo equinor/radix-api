@@ -611,7 +611,8 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, e
 
 		secretDTO := models.Secret{
 			Name:        externalAlias.Alias + suffix.ExternalDNSCert,
-			DisplayName: fmt.Sprintf("%s certificate", externalAlias.Alias),
+			DisplayName: "Certificate",
+			Resource:    externalAlias.Alias,
 			Type:        models.SecretTypeClientCert,
 			Component:   externalAlias.Component,
 			Status:      certStatus,
@@ -620,7 +621,8 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, e
 
 		secretDTO = models.Secret{
 			Name:        externalAlias.Alias + suffix.ExternalDNSKeyPart,
-			DisplayName: fmt.Sprintf("%s key", externalAlias.Alias),
+			DisplayName: "Key",
+			Resource:    externalAlias.Alias,
 			Type:        models.SecretTypeClientCert,
 			Component:   externalAlias.Component,
 			Status:      keyStatus,

@@ -29,7 +29,6 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	ctrl := gomock.NewController(s.T())
 	defer ctrl.Finish()
-	deploymentName1 := "deploymentName1"
 	type testScenario struct {
 		name            string
 		appName         string
@@ -38,12 +37,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		Components      []v1.RadixDeployComponent
 		Jobs            []v1.RadixDeployJobComponent
 		externalAliases []v1.ExternalAlias
+		VolumeMounts    []v1.RadixVolumeMount
 		want            []secretModels.Secret
 		wantErr         assert.ErrorAssertionFunc
 		initScenario    func(scenario testScenario)
 		expectedError   bool
 		expectedSecrets []secretModels.Secret
 	}
+	deploymentName1 := "deployment1"
+	componentName1 := "component1"
 	scenarios := []testScenario{
 		{
 			name:           "regular secrets",
@@ -51,7 +53,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			Components: []v1.RadixDeployComponent{{
-				Name: anyComponentName,
+				Name: componentName1,
 				Secrets: []string{
 					"SECRET_C1",
 				},
@@ -69,7 +71,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					DisplayName: "SECRET_C1",
 					Type:        secretModels.SecretTypeGeneric,
 					Resource:    "",
-					Component:   anyComponentName,
+					Component:   componentName1,
 					Status:      "Pending",
 				},
 				{
@@ -87,29 +89,94 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components:     []v1.RadixDeployComponent{{Name: anyComponentName}},
+			Components:     []v1.RadixDeployComponent{{Name: componentName1}},
 			externalAliases: []v1.ExternalAlias{{
 				Alias:       "someExternalAlias",
 				Environment: anyEnvironment,
-				Component:   anyComponentName,
+				Component:   componentName1,
 			},
 			},
 			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "someExternalAlias-key",
-					DisplayName: "someExternalAlias key",
+					DisplayName: "Key",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "",
-					Component:   anyComponentName,
+					Resource:    "someExternalAlias",
+					Component:   componentName1,
 					Status:      "Pending",
 				},
 				{
 					Name:        "someExternalAlias-cert",
-					DisplayName: "someExternalAlias certificate",
+					DisplayName: "Certificate",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "",
-					Component:   anyComponentName,
+					Resource:    "someExternalAlias",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name:           "Azure Blob volumes credential secrets",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			Components: []v1.RadixDeployComponent{
+				{
+					Name: componentName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Type:    v1.MountTypeBlobCsiAzure,
+							Name:    "volume1",
+							Storage: "container1",
+						},
+					},
+				},
+			},
+			Jobs: []v1.RadixDeployJobComponent{
+				{
+					Name: componentName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Type:    v1.MountTypeBlobCsiAzure,
+							Name:    "volume2",
+							Storage: "container2",
+						},
+					},
+				},
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-volume1-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "component1-volume1-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "component1-volume2-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "component1-volume2-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   componentName1,
 					Status:      "Pending",
 				},
 			},
@@ -149,7 +216,9 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			}
 			appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
 			radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+
 			secrets, err := handler.GetSecrets(scenario.appName, scenario.envName)
+
 			s.Equal(scenario.expectedError, err != nil)
 			s.Equal(len(scenario.expectedSecrets), len(secrets))
 			secretMap := getSecretMap(secrets)
