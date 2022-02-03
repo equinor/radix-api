@@ -235,6 +235,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 			},
 		},
+		//TODO{
+		//	name:           "Secrets from Authentication",
+		//	appName:        anyAppName,
+		//	envName:        anyEnvironment,
+		//	deploymentName: deploymentName1,
+		//	Components: []v1.RadixDeployComponent{{Name:       componentName1}},
 	}
 
 	for _, scenario := range scenarios {
