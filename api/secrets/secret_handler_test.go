@@ -46,6 +46,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	}
 	deploymentName1 := "deployment1"
 	componentName1 := "component1"
+	jobName1 := "job1"
 	scenarios := []testScenario{
 		{
 			name:           "regular secrets",
@@ -59,7 +60,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 			}},
 			Jobs: []v1.RadixDeployJobComponent{{
-				Name: anyJobName,
+				Name: jobName1,
 				Secrets: []string{
 					"SECRET_J1",
 				},
@@ -79,7 +80,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					DisplayName: "SECRET_J1",
 					Type:        secretModels.SecretTypeGeneric,
 					Resource:    "",
-					Component:   anyJobName,
+					Component:   jobName1,
 					Status:      "Pending",
 				},
 			},
@@ -135,7 +136,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			Jobs: []v1.RadixDeployJobComponent{
 				{
-					Name: componentName1,
+					Name: jobName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
 							Type:    v1.MountTypeBlobCsiAzure,
@@ -164,7 +165,60 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "component1-volume2-csiazurecreds-accountkey",
+					Name:        "job1-volume2-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   jobName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "job1-volume2-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   jobName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name:           "Azure Key vault credential secrets",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			Components: []v1.RadixDeployComponent{
+				{
+					Name:       componentName1,
+					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{}},
+				},
+			},
+			Jobs: []v1.RadixDeployJobComponent{
+				{
+					Name:       jobName1,
+					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{}},
+				},
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-volume1-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "component1-volume1-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "job1-volume2-csiazurecreds-accountkey",
 					DisplayName: "Account Key",
 					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 					Resource:    "volume2",
@@ -172,7 +226,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "component1-volume2-csiazurecreds-accountname",
+					Name:        "job1-volume2-csiazurecreds-accountname",
 					DisplayName: "Account Name",
 					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 					Resource:    "volume2",
@@ -195,23 +249,30 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				eventHandler:  eventHandler,
 			}
 			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(scenario.appName, scenario.envName, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName}}, nil)
+				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName, Environment: scenario.envName}}, nil)
 			deployHandler.EXPECT().GetDeploymentWithName(scenario.appName, deploymentName1).
 				Return(&deploymentModels.Deployment{
-					Name:       scenario.deploymentName,
-					Components: getComponents(scenario.Components),
+					Name:        scenario.deploymentName,
+					Components:  getComponents(scenario.Components, scenario.Jobs),
+					Environment: scenario.envName,
 				}, nil)
 			appAppNamespace := utils.GetAppNamespace(scenario.appName)
 			ra := &v1.RadixApplication{
 				ObjectMeta: metav1.ObjectMeta{Name: scenario.appName, Namespace: appAppNamespace},
-				Spec:       v1.RadixApplicationSpec{DNSExternalAlias: scenario.externalAliases},
+				Spec: v1.RadixApplicationSpec{
+					Environments:     []v1.Environment{{Name: scenario.envName}},
+					DNSExternalAlias: scenario.externalAliases,
+					Components:       getRadixComponents(scenario.Components, scenario.envName),
+					Jobs:             getRadixJobComponents(scenario.Jobs, scenario.envName),
+				},
 			}
 			radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
 			radixDeployment := v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{Name: scenario.deploymentName},
 				Spec: v1.RadixDeploymentSpec{
-					Components: scenario.Components,
-					Jobs:       scenario.Jobs,
+					Environment: scenario.envName,
+					Components:  scenario.Components,
+					Jobs:        scenario.Jobs,
 				},
 			}
 			appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
@@ -235,6 +296,40 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	}
 }
 
+func getRadixComponents(components []v1.RadixDeployComponent, envName string) []v1.RadixComponent {
+	var radixComponents []v1.RadixComponent
+	for _, radixDeployComponent := range components {
+		radixComponents = append(radixComponents, v1.RadixComponent{
+			Name:       radixDeployComponent.Name,
+			Variables:  radixDeployComponent.GetEnvironmentVariables(),
+			Secrets:    radixDeployComponent.Secrets,
+			SecretRefs: radixDeployComponent.SecretRefs,
+			EnvironmentConfig: []v1.RadixEnvironmentConfig{{
+				Environment:  envName,
+				VolumeMounts: radixDeployComponent.VolumeMounts,
+			}},
+		})
+	}
+	return radixComponents
+}
+
+func getRadixJobComponents(jobComponents []v1.RadixDeployJobComponent, envName string) []v1.RadixJobComponent {
+	var radixComponents []v1.RadixJobComponent
+	for _, radixDeployJobComponent := range jobComponents {
+		radixComponents = append(radixComponents, v1.RadixJobComponent{
+			Name:       radixDeployJobComponent.Name,
+			Variables:  radixDeployJobComponent.GetEnvironmentVariables(),
+			Secrets:    radixDeployJobComponent.Secrets,
+			SecretRefs: radixDeployJobComponent.SecretRefs,
+			EnvironmentConfig: []v1.RadixJobComponentEnvironmentConfig{{
+				Environment:  envName,
+				VolumeMounts: radixDeployJobComponent.VolumeMounts,
+			}},
+		})
+	}
+	return radixComponents
+}
+
 func getSecretMap(secrets []secretModels.Secret) map[string]secretModels.Secret {
 	secretMap := make(map[string]secretModels.Secret, len(secrets))
 	for _, secret := range secrets {
@@ -244,11 +339,22 @@ func getSecretMap(secrets []secretModels.Secret) map[string]secretModels.Secret 
 	return secretMap
 }
 
-func getComponents(radixDeployComponents []v1.RadixDeployComponent) []*deploymentModels.Component {
+func getComponents(radixDeployComponents []v1.RadixDeployComponent, radixDeployJobComponents []v1.RadixDeployJobComponent) []*deploymentModels.Component {
 	var deploymentComponents []*deploymentModels.Component
 	for _, radixDeployComponent := range radixDeployComponents {
 		deploymentComponents = append(deploymentComponents, &deploymentModels.Component{
-			Name: radixDeployComponent.Name,
+			Name:      radixDeployComponent.Name,
+			Type:      string(v1.RadixComponentTypeComponent),
+			Variables: radixDeployComponent.GetEnvironmentVariables(),
+			Secrets:   radixDeployComponent.Secrets,
+		})
+	}
+	for _, radixDeployJobComponent := range radixDeployJobComponents {
+		deploymentComponents = append(deploymentComponents, &deploymentModels.Component{
+			Name:      radixDeployJobComponent.Name,
+			Type:      string(v1.RadixComponentTypeJobScheduler),
+			Variables: radixDeployJobComponent.GetEnvironmentVariables(),
+			Secrets:   radixDeployJobComponent.Secrets,
 		})
 	}
 	return deploymentComponents
