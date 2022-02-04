@@ -73,6 +73,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: RestartComponent,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{auxType}/restart",
+			Method:      "POST",
+			HandlerFunc: RestartComponentAuxiliaryResource,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/stop",
 			Method:      "POST",
 			HandlerFunc: StopEnvironment,
@@ -111,6 +116,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
 			Method:      "GET",
 			HandlerFunc: GetScheduledJobLog,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{auxType}/replicas/{podName}/logs",
+			Method:      "GET",
+			HandlerFunc: GetAuxiliaryResourcePodLog,
 		},
 	}
 
@@ -862,6 +872,65 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	radixhttp.JSONResponse(w, r, "Success")
 }
 
+// RestartComponent Restarts job
+func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/restart component restartComponentAuxiliaryResopurce
+	// ---
+	// summary: Restarts a auxiliary resource for a component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: auxType
+	//   in: path
+	//   description: Type of auxiliary resource
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Component started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	auxType := mux.Vars(r)["auxType"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartComponentAuxiliaryResource(appName, envName, componentName, auxType)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
 // GetPodLog Get logs of a single pod
 func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component replicaLog
@@ -1007,6 +1076,90 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 
 	eh := Init(WithAccounts(accounts))
 	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.StringResponse(w, r, log)
+}
+
+// GetAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
+func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/replicas/{podName}/logs component auxiliaryPodLog
+	// ---
+	// summary: Get logs for an auxiliary resource pod
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: auxType
+	//   in: path
+	//   description: Type of auxiliary resource
+	//   type: string
+	//   required: true
+	// - name: podName
+	//   in: path
+	//   description: Name of pod
+	//   type: string
+	//   required: true
+	// - name: sinceTime
+	//   in: query
+	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
+	//   type: string
+	//   format: date-time
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "pod log"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	podName := mux.Vars(r)["podName"]
+	auxType := mux.Vars(r)["auxType"]
+
+	sinceTime := r.FormValue("sinceTime")
+
+	var since time.Time
+	var err error
+
+	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
+		since, err = radixutils.ParseTimestamp(sinceTime)
+		if err != nil {
+			radixhttp.ErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, &since)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

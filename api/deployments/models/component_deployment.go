@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	radixutils "github.com/equinor/radix-common/utils"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -90,6 +91,61 @@ type Component struct {
 	//
 	// required: false
 	ScheduledJobList []ScheduledJobSummary `json:"scheduledJobList"`
+
+	// Auxiliary resources for this component
+	//
+	// required: false
+	AuxiliaryResources []AuxiliaryResource `json:"auxiliaryResources,omitempty"`
+}
+
+func (c *Component) GetAuxiliaryResourceByType(auxType string) *AuxiliaryResource {
+	for _, aux := range c.AuxiliaryResources {
+		if aux.Type == auxType {
+			return &aux
+		}
+	}
+
+	return nil
+}
+
+// AuxiliaryResource describes an auxiliary resourses for a component
+// swagger:model AuxiliaryResource
+type AuxiliaryResource struct {
+	// Type of auxliliary resource
+	//
+	// required: true
+	// - oauth: OAuth2 auxiliary resource
+	Type string `json:"type"`
+
+	// Deployment describes
+	//
+	// required: false
+	Deployment *AuxiliaryResourceDeployment `json:"deployment,omitempty"`
+}
+
+type OAuth2AuxiliaryResource v1.OAuth2
+
+// AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment
+// swagger:model AuxiliaryResourceDeployment
+type AuxiliaryResourceDeployment struct {
+	// Status of the auxiliary resource's deployment
+	// required: true
+	// - Consistent: All replicas are running with the desired state
+	// - Reconciling: Waiting for new replicas to enter desired state
+	// - Stopped: Replica count is set to 0
+	//
+	// example: Consistent
+	Status string `json:"status"`
+
+	// Variables defined for the auxiliary resource's deployment
+	//
+	// required: true
+	Variables map[string]string `json:"variables"`
+
+	// Running replicas of the auxiliary resource's deployment
+	//
+	// required: true
+	ReplicaList []ReplicaSummary `json:"replicaList"`
 }
 
 // Port describe an component part of an deployment

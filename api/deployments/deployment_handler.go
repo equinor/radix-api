@@ -12,8 +12,7 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +47,7 @@ func Init(accounts models.Accounts) DeployHandler {
 
 // GetLogs handler for GetLogs
 func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
-	ns := crdUtils.GetAppNamespace(appName)
+	ns := operatorUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -80,7 +79,7 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(appNam
 		return nil, deploymentModels.IllegalEmptyEnvironment()
 	}
 
-	namespace := crdUtils.GetEnvironmentNamespace(appName, environment)
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, environment)
 	deploymentSummaries, err := deploy.getDeployments(namespace, appName, "", true)
 	if err == nil && len(deploymentSummaries) == 1 {
 		return deploymentSummaries[0], nil
@@ -93,7 +92,7 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(appNam
 func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	var namespace = corev1.NamespaceAll
 	if strings.TrimSpace(environment) != "" {
-		namespace = crdUtils.GetEnvironmentNamespace(appName, environment)
+		namespace = operatorUtils.GetEnvironmentNamespace(appName, environment)
 	}
 
 	deployments, err := deploy.getDeployments(namespace, appName, "", latest)
@@ -127,7 +126,7 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
 	}
 
-	namespace := crdUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -201,7 +200,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		radixDeploymentList = append(radixDeploymentList, rdlist.Items...)
 	}
 
-	appNamespace := utils.GetAppNamespace(appName)
+	appNamespace := operatorUtils.GetAppNamespace(appName)
 	radixJobMap := make(map[string]*v1.RadixJob)
 	if jobName != "" {
 		radixJob, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).Get(context.TODO(), jobName, metav1.GetOptions{})

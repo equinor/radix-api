@@ -19,6 +19,7 @@ type ComponentBuilder interface {
 	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
+	WithAuxiliaryResources([]AuxiliaryResource) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -37,6 +38,7 @@ type componentBuilder struct {
 	ports                     []Port
 	schedulerPort             *int32
 	scheduledJobPayloadPath   string
+	auxResources              []AuxiliaryResource
 	errors                    []error
 }
 
@@ -72,6 +74,11 @@ func (b *componentBuilder) WithSchedulerPort(schedulerPort *int32) ComponentBuil
 
 func (b *componentBuilder) WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder {
 	b.scheduledJobPayloadPath = scheduledJobPayloadPath
+	return b
+}
+
+func (b *componentBuilder) WithAuxiliaryResources(auxResources []AuxiliaryResource) ComponentBuilder {
+	b.auxResources = auxResources
 	return b
 }
 
@@ -187,6 +194,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		ScheduledJobList:        b.scheduledJobSummaryList,
 		SchedulerPort:           b.schedulerPort,
 		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
+		AuxiliaryResources:      b.auxResources,
 	}, b.buildError()
 }
 

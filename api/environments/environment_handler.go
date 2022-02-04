@@ -2,10 +2,11 @@ package environments
 
 import (
 	"context"
-	"fmt"
-	"github.com/equinor/radix-api/api/secrets"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 
 	log "github.com/sirupsen/logrus"
 
@@ -325,10 +326,9 @@ func (eh EnvironmentHandler) getNotOrphanedEnvNames(app *v1.RadixApplication) []
 
 func (eh EnvironmentHandler) getEnvironments(app *v1.RadixApplication, isOrphaned bool) []string {
 	envNames := make([]string, 0)
-	appLabel := fmt.Sprintf("%s=%s", kube.RadixAppLabel, app.Name)
 
 	radixEnvironments, _ := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().List(context.TODO(), metav1.ListOptions{
-		LabelSelector: appLabel,
+		LabelSelector: labelselector.ForApplication(app.Name).String(),
 	})
 
 	for _, re := range radixEnvironments.Items {
@@ -359,6 +359,17 @@ func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime
 func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time) (string, error) {
 	handler := pods.Init(eh.client)
 	log, err := handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime)
+	if err != nil {
+		return "", err
+	}
+
+	return log, nil
+}
+
+// GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
+func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (string, error) {
+	podHandler := pods.Init(eh.client)
+	log, err := podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime)
 	if err != nil {
 		return "", err
 	}

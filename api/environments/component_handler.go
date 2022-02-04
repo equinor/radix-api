@@ -10,16 +10,21 @@ import (
 	"github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	jsonpatch "github.com/evanphx/json-patch"
 	log "github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+const restartedAtAnnotation = "radixapi/restartedAt"
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string) error {
@@ -120,6 +125,64 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 
 	err = eh.patchRdForRestart(rd, index, componentToPatch)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RestartComponentAuxiliaryResource Restarts a component's auxiliary resource
+func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName, componentName, auxType string) error {
+	log.Infof("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
+
+	deploySummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(appName, envName)
+	if err != nil {
+		return err
+	}
+
+	deploymentDto, err := eh.deployHandler.GetDeploymentWithName(appName, deploySummary.Name)
+	if err != nil {
+		return err
+	}
+
+	componentDto := deploymentDto.GetComponentByName(componentName)
+	if componentDto == nil {
+		return environmentModels.NonExistingComponent(appName, componentName)
+	}
+
+	auxResourceDto := componentDto.GetAuxiliaryResourceByType(auxType)
+	if auxResourceDto == nil {
+		return environmentModels.NonExistingComponentAuxiliaryType(appName, componentName, auxType)
+	}
+
+	if auxResourceDto.Deployment == nil || auxResourceDto.Deployment.Status != deploymentModels.ConsistentComponent.String() {
+		currentStatus := deploymentModels.ComponentReconciling.String()
+		if auxResourceDto.Deployment != nil {
+			currentStatus = auxResourceDto.Deployment.Status
+		}
+		return environmentModels.CannotRestartComponent(appName, componentName, currentStatus)
+	}
+
+	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
+	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	deployments, err := eh.client.AppsV1().Deployments(envNs).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
+	if len(deployments.Items) == 0 {
+		return environmentModels.CannotRestartComponent(appName, componentName, deploymentModels.ComponentReconciling.String())
+	}
+
+	return eh.patchKubeDeploymentForRestart(&deployments.Items[0])
+}
+
+func (eh EnvironmentHandler) patchKubeDeploymentForRestart(deployment *appsv1.Deployment) error {
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = make(map[string]string)
+	}
+
+	deployment.Spec.Template.Annotations[restartedAtAnnotation] = radixutils.FormatTimestamp(time.Now())
+	if _, err := eh.client.AppsV1().Deployments(deployment.Namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 

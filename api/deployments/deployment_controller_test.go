@@ -1,7 +1,6 @@
 package deployments
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -19,8 +18,6 @@ import (
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -393,28 +390,6 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	assert.Equal(t, radixutils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
 	assert.Equal(t, 4, len(deployment.Components))
 
-}
-
-func createAppNamespace(kubeclient kubernetes.Interface, appName string) string {
-	ns := builders.GetAppNamespace(appName)
-	createNamespace(kubeclient, ns)
-	return ns
-}
-
-func createEnvNamespace(kubeclient kubernetes.Interface, appName, environment string) string {
-	ns := builders.GetEnvironmentNamespace(appName, environment)
-	createNamespace(kubeclient, ns)
-	return ns
-}
-
-func createNamespace(kubeclient kubernetes.Interface, ns string) {
-	namespace := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: ns,
-		},
-	}
-
-	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
 }
 
 func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {

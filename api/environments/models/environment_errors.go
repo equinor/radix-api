@@ -22,6 +22,11 @@ func NonExistingComponent(appName, componentName string) error {
 	return radixhttp.TypeMissingError(fmt.Sprintf("Unable to get component %s for app %s", componentName, appName), nil)
 }
 
+// NonExistingComponentAuxiliaryType Auxiliary resource for component component not found
+func NonExistingComponentAuxiliaryType(appName, componentName, auxType string) error {
+	return radixhttp.TypeMissingError(fmt.Sprintf("%s resource does not exist for component %s in app %s", auxType, componentName, appName), nil)
+}
+
 // CannotStopComponent Component cannot be stopped
 func CannotStopComponent(appName, componentName, state string) error {
 	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be stopped when in %s state", componentName, appName, strings.ToLower(state)))
