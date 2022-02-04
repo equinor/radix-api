@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
-	"github.com/equinor/radix-api/api/events"
 	"github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	apiModels "github.com/equinor/radix-api/models"
@@ -37,14 +36,6 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 		eh.client = accounts.UserAccount.Client
 		eh.radixclient = accounts.UserAccount.RadixClient
 		eh.deployHandler = deployments.Init(accounts)
-		eh.eventHandler = events.Init(accounts.UserAccount.Client)
-	}
-}
-
-// WithEventHandler configures the eventHandler used by SecretHandler
-func WithEventHandler(eventHandler events.EventHandler) SecretHandlerOptions {
-	return func(eh *SecretHandler) {
-		eh.eventHandler = eventHandler
 	}
 }
 
@@ -53,7 +44,6 @@ type SecretHandler struct {
 	client        kubernetes.Interface
 	radixclient   radixclient.Interface
 	deployHandler deployments.DeployHandler
-	eventHandler  events.EventHandler
 }
 
 // Init Constructor.
@@ -166,17 +156,11 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 // GetSecrets Lists environment secrets for application
 func (eh SecretHandler) GetSecrets(appName, envName string) ([]models.Secret, error) {
 	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
-
 	if err != nil {
 		return nil, err
 	}
 
-	depl, err := eh.deployHandler.GetDeploymentWithName(appName, deployments[0].Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return eh.GetSecretsForDeployment(appName, envName, depl.Name)
+	return eh.GetSecretsForDeployment(appName, envName, deployments[0].Name)
 }
 
 // GetSecretsForDeployment Lists environment secrets for application
