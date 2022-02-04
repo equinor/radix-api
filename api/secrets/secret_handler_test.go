@@ -10,8 +10,8 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
@@ -26,20 +26,34 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(secretHandlerTestSuite))
 }
 
-type testScenario struct {
+type getSecretScenario struct {
 	name            string
 	appName         string
 	envName         string
 	deploymentName  string
-	Components      []v1.RadixDeployComponent
-	Jobs            []v1.RadixDeployJobComponent
+	components      []v1.RadixDeployComponent
+	jobs            []v1.RadixDeployJobComponent
 	externalAliases []v1.ExternalAlias
-	VolumeMounts    []v1.RadixVolumeMount
-	want            []secretModels.Secret
-	wantErr         assert.ErrorAssertionFunc
-	initScenario    func(scenario testScenario)
+	volumeMounts    []v1.RadixVolumeMount
 	expectedError   bool
 	expectedSecrets []secretModels.Secret
+}
+
+type changeSecretScenario struct {
+	name                        string
+	appName                     string
+	envName                     string
+	deploymentName              string
+	components                  []v1.RadixDeployComponent
+	jobs                        []v1.RadixDeployJobComponent
+	externalAliases             []v1.ExternalAlias
+	volumeMounts                []v1.RadixVolumeMount
+	secretName                  string
+	secretExists                bool
+	changingSecretComponentName string
+	changingSecretName          string
+	expectedError               bool
+	changingSecretParams        secretModels.SecretParameters
 }
 
 func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
@@ -48,19 +62,19 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	deploymentName1 := "deployment1"
 	componentName1 := "component1"
 	jobName1 := "job1"
-	scenarios := []testScenario{
+	scenarios := []getSecretScenario{
 		{
 			name:           "regular secrets",
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components: []v1.RadixDeployComponent{{
+			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Secrets: []string{
 					"SECRET_C1",
 				},
 			}},
-			Jobs: []v1.RadixDeployJobComponent{{
+			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 				Secrets: []string{
 					"SECRET_J1",
@@ -91,7 +105,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components:     []v1.RadixDeployComponent{{Name: componentName1}},
+			components:     []v1.RadixDeployComponent{{Name: componentName1}},
 			externalAliases: []v1.ExternalAlias{{
 				Alias:       "someExternalAlias",
 				Environment: anyEnvironment,
@@ -123,7 +137,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components: []v1.RadixDeployComponent{
+			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
 					VolumeMounts: []v1.RadixVolumeMount{
@@ -135,7 +149,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					},
 				},
 			},
-			Jobs: []v1.RadixDeployJobComponent{
+			jobs: []v1.RadixDeployJobComponent{
 				{
 					Name: jobName1,
 					VolumeMounts: []v1.RadixVolumeMount{
@@ -188,13 +202,13 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components: []v1.RadixDeployComponent{
+			components: []v1.RadixDeployComponent{
 				{
 					Name:       componentName1,
 					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: nil},
 				},
 			},
-			Jobs: []v1.RadixDeployJobComponent{
+			jobs: []v1.RadixDeployJobComponent{
 				{
 					Name:       jobName1,
 					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: nil},
@@ -208,7 +222,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			appName:        anyAppName,
 			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
-			Components: []v1.RadixDeployComponent{
+			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
 					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{
@@ -223,7 +237,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					}},
 				},
 			},
-			Jobs: []v1.RadixDeployJobComponent{
+			jobs: []v1.RadixDeployJobComponent{
 				{
 					Name: jobName1,
 					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{
@@ -320,7 +334,92 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	}
 }
 
-func (s *secretHandlerTestSuite) assertSecrets(scenario *testScenario, err error, secrets []secretModels.Secret) {
+func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
+	ctrl := gomock.NewController(s.T())
+	defer ctrl.Finish()
+	deploymentName1 := "deployment1"
+	componentName1 := "component1"
+	jobName1 := "job1"
+	//goland:noinspection ALL
+	scenarios := []changeSecretScenario{
+		{
+			name:           "Change regular secret in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				Secrets: []string{
+					"SECRET_C1",
+				},
+			}},
+			secretName:                  "component1-sdiatyab",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "SECRET_C1",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newVal1",
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change regular secret in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+				Secrets: []string{
+					"SECRET_C1",
+				},
+			}},
+			secretName:                  "job1-jvqbisnq",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "SECRET_C1",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newVal1",
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, scenario := range scenarios {
+		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
+			kubeClient, radixClient, _ := s.getUtils()
+			secretHandler := SecretHandler{
+				client:        kubeClient,
+				radixclient:   radixClient,
+				deployHandler: nil,
+			}
+			appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
+			if scenario.secretExists {
+				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
+					Data:       map[string][]byte{scenario.secretName: []byte("current-secret-value")},
+				}, metav1.CreateOptions{})
+			}
+
+			err := secretHandler.ChangeComponentSecret(scenario.appName, scenario.envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
+
+			s.Equal(scenario.expectedError, err != nil, getErrorMessage(err))
+			if scenario.secretExists && err == nil {
+				changedSecret, _ := kubeClient.CoreV1().Secrets(appEnvNamespace).Get(context.Background(), scenario.secretName, metav1.GetOptions{})
+				s.NotNil(changedSecret)
+				s.Equal(string(changedSecret.Data[scenario.changingSecretName]), scenario.changingSecretParams.SecretValue)
+			}
+		})
+	}
+}
+
+func getErrorMessage(err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, err error, secrets []secretModels.Secret) {
 	s.Equal(scenario.expectedError, err != nil)
 	s.Equal(len(scenario.expectedSecrets), len(secrets))
 	secretMap := getSecretMap(secrets)
@@ -335,10 +434,10 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *testScenario, err error
 	}
 }
 
-func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *testScenario) (SecretHandler, *deployMock.MockDeployHandler) {
+func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario) (SecretHandler, *deployMock.MockDeployHandler) {
 	kubeClient, radixClient, _ := s.getUtils()
 	deployHandler := deployMock.NewMockDeployHandler(ctrl)
-	handler := SecretHandler{
+	secretHandler := SecretHandler{
 		client:        kubeClient,
 		radixclient:   radixClient,
 		deployHandler: deployHandler,
@@ -349,8 +448,8 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		Spec: v1.RadixApplicationSpec{
 			Environments:     []v1.Environment{{Name: scenario.envName}},
 			DNSExternalAlias: scenario.externalAliases,
-			Components:       getRadixComponents(scenario.Components, scenario.envName),
-			Jobs:             getRadixJobComponents(scenario.Jobs, scenario.envName),
+			Components:       getRadixComponents(scenario.components, scenario.envName),
+			Jobs:             getRadixJobComponents(scenario.jobs, scenario.envName),
 		},
 	}
 	radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
@@ -358,13 +457,13 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		ObjectMeta: metav1.ObjectMeta{Name: scenario.deploymentName},
 		Spec: v1.RadixDeploymentSpec{
 			Environment: scenario.envName,
-			Components:  scenario.Components,
-			Jobs:        scenario.Jobs,
+			Components:  scenario.components,
+			Jobs:        scenario.jobs,
 		},
 	}
 	appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
 	radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
-	return handler, deployHandler
+	return secretHandler, deployHandler
 }
 
 func getRadixComponents(components []v1.RadixDeployComponent, envName string) []v1.RadixComponent {
