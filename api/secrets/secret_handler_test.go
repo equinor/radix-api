@@ -49,7 +49,8 @@ type changeSecretScenario struct {
 	components                  []v1.RadixDeployComponent
 	jobs                        []v1.RadixDeployJobComponent
 	secretName                  string
-	currentSecretData           map[string][]byte
+	secretDataKey               string
+	currentSecretValue          string
 	secretExists                bool
 	changingSecretComponentName string
 	changingSecretName          string
@@ -355,7 +356,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "component1-sdiatyab",
-			currentSecretData:           map[string][]byte{"component1-sdiatyab": []byte("current-value")},
+			secretDataKey:               "component1-sdiatyab",
+			currentSecretValue:          "current-value",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          "SECRET_C1",
@@ -376,7 +378,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "job1-jvqbisnq",
-			currentSecretData:           map[string][]byte{"job1-jvqbisnq": []byte("current-value")},
+			secretDataKey:               "job1-jvqbisnq",
+			currentSecretValue:          "current-value",
 			secretExists:                true,
 			changingSecretComponentName: jobName1,
 			changingSecretName:          "SECRET_C1",
@@ -386,16 +389,20 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:                        "Change External DNS cert in the job",
-			appName:                     anyAppName,
-			envName:                     anyEnvironment,
-			deploymentName:              deploymentName1,
-			jobs:                        []v1.RadixDeployJobComponent{{Name: jobName1}},
-			secretName:                  "secret-name",
-			currentSecretData:           map[string][]byte{tlsCertPart: encodeToBase64("current tls certificate text\nline1\nline2")},
+			name:           "Change External DNS cert in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name:    jobName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretName:                  "some-external-dns-secret",
+			secretDataKey:               tlsCertPart,
+			currentSecretValue:          "current tls certificate text\nline1\nline2",
 			secretExists:                true,
 			changingSecretComponentName: jobName1,
-			changingSecretName:          "secret-name-cert",
+			changingSecretName:          "some-external-dns-secret-cert",
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new tls certificate text\nline1\nline2",
 			},
@@ -415,7 +422,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			if scenario.secretExists {
 				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
-					Data:       scenario.currentSecretData,
+					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.currentSecretValue)},
 				}, metav1.CreateOptions{})
 			}
 
@@ -425,7 +432,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			if scenario.secretExists && err == nil {
 				changedSecret, _ := kubeClient.CoreV1().Secrets(appEnvNamespace).Get(context.Background(), scenario.secretName, metav1.GetOptions{})
 				s.NotNil(changedSecret)
-				s.Equal(string(changedSecret.Data[scenario.changingSecretName]), scenario.changingSecretParams.SecretValue)
+				s.Equal(scenario.changingSecretParams.SecretValue, string(changedSecret.Data[scenario.secretDataKey]))
 			}
 		})
 	}
