@@ -2,7 +2,10 @@ package secrets
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"testing"
+
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -15,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
-	"testing"
 )
 
 type secretHandlerTestSuite struct {
@@ -46,9 +48,8 @@ type changeSecretScenario struct {
 	deploymentName              string
 	components                  []v1.RadixDeployComponent
 	jobs                        []v1.RadixDeployJobComponent
-	externalAliases             []v1.ExternalAlias
-	volumeMounts                []v1.RadixVolumeMount
 	secretName                  string
+	currentSecretData           map[string][]byte
 	secretExists                bool
 	changingSecretComponentName string
 	changingSecretName          string
@@ -354,11 +355,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "component1-sdiatyab",
+			currentSecretData:           map[string][]byte{"component1-sdiatyab": []byte("current-value")},
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          "SECRET_C1",
 			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newVal1",
+				SecretValue: "new-value",
 			},
 			expectedError: false,
 		},
@@ -374,11 +376,28 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "job1-jvqbisnq",
+			currentSecretData:           map[string][]byte{"job1-jvqbisnq": []byte("current-value")},
 			secretExists:                true,
 			changingSecretComponentName: jobName1,
 			changingSecretName:          "SECRET_C1",
 			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newVal1",
+				SecretValue: "new-value",
+			},
+			expectedError: false,
+		},
+		{
+			name:                        "Change External DNS cert in the job",
+			appName:                     anyAppName,
+			envName:                     anyEnvironment,
+			deploymentName:              deploymentName1,
+			jobs:                        []v1.RadixDeployJobComponent{{Name: jobName1}},
+			secretName:                  "secret-name",
+			currentSecretData:           map[string][]byte{tlsCertPart: encodeToBase64("current tls certificate text\nline1\nline2")},
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "secret-name-cert",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls certificate text\nline1\nline2",
 			},
 			expectedError: false,
 		},
@@ -396,7 +415,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			if scenario.secretExists {
 				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
-					Data:       map[string][]byte{scenario.secretName: []byte("current-secret-value")},
+					Data:       scenario.currentSecretData,
 				}, metav1.CreateOptions{})
 			}
 
@@ -410,6 +429,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}
 		})
 	}
+}
+
+func encodeToBase64(value string) []byte {
+	return []byte(base64.StdEncoding.EncodeToString([]byte(value)))
 }
 
 func getErrorMessage(err error) string {
