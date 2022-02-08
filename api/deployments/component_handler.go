@@ -360,7 +360,7 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 }
 
 func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	var replicaSummaryList []deploymentModels.ReplicaSummary
+	replicaSummaryList := make([]deploymentModels.ReplicaSummary, 0, len(pods))
 
 	for _, pod := range pods {
 		replicaSummaryList = append(replicaSummaryList, deploymentModels.GetReplicaSummary(pod))
@@ -370,7 +370,7 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 }
 
 func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) ([]deploymentModels.AuxiliaryResource, error) {
-	var auxResources []deploymentModels.AuxiliaryResource
+	auxResources := make([]deploymentModels.AuxiliaryResource, 0)
 
 	if auth := component.GetAuthentication(); auth != nil && auth.OAuth2 != nil {
 		oauth2Resource, err := getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace, *auth.OAuth2)
@@ -409,14 +409,6 @@ func getAuxiliaryResourceDeployment(kubeClient kubernetes.Interface, appName, co
 		return &auxResourceDeployment, nil
 	}
 	deployment := deployments.Items[0]
-
-	envVars := map[string]string{}
-	for _, env := range deployment.Spec.Template.Spec.Containers[0].Env {
-		if env.ValueFrom == nil {
-			envVars[env.Name] = env.Value
-		}
-	}
-	auxResourceDeployment.Variables = envVars
 
 	pods, err := kubeClient.CoreV1().Pods(envNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
 	if err != nil {

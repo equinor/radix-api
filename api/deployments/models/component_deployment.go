@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	radixutils "github.com/equinor/radix-common/utils"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -94,8 +93,8 @@ type Component struct {
 
 	// Auxiliary resources for this component
 	//
-	// required: false
-	AuxiliaryResources []AuxiliaryResource `json:"auxiliaryResources,omitempty"`
+	// required: true
+	AuxiliaryResources []AuxiliaryResource `json:"auxiliaryResources"`
 }
 
 func (c *Component) GetAuxiliaryResourceByType(auxType string) *AuxiliaryResource {
@@ -123,8 +122,6 @@ type AuxiliaryResource struct {
 	Deployment *AuxiliaryResourceDeployment `json:"deployment,omitempty"`
 }
 
-type OAuth2AuxiliaryResource v1.OAuth2
-
 // AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment
 // swagger:model AuxiliaryResourceDeployment
 type AuxiliaryResourceDeployment struct {
@@ -137,18 +134,13 @@ type AuxiliaryResourceDeployment struct {
 	// example: Consistent
 	Status string `json:"status"`
 
-	// Variables defined for the auxiliary resource's deployment
-	//
-	// required: true
-	Variables map[string]string `json:"variables"`
-
 	// Running replicas of the auxiliary resource's deployment
 	//
 	// required: true
 	ReplicaList []ReplicaSummary `json:"replicaList"`
 }
 
-// Port describe an component part of an deployment
+// Port describe a port of a component
 // swagger:model Port
 type Port struct {
 	// Component port name. From radixconfig.yaml
@@ -164,7 +156,7 @@ type Port struct {
 	Port int32 `json:"port"`
 }
 
-// ComponentSummary describe an component part of an deployment
+// ComponentSummary describe a component part of a deployment
 // swagger:model ComponentSummary
 type ComponentSummary struct {
 	// Name the component
