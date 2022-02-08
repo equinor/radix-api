@@ -2,7 +2,6 @@ package secrets
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -50,7 +49,7 @@ type changeSecretScenario struct {
 	jobs                        []v1.RadixDeployJobComponent
 	secretName                  string
 	secretDataKey               string
-	currentSecretValue          string
+	secretValue                 string
 	secretExists                bool
 	changingSecretComponentName string
 	changingSecretName          string
@@ -356,8 +355,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "component1-sdiatyab",
-			secretDataKey:               "component1-sdiatyab",
-			currentSecretValue:          "current-value",
+			secretDataKey:               "SECRET_C1",
+			secretValue:                 "current-value",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          "SECRET_C1",
@@ -378,8 +377,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				},
 			}},
 			secretName:                  "job1-jvqbisnq",
-			secretDataKey:               "job1-jvqbisnq",
-			currentSecretValue:          "current-value",
+			secretDataKey:               "SECRET_C1",
+			secretValue:                 "current-value",
 			secretExists:                true,
 			changingSecretComponentName: jobName1,
 			changingSecretName:          "SECRET_C1",
@@ -399,12 +398,13 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretName:                  "some-external-dns-secret",
 			secretDataKey:               tlsCertPart,
-			currentSecretValue:          "current tls certificate text\nline1\nline2",
+			secretValue:                 "current tls certificate text\nline2\nline3",
 			secretExists:                true,
 			changingSecretComponentName: jobName1,
 			changingSecretName:          "some-external-dns-secret-cert",
 			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "new tls certificate text\nline1\nline2",
+				SecretValue: "new tls certificate text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
 			},
 			expectedError: false,
 		},
@@ -422,7 +422,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			if scenario.secretExists {
 				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
-					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.currentSecretValue)},
+					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.secretValue)},
 				}, metav1.CreateOptions{})
 			}
 
@@ -436,10 +436,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}
 		})
 	}
-}
-
-func encodeToBase64(value string) []byte {
-	return []byte(base64.StdEncoding.EncodeToString([]byte(value)))
 }
 
 func getErrorMessage(err error) string {
