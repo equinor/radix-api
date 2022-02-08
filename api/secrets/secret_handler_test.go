@@ -343,7 +343,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	componentName1 := "component1"
 	jobName1 := "job1"
 	volumeName1 := "volume1"
-	volumeName2 := "volume2"
+	azureKeyVaultName1 := "azureKeyVault1"
 	//goland:noinspection ALL
 	scenarios := []changeSecretScenario{
 		{
@@ -524,12 +524,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2),
+			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountNamePart,
 			secretValue:                 "currentAccountName",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -564,15 +564,95 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2),
+			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountKeyPart,
 			secretValue:                 "currentAccountKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Key vault client ID in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1),
+			secretDataKey:               defaults.CsiAzureKeyVaultCredsClientIdPart,
+			secretValue:                 "currentClientId",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientId",
+				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Key vault client ID in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1),
+			secretDataKey:               defaults.CsiAzureKeyVaultCredsClientIdPart,
+			secretValue:                 "currentClientId",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientId",
+				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Key vault client secret in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1),
+			secretDataKey:               defaults.CsiAzureKeyVaultCredsClientSecretPart,
+			secretValue:                 "currentClientId",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientId",
+				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Key vault client secret in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1),
+			secretDataKey:               defaults.CsiAzureKeyVaultCredsClientSecretPart,
+			secretValue:                 "currentClientSecret",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientSecret",
+				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: false,
 		},
