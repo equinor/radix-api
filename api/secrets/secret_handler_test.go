@@ -777,6 +777,77 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			},
 			expectedError: false,
 		},
+		{
+			name:           "Failed change of not existing OAuth2 Redis password in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretExists:                false,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newRedisPassword",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: true,
+		},
+		{
+			name:           "Failed change of not existing OAuth2 Redis password in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretExists:                false,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newRedisPassword",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: true,
+		},
+		{
+			name:           "Change client certificate in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  "client-certificate1-clientcertca",
+			secretDataKey:               "ca.crt",
+			secretValue:                 "current client certificate\nline2\nline3",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new client certificate\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Failed change of not existing client certificate in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretExists:                false,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new client certificate\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: true,
+		},
 	}
 
 	for _, scenario := range scenarios {
