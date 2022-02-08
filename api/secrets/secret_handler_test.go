@@ -3,6 +3,7 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"testing"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
@@ -341,6 +342,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	deploymentName1 := "deployment1"
 	componentName1 := "component1"
 	jobName1 := "job1"
+	volumeName1 := "volume1"
+	volumeName2 := "volume2"
 	//goland:noinspection ALL
 	scenarios := []changeSecretScenario{
 		{
@@ -490,6 +493,86 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new tls key text\nline2\nline3",
 				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Blob volume account name in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1),
+			secretDataKey:               defaults.CsiAzureCredsAccountNamePart,
+			secretValue:                 "currentAccountName",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newAccountName",
+				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Blob volume account name in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2),
+			secretDataKey:               defaults.CsiAzureCredsAccountNamePart,
+			secretValue:                 "currentAccountName",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newAccountName",
+				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Blob volume account key in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1),
+			secretDataKey:               defaults.CsiAzureCredsAccountKeyPart,
+			secretValue:                 "currentAccountKey",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newAccountKey",
+				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change CSI Azure Blob volume account key in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2),
+			secretDataKey:               defaults.CsiAzureCredsAccountKeyPart,
+			secretValue:                 "currentAccountKey",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName2) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newAccountKey",
+				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: false,
 		},
