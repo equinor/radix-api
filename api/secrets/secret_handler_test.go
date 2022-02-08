@@ -3,12 +3,13 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/secrets/suffix"
 	"testing"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
+	utils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -307,12 +308,54 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 			},
 		},
-		//TODO{
-		//	name:           "Secrets from Authentication",
-		//	appName:        anyAppName,
-		//	envName:        anyEnvironment,
-		//	deploymentName: deploymentName1,
-		//	Components: []v1.RadixDeployComponent{{Name:       componentName1}},
+		{
+			name:           "Secrets from Authentication with PassCertificateToUpstream",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				Authentication: &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{PassCertificateToUpstream: utils.BoolPtr(true)},
+				},
+				Ports:      []v1.ComponentPort{{Name: "http", Port: 8000}},
+				PublicPort: "http",
+			}},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name:           "Secrets from Authentication with VerificationTypeOn",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				Authentication: &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOn)},
+				},
+				Ports:      []v1.ComponentPort{{Name: "http", Port: 8000}},
+				PublicPort: "http",
+			}},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
 	}
 
 	for _, scenario := range scenarios {
@@ -333,6 +376,173 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			secrets, err := secretHandler.GetSecretsForDeployment(scenario.appName, scenario.envName, scenario.deploymentName)
 
 			s.assertSecrets(&scenario, err, secrets)
+		})
+	}
+}
+
+func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
+	ctrl := gomock.NewController(s.T())
+	defer ctrl.Finish()
+	componentName1 := "component1"
+	scenarios := []struct {
+		name            string
+		modifyComponent func(*v1.RadixDeployComponent)
+		expectedError   bool
+		expectedSecrets []secretModels.Secret
+	}{
+		{
+			name: "Secrets from Authentication with PassCertificateToUpstream",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{PassCertificateToUpstream: utils.BoolPtr(true)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with VerificationTypeOn",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOn)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with VerificationTypeOn",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOn)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with VerificationTypeOptional",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOptional)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with VerificationTypeOptionalNoCa",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOptionalNoCa)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError: false,
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "No secrets from Authentication with VerificationTypeOff",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOff)},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError:   false,
+			expectedSecrets: []secretModels.Secret{},
+		},
+		{
+			name: "No secrets from Authentication for not public port",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{Verification: getVerificationTypePtr(v1.VerificationTypeOn)},
+				}
+			},
+			expectedError:   false,
+			expectedSecrets: []secretModels.Secret{},
+		},
+		{
+			name: "No secrets from Authentication with No Verification and PassCertificateToUpstream",
+			modifyComponent: func(component *v1.RadixDeployComponent) {
+				component.Authentication = &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{},
+				}
+				component.PublicPort = "http"
+			},
+			expectedError:   false,
+			expectedSecrets: []secretModels.Secret{},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
+			commonScenario := getSecretScenario{
+				name:           scenario.name,
+				appName:        anyAppName,
+				envName:        anyEnvironment,
+				deploymentName: "deployment1",
+				components: []v1.RadixDeployComponent{{
+					Name:  componentName1,
+					Ports: []v1.ComponentPort{{Name: "http", Port: 8000}},
+				}},
+				expectedError:   scenario.expectedError,
+				expectedSecrets: scenario.expectedSecrets,
+			}
+			scenario.modifyComponent(&commonScenario.components[0])
+
+			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario)
+
+			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(commonScenario.appName, commonScenario.envName, false).
+				Return([]*deploymentModels.DeploymentSummary{{Name: commonScenario.deploymentName, Environment: commonScenario.envName}}, nil)
+
+			secrets, err := secretHandler.GetSecrets(commonScenario.appName, commonScenario.envName)
+
+			s.assertSecrets(&commonScenario, err, secrets)
 		})
 	}
 }
@@ -1290,4 +1500,8 @@ func getComponents(radixDeployComponents []v1.RadixDeployComponent, radixDeployJ
 
 func (s *secretHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset) {
 	return kubefake.NewSimpleClientset(), radixfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
+}
+
+func getVerificationTypePtr(verificationType v1.VerificationType) *v1.VerificationType {
+	return &verificationType
 }
