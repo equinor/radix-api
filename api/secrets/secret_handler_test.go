@@ -3,14 +3,15 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	"testing"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -656,6 +657,126 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			},
 			expectedError: false,
 		},
+		{
+			name:           "Change OAuth2 client secret key in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthClientSecretKeyName,
+			secretValue:                 "currentClientSecretKey",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientSecretKey",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change OAuth2 client secret key in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthClientSecretKeyName,
+			secretValue:                 "currentClientSecretKey",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientSecretKey",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change OAuth2 cookie secret in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthCookieSecretKeyName,
+			secretValue:                 "currentCookieSecretKey",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newCookieSecretKey",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change OAuth2 cookie secret in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthCookieSecretKeyName,
+			secretValue:                 "currentCookieSecretKey",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newCookieSecretKey",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change OAuth2 Redis password in the component",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthRedisPasswordKeyName,
+			secretValue:                 "currentRedisPassword",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newRedisPassword",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
+		{
+			name:           "Change OAuth2 Redis password in the job",
+			appName:        anyAppName,
+			envName:        anyEnvironment,
+			deploymentName: deploymentName1,
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthRedisPasswordKeyName,
+			secretValue:                 "currentRedisPassword",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newRedisPassword",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError: false,
+		},
 	}
 
 	for _, scenario := range scenarios {
@@ -666,7 +787,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				radixclient:   radixClient,
 				deployHandler: nil,
 			}
-			appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
+			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
 			if scenario.secretExists {
 				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
@@ -716,7 +837,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		radixclient:   radixClient,
 		deployHandler: deployHandler,
 	}
-	appAppNamespace := utils.GetAppNamespace(scenario.appName)
+	appAppNamespace := operatorUtils.GetAppNamespace(scenario.appName)
 	ra := &v1.RadixApplication{
 		ObjectMeta: metav1.ObjectMeta{Name: scenario.appName, Namespace: appAppNamespace},
 		Spec: v1.RadixApplicationSpec{
@@ -735,7 +856,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 			Jobs:        scenario.jobs,
 		},
 	}
-	appEnvNamespace := utils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
+	appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
 	radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 	return secretHandler, deployHandler
 }
