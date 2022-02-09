@@ -30,6 +30,11 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(secretHandlerTestSuite))
 }
 
+type expectedSecret struct {
+	secretExists    bool
+	expectedSecrets []secretModels.Secret
+}
+
 type getSecretScenario struct {
 	name            string
 	components      []v1.RadixDeployComponent
