@@ -36,6 +36,7 @@ import (
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -1005,7 +1006,7 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	appName, envName := "app", "dev"
 	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
 	ctrl := gomock.NewController(t)
-	ctrl.Finish()
+	defer ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
 	handler := initHandler(kubeclient, radixclient, secretproviderclient, WithEventHandler(eventHandler))
 	raBuilder := operatorutils.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
@@ -1020,6 +1021,49 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	events, err := handler.GetEnvironmentEvents(appName, envName)
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
+}
+
+func TestRestartAuxiliaryResource(t *testing.T) {
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest()
+	anyAppName, auxType := "any-app", "oauth"
+	envNs := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment, "master"))
+
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithComponent(operatorutils.
+			NewDeployComponentBuilder().
+			WithName(anyComponentName).
+			WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}})).
+		WithActiveFrom(time.Now()))
+
+	kubeClient.AppsV1().Deployments(envNs).Create(context.Background(), &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "comp1-aux-resource",
+			Labels: map[string]string{kube.RadixAppLabel: anyAppName, kube.RadixAuxiliaryComponentLabel: anyComponentName, kube.RadixAuxiliaryComponentTypeLabel: auxType},
+		},
+		Spec:   appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{}}},
+		Status: appsv1.DeploymentStatus{Replicas: 1},
+	}, metav1.CreateOptions{})
+
+	// Test
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/aux/%s/restart", anyAppName, anyEnvironment, anyComponentName, auxType))
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	kubeDeploy, _ := kubeClient.AppsV1().Deployments(envNs).Get(context.Background(), "comp1-aux-resource", metav1.GetOptions{})
+	assert.NotEmpty(t, kubeDeploy.Spec.Template.Annotations[restartedAtAnnotation])
 }
 
 func initHandler(client kubernetes.Interface,
