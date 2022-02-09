@@ -173,10 +173,10 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return environmentModels.CannotRestartComponent(appName, componentName, deploymentModels.ComponentReconciling.String())
 	}
 
-	return eh.patchKubeDeploymentForRestart(&deployments.Items[0])
+	return eh.patchDeploymentForRestart(&deployments.Items[0])
 }
 
-func (eh EnvironmentHandler) patchKubeDeploymentForRestart(deployment *appsv1.Deployment) error {
+func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deployment) error {
 	if deployment.Spec.Template.Annotations == nil {
 		deployment.Spec.Template.Annotations = make(map[string]string)
 	}
