@@ -9,7 +9,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
-	utils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -32,8 +32,6 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 
 type getSecretScenario struct {
 	name            string
-	appName         string
-	envName         string
 	deploymentName  string
 	components      []v1.RadixDeployComponent
 	jobs            []v1.RadixDeployJobComponent
@@ -69,8 +67,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	scenarios := []getSecretScenario{
 		{
 			name:           "regular secrets",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -106,8 +102,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "External alias secrets",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components:     []v1.RadixDeployComponent{{Name: componentName1}},
 			externalAliases: []v1.ExternalAlias{{
@@ -138,8 +132,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "Azure Blob volumes credential secrets",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{
 				{
@@ -203,8 +195,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "No Azure Key vault credential secrets when there is no Azure key vault SecretRefs",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{
 				{
@@ -223,8 +213,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "Azure Key vault credential secrets when there are secret items",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{
 				{
@@ -233,7 +221,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 						{
 							Name: "keyVault1",
 							Items: []v1.RadixAzureKeyVaultItem{
-								v1.RadixAzureKeyVaultItem{
+								{
 									Name:   "secret1",
 									EnvVar: "SECRET_REF1",
 								},
@@ -248,7 +236,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 						{
 							Name: "keyVault2",
 							Items: []v1.RadixAzureKeyVaultItem{
-								v1.RadixAzureKeyVaultItem{
+								{
 									Name:   "secret2",
 									EnvVar: "SECRET_REF2",
 								},
@@ -310,8 +298,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "Secrets from Authentication with PassCertificateToUpstream",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -334,8 +320,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		},
 		{
 			name:           "Secrets from Authentication with VerificationTypeOn",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
 			deploymentName: deploymentName1,
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -359,21 +343,23 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	}
 
 	for _, scenario := range scenarios {
+		appName := anyAppName
+		environment := anyEnvironment
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &scenario)
+			secretHandler, deployHandler := s.prepareTestRun(ctrl, &scenario, appName, environment)
 
-			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(scenario.appName, scenario.envName, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName, Environment: scenario.envName}}, nil)
+			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
+				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName, Environment: environment}}, nil)
 
-			secrets, err := secretHandler.GetSecrets(scenario.appName, scenario.envName)
+			secrets, err := secretHandler.GetSecrets(appName, environment)
 
 			s.assertSecrets(&scenario, err, secrets)
 		})
 
 		s.Run(fmt.Sprintf("test GetSecretsForDeployment: %s", scenario.name), func() {
-			secretHandler, _ := s.prepareTestRun(ctrl, &scenario)
+			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment)
 
-			secrets, err := secretHandler.GetSecretsForDeployment(scenario.appName, scenario.envName, scenario.deploymentName)
+			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, scenario.deploymentName)
 
 			s.assertSecrets(&scenario, err, secrets)
 		})
@@ -521,10 +507,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 
 	for _, scenario := range scenarios {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
+			environment := anyEnvironment
+			appName := anyAppName
 			commonScenario := getSecretScenario{
 				name:           scenario.name,
-				appName:        anyAppName,
-				envName:        anyEnvironment,
 				deploymentName: "deployment1",
 				components: []v1.RadixDeployComponent{{
 					Name:  componentName1,
@@ -535,12 +521,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			}
 			scenario.modifyComponent(&commonScenario.components[0])
 
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario)
+			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario, appName, environment)
 
-			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(commonScenario.appName, commonScenario.envName, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: commonScenario.deploymentName, Environment: commonScenario.envName}}, nil)
+			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
+				Return([]*deploymentModels.DeploymentSummary{{Name: commonScenario.deploymentName, Environment: environment}}, nil)
 
-			secrets, err := secretHandler.GetSecrets(commonScenario.appName, commonScenario.envName)
+			secrets, err := secretHandler.GetSecrets(appName, environment)
 
 			s.assertSecrets(&commonScenario, err, secrets)
 		})
@@ -1360,15 +1346,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				radixclient:   radixClient,
 				deployHandler: nil,
 			}
-			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
+			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, anyEnvironment)
 			if scenario.secretExists {
-				kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
+				_, _ = kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
 					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.secretValue)},
 				}, metav1.CreateOptions{})
 			}
 
-			err := secretHandler.ChangeComponentSecret(scenario.appName, scenario.envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
+			err := secretHandler.ChangeComponentSecret(scenario.appName, anyEnvironment, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
 
 			s.Equal(scenario.expectedError, err != nil, getErrorMessage(err))
 			if scenario.secretExists && err == nil {
@@ -1402,7 +1388,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, err 
 	}
 }
 
-func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario) (SecretHandler, *deployMock.MockDeployHandler) {
+func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario, appName, envName string) (SecretHandler, *deployMock.MockDeployHandler) {
 	kubeClient, radixClient, _ := s.getUtils()
 	deployHandler := deployMock.NewMockDeployHandler(ctrl)
 	secretHandler := SecretHandler{
@@ -1410,27 +1396,27 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		radixclient:   radixClient,
 		deployHandler: deployHandler,
 	}
-	appAppNamespace := operatorUtils.GetAppNamespace(scenario.appName)
+	appAppNamespace := operatorUtils.GetAppNamespace(appName)
 	ra := &v1.RadixApplication{
-		ObjectMeta: metav1.ObjectMeta{Name: scenario.appName, Namespace: appAppNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: appAppNamespace},
 		Spec: v1.RadixApplicationSpec{
-			Environments:     []v1.Environment{{Name: scenario.envName}},
+			Environments:     []v1.Environment{{Name: envName}},
 			DNSExternalAlias: scenario.externalAliases,
-			Components:       getRadixComponents(scenario.components, scenario.envName),
-			Jobs:             getRadixJobComponents(scenario.jobs, scenario.envName),
+			Components:       getRadixComponents(scenario.components, envName),
+			Jobs:             getRadixJobComponents(scenario.jobs, envName),
 		},
 	}
-	radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
+	_, _ = radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
 	radixDeployment := v1.RadixDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: scenario.deploymentName},
 		Spec: v1.RadixDeploymentSpec{
-			Environment: scenario.envName,
+			Environment: envName,
 			Components:  scenario.components,
 			Jobs:        scenario.jobs,
 		},
 	}
-	appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, scenario.envName)
-	radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+	appEnvNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	_, _ = radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 	return secretHandler, deployHandler
 }
 
@@ -1475,27 +1461,6 @@ func getSecretMap(secrets []secretModels.Secret) map[string]secretModels.Secret 
 		secretMap[secret.Name] = secret
 	}
 	return secretMap
-}
-
-func getComponents(radixDeployComponents []v1.RadixDeployComponent, radixDeployJobComponents []v1.RadixDeployJobComponent) []*deploymentModels.Component {
-	var deploymentComponents []*deploymentModels.Component
-	for _, radixDeployComponent := range radixDeployComponents {
-		deploymentComponents = append(deploymentComponents, &deploymentModels.Component{
-			Name:      radixDeployComponent.Name,
-			Type:      string(v1.RadixComponentTypeComponent),
-			Variables: radixDeployComponent.GetEnvironmentVariables(),
-			Secrets:   radixDeployComponent.Secrets,
-		})
-	}
-	for _, radixDeployJobComponent := range radixDeployJobComponents {
-		deploymentComponents = append(deploymentComponents, &deploymentModels.Component{
-			Name:      radixDeployJobComponent.Name,
-			Type:      string(v1.RadixComponentTypeJobScheduler),
-			Variables: radixDeployJobComponent.GetEnvironmentVariables(),
-			Secrets:   radixDeployJobComponent.Secrets,
-		})
-	}
-	return deploymentComponents
 }
 
 func (s *secretHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset) {
