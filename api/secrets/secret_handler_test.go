@@ -32,7 +32,6 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 
 type getSecretScenario struct {
 	name            string
-	deploymentName  string
 	components      []v1.RadixDeployComponent
 	jobs            []v1.RadixDeployJobComponent
 	externalAliases []v1.ExternalAlias
@@ -43,9 +42,6 @@ type getSecretScenario struct {
 
 type changeSecretScenario struct {
 	name                        string
-	appName                     string
-	envName                     string
-	deploymentName              string
 	components                  []v1.RadixDeployComponent
 	jobs                        []v1.RadixDeployJobComponent
 	secretName                  string
@@ -61,13 +57,11 @@ type changeSecretScenario struct {
 func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	ctrl := gomock.NewController(s.T())
 	defer ctrl.Finish()
-	deploymentName1 := "deployment1"
 	componentName1 := "component1"
 	jobName1 := "job1"
 	scenarios := []getSecretScenario{
 		{
-			name:           "regular secrets",
-			deploymentName: deploymentName1,
+			name: "regular secrets",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Secrets: []string{
@@ -101,9 +95,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:           "External alias secrets",
-			deploymentName: deploymentName1,
-			components:     []v1.RadixDeployComponent{{Name: componentName1}},
+			name:       "External alias secrets",
+			components: []v1.RadixDeployComponent{{Name: componentName1}},
 			externalAliases: []v1.ExternalAlias{{
 				Alias:       "someExternalAlias",
 				Environment: anyEnvironment,
@@ -131,8 +124,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:           "Azure Blob volumes credential secrets",
-			deploymentName: deploymentName1,
+			name: "Azure Blob volumes credential secrets",
 			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
@@ -194,8 +186,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:           "No Azure Key vault credential secrets when there is no Azure key vault SecretRefs",
-			deploymentName: deploymentName1,
+			name: "No Azure Key vault credential secrets when there is no Azure key vault SecretRefs",
 			components: []v1.RadixDeployComponent{
 				{
 					Name:       componentName1,
@@ -212,8 +203,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: nil,
 		},
 		{
-			name:           "Azure Key vault credential secrets when there are secret items",
-			deploymentName: deploymentName1,
+			name: "Azure Key vault credential secrets when there are secret items",
 			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
@@ -297,8 +287,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:           "Secrets from Authentication with PassCertificateToUpstream",
-			deploymentName: deploymentName1,
+			name: "Secrets from Authentication with PassCertificateToUpstream",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Authentication: &v1.Authentication{
@@ -319,8 +308,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:           "Secrets from Authentication with VerificationTypeOn",
-			deploymentName: deploymentName1,
+			name: "Secrets from Authentication with VerificationTypeOn",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Authentication: &v1.Authentication{
@@ -345,11 +333,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	for _, scenario := range scenarios {
 		appName := anyAppName
 		environment := anyEnvironment
+		deploymentName := "deployment1"
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &scenario, appName, environment)
+			secretHandler, deployHandler := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
 
 			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: scenario.deploymentName, Environment: environment}}, nil)
+				Return([]*deploymentModels.DeploymentSummary{{Name: deploymentName, Environment: environment}}, nil)
 
 			secrets, err := secretHandler.GetSecrets(appName, environment)
 
@@ -357,9 +346,9 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		})
 
 		s.Run(fmt.Sprintf("test GetSecretsForDeployment: %s", scenario.name), func() {
-			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment)
+			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
 
-			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, scenario.deploymentName)
+			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
 
 			s.assertSecrets(&scenario, err, secrets)
 		})
@@ -509,9 +498,9 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
 			environment := anyEnvironment
 			appName := anyAppName
+			deploymentName := "deployment1"
 			commonScenario := getSecretScenario{
-				name:           scenario.name,
-				deploymentName: "deployment1",
+				name: scenario.name,
 				components: []v1.RadixDeployComponent{{
 					Name:  componentName1,
 					Ports: []v1.ComponentPort{{Name: "http", Port: 8000}},
@@ -521,10 +510,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			}
 			scenario.modifyComponent(&commonScenario.components[0])
 
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario, appName, environment)
+			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario, appName, environment, deploymentName)
 
 			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: commonScenario.deploymentName, Environment: environment}}, nil)
+				Return([]*deploymentModels.DeploymentSummary{{Name: deploymentName, Environment: environment}}, nil)
 
 			secrets, err := secretHandler.GetSecrets(appName, environment)
 
@@ -536,7 +525,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	ctrl := gomock.NewController(s.T())
 	defer ctrl.Finish()
-	deploymentName1 := "deployment1"
 	componentName1 := "component1"
 	jobName1 := "job1"
 	volumeName1 := "volume1"
@@ -544,10 +532,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	//goland:noinspection ALL
 	scenarios := []changeSecretScenario{
 		{
-			name:           "Change regular secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change regular secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Secrets: []string{
@@ -566,10 +551,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change regular secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change regular secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 				Secrets: []string{
@@ -588,10 +570,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing regular secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing regular secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Secrets: []string{
@@ -607,10 +586,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing regular secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing regular secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 				Secrets: []string{
@@ -626,10 +602,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change External DNS cert in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change External DNS cert in the component",
 			components: []v1.RadixDeployComponent{{
 				Name:    componentName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -647,10 +620,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change External DNS cert in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change External DNS cert in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name:    jobName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -668,10 +638,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing External DNS cert in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing External DNS cert in the component",
 			components: []v1.RadixDeployComponent{{
 				Name:    componentName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -686,10 +653,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing External DNS cert in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing External DNS cert in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name:    jobName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -704,10 +668,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change External DNS key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change External DNS key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name:    componentName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -725,10 +686,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change External DNS key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change External DNS key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name:    jobName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -746,10 +704,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing External DNS key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing External DNS key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name:    componentName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -764,10 +719,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing External DNS key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing External DNS key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name:    jobName1,
 				Secrets: []string{"some-external-dns-secret"},
@@ -782,10 +734,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change CSI Azure Blob volume account name in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Blob volume account name in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -802,10 +751,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change CSI Azure Blob volume account name in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Blob volume account name in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -822,10 +768,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Blob volume account name in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Blob volume account name in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -839,10 +782,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Blob volume account name in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Blob volume account name in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -856,10 +796,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change CSI Azure Blob volume account key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Blob volume account key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -876,10 +813,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change CSI Azure Blob volume account key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Blob volume account key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -896,10 +830,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Blob volume account key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Blob volume account key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -913,10 +844,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Blob volume account key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Blob volume account key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -930,10 +858,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change CSI Azure Key vault client ID in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Key vault client ID in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -950,10 +875,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change CSI Azure Key vault client ID in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Key vault client ID in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -970,10 +892,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Key vault client ID in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Key vault client ID in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -987,10 +906,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Key vault client ID in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Key vault client ID in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1004,10 +920,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change CSI Azure Key vault client secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Key vault client secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1024,10 +937,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change CSI Azure Key vault client secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change CSI Azure Key vault client secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1044,10 +954,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Key vault client secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Key vault client secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1061,10 +968,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing CSI Azure Key vault client secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing CSI Azure Key vault client secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1078,10 +982,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change OAuth2 client secret key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 client secret key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1098,10 +999,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change OAuth2 client secret key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 client secret key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1118,10 +1016,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 client secret key in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 client secret key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1135,10 +1030,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 client secret key in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 client secret key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1152,10 +1044,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change OAuth2 cookie secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 cookie secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1172,10 +1061,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change OAuth2 cookie secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 cookie secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1192,10 +1078,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 cookie secret in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 cookie secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1209,10 +1092,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 cookie secret in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 cookie secret in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1226,10 +1106,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change OAuth2 Redis password in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 Redis password in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1246,10 +1123,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Change OAuth2 Redis password in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change OAuth2 Redis password in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1266,10 +1140,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 Redis password in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 Redis password in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1283,10 +1154,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Failed change of not existing OAuth2 Redis password in the job",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing OAuth2 Redis password in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
@@ -1300,10 +1168,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
-			name:           "Change client certificate in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Change client certificate in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1320,10 +1185,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name:           "Failed change of not existing client certificate in the component",
-			appName:        anyAppName,
-			envName:        anyEnvironment,
-			deploymentName: deploymentName1,
+			name: "Failed change of not existing client certificate in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
@@ -1340,13 +1202,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 
 	for _, scenario := range scenarios {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
+			appName := anyAppName
+			envName := anyEnvironment
 			kubeClient, radixClient, _ := s.getUtils()
 			secretHandler := SecretHandler{
 				client:        kubeClient,
 				radixclient:   radixClient,
 				deployHandler: nil,
 			}
-			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(scenario.appName, anyEnvironment)
+			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 			if scenario.secretExists {
 				_, _ = kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: scenario.secretName, Namespace: appEnvNamespace},
@@ -1354,7 +1218,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				}, metav1.CreateOptions{})
 			}
 
-			err := secretHandler.ChangeComponentSecret(scenario.appName, anyEnvironment, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
+			err := secretHandler.ChangeComponentSecret(appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
 
 			s.Equal(scenario.expectedError, err != nil, getErrorMessage(err))
 			if scenario.secretExists && err == nil {
@@ -1388,7 +1252,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, err 
 	}
 }
 
-func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario, appName, envName string) (SecretHandler, *deployMock.MockDeployHandler) {
+func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario, appName, envName, deploymentName string) (SecretHandler, *deployMock.MockDeployHandler) {
 	kubeClient, radixClient, _ := s.getUtils()
 	deployHandler := deployMock.NewMockDeployHandler(ctrl)
 	secretHandler := SecretHandler{
@@ -1408,7 +1272,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	}
 	_, _ = radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})
 	radixDeployment := v1.RadixDeployment{
-		ObjectMeta: metav1.ObjectMeta{Name: scenario.deploymentName},
+		ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
 		Spec: v1.RadixDeploymentSpec{
 			Environment: envName,
 			Components:  scenario.components,
