@@ -370,7 +370,7 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 }
 
 func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) ([]deploymentModels.AuxiliaryResource, error) {
-	auxResources := make([]deploymentModels.AuxiliaryResource, 0)
+	var auxResources []deploymentModels.AuxiliaryResource
 
 	if auth := component.GetAuthentication(); auth != nil && auth.OAuth2 != nil {
 		oauth2Resource, err := getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace, *auth.OAuth2)

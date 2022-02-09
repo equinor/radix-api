@@ -93,7 +93,7 @@ type Component struct {
 
 	// Auxiliary resources for this component
 	//
-	// required: true
+	// required: false
 	AuxiliaryResources []AuxiliaryResource `json:"auxiliaryResources"`
 }
 
@@ -136,7 +136,7 @@ type AuxiliaryResourceDeployment struct {
 
 	// Running replicas of the auxiliary resource's deployment
 	//
-	// required: true
+	// required: false
 	ReplicaList []ReplicaSummary `json:"replicaList"`
 }
 
