@@ -46,3 +46,8 @@ func CannotRestartComponent(appName, componentName, state string) error {
 func CannotRestartAuxiliaryResource(appName, componentName string) error {
 	return radixhttp.ValidationError("Radix Application Auxiliary Resource", fmt.Sprintf("Auxiliary resource for component %s for app %s cannot be restarted", componentName, appName))
 }
+
+// CannotRestartAuxiliaryResource Auxiliary resource cannot be restarted
+func MissingAuxiliaryResourceDeployment(appName, componentName string) error {
+	return radixhttp.UnexpectedError("Radix Application Auxiliary Resource", fmt.Errorf("deployment for auxiliary resource not found"))
+}

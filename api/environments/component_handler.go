@@ -154,27 +154,32 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		}
 	}
 
+	// Check if component exists
 	if componentDto == nil {
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
+	// Check if auxiliary resource exists for component
 	auxResourceDto := componentDto.GetAuxiliaryResourceByType(auxType)
 	if auxResourceDto == nil {
 		return environmentModels.NonExistingComponentAuxiliaryType(appName, componentName, auxType)
 	}
 
+	// Check if auxiliary is in a state that allows it to be restarted
 	if !canAuxiliaryResourceBeRestarted(auxResourceDto) {
 		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
 
+	// Get Kubernetes deployment object for auxiliary resource
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
 	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	deployments, err := eh.client.AppsV1().Deployments(envNs).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
+	// Return error if deployment object not found
 	if len(deployments.Items) == 0 {
-		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
+		return environmentModels.MissingAuxiliaryResourceDeployment(appName, componentName)
 	}
 
 	return eh.patchDeploymentForRestart(&deployments.Items[0])
