@@ -391,7 +391,12 @@ func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, compon
 	}
 
 	oauth2Resource.Type = defaults.OAuthProxyAuxiliaryComponentType
-	oauth2Resource.Deployment = auxDeployment
+	oauth2Resource.OAuth2 = &deploymentModels.OAuth2AuxiliaryResource{}
+
+	if auxDeployment != nil {
+		oauth2Resource.OAuth2.Deployment = *auxDeployment
+	}
+
 	return oauth2Resource, nil
 
 }

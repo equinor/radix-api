@@ -107,19 +107,27 @@ func (c *Component) GetAuxiliaryResourceByType(auxType string) *AuxiliaryResourc
 	return nil
 }
 
-// AuxiliaryResource describes an auxiliary resourses for a component
+// AuxiliaryResource describes an auxiliary resources for a component
 // swagger:model AuxiliaryResource
 type AuxiliaryResource struct {
-	// Type of auxliliary resource
+	// Type of auxiliary resource
 	//
 	// required: true
 	// - oauth: OAuth2 auxiliary resource
 	Type string `json:"type"`
 
-	// Deployment describes
+	// OAuth2 describes the oauth2 resource
+	//
+	// required: true
+	// - oauth: OAuth2 auxiliary resource
+	OAuth2 *OAuth2AuxiliaryResource `json:"oauth2,omitempty"`
+}
+
+type OAuth2AuxiliaryResource struct {
+	// Deployment describes the underlying Kubernetes deployment for the resource
 	//
 	// required: false
-	Deployment *AuxiliaryResourceDeployment `json:"deployment,omitempty"`
+	Deployment AuxiliaryResourceDeployment `json:"deployment,omitempty"`
 }
 
 // AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment

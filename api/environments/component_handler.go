@@ -140,12 +140,19 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return err
 	}
 
-	deploymentDto, err := eh.deployHandler.GetDeploymentWithName(appName, deploySummary.Name)
+	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(appName, deploySummary)
 	if err != nil {
 		return err
 	}
 
-	componentDto := deploymentDto.GetComponentByName(componentName)
+	var componentDto *deploymentModels.Component
+	for _, c := range componentsDto {
+		if c.Name == componentName {
+			componentDto = c
+			break
+		}
+	}
+
 	if componentDto == nil {
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
@@ -155,12 +162,8 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return environmentModels.NonExistingComponentAuxiliaryType(appName, componentName, auxType)
 	}
 
-	if auxResourceDto.Deployment == nil || auxResourceDto.Deployment.Status != deploymentModels.ConsistentComponent.String() {
-		currentStatus := deploymentModels.ComponentReconciling.String()
-		if auxResourceDto.Deployment != nil {
-			currentStatus = auxResourceDto.Deployment.Status
-		}
-		return environmentModels.CannotRestartComponent(appName, componentName, currentStatus)
+	if !canAuxiliaryResourceBeRestarted(auxResourceDto) {
+		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
 
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
@@ -170,10 +173,30 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return err
 	}
 	if len(deployments.Items) == 0 {
-		return environmentModels.CannotRestartComponent(appName, componentName, deploymentModels.ComponentReconciling.String())
+		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
 
 	return eh.patchDeploymentForRestart(&deployments.Items[0])
+}
+
+func canAuxiliaryResourceBeRestarted(auxResource *deploymentModels.AuxiliaryResource) bool {
+	if auxResource == nil {
+		return false
+	}
+
+	isDeploymentRestartable := func(deploy *deploymentModels.AuxiliaryResourceDeployment) bool {
+		return deploy != nil && deploy.Status == deploymentModels.ConsistentComponent.String()
+	}
+
+	switch auxResource.Type {
+	case defaults.OAuthProxyAuxiliaryComponentType:
+		if auxResource.OAuth2 == nil {
+			return false
+		}
+		return isDeploymentRestartable(&auxResource.OAuth2.Deployment)
+	default:
+		return false
+	}
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deployment) error {

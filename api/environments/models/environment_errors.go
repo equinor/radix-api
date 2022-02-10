@@ -41,3 +41,8 @@ func CannotStartComponent(appName, componentName, state string) error {
 func CannotRestartComponent(appName, componentName, state string) error {
 	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be restarted when in %s state", componentName, appName, strings.ToLower(state)))
 }
+
+// CannotRestartAuxiliaryResource Auxiliary resource cannot be restarted
+func CannotRestartAuxiliaryResource(appName, componentName string) error {
+	return radixhttp.ValidationError("Radix Application Auxiliary Resource", fmt.Sprintf("Auxiliary resource for component %s for app %s cannot be restarted", componentName, appName))
+}

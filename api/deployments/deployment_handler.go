@@ -27,6 +27,7 @@ type DeployHandler interface {
 	GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error)
 	GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error)
+	GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error)
 	GetLatestDeploymentForApplicationEnvironment(appName, environment string) (*deploymentModels.DeploymentSummary, error)
 	GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error)
 }
