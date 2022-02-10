@@ -45,7 +45,7 @@ func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(appName, envName, sched
 	return ph.getScheduledJobLog(envNs, scheduledJobName, containerName, sinceTime)
 }
 
-// HandleGetEnvironmentPodLog Get logs from pod in environment
+// HandleGetEnvironmentAuxiliaryResourcePodLog Get logs from auxiliary resource pod in environment
 func (ph PodHandler) HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (string, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
 	pods, err := ph.client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{

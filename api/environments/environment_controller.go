@@ -872,9 +872,9 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	radixhttp.JSONResponse(w, r, "Success")
 }
 
-// RestartComponent Restarts job
+// RestartComponentAuxiliaryResource Restarts auxiliary resource for a component
 func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/restart component restartComponentAuxiliaryResopurce
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/restart component restartComponentAuxiliaryResource
 	// ---
 	// summary: Restarts a auxiliary resource for a component
 	// parameters:
@@ -910,11 +910,17 @@ func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.Response
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Component started ok"
+	//     description: "Auxiliary resource restarted ok"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "409":
+	//     description: "Conflict"
 	//   "404":
 	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	auxType := mux.Vars(r)["auxType"]
@@ -1137,8 +1143,14 @@ func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter,
 	//     description: "pod log"
 	//     schema:
 	//        type: "string"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//   "500":
+	//     description: "Internal server error"
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]

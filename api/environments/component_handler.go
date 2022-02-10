@@ -22,6 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 )
 
 const restartedAtAnnotation = "radixapi/restartedAt"
@@ -200,16 +201,21 @@ func canAuxiliaryResourceBeRestarted(auxResource *deploymentModels.AuxiliaryReso
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deployment) error {
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = make(map[string]string)
-	}
+	deployClient := eh.client.AppsV1().Deployments(deployment.GetNamespace())
 
-	deployment.Spec.Template.Annotations[restartedAtAnnotation] = radixutils.FormatTimestamp(time.Now())
-	if _, err := eh.client.AppsV1().Deployments(deployment.Namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{}); err != nil {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		deployToPatch, err := deployClient.Get(context.TODO(), deployment.GetName(), metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if deployToPatch.Spec.Template.Annotations == nil {
+			deployToPatch.Spec.Template.Annotations = make(map[string]string)
+		}
+
+		deployToPatch.Spec.Template.Annotations[restartedAtAnnotation] = radixutils.FormatTimestamp(time.Now())
+		_, err = deployClient.Update(context.TODO(), deployToPatch, metav1.UpdateOptions{})
 		return err
-	}
-
-	return nil
+	})
 }
 
 func getReplicasForComponentInEnvironment(environmentConfig *v1.RadixEnvironmentConfig) (*int, error) {
