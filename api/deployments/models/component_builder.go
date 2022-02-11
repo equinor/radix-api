@@ -19,7 +19,7 @@ type ComponentBuilder interface {
 	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
-	WithAuxiliaryResourceSource(AuxiliaryResource) ComponentBuilder
+	WithAuxiliaryResource(AuxiliaryResource) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -77,7 +77,7 @@ func (b *componentBuilder) WithScheduledJobPayloadPath(scheduledJobPayloadPath s
 	return b
 }
 
-func (b *componentBuilder) WithAuxiliaryResourceSource(auxResource AuxiliaryResource) ComponentBuilder {
+func (b *componentBuilder) WithAuxiliaryResource(auxResource AuxiliaryResource) ComponentBuilder {
 	b.auxResource = auxResource
 	return b
 }

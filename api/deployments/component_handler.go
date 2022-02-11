@@ -187,7 +187,7 @@ func GetComponentStateFromSpec(
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
-		WithAuxiliaryResourceSource(auxResource).
+		WithAuxiliaryResource(auxResource).
 		BuildComponent()
 
 }
