@@ -94,31 +94,15 @@ type Component struct {
 	// Auxiliary resources for this component
 	//
 	// required: false
-	AuxiliaryResources []AuxiliaryResource `json:"auxiliaryResources"`
-}
-
-func (c *Component) GetAuxiliaryResourceByType(auxType string) *AuxiliaryResource {
-	for _, aux := range c.AuxiliaryResources {
-		if aux.Type == auxType {
-			return &aux
-		}
-	}
-
-	return nil
+	AuxiliaryResource `json:",inline"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component
 // swagger:model AuxiliaryResource
 type AuxiliaryResource struct {
-	// Type of auxiliary resource
-	//
-	// required: true
-	// - oauth: OAuth2 auxiliary resource
-	Type string `json:"type"`
-
 	// OAuth2 describes the oauth2 resource
 	//
-	// required: true
+	// required: false
 	// - oauth: OAuth2 auxiliary resource
 	OAuth2 *OAuth2AuxiliaryResource `json:"oauth2,omitempty"`
 }
@@ -126,7 +110,7 @@ type AuxiliaryResource struct {
 type OAuth2AuxiliaryResource struct {
 	// Deployment describes the underlying Kubernetes deployment for the resource
 	//
-	// required: false
+	// required: true
 	Deployment AuxiliaryResourceDeployment `json:"deployment,omitempty"`
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/gorilla/mux"
 )
 
@@ -73,9 +74,9 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: RestartComponent,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{auxType}/restart",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/restart",
 			Method:      "POST",
-			HandlerFunc: RestartComponentAuxiliaryResource,
+			HandlerFunc: RestartOAuthAuxiliaryResource,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/stop",
@@ -118,9 +119,9 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: GetScheduledJobLog,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{auxType}/replicas/{podName}/logs",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetAuxiliaryResourcePodLog,
+			HandlerFunc: GetOAuthAuxiliaryResourcePodLog,
 		},
 	}
 
@@ -872,9 +873,9 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	radixhttp.JSONResponse(w, r, "Success")
 }
 
-// RestartComponentAuxiliaryResource Restarts auxiliary resource for a component
-func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/restart component restartComponentAuxiliaryResource
+// RestartOAuthAuxiliaryResource Restarts oauth auxiliary resource for a component
+func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart component restartOAuthAuxiliaryResource
 	// ---
 	// summary: Restarts a auxiliary resource for a component
 	// parameters:
@@ -891,11 +892,6 @@ func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.Response
 	// - name: componentName
 	//   in: path
 	//   description: Name of component
-	//   type: string
-	//   required: true
-	// - name: auxType
-	//   in: path
-	//   description: Type of auxiliary resource
 	//   type: string
 	//   required: true
 	// - name: Impersonate-User
@@ -923,11 +919,10 @@ func RestartComponentAuxiliaryResource(accounts models.Accounts, w http.Response
 	//     description: "Internal server error"
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
-	auxType := mux.Vars(r)["auxType"]
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartComponentAuxiliaryResource(appName, envName, componentName, auxType)
+	err := environmentHandler.RestartComponentAuxiliaryResource(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1091,11 +1086,11 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	radixhttp.StringResponse(w, r, log)
 }
 
-// GetAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
-func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/{auxType}/replicas/{podName}/logs component auxiliaryPodLog
+// GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
+func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs component getOAuthPodLog
 	// ---
-	// summary: Get logs for an auxiliary resource pod
+	// summary: Get logs for an oauth auxiliary resource pod
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -1110,11 +1105,6 @@ func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter,
 	// - name: componentName
 	//   in: path
 	//   description: Name of component
-	//   type: string
-	//   required: true
-	// - name: auxType
-	//   in: path
-	//   description: Type of auxiliary resource
 	//   type: string
 	//   required: true
 	// - name: podName
@@ -1155,7 +1145,6 @@ func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter,
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
-	auxType := mux.Vars(r)["auxType"]
 
 	sinceTime := r.FormValue("sinceTime")
 
@@ -1171,7 +1160,7 @@ func GetAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter,
 	}
 
 	eh := Init(WithAccounts(accounts))
-	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, &since)
+	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

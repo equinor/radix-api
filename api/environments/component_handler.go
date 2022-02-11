@@ -159,17 +159,6 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return environmentModels.NonExistingComponent(appName, componentName)
 	}
 
-	// Check if auxiliary resource exists for component
-	auxResourceDto := componentDto.GetAuxiliaryResourceByType(auxType)
-	if auxResourceDto == nil {
-		return environmentModels.NonExistingComponentAuxiliaryType(appName, componentName, auxType)
-	}
-
-	// Check if auxiliary is in a state that allows it to be restarted
-	if !canAuxiliaryResourceBeRestarted(auxResourceDto) {
-		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
-	}
-
 	// Get Kubernetes deployment object for auxiliary resource
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
 	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
@@ -182,27 +171,23 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 		return environmentModels.MissingAuxiliaryResourceDeployment(appName, componentName)
 	}
 
+	if !canDeploymentBeRestarted(&deployments.Items[0]) {
+		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
+	}
+
 	return eh.patchDeploymentForRestart(&deployments.Items[0])
 }
 
-func canAuxiliaryResourceBeRestarted(auxResource *deploymentModels.AuxiliaryResource) bool {
-	if auxResource == nil {
+func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
+	if deployment == nil {
 		return false
 	}
 
-	isDeploymentRestartable := func(deploy *deploymentModels.AuxiliaryResourceDeployment) bool {
-		return deploy != nil && deploy.Status == deploymentModels.ConsistentComponent.String()
-	}
-
-	switch auxResource.Type {
-	case defaults.OAuthProxyAuxiliaryComponentType:
-		if auxResource.OAuth2 == nil {
-			return false
-		}
-		return isDeploymentRestartable(&auxResource.OAuth2.Deployment)
-	default:
+	if deploymentModels.ComponentStatusFromDeployment(deployment) != deploymentModels.ConsistentComponent {
 		return false
 	}
+
+	return true
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deployment) error {
