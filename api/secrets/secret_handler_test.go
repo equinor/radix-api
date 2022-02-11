@@ -30,9 +30,10 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(secretHandlerTestSuite))
 }
 
-type expectedSecret struct {
-	secretExists    bool
-	expectedSecrets []secretModels.Secret
+type secretDescription struct {
+	secretName    string
+	secretDataKey string
+	secretValue   string
 }
 
 type getSecretScenario struct {
@@ -41,6 +42,7 @@ type getSecretScenario struct {
 	jobs            []v1.RadixDeployJobComponent
 	externalAliases []v1.ExternalAlias
 	volumeMounts    []v1.RadixVolumeMount
+	existingSecrets []secretDescription
 	expectedError   bool
 	expectedSecrets []secretModels.Secret
 }
@@ -79,6 +81,18 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					"SECRET_J1",
 				},
 			}},
+			existingSecrets: []secretDescription{
+				{
+					secretName:    operatorUtils.GetComponentSecretName(componentName1),
+					secretDataKey: "SECRET_C1",
+					secretValue:   "current-value1",
+				},
+				{
+					secretName:    operatorUtils.GetComponentSecretName(jobName1),
+					secretDataKey: "SECRET_J1",
+					secretValue:   "current-value2",
+				},
+			},
 			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
@@ -87,7 +101,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeGeneric,
 					Resource:    "",
 					Component:   componentName1,
-					Status:      "Pending",
+					Status:      "Consistent",
 				},
 				{
 					Name:        "SECRET_J1",
@@ -95,7 +109,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeGeneric,
 					Resource:    "",
 					Component:   jobName1,
-					Status:      "Pending",
+					Status:      "Consistent",
 				},
 			},
 		},
@@ -1286,6 +1300,12 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	}
 	appEnvNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	_, _ = radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+	for _, secret := range scenario.existingSecrets {
+		_, _ = kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: secret.secretName, Namespace: appEnvNamespace},
+			Data:       map[string][]byte{secret.secretDataKey: []byte(secret.secretValue)},
+		}, metav1.CreateOptions{})
+	}
 	return secretHandler, deployHandler
 }
 
