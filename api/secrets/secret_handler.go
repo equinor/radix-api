@@ -286,7 +286,7 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *v1.Radi
 			if _, exists := clusterSecretEntriesMap[secretName]; !exists {
 				status = models.Pending.String()
 			}
-			secretDTO := models.Secret{Name: secretName, DisplayName: secretName, Component: componentName, Status: status, Type: models.SecretTypePending}
+			secretDTO := models.Secret{Name: secretName, DisplayName: secretName, Component: componentName, Status: status, Type: models.SecretTypeGeneric}
 			secretDTOsMap[secretNameAndComponentName] = secretDTO
 		}
 

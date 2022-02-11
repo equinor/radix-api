@@ -31,9 +31,8 @@ func TestRunSecretHandlerTestSuite(t *testing.T) {
 }
 
 type secretDescription struct {
-	secretName    string
-	secretDataKey string
-	secretValue   string
+	secretName string
+	secretData map[string][]byte
 }
 
 type getSecretScenario struct {
@@ -68,7 +67,40 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 	jobName1 := "job1"
 	scenarios := []getSecretScenario{
 		{
-			name: "regular secrets",
+			name: "regular secrets with no existing secrets",
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				Secrets: []string{
+					"SECRET_C1",
+				},
+			}},
+			jobs: []v1.RadixDeployJobComponent{{
+				Name: jobName1,
+				Secrets: []string{
+					"SECRET_J1",
+				},
+			}},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "SECRET_C1",
+					DisplayName: "SECRET_C1",
+					Type:        secretModels.SecretTypeGeneric,
+					Resource:    "",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "SECRET_J1",
+					DisplayName: "SECRET_J1",
+					Type:        secretModels.SecretTypeGeneric,
+					Resource:    "",
+					Component:   jobName1,
+					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "regular secrets with existing secrets",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Secrets: []string{
@@ -83,17 +115,14 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			}},
 			existingSecrets: []secretDescription{
 				{
-					secretName:    operatorUtils.GetComponentSecretName(componentName1),
-					secretDataKey: "SECRET_C1",
-					secretValue:   "current-value1",
+					secretName: operatorUtils.GetComponentSecretName(componentName1),
+					secretData: map[string][]byte{"SECRET_C1": []byte("current-value1")},
 				},
 				{
-					secretName:    operatorUtils.GetComponentSecretName(jobName1),
-					secretDataKey: "SECRET_J1",
-					secretValue:   "current-value2",
+					secretName: operatorUtils.GetComponentSecretName(jobName1),
+					secretData: map[string][]byte{"SECRET_J1": []byte("current-value2")},
 				},
 			},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "SECRET_C1",
@@ -114,7 +143,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:       "External alias secrets",
+			name:       "External alias secrets with no secrets",
 			components: []v1.RadixDeployComponent{{Name: componentName1}},
 			externalAliases: []v1.ExternalAlias{{
 				Alias:       "someExternalAlias",
@@ -122,7 +151,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				Component:   componentName1,
 			},
 			},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "someExternalAlias-key",
@@ -143,7 +171,44 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name: "Azure Blob volumes credential secrets",
+			name:       "External alias secrets with existing secrets",
+			components: []v1.RadixDeployComponent{{Name: componentName1}},
+			externalAliases: []v1.ExternalAlias{{
+				Alias:       "someExternalAlias",
+				Environment: anyEnvironment,
+				Component:   componentName1,
+			},
+			},
+			existingSecrets: []secretDescription{
+				{
+					secretName: "someExternalAlias",
+					secretData: map[string][]byte{
+						"tls.cer": []byte("current tls cert"),
+						"tls.key": []byte("current tls key"),
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "someExternalAlias-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "someExternalAlias",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "someExternalAlias-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "someExternalAlias",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+			},
+		},
+		{
+			name: "Azure Blob volumes credential secrets with no secrets",
 			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
@@ -168,7 +233,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					},
 				},
 			},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-volume1-csiazurecreds-accountkey",
@@ -205,6 +269,83 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
+			name: "Azure Blob volumes credential secrets with existing secrets",
+			components: []v1.RadixDeployComponent{
+				{
+					Name: componentName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Type:    v1.MountTypeBlobCsiAzure,
+							Name:    "volume1",
+							Storage: "container1",
+						},
+					},
+				},
+			},
+			jobs: []v1.RadixDeployJobComponent{
+				{
+					Name: jobName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Type:    v1.MountTypeBlobCsiAzure,
+							Name:    "volume2",
+							Storage: "container2",
+						},
+					},
+				},
+			},
+			existingSecrets: []secretDescription{
+				{
+					secretName: "component1-volume1-csiazurecreds",
+					secretData: map[string][]byte{
+						"accountname": []byte("current account name1"),
+						"accountkey":  []byte("current account key1"),
+					},
+				},
+				{
+					secretName: "job1-volume2-csiazurecreds",
+					secretData: map[string][]byte{
+						"accountname": []byte("current account name2"),
+						"accountkey":  []byte("current account key2"),
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-volume1-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "component1-volume1-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "job1-volume2-csiazurecreds-accountkey",
+					DisplayName: "Account Key",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   jobName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "job1-volume2-csiazurecreds-accountname",
+					DisplayName: "Account Name",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   jobName1,
+					Status:      "Consistent",
+				},
+			},
+		},
+		{
 			name: "No Azure Key vault credential secrets when there is no Azure key vault SecretRefs",
 			components: []v1.RadixDeployComponent{
 				{
@@ -218,11 +359,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: nil},
 				},
 			},
-			expectedError:   false,
 			expectedSecrets: nil,
 		},
 		{
-			name: "Azure Key vault credential secrets when there are secret items",
+			name: "Azure Key vault credential secrets when there are secret items with no secrets",
 			components: []v1.RadixDeployComponent{
 				{
 					Name: componentName1,
@@ -253,7 +393,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					}},
 				},
 			},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientid",
@@ -306,7 +445,106 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name: "Secrets from Authentication with PassCertificateToUpstream",
+			name: "Azure Key vault credential secrets when there are secret items with existing secrets",
+			components: []v1.RadixDeployComponent{
+				{
+					Name: componentName1,
+					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{
+						{
+							Name: "keyVault1",
+							Items: []v1.RadixAzureKeyVaultItem{
+								{
+									Name:   "secret1",
+									EnvVar: "SECRET_REF1",
+								},
+							}},
+					}},
+				},
+			},
+			jobs: []v1.RadixDeployJobComponent{
+				{
+					Name: jobName1,
+					SecretRefs: v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{
+						{
+							Name: "keyVault2",
+							Items: []v1.RadixAzureKeyVaultItem{
+								{
+									Name:   "secret2",
+									EnvVar: "SECRET_REF2",
+								},
+							}},
+					}},
+				},
+			},
+			existingSecrets: []secretDescription{
+				{
+					secretName: "component1-keyVault1-csiazkvcreds",
+					secretData: map[string][]byte{
+						"clientid":     []byte("current client id1"),
+						"clientsecret": []byte("current client secret1"),
+					},
+				},
+				{
+					secretName: "job1-keyVault2-csiazkvcreds",
+					secretData: map[string][]byte{
+						"clientid":     []byte("current client id2"),
+						"clientsecret": []byte("current client secret2"),
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientid",
+					DisplayName: "Client ID",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+					Resource:    "keyVault1",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientsecret",
+					DisplayName: "Client Secret",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+					Resource:    "keyVault1",
+					Component:   componentName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "SECRET_REF1",
+					DisplayName: "secret 'secret1'",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
+					Resource:    "keyVault1",
+					Component:   componentName1,
+					Status:      "External",
+				},
+				{
+					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientid",
+					DisplayName: "Client ID",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+					Resource:    "keyVault2",
+					Component:   jobName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientsecret",
+					DisplayName: "Client Secret",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+					Resource:    "keyVault2",
+					Component:   jobName1,
+					Status:      "Consistent",
+				},
+				{
+					Name:        "SECRET_REF2",
+					DisplayName: "secret 'secret2'",
+					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
+					Resource:    "keyVault2",
+					Component:   jobName1,
+					Status:      "External",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with PassCertificateToUpstream with no secrets",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 				Authentication: &v1.Authentication{
@@ -315,7 +553,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				Ports:      []v1.ComponentPort{{Name: "http", Port: 8000}},
 				PublicPort: "http",
 			}},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
@@ -323,6 +560,34 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
+				},
+			},
+		},
+		{
+			name: "Secrets from Authentication with PassCertificateToUpstream with existing secrets",
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				Authentication: &v1.Authentication{
+					ClientCertificate: &v1.ClientCertificate{PassCertificateToUpstream: utils.BoolPtr(true)},
+				},
+				Ports:      []v1.ComponentPort{{Name: "http", Port: 8000}},
+				PublicPort: "http",
+			}},
+			existingSecrets: []secretDescription{
+				{
+					secretName: "component1-clientcertca",
+					secretData: map[string][]byte{
+						"ca.crt": []byte("current certificate"),
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-clientcertca",
+					DisplayName: "Client certificate",
+					Type:        secretModels.SecretTypeClientCertificateAuth,
+					Component:   componentName1,
+					Status:      "Consistent",
 				},
 			},
 		},
@@ -336,7 +601,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				Ports:      []v1.ComponentPort{{Name: "http", Port: 8000}},
 				PublicPort: "http",
 			}},
-			expectedError: false,
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
@@ -361,7 +625,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 
 			secrets, err := secretHandler.GetSecrets(appName, environment)
 
-			s.assertSecrets(&scenario, err, secrets)
+			s.Nil(err)
+			s.assertSecrets(&scenario, secrets)
 		})
 
 		s.Run(fmt.Sprintf("test GetSecretsForDeployment: %s", scenario.name), func() {
@@ -369,7 +634,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 
 			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
 
-			s.assertSecrets(&scenario, err, secrets)
+			s.Nil(err)
+			s.assertSecrets(&scenario, secrets)
 		})
 	}
 }
@@ -524,7 +790,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 					Name:  componentName1,
 					Ports: []v1.ComponentPort{{Name: "http", Port: 8000}},
 				}},
-				expectedError:   scenario.expectedError,
 				expectedSecrets: scenario.expectedSecrets,
 			}
 			scenario.modifyComponent(&commonScenario.components[0])
@@ -536,7 +801,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 
 			secrets, err := secretHandler.GetSecrets(appName, environment)
 
-			s.assertSecrets(&commonScenario, err, secrets)
+			s.Nil(err)
+			s.assertSecrets(&commonScenario, secrets)
 		})
 	}
 }
@@ -1256,8 +1522,7 @@ func getErrorMessage(err error) string {
 	return ""
 }
 
-func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, err error, secrets []secretModels.Secret) {
-	s.Equal(scenario.expectedError, err != nil)
+func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secrets []secretModels.Secret) {
 	s.Equal(len(scenario.expectedSecrets), len(secrets))
 	secretMap := getSecretMap(secrets)
 	for _, expectedSecret := range scenario.expectedSecrets {
@@ -1303,7 +1568,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	for _, secret := range scenario.existingSecrets {
 		_, _ = kubeClient.CoreV1().Secrets(appEnvNamespace).Create(context.Background(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: secret.secretName, Namespace: appEnvNamespace},
-			Data:       map[string][]byte{secret.secretDataKey: []byte(secret.secretValue)},
+			Data:       secret.secretData,
 		}, metav1.CreateOptions{})
 	}
 	return secretHandler, deployHandler
