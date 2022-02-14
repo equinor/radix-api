@@ -18,7 +18,7 @@ func IllegalEmptyEnvironment() error {
 
 // NoActiveDeploymentFoundInEnvironment Deployment wasn't found
 func NoActiveDeploymentFoundInEnvironment(appName, envName string) error {
-	return radixhttp.TypeMissingError(fmt.Sprintf("Non active deployment for %s was found in %s", appName, envName), nil)
+	return radixhttp.TypeMissingError(fmt.Sprintf("No active deployment for %s was found in %s", appName, envName), nil)
 }
 
 // NonExistingDeployment Deployment wasn't found

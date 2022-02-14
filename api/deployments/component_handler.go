@@ -8,6 +8,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
@@ -139,6 +140,7 @@ func GetComponentStateFromSpec(
 
 	var replicaSummaryList []deploymentModels.ReplicaSummary
 	var scheduledJobSummaryList []deploymentModels.ScheduledJobSummary
+	var auxResource deploymentModels.AuxiliaryResource
 	status := deploymentModels.ConsistentComponent
 
 	if deployment.ActiveTo == "" {
@@ -150,6 +152,10 @@ func GetComponentStateFromSpec(
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		replicaSummaryList = getReplicaSummaryList(componentPods)
+		auxResource, err = getAuxiliaryResources(kubeClient, appName, component, envNs)
+		if err != nil {
+			return nil, err
+		}
 
 		if component.GetType() == v1.RadixComponentTypeJobScheduler {
 			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(kubeClient, envNs, component.GetName()) //scheduledJobs
@@ -181,6 +187,7 @@ func GetComponentStateFromSpec(
 		WithReplicaSummaryList(replicaSummaryList).
 		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
+		WithAuxiliaryResource(auxResource).
 		BuildComponent()
 
 }
@@ -352,13 +359,61 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 }
 
 func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	var replicaSummaryList []deploymentModels.ReplicaSummary
+	replicaSummaryList := make([]deploymentModels.ReplicaSummary, 0, len(pods))
 
 	for _, pod := range pods {
 		replicaSummaryList = append(replicaSummaryList, deploymentModels.GetReplicaSummary(pod))
 	}
 
 	return replicaSummaryList
+}
+
+func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
+	if auth := component.GetAuthentication(); auth != nil && auth.OAuth2 != nil {
+		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace, *auth.OAuth2)
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, componentName, envNamespace string, oauth2 v1.OAuth2) (*deploymentModels.OAuth2AuxiliaryResource, error) {
+	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
+	oauthDeployment, err := getAuxiliaryResourceDeployment(kubeClient, appName, componentName, envNamespace, defaults.OAuthProxyAuxiliaryComponentType)
+	if err != nil {
+		return nil, err
+	}
+	if oauthDeployment != nil {
+		oauth2Resource.Deployment = *oauthDeployment
+	}
+
+	return &oauth2Resource, nil
+
+}
+
+func getAuxiliaryResourceDeployment(kubeClient kubernetes.Interface, appName, componentName, envNamespace, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
+	var auxResourceDeployment deploymentModels.AuxiliaryResourceDeployment
+
+	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
+	deployments, err := kubeClient.AppsV1().Deployments(envNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+	if len(deployments.Items) == 0 {
+		auxResourceDeployment.Status = deploymentModels.ComponentReconciling.String()
+		return &auxResourceDeployment, nil
+	}
+	deployment := deployments.Items[0]
+
+	pods, err := kubeClient.CoreV1().Pods(envNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods.Items)
+	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(&deployment).String()
+	return &auxResourceDeployment, nil
 }
 
 func runningReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {

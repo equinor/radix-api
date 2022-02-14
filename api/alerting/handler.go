@@ -7,6 +7,7 @@ import (
 	"time"
 
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
 	operatoralert "github.com/equinor/radix-operator/pkg/apis/alert"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -16,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -240,8 +240,10 @@ func (h *handler) waitForRadixAlertReconciled(source *radixv1.RadixAlert) (*radi
 }
 
 func (h *handler) getExistingRadixAlerts() (*radixv1.RadixAlertList, error) {
-	appLabels := labels.Set{kube.RadixAppLabel: h.appName}.String()
-	return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: appLabels})
+	return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).List(
+		context.TODO(),
+		metav1.ListOptions{LabelSelector: labelselector.ForApplication(h.appName).String()},
+	)
 }
 
 func (h *handler) createDefaultRadixAlert() (*radixv1.RadixAlert, error) {

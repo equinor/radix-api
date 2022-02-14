@@ -90,9 +90,49 @@ type Component struct {
 	//
 	// required: false
 	ScheduledJobList []ScheduledJobSummary `json:"scheduledJobList"`
+
+	// Auxiliary resources for this component
+	//
+	// required: false
+	AuxiliaryResource `json:",inline"`
 }
 
-// Port describe an component part of an deployment
+// AuxiliaryResource describes an auxiliary resources for a component
+// swagger:model AuxiliaryResource
+type AuxiliaryResource struct {
+	// OAuth2 describes the oauth2 resource
+	//
+	// required: false
+	// - oauth: OAuth2 auxiliary resource
+	OAuth2 *OAuth2AuxiliaryResource `json:"oauth2,omitempty"`
+}
+
+type OAuth2AuxiliaryResource struct {
+	// Deployment describes the underlying Kubernetes deployment for the resource
+	//
+	// required: true
+	Deployment AuxiliaryResourceDeployment `json:"deployment,omitempty"`
+}
+
+// AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment
+// swagger:model AuxiliaryResourceDeployment
+type AuxiliaryResourceDeployment struct {
+	// Status of the auxiliary resource's deployment
+	// required: true
+	// - Consistent: All replicas are running with the desired state
+	// - Reconciling: Waiting for new replicas to enter desired state
+	// - Stopped: Replica count is set to 0
+	//
+	// example: Consistent
+	Status string `json:"status"`
+
+	// Running replicas of the auxiliary resource's deployment
+	//
+	// required: false
+	ReplicaList []ReplicaSummary `json:"replicaList"`
+}
+
+// Port describe a port of a component
 // swagger:model Port
 type Port struct {
 	// Component port name. From radixconfig.yaml
@@ -108,7 +148,7 @@ type Port struct {
 	Port int32 `json:"port"`
 }
 
-// ComponentSummary describe an component part of an deployment
+// ComponentSummary describe a component part of a deployment
 // swagger:model ComponentSummary
 type ComponentSummary struct {
 	// Name the component

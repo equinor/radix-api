@@ -22,6 +22,11 @@ func NonExistingComponent(appName, componentName string) error {
 	return radixhttp.TypeMissingError(fmt.Sprintf("Unable to get component %s for app %s", componentName, appName), nil)
 }
 
+// NonExistingComponentAuxiliaryType Auxiliary resource for component component not found
+func NonExistingComponentAuxiliaryType(appName, componentName, auxType string) error {
+	return radixhttp.TypeMissingError(fmt.Sprintf("%s resource does not exist for component %s in app %s", auxType, componentName, appName), nil)
+}
+
 // CannotStopComponent Component cannot be stopped
 func CannotStopComponent(appName, componentName, state string) error {
 	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be stopped when in %s state", componentName, appName, strings.ToLower(state)))
@@ -35,4 +40,14 @@ func CannotStartComponent(appName, componentName, state string) error {
 // CannotRestartComponent Component cannot be restarted
 func CannotRestartComponent(appName, componentName, state string) error {
 	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be restarted when in %s state", componentName, appName, strings.ToLower(state)))
+}
+
+// CannotRestartAuxiliaryResource Auxiliary resource cannot be restarted
+func CannotRestartAuxiliaryResource(appName, componentName string) error {
+	return radixhttp.ValidationError("Radix Application Auxiliary Resource", fmt.Sprintf("Auxiliary resource for component %s for app %s cannot be restarted", componentName, appName))
+}
+
+// CannotRestartAuxiliaryResource Auxiliary resource cannot be restarted
+func MissingAuxiliaryResourceDeployment(appName, componentName string) error {
+	return radixhttp.UnexpectedError("Radix Application Auxiliary Resource", fmt.Errorf("deployment for auxiliary resource not found"))
 }
