@@ -183,11 +183,7 @@ func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 		return false
 	}
 
-	if deploymentModels.ComponentStatusFromDeployment(deployment) != deploymentModels.ConsistentComponent {
-		return false
-	}
-
-	return true
+	return deploymentModels.ComponentStatusFromDeployment(deployment) == deploymentModels.ConsistentComponent
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deployment) error {
