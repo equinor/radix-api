@@ -12,11 +12,11 @@
             "program": "${workspaceFolder}/main.go",
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
-                "PIPELINE_IMG_TAG": "job-steps-order-dev",
-                "K8S_API_HOST": "https://weekly-43-clusters-16ede4-19775586.hcp.northeurope.azmk8s.io",
+                "PIPELINE_IMG_TAG": "master-latest",
+                "K8S_API_HOST": "https://weekly-06-clusters-16ede4-22248fea.hcp.northeurope.azmk8s.io",
                 "RADIX_CLUSTER_TYPE": "development",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",
-                "RADIX_CLUSTERNAME": "weekly-47",
+                "RADIX_CLUSTERNAME": "weekly-06",
                 "RADIX_ACTIVE_CLUSTER_EGRESS_IPS": "104.45.84.1",
             },
             "args": [

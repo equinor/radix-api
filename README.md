@@ -32,13 +32,9 @@ Go modules are used for dependency management. See [link](https://blog.golang.or
 
 ### Generating mocks
 We use gomock to generate mocks used in unit test.
-You need to regenerate mocks if you make changes to any of the interface types used by the application; **Status**, **DeployHandler**
-
-Status:
+You need to regenerate mocks if you make changes to any of the interface types used by the application.
 ```
-$ mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
-$ mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
-$ mockgen -source ./api/secrets/secret_handler.go -destination ./api/secrets/mock/secret_handler_mock.go -package mock
+make mocks
 ```
 
 ### Running locally

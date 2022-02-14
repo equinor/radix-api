@@ -14,5 +14,8 @@ const (
 )
 
 func (p ConfigurationStatus) String() string {
+	if p >= numStatuses {
+		return "Unsupported"
+	}
 	return [...]string{"Pending", "Consistent"}[p]
 }

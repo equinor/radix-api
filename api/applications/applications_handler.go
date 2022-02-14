@@ -15,6 +15,7 @@ import (
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -492,7 +493,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
 
 		ingresses, err := ah.getUserAccount().Client.NetworkingV1().Ingresses(environmentNamespace).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", "radix-app-alias", "true"),
+			LabelSelector: labelselector.ForIsAppAlias().String(),
 		})
 
 		if err != nil {

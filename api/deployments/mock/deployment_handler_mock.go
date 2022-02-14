@@ -35,6 +35,21 @@ func (m *MockDeployHandler) EXPECT() *MockDeployHandlerMockRecorder {
 	return m.recorder
 }
 
+// GetComponentsForDeployment mocks base method.
+func (m *MockDeployHandler) GetComponentsForDeployment(appName string, deployment *models.DeploymentSummary) ([]*models.Component, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetComponentsForDeployment", appName, deployment)
+	ret0, _ := ret[0].([]*models.Component)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetComponentsForDeployment indicates an expected call of GetComponentsForDeployment.
+func (mr *MockDeployHandlerMockRecorder) GetComponentsForDeployment(appName, deployment interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentsForDeployment", reflect.TypeOf((*MockDeployHandler)(nil).GetComponentsForDeployment), appName, deployment)
+}
+
 // GetComponentsForDeploymentName mocks base method.
 func (m *MockDeployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*models.Component, error) {
 	m.ctrl.T.Helper()
