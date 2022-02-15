@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-common/utils"
@@ -617,17 +616,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		appName := anyAppName
 		environment := anyEnvironment
 		deploymentName := "deployment1"
-		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
-
-			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: deploymentName, Environment: environment}}, nil)
-
-			secrets, err := secretHandler.GetSecrets(appName, environment)
-
-			s.Nil(err)
-			s.assertSecrets(&scenario, secrets)
-		})
 
 		s.Run(fmt.Sprintf("test GetSecretsForDeployment: %s", scenario.name), func() {
 			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
@@ -794,12 +782,9 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			}
 			scenario.modifyComponent(&commonScenario.components[0])
 
-			secretHandler, deployHandler := s.prepareTestRun(ctrl, &commonScenario, appName, environment, deploymentName)
+			secretHandler, _ := s.prepareTestRun(ctrl, &commonScenario, appName, environment, deploymentName)
 
-			deployHandler.EXPECT().GetDeploymentsForApplicationEnvironment(appName, environment, false).
-				Return([]*deploymentModels.DeploymentSummary{{Name: deploymentName, Environment: environment}}, nil)
-
-			secrets, err := secretHandler.GetSecrets(appName, environment)
+			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
 
 			s.Nil(err)
 			s.assertSecrets(&commonScenario, secrets)

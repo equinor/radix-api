@@ -153,16 +153,6 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 	return nil
 }
 
-// GetSecrets Lists environment secrets for application
-func (eh SecretHandler) GetSecrets(appName, envName string) ([]models.Secret, error) {
-	deployments, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return eh.GetSecretsForDeployment(appName, envName, deployments[0].Name)
-}
-
 // GetSecretsForDeployment Lists environment secrets for application
 func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName string) ([]models.Secret, error) {
 	var appNamespace = operatorutils.GetAppNamespace(appName)
