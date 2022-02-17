@@ -23,5 +23,8 @@ const (
 )
 
 func (p ContainerStatus) String() string {
+	if p >= numStatuses {
+		return "Unsupported"
+	}
 	return [...]string{"Pending", "Failing", "Running", "Terminated", "Starting"}[p]
 }

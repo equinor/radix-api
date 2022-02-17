@@ -37,3 +37,13 @@ type Deployment struct {
 	// example: 2006-01-02T15:04:05Z
 	ActiveTo string `json:"activeTo,omitempty"`
 }
+
+func (d *Deployment) GetComponentByName(name string) *Component {
+	for _, c := range d.Components {
+		if c != nil && c.Name == name {
+			return c
+		}
+	}
+
+	return nil
+}

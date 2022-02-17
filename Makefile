@@ -22,6 +22,11 @@ build: $(BINS)
 test:
 	go test -cover `go list ./...`
 
+mocks:
+	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
+	mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
+	mockgen -source ./api/secrets/secret_handler.go -destination ./api/secrets/mock/secret_handler_mock.go -package mock
+
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:v0.7.0 --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
 
