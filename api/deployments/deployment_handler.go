@@ -115,33 +115,33 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 	}
 
 	// Find the deployment summary
-	var theDeployment *deploymentModels.DeploymentSummary
+	var deploymentSummary *deploymentModels.DeploymentSummary
 	for _, deployment := range allDeployments {
 		if strings.EqualFold(deployment.Name, deploymentName) {
-			theDeployment = deployment
+			deploymentSummary = deployment
 			break
 		}
 	}
 
-	if theDeployment == nil {
+	if deploymentSummary == nil {
 		return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
 	}
 
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, theDeployment.Environment)
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, deploymentSummary.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	var activeTo time.Time
-	if !strings.EqualFold(theDeployment.ActiveTo, "") {
-		activeTo, err = radixutils.ParseTimestamp(theDeployment.ActiveTo)
+	if !strings.EqualFold(deploymentSummary.ActiveTo, "") {
+		activeTo, err = radixutils.ParseTimestamp(deploymentSummary.ActiveTo)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	components, err := deploy.GetComponentsForDeployment(appName, theDeployment)
+	components, err := deploy.GetComponentsForDeployment(appName, deploymentSummary)
 	if err != nil {
 		return nil, err
 	}

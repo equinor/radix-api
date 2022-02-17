@@ -42,6 +42,11 @@ const (
 	egressIps          = "0.0.0.0"
 )
 
+type componentProps struct {
+	componentName string
+	secrets       []string
+}
+
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -354,8 +359,12 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 		}
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -370,6 +379,24 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 			}
 		}
 	}
+}
+
+func createDeployment(radixclient radixclient.Interface, appName, environmentOne, deploymentName string, componentSecrets ...componentProps) {
+	radixDeployment := v1.RadixDeployment{
+		ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
+		Spec: v1.RadixDeploymentSpec{
+			Environment: environmentOne,
+		},
+	}
+	for _, componentSecret := range componentSecrets {
+		radixDeployment.Spec.Components = append(radixDeployment.Spec.Components, v1.RadixDeployComponent{
+			Name:    componentSecret.componentName,
+			Secrets: componentSecret.secrets,
+		},
+		)
+	}
+	appEnvNamespace := operatorutils.GetEnvironmentNamespace(appName, environmentOne)
+	_, _ = radixclient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 }
 
 func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
@@ -401,8 +428,12 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 		}
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 4, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -453,8 +484,12 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 		}
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -518,7 +553,16 @@ func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -583,7 +627,16 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 8, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -657,7 +710,16 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 
 		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
 
-		secrets, _ := handler.GetSecrets(appName, environmentOne)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 12, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
