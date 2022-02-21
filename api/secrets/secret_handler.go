@@ -193,9 +193,7 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 	}
 
 	secrets := make([]models.Secret, 0)
-	for _, secretFromVolumeMounts := range secretsFromVolumeMounts {
-		secrets = append(secrets, secretFromVolumeMounts)
-	}
+	secrets = append(secrets, secretsFromVolumeMounts...)
 
 	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
 		secrets = append(secrets, secretFromTLSCertificate)
@@ -373,7 +371,7 @@ func (eh SecretHandler) getBlobFuseSecrets(component v1.RadixCommonDeployCompone
 
 func (eh SecretHandler) getCsiAzureSecrets(component v1.RadixCommonDeployComponent, envNamespace string, volumeMount v1.RadixVolumeMount) (models.Secret, models.Secret) {
 	return eh.getAzureVolumeMountSecrets(envNamespace, component,
-		defaults.GetCsiAzureCredsSecretName(component.GetName(), volumeMount.Name),
+		defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name),
 		volumeMount.Name,
 		defaults.CsiAzureCredsAccountNamePart,
 		defaults.CsiAzureCredsAccountKeyPart,
@@ -516,7 +514,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(c
 
 func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
 	var secrets []models.Secret
-	if auth := component.GetAuthentication(); auth != nil && component.IsPublic() && auth.OAuth2 != nil {
+	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
 		oauth2, err := defaults.NewOAuth2Config(defaults.WithOAuth2Defaults()).MergeWith(auth.OAuth2)
 		if err != nil {
 			return nil, err

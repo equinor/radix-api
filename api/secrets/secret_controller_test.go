@@ -16,7 +16,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
-	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -870,7 +869,7 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	kubeclient.CoreV1().Secrets(envNs).Create(
 		context.Background(),
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: k8sObjectUtils.GetAuxiliaryComponentSecretName(component1Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			ObjectMeta: metav1.ObjectMeta{Name: operatorutils.GetAuxiliaryComponentSecretName(component1Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
 			Data:       map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("client secret")},
 		},
 		metav1.CreateOptions{},
@@ -878,7 +877,7 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	comp2Secret, _ := kubeclient.CoreV1().Secrets(envNs).Create(
 		context.Background(),
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: k8sObjectUtils.GetAuxiliaryComponentSecretName(component2Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			ObjectMeta: metav1.ObjectMeta{Name: operatorutils.GetAuxiliaryComponentSecretName(component2Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
 			Data:       map[string][]byte{defaults.OAuthCookieSecretKeyName: []byte("cookie secret")},
 		},
 		metav1.CreateOptions{},
