@@ -256,10 +256,21 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
-	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, getComponentByName("c1", components).Secrets)
-	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, getComponentByName("c2", components).Secrets)
-	assert.Empty(t, getComponentByName("c3", components).Secrets)
-	assert.Empty(t, getComponentByName("c4", components).Secrets)
+	actualComponent := getComponentByName("c1", components)
+	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, actualComponent.Secrets)
+
+	actualComponent = getComponentByName("c2", components)
+	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, actualComponent.Secrets)
+
+	actualComponent = getComponentByName("c3", components)
+	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.Empty(t, actualComponent.Secrets)
+
+	actualComponent = getComponentByName("c4", components)
+	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.Empty(t, actualComponent.Secrets)
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {

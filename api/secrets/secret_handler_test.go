@@ -39,9 +39,7 @@ type getSecretScenario struct {
 	components      []v1.RadixDeployComponent
 	jobs            []v1.RadixDeployJobComponent
 	externalAliases []v1.ExternalAlias
-	volumeMounts    []v1.RadixVolumeMount
 	existingSecrets []secretDescription
-	expectedError   bool
 	expectedSecrets []secretModels.Secret
 }
 
@@ -1008,12 +1006,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1),
+			secretName:                  defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountNamePart,
 			secretValue:                 "currentAccountName",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1025,12 +1023,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1),
+			secretName:                  defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountNamePart,
 			secretValue:                 "currentAccountName",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1044,7 +1042,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1058,7 +1056,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1070,12 +1068,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1),
+			secretName:                  defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountKeyPart,
 			secretValue:                 "currentAccountKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1087,12 +1085,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
 			}},
-			secretName:                  defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1),
+			secretName:                  defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1),
 			secretDataKey:               defaults.CsiAzureCredsAccountKeyPart,
 			secretValue:                 "currentAccountKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1106,7 +1104,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
@@ -1120,7 +1118,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          defaults.GetCsiAzureCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
+			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
 				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
