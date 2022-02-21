@@ -115,7 +115,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
 		case v1.MountTypeBlobCsiAzure, v1.MountTypeFileCsiAzure:
-			secretName := defaults.GetCsiAzureCredsSecretName(component.GetName(), volumeMount.Name)
+			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
 		}
