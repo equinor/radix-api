@@ -3,7 +3,7 @@ package secret
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFixedStringRunes_ReturnsFixedStringCharacters(t *testing.T) {
