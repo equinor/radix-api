@@ -4,9 +4,10 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 	"testing"
 	"time"
+
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
@@ -16,7 +17,7 @@ import (
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
