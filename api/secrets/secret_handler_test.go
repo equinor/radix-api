@@ -392,7 +392,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			expectedSecrets: []secretModels.Secret{
 				{
-					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientid",
+					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
 					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
@@ -400,7 +400,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientsecret",
+					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
 					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
@@ -416,7 +416,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "External",
 				},
 				{
-					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientid",
+					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
 					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
@@ -424,7 +424,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientsecret",
+					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
 					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
@@ -475,14 +475,14 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			existingSecrets: []secretDescription{
 				{
-					secretName: "component1-keyVault1-csiazkvcreds",
+					secretName: "component1-keyvault1-csiazkvcreds",
 					secretData: map[string][]byte{
 						"clientid":     []byte("current client id1"),
 						"clientsecret": []byte("current client secret1"),
 					},
 				},
 				{
-					secretName: "job1-keyVault2-csiazkvcreds",
+					secretName: "job1-keyvault2-csiazkvcreds",
 					secretData: map[string][]byte{
 						"clientid":     []byte("current client id2"),
 						"clientsecret": []byte("current client secret2"),
@@ -491,7 +491,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			expectedSecrets: []secretModels.Secret{
 				{
-					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientid",
+					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
 					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
@@ -499,7 +499,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Consistent",
 				},
 				{
-					Name:        "component1-keyVault1-csiazkvcreds-azkv-clientsecret",
+					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
 					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
@@ -515,7 +515,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "External",
 				},
 				{
-					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientid",
+					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
 					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
@@ -523,7 +523,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Consistent",
 				},
 				{
-					Name:        "job1-keyVault2-csiazkvcreds-azkv-clientsecret",
+					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
 					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",

@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/equinor/radix-common v1.1.10
 	github.com/equinor/radix-job-scheduler v1.4.3
-	github.com/equinor/radix-operator v1.19.3
+	github.com/equinor/radix-operator v1.19.9
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang-jwt/jwt/v4 v4.3.0
@@ -25,7 +25,7 @@ require (
 	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v0.23.4
-	sigs.k8s.io/secrets-store-csi-driver v1.0.1
+	sigs.k8s.io/secrets-store-csi-driver v1.1.0
 )
 
 require (
@@ -82,5 +82,5 @@ require (
 	k8s.io/utils v0.0.0-20211208161948-7d6a63dca704 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
