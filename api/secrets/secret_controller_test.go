@@ -772,18 +772,20 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	environmentName := "dev"
 	buildFrom := "master"
 	alias := "cdn.myalias.com"
+	deployedalias := "app.myalias.com"
 
 	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(appName).
 		WithEnvironment(environmentName).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(deployedalias)).
 		WithImageTag(buildFrom))
 
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(appName).
 		WithEnvironment(environmentName, buildFrom).
-		WithComponent(operatorutils.
+		WithComponents(operatorutils.
 			AnApplicationComponent().
 			WithName(componentName)).
 		WithDNSExternalAlias(alias, environmentName, componentName))
@@ -793,16 +795,16 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, secrets, 2)
 	for _, s := range secrets {
-		if s.Name == alias+"-key" {
+		if s.Name == deployedalias+"-key" {
 			assert.Equal(t, "Pending", s.Status)
-		} else if s.Name == alias+"-cert" {
+		} else if s.Name == deployedalias+"-cert" {
 			assert.Equal(t, "Pending", s.Status)
 		}
 	}
 
 	kubeclient.CoreV1().Secrets(appName+"-"+environmentName).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: alias,
+			Name: deployedalias,
 		},
 	}, metav1.CreateOptions{})
 
@@ -811,9 +813,9 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, secrets, 2)
 	for _, s := range secrets {
-		if s.Name == alias+"-key" {
+		if s.Name == deployedalias+"-key" {
 			assert.Equal(t, "Consistent", s.Status)
-		} else if s.Name == alias+"-cert" {
+		} else if s.Name == deployedalias+"-cert" {
 			assert.Equal(t, "Consistent", s.Status)
 		}
 	}

@@ -155,12 +155,12 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 
 // GetSecretsForDeployment Lists environment secrets for application
 func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName string) ([]models.Secret, error) {
-	var appNamespace = operatorutils.GetAppNamespace(appName)
+	// var appNamespace = operatorutils.GetAppNamespace(appName)
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
-	ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(context.TODO(), appName, metav1.GetOptions{})
-	if err != nil {
-		return []models.Secret{}, nil
-	}
+	// ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(context.TODO(), appName, metav1.GetOptions{})
+	// if err != nil {
+	// 	return []models.Secret{}, nil
+	// }
 
 	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
@@ -172,7 +172,7 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 		return []models.Secret{}, nil
 	}
 
-	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(ra, envName, envNamespace)
+	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(rd, envName, envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -553,53 +553,52 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component v1
 	return secrets, nil
 }
 
-func (eh SecretHandler) getSecretsFromTLSCertificates(ra *v1.RadixApplication, envName, envNamespace string) (map[string]models.Secret, error) {
+func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, envName, envNamespace string) (map[string]models.Secret, error) {
 	secretDTOsMap := make(map[string]models.Secret)
 
-	for _, externalAlias := range ra.Spec.DNSExternalAlias {
-		if externalAlias.Environment != envName {
-			continue
-		}
+	for _, component := range rd.Spec.Components {
+		for _, externalAlias := range component.DNSExternalAlias {
 
-		certStatus := models.Consistent.String()
-		keyStatus := models.Consistent.String()
+			certStatus := models.Consistent.String()
+			keyStatus := models.Consistent.String()
 
-		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias.Alias, metav1.GetOptions{})
-		if err != nil {
-			log.Warnf("Error on retrieving secret '%s'. Message: %s", externalAlias.Alias, err.Error())
-			certStatus = models.Pending.String()
-			keyStatus = models.Pending.String()
-		} else {
-			certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
-			if strings.EqualFold(certValue, secretDefaultData) {
+			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias, metav1.GetOptions{})
+			if err != nil {
+				log.Warnf("Error on retrieving secret '%s'. Message: %s", externalAlias, err.Error())
 				certStatus = models.Pending.String()
-			}
-
-			keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
-			if strings.EqualFold(keyValue, secretDefaultData) {
 				keyStatus = models.Pending.String()
+			} else {
+				certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
+				if strings.EqualFold(certValue, secretDefaultData) {
+					certStatus = models.Pending.String()
+				}
+
+				keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
+				if strings.EqualFold(keyValue, secretDefaultData) {
+					keyStatus = models.Pending.String()
+				}
 			}
-		}
 
-		secretDTO := models.Secret{
-			Name:        externalAlias.Alias + suffix.ExternalDNSCert,
-			DisplayName: "Certificate",
-			Resource:    externalAlias.Alias,
-			Type:        models.SecretTypeClientCert,
-			Component:   externalAlias.Component,
-			Status:      certStatus,
-		}
-		secretDTOsMap[secretDTO.Name] = secretDTO
+			secretDTO := models.Secret{
+				Name:        externalAlias + suffix.ExternalDNSCert,
+				DisplayName: "Certificate",
+				Resource:    externalAlias,
+				Type:        models.SecretTypeClientCert,
+				Component:   component.GetName(),
+				Status:      certStatus,
+			}
+			secretDTOsMap[secretDTO.Name] = secretDTO
 
-		secretDTO = models.Secret{
-			Name:        externalAlias.Alias + suffix.ExternalDNSKeyPart,
-			DisplayName: "Key",
-			Resource:    externalAlias.Alias,
-			Type:        models.SecretTypeClientCert,
-			Component:   externalAlias.Component,
-			Status:      keyStatus,
+			secretDTO = models.Secret{
+				Name:        externalAlias + suffix.ExternalDNSKeyPart,
+				DisplayName: "Key",
+				Resource:    externalAlias,
+				Type:        models.SecretTypeClientCert,
+				Component:   component.GetName(),
+				Status:      keyStatus,
+			}
+			secretDTOsMap[secretDTO.Name] = secretDTO
 		}
-		secretDTOsMap[secretDTO.Name] = secretDTO
 	}
 
 	return secretDTOsMap, nil
