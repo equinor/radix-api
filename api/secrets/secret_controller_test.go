@@ -772,13 +772,13 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	environmentName := "dev"
 	buildFrom := "master"
 	alias := "cdn.myalias.com"
-	deployedalias := "app.myalias.com"
+	deployedAlias := "app.myalias.com"
 
 	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(appName).
 		WithEnvironment(environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(deployedalias)).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(deployedAlias)).
 		WithImageTag(buildFrom))
 
 	commonTestUtils.ApplyApplication(operatorutils.
@@ -793,32 +793,31 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
-	assert.Len(t, secrets, 2)
+	expectedSecrets := []models.Secret{
+		{Name: deployedAlias + "-key", DisplayName: "Key", Status: models.Pending.String(), Resource: deployedAlias, Type: models.SecretTypeClientCert, Component: componentName},
+		{Name: deployedAlias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: deployedAlias, Type: models.SecretTypeClientCert, Component: componentName},
+	}
+	assert.ElementsMatch(t, expectedSecrets, secrets)
 	for _, s := range secrets {
-		if s.Name == deployedalias+"-key" {
+		if s.Name == deployedAlias+"-key" {
 			assert.Equal(t, "Pending", s.Status)
-		} else if s.Name == deployedalias+"-cert" {
+		} else if s.Name == deployedAlias+"-cert" {
 			assert.Equal(t, "Pending", s.Status)
 		}
 	}
 
 	kubeclient.CoreV1().Secrets(appName+"-"+environmentName).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: deployedalias,
+			Name: deployedAlias,
 		},
 	}, metav1.CreateOptions{})
 
 	secrets, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
-	assert.Len(t, secrets, 2)
-	for _, s := range secrets {
-		if s.Name == deployedalias+"-key" {
-			assert.Equal(t, "Consistent", s.Status)
-		} else if s.Name == deployedalias+"-cert" {
-			assert.Equal(t, "Consistent", s.Status)
-		}
-	}
+	expectedSecrets[0].Status = models.Consistent.String()
+	expectedSecrets[1].Status = models.Consistent.String()
+	assert.ElementsMatch(t, expectedSecrets, secrets)
 }
 
 func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
