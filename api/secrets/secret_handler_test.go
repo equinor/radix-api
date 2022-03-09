@@ -38,7 +38,6 @@ type getSecretScenario struct {
 	name            string
 	components      []v1.RadixDeployComponent
 	jobs            []v1.RadixDeployJobComponent
-	externalAliases []v1.ExternalAlias
 	existingSecrets []secretDescription
 	expectedSecrets []secretModels.Secret
 }
@@ -142,12 +141,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		{
 			name:       "External alias secrets with no secrets, must build secrets from deploy component",
 			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias-1", "deployed-alias-2"}}},
-			externalAliases: []v1.ExternalAlias{{
-				Alias:       "someExternalAlias",
-				Environment: anyEnvironment,
-				Component:   componentName1,
-			},
-			},
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "deployed-alias-1-key",
@@ -186,12 +179,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		{
 			name:       "External alias secrets with existing secrets, must build secrets from deploy component",
 			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias"}}},
-			externalAliases: []v1.ExternalAlias{{
-				Alias:       "someExternalAlias",
-				Environment: anyEnvironment,
-				Component:   componentName1,
-			},
-			},
 			existingSecrets: []secretDescription{
 				{
 					secretName: "deployed-alias",
@@ -1547,10 +1534,9 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	ra := &v1.RadixApplication{
 		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: appAppNamespace},
 		Spec: v1.RadixApplicationSpec{
-			Environments:     []v1.Environment{{Name: envName}},
-			DNSExternalAlias: scenario.externalAliases,
-			Components:       getRadixComponents(scenario.components, envName),
-			Jobs:             getRadixJobComponents(scenario.jobs, envName),
+			Environments: []v1.Environment{{Name: envName}},
+			Components:   getRadixComponents(scenario.components, envName),
+			Jobs:         getRadixJobComponents(scenario.jobs, envName),
 		},
 	}
 	_, _ = radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})

@@ -155,12 +155,7 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 
 // GetSecretsForDeployment Lists environment secrets for application
 func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName string) ([]models.Secret, error) {
-	// var appNamespace = operatorutils.GetAppNamespace(appName)
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
-	// ra, err := eh.radixclient.RadixV1().RadixApplications(appNamespace).Get(context.TODO(), appName, metav1.GetOptions{})
-	// if err != nil {
-	// 	return []models.Secret{}, nil
-	// }
 
 	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {

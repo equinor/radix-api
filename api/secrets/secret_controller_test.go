@@ -772,13 +772,12 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	environmentName := "dev"
 	buildFrom := "master"
 	alias := "cdn.myalias.com"
-	deployedAlias := "app.myalias.com"
 
 	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(appName).
 		WithEnvironment(environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(deployedAlias)).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(alias)).
 		WithImageTag(buildFrom))
 
 	commonTestUtils.ApplyApplication(operatorutils.
@@ -787,28 +786,27 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 		WithEnvironment(environmentName, buildFrom).
 		WithComponents(operatorutils.
 			AnApplicationComponent().
-			WithName(componentName)).
-		WithDNSExternalAlias(alias, environmentName, componentName))
+			WithName(componentName)))
 
 	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
 	expectedSecrets := []models.Secret{
-		{Name: deployedAlias + "-key", DisplayName: "Key", Status: models.Pending.String(), Resource: deployedAlias, Type: models.SecretTypeClientCert, Component: componentName},
-		{Name: deployedAlias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: deployedAlias, Type: models.SecretTypeClientCert, Component: componentName},
+		{Name: alias + "-key", DisplayName: "Key", Status: models.Pending.String(), Resource: alias, Type: models.SecretTypeClientCert, Component: componentName},
+		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias, Type: models.SecretTypeClientCert, Component: componentName},
 	}
 	assert.ElementsMatch(t, expectedSecrets, secrets)
 	for _, s := range secrets {
-		if s.Name == deployedAlias+"-key" {
+		if s.Name == alias+"-key" {
 			assert.Equal(t, "Pending", s.Status)
-		} else if s.Name == deployedAlias+"-cert" {
+		} else if s.Name == alias+"-cert" {
 			assert.Equal(t, "Pending", s.Status)
 		}
 	}
 
 	kubeclient.CoreV1().Secrets(appName+"-"+environmentName).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: deployedAlias,
+			Name: alias,
 		},
 	}, metav1.CreateOptions{})
 
