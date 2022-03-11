@@ -38,7 +38,6 @@ type getSecretScenario struct {
 	name            string
 	components      []v1.RadixDeployComponent
 	jobs            []v1.RadixDeployJobComponent
-	externalAliases []v1.ExternalAlias
 	existingSecrets []secretDescription
 	expectedSecrets []secretModels.Secret
 }
@@ -140,45 +139,49 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:       "External alias secrets with no secrets",
-			components: []v1.RadixDeployComponent{{Name: componentName1}},
-			externalAliases: []v1.ExternalAlias{{
-				Alias:       "someExternalAlias",
-				Environment: anyEnvironment,
-				Component:   componentName1,
-			},
-			},
+			name:       "External alias secrets with no secrets, must build secrets from deploy component",
+			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias-1", "deployed-alias-2"}}},
 			expectedSecrets: []secretModels.Secret{
 				{
-					Name:        "someExternalAlias-key",
+					Name:        "deployed-alias-1-key",
 					DisplayName: "Key",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "someExternalAlias",
+					Resource:    "deployed-alias-1",
 					Component:   componentName1,
 					Status:      "Pending",
 				},
 				{
-					Name:        "someExternalAlias-cert",
+					Name:        "deployed-alias-1-cert",
 					DisplayName: "Certificate",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "someExternalAlias",
+					Resource:    "deployed-alias-1",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "deployed-alias-2-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
+					Component:   componentName1,
+					Status:      "Pending",
+				},
+				{
+					Name:        "deployed-alias-2-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
 					Component:   componentName1,
 					Status:      "Pending",
 				},
 			},
 		},
 		{
-			name:       "External alias secrets with existing secrets",
-			components: []v1.RadixDeployComponent{{Name: componentName1}},
-			externalAliases: []v1.ExternalAlias{{
-				Alias:       "someExternalAlias",
-				Environment: anyEnvironment,
-				Component:   componentName1,
-			},
-			},
+			name:       "External alias secrets with existing secrets, must build secrets from deploy component",
+			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias"}}},
 			existingSecrets: []secretDescription{
 				{
-					secretName: "someExternalAlias",
+					secretName: "deployed-alias",
 					secretData: map[string][]byte{
 						"tls.cer": []byte("current tls cert"),
 						"tls.key": []byte("current tls key"),
@@ -187,18 +190,18 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			expectedSecrets: []secretModels.Secret{
 				{
-					Name:        "someExternalAlias-key",
+					Name:        "deployed-alias-key",
 					DisplayName: "Key",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "someExternalAlias",
+					Resource:    "deployed-alias",
 					Component:   componentName1,
 					Status:      "Consistent",
 				},
 				{
-					Name:        "someExternalAlias-cert",
+					Name:        "deployed-alias-cert",
 					DisplayName: "Certificate",
 					Type:        secretModels.SecretTypeClientCert,
-					Resource:    "someExternalAlias",
+					Resource:    "deployed-alias",
 					Component:   componentName1,
 					Status:      "Consistent",
 				},
@@ -1531,10 +1534,9 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	ra := &v1.RadixApplication{
 		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: appAppNamespace},
 		Spec: v1.RadixApplicationSpec{
-			Environments:     []v1.Environment{{Name: envName}},
-			DNSExternalAlias: scenario.externalAliases,
-			Components:       getRadixComponents(scenario.components, envName),
-			Jobs:             getRadixJobComponents(scenario.jobs, envName),
+			Environments: []v1.Environment{{Name: envName}},
+			Components:   getRadixComponents(scenario.components, envName),
+			Jobs:         getRadixJobComponents(scenario.jobs, envName),
 		},
 	}
 	_, _ = radixClient.RadixV1().RadixApplications(appAppNamespace).Create(context.Background(), ra, metav1.CreateOptions{})

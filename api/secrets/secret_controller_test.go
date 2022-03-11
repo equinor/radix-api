@@ -777,21 +777,25 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 		ARadixDeployment().
 		WithAppName(appName).
 		WithEnvironment(environmentName).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(alias)).
 		WithImageTag(buildFrom))
 
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(appName).
 		WithEnvironment(environmentName, buildFrom).
-		WithComponent(operatorutils.
+		WithComponents(operatorutils.
 			AnApplicationComponent().
-			WithName(componentName)).
-		WithDNSExternalAlias(alias, environmentName, componentName))
+			WithName(componentName)))
 
 	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
-	assert.Len(t, secrets, 2)
+	expectedSecrets := []models.Secret{
+		{Name: alias + "-key", DisplayName: "Key", Status: models.Pending.String(), Resource: alias, Type: models.SecretTypeClientCert, Component: componentName},
+		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias, Type: models.SecretTypeClientCert, Component: componentName},
+	}
+	assert.ElementsMatch(t, expectedSecrets, secrets)
 	for _, s := range secrets {
 		if s.Name == alias+"-key" {
 			assert.Equal(t, "Pending", s.Status)
@@ -809,14 +813,9 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 	secrets, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 
 	assert.NoError(t, err)
-	assert.Len(t, secrets, 2)
-	for _, s := range secrets {
-		if s.Name == alias+"-key" {
-			assert.Equal(t, "Consistent", s.Status)
-		} else if s.Name == alias+"-cert" {
-			assert.Equal(t, "Consistent", s.Status)
-		}
-	}
+	expectedSecrets[0].Status = models.Consistent.String()
+	expectedSecrets[1].Status = models.Consistent.String()
+	assert.ElementsMatch(t, expectedSecrets, secrets)
 }
 
 func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
