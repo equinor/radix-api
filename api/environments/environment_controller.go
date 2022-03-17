@@ -123,6 +123,26 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetOAuthAuxiliaryResourcePodLog,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
+			Method:      "GET",
+			HandlerFunc: GetJobs,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
+			Method:      "GET",
+			HandlerFunc: GetJob,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches",
+			Method:      "GET",
+			HandlerFunc: GetBatches,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
+			Method:      "GET",
+			HandlerFunc: GetBatch,
+		},
 	}
 
 	return routes
@@ -146,7 +166,7 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 	//   required: true
 	// - name: latest
 	//   in: query
-	//   description: indicator to allow only listing latest
+	//   description: indicator to allow only listing the latest
 	//   type: boolean
 	//   required: false
 	// - name: Impersonate-User
@@ -552,7 +572,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	//   Restart a component
 	//     - Stops running the component container
 	//     - Pulls new image from image hub in radix configuration
-	//     - Starts the container again using up to date image
+	//     - Starts the container again using an up-to-date image
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -703,7 +723,7 @@ func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   Restart all components in the environment
 	//     - Stops all running components in the environment
 	//     - Pulls new images from image hub in radix configuration
-	//     - Starts all components in the environment again using up to date image
+	//     - Starts all components in the environment again using up-to-date image
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -836,7 +856,7 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   Restart all components in all environments of the application
 	//     - Stops all running components in all environments of the application
 	//     - Pulls new images from image hub in radix configuration
-	//     - Starts all components in all environments of the application again using up to date image
+	//     - Starts all components in all environments of the application again using up-to-date image
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -877,7 +897,7 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart component restartOAuthAuxiliaryResource
 	// ---
-	// summary: Restarts a auxiliary resource for a component
+	// summary: Restarts an auxiliary resource for a component
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -1084,6 +1104,231 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	radixhttp.StringResponse(w, r, log)
+
+}
+
+// GetJobs Get list of scheduled jobs
+func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs job getJobs
+	// ---
+	// summary: Get list of scheduled jobs
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "scheduled jobs"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := Init(WithAccounts(accounts))
+	jobSummaries, err := eh.GetJobs(appName, envName, jobComponentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobSummaries)
+}
+
+// GetJob Get a scheduled job
+func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName} job getJob
+	// ---
+	// summary: Get list of scheduled jobs
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "scheduled jobs"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	eh := Init(WithAccounts(accounts))
+	jobSummary, err := eh.GetJob(appName, envName, jobComponentName, jobName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobSummary)
+}
+
+// GetBatches Get list of scheduled batches
+func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches job getBatches
+	// ---
+	// summary: Get list of scheduled batches
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "scheduled jobs"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := Init(WithAccounts(accounts))
+	batchSummaries, err := eh.GetBatches(appName, envName, jobComponentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, batchSummaries)
+}
+
+// GetBatch Get a scheduled batch
+func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{batchName} job getBatch
+	// ---
+	// summary: Get list of scheduled batches
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "scheduled jobs"
+	//     schema:
+	//        type: "string"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+
+	eh := Init(WithAccounts(accounts))
+	jobSummary, err := eh.GetBatch(appName, envName, jobComponentName, batchName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobSummary)
 }
 
 // GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
