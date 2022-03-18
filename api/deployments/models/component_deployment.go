@@ -285,10 +285,10 @@ type ScheduledJobSummary struct {
 
 	// Status of the job
 	//
-	// required: false
+	// required: true
 	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 
 	// Message of a status, if any, of the job
 	//
@@ -343,16 +343,21 @@ type ScheduledBatchSummary struct {
 
 	// Status of the job
 	//
-	// required: false
+	// required: true
 	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
 	// example: Waiting
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 
 	// Message of a status, if any, of the job
 	//
 	// required: false
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
+
+	// ReplicaSummary
+	//
+	// required: false
+	Replica *ReplicaSummary `json:"replica,omitempty"`
 
 	// Jobs within the batch of ScheduledJobSummary
 	//
