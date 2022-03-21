@@ -9,17 +9,32 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
-type clientSet struct {
-	client               kubernetes.Interface
-	radixclient          radixclient.Interface
-	promclient           prometheusclient.Interface
-	commonTestUtils      *commontest.Utils
-	secretproviderplient secretsstorevclient.Interface
+const (
+	clusterName       = "AnyClusterName"
+	containerRegistry = "any.container.registry"
+	egressIps         = "0.0.0.0"
+)
+
+func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+	kubeClient := kubefake.NewSimpleClientset()
+	radixClient := fake.NewSimpleClientset()
+	prometheusClient := prometheusfake.NewSimpleClientset()
+	secretProviderClient := secretproviderfake.NewSimpleClientset()
+
+	// commonTestUtils is used for creating CRDs
+	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+
+	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
 }
 
 // ApplyRegistrationWithSync syncs based on registration builder

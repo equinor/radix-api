@@ -14,7 +14,6 @@ type ComponentBuilder interface {
 	WithStatus(ComponentStatus) ComponentBuilder
 	WithPodNames([]string) ComponentBuilder
 	WithReplicaSummaryList([]ReplicaSummary) ComponentBuilder
-	WithScheduledJobSummaryList([]ScheduledJobSummary) ComponentBuilder
 	WithSchedulerPort(schedulerPort *int32) ComponentBuilder
 	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
@@ -31,7 +30,6 @@ type componentBuilder struct {
 	componentImage            string
 	podNames                  []string
 	replicaSummaryList        []ReplicaSummary
-	scheduledJobSummaryList   []ScheduledJobSummary
 	environmentVariables      map[string]string
 	radixEnvironmentVariables map[string]string
 	secrets                   []string
@@ -54,11 +52,6 @@ func (b *componentBuilder) WithPodNames(podNames []string) ComponentBuilder {
 
 func (b *componentBuilder) WithReplicaSummaryList(replicaSummaryList []ReplicaSummary) ComponentBuilder {
 	b.replicaSummaryList = replicaSummaryList
-	return b
-}
-
-func (b *componentBuilder) WithScheduledJobSummaryList(scheduledJobSummaryList []ScheduledJobSummary) ComponentBuilder {
-	b.scheduledJobSummaryList = scheduledJobSummaryList
 	return b
 }
 
@@ -191,7 +184,6 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		Variables:               variables,
 		Replicas:                b.podNames,
 		ReplicaList:             b.replicaSummaryList,
-		ScheduledJobList:        b.scheduledJobSummaryList,
 		SchedulerPort:           b.schedulerPort,
 		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
 		AuxiliaryResource:       b.auxResource,

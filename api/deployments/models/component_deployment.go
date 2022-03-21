@@ -86,11 +86,6 @@ type Component struct {
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 
-	// Array of ScheduledJobList
-	//
-	// required: false
-	ScheduledJobList []ScheduledJobSummary `json:"scheduledJobList"`
-
 	// Auxiliary resources for this component
 	//
 	// required: false

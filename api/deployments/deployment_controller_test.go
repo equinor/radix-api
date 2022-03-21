@@ -2,60 +2,42 @@ package deployments
 
 import (
 	"fmt"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"testing"
 	"time"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	apiUtils "github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	kubernetes "k8s.io/client-go/kubernetes"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	anyAppName        = "any-app"
-	anyCloneURL       = "git@github.com:Equinor/any-app.git"
-	anyPodName        = "any-pod"
-	anyDeployName     = "any-deploy"
-	anyEnv            = "any-env"
-	egressIps         = "0.0.0.0"
+	anyAppName    = "any-app"
+	anyPodName    = "any-pod"
+	anyDeployName = "any-deploy"
 )
 
 func createGetLogEndpoint(appName, podName string) string {
 	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
 }
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
-	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
-	prometheusclient := prometheusfake.NewSimpleClientset()
-	secretproviderclient := secretproviderfake.NewSimpleClientset()
-
-	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
-
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface,
+	prometheusclient.Interface, secretsstorevclient.Interface) {
+	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient := apiUtils.SetupTest()
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewDeploymentController())
-
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, NewDeploymentController())
+	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient
 }
-
 func TestGetPodLog_no_radixconfig(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
