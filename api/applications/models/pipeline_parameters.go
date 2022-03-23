@@ -63,15 +63,33 @@ type PipelineParametersBuild struct {
 	//
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy,omitempty"`
+
+	// ImageRepository of the component, without image name and image-tag
+	//
+	// example: ghcr.io/test
+	ImageRepository string `json:"imageRepository,omitempty"`
+
+	// ImageName of the component, without repository name and image-tag
+	//
+	// example: radix-component
+	ImageName string `json:"imageName,omitempty"`
+
+	// ImageTag of the image - if empty will use default logic
+	//
+	// example: master-latest
+	ImageTag string `json:"imageTag,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		Branch:      buildParam.Branch,
-		CommitID:    buildParam.CommitID,
-		PushImage:   buildParam.PushImageToContainerRegistry(),
-		TriggeredBy: buildParam.TriggeredBy,
+		Branch:          buildParam.Branch,
+		CommitID:        buildParam.CommitID,
+		PushImage:       buildParam.PushImageToContainerRegistry(),
+		TriggeredBy:     buildParam.TriggeredBy,
+		ImageRepository: buildParam.ImageRepository,
+		ImageName:       buildParam.ImageName,
+		ImageTag:        buildParam.ImageTag,
 	}
 }
 
