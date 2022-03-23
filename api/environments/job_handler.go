@@ -3,6 +3,9 @@ package environments
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -18,8 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
-	"sort"
-	"strings"
 )
 
 const (
@@ -200,6 +201,14 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *batchv1.Job) (*depl
 		Started: radixutils.FormatTime(batch.Status.StartTime),
 		Ended:   radixutils.FormatTime(batch.Status.CompletionTime),
 	}
+	//if jobCount, ok := batch.ObjectMeta.Annotations[jobSchedulerDefaults.RadixBatchJobCountAnnotation]; ok {
+	//    if count, err := strconv.Atoi(jobCount); err != nil {
+	//        summary.TotalJobCount = count
+	//    } else {
+	//        log.Errorf("failed to get job count for the amnotation %s", jobSchedulerDefaults.RadixBatchJobCountAnnotation)
+	//    }
+	//}
+
 	return &summary, nil
 }
 

@@ -354,6 +354,12 @@ type ScheduledBatchSummary struct {
 	// required: false
 	Replica *ReplicaSummary `json:"replica,omitempty"`
 
+	// TotalJobCount count of jobs, requested to be scheduled by a batch
+	//
+	// required: true
+	// example: 5
+	TotalJobCount int `json:"totalJobCount"`
+
 	// Jobs within the batch of ScheduledJobSummary
 	//
 	// required: false
