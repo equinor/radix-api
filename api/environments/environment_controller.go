@@ -1274,7 +1274,7 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 
 // GetBatch Get a scheduled batch
 func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{batchName} job getBatch
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName} job getBatch
 	// ---
 	// summary: Get list of scheduled batches
 	// parameters:

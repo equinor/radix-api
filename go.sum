@@ -133,10 +133,8 @@ github.com/envoyproxy/go-control-plane v0.9.9-0.20210512163311-63b5d3c536b0/go.m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/equinor/radix-common v1.1.10 h1:7OVxj9gOStU9Ip7WadqtF9Amr02Htegvw1puJ9E0DQE=
 github.com/equinor/radix-common v1.1.10/go.mod h1:VlkqwYSQN2ANq/cwmuXlbohOPONK5FLLhMdKbjWHaQI=
-github.com/equinor/radix-job-scheduler v1.4.3 h1:TPKZOrLlG2kYbfmExEO3A3g2vkzvpUak2ZYdsh6G2w4=
-github.com/equinor/radix-job-scheduler v1.4.3/go.mod h1:Nj6qLogE2Y+A5KWacMWAcZrtduembHkV8OnSn8nKooM=
-github.com/equinor/radix-operator v1.19.9 h1:mf1sDTHNa1WqaZicCyd7Tms+i7Vo2NzdeOLv2LFqLh4=
-github.com/equinor/radix-operator v1.19.9/go.mod h1:zbG9XNJFKzE3SBMrU1sLHjLhYx1ItNjAoqVpL6QGOjs=
+github.com/equinor/radix-job-scheduler v1.5.23 h1:D6crcRY/cAsi8zK97egm8mEk9mb7JYXMgNug4yK6P7Y=
+github.com/equinor/radix-job-scheduler v1.5.23/go.mod h1:rOsTDBtgsFdFC1VryU2iz0d+8b/B/SuPKnzJR2p8Stg=
 github.com/evanphx/json-patch v4.12.0+incompatible h1:4onqiflcdA9EOZ4RxV643DvftH5pOlLGNtQ5lPWQu84=
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=

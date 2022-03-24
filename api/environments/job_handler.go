@@ -3,7 +3,9 @@ package environments
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"sort"
+	"strconv"
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
@@ -13,6 +15,7 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	batchSchedulerApi "github.com/equinor/radix-job-scheduler/api/batches"
 	jobSchedulerApi "github.com/equinor/radix-job-scheduler/api/jobs"
+	jobSchedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	batchv1 "k8s.io/api/batch/v1"
@@ -201,13 +204,14 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *batchv1.Job) (*depl
 		Started: radixutils.FormatTime(batch.Status.StartTime),
 		Ended:   radixutils.FormatTime(batch.Status.CompletionTime),
 	}
-	//if jobCount, ok := batch.ObjectMeta.Annotations[jobSchedulerDefaults.RadixBatchJobCountAnnotation]; ok {
-	//    if count, err := strconv.Atoi(jobCount); err != nil {
-	//        summary.TotalJobCount = count
-	//    } else {
-	//        log.Errorf("failed to get job count for the amnotation %s", jobSchedulerDefaults.RadixBatchJobCountAnnotation)
-	//    }
-	//}
+	if jobCount, ok := batch.ObjectMeta.Annotations[jobSchedulerDefaults.RadixBatchJobCountAnnotation]; ok {
+		if count, err := strconv.Atoi(jobCount); err == nil {
+			summary.TotalJobCount = count
+		} else {
+			log.Errorf("failed to get job count for the annotation %s",
+				jobSchedulerDefaults.RadixBatchJobCountAnnotation)
+		}
+	}
 
 	return &summary, nil
 }
