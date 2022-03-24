@@ -135,6 +135,8 @@ github.com/equinor/radix-common v1.1.10 h1:7OVxj9gOStU9Ip7WadqtF9Amr02Htegvw1puJ
 github.com/equinor/radix-common v1.1.10/go.mod h1:VlkqwYSQN2ANq/cwmuXlbohOPONK5FLLhMdKbjWHaQI=
 github.com/equinor/radix-job-scheduler v1.5.23 h1:D6crcRY/cAsi8zK97egm8mEk9mb7JYXMgNug4yK6P7Y=
 github.com/equinor/radix-job-scheduler v1.5.23/go.mod h1:rOsTDBtgsFdFC1VryU2iz0d+8b/B/SuPKnzJR2p8Stg=
+github.com/equinor/radix-operator v1.19.11 h1:dGy3sqz3x9ZA1Qmce+GUbUv1Vke1zrnHFCv8Yo/4qtI=
+github.com/equinor/radix-operator v1.19.11/go.mod h1:zbG9XNJFKzE3SBMrU1sLHjLhYx1ItNjAoqVpL6QGOjs=
 github.com/evanphx/json-patch v4.12.0+incompatible h1:4onqiflcdA9EOZ4RxV643DvftH5pOlLGNtQ5lPWQu84=
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
