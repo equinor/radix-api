@@ -163,12 +163,15 @@ func (eh EnvironmentHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 	jobPodsMap map[string][]corev1.Pod) *deploymentModels.ScheduledJobSummary {
 	creationTimestamp := job.GetCreationTimestamp()
+	batchName := job.ObjectMeta.Labels[kube.RadixBatchNameLabel]
 	summary := deploymentModels.ScheduledJobSummary{
-		Name:    job.Name,
-		Created: radixutils.FormatTimestamp(creationTimestamp.Time),
-		Started: radixutils.FormatTime(job.Status.StartTime),
-		Ended:   radixutils.FormatTime(job.Status.CompletionTime),
+		Name:      job.Name,
+		Created:   radixutils.FormatTimestamp(creationTimestamp.Time),
+		Started:   radixutils.FormatTime(job.Status.StartTime),
+		Ended:     radixutils.FormatTime(job.Status.CompletionTime),
+		BatchName: batchName,
 	}
+
 	if jobPods, ok := jobPodsMap[job.Name]; ok {
 		summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 	}
