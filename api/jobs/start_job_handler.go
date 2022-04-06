@@ -42,7 +42,11 @@ func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJo
 }
 
 func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
-	jobName, randomStr := getUniqueJobName(workerImage)
+	jobName, imageTag := getUniqueJobName(workerImage)
+	if len(jobSpec.ImageTag) > 0 {
+		imageTag = jobSpec.ImageTag
+	}
+
 	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 
 	var buildSpec v1.RadixBuildSpec
@@ -60,10 +64,13 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipel
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
 		buildSpec = v1.RadixBuildSpec{
-			ImageTag:      randomStr,
-			Branch:        jobSpec.Branch,
-			CommitID:      jobSpec.CommitID,
-			PushImage:     jobSpec.PushImage,
+			ImageTag:  imageTag,
+			Branch:    jobSpec.Branch,
+			CommitID:  jobSpec.CommitID,
+			PushImage: jobSpec.PushImage,
+			//TODO - add in updated radix-operator
+			//ImageRepository: jobSpec.ImageRepository,
+			//ImageName:       jobSpec.ImageName,
 			RadixFileName: "/workspace/radixconfig.yaml",
 		}
 	case v1.Promote:

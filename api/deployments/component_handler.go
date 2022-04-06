@@ -3,14 +3,11 @@ package deployments
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -18,17 +15,14 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
 	defaultTargetCPUUtilization = int32(80)
-	k8sJobNameLabel             = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
@@ -139,7 +133,6 @@ func GetComponentStateFromSpec(
 	var componentPodNames []string
 
 	var replicaSummaryList []deploymentModels.ReplicaSummary
-	var scheduledJobSummaryList []deploymentModels.ScheduledJobSummary
 	var auxResource deploymentModels.AuxiliaryResource
 	status := deploymentModels.ConsistentComponent
 
@@ -155,14 +148,6 @@ func GetComponentStateFromSpec(
 		auxResource, err = getAuxiliaryResources(kubeClient, appName, component, envNs)
 		if err != nil {
 			return nil, err
-		}
-
-		if component.GetType() == v1.RadixComponentTypeJobScheduler {
-			scheduledJobs, scheduledJobPodMap, err := getComponentJobsByNamespace(kubeClient, envNs, component.GetName()) //scheduledJobs
-			if err != nil {
-				return nil, err
-			}
-			scheduledJobSummaryList = getScheduledJobSummaryList(kubeClient, scheduledJobs, scheduledJobPodMap)
 		}
 
 		status, err = getStatusOfActiveDeployment(component,
@@ -185,45 +170,10 @@ func GetComponentStateFromSpec(
 		WithStatus(status).
 		WithPodNames(componentPodNames).
 		WithReplicaSummaryList(replicaSummaryList).
-		WithScheduledJobSummaryList(scheduledJobSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
 		WithAuxiliaryResource(auxResource).
 		BuildComponent()
 
-}
-
-func getScheduledJobSummaryList(kubeClient kubernetes.Interface, jobs []batchv1.Job, jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
-	var summaries []deploymentModels.ScheduledJobSummary
-	for _, job := range jobs {
-		creationTimestamp := job.GetCreationTimestamp()
-		summary := deploymentModels.ScheduledJobSummary{
-			Name:    job.Name,
-			Created: radixutils.FormatTimestamp(creationTimestamp.Time),
-			Started: radixutils.FormatTime(job.Status.StartTime),
-			Ended:   radixutils.FormatTime(job.Status.CompletionTime),
-		}
-		if jobPods, ok := jobPodsMap[job.Name]; ok {
-			summary.ReplicaList = getReplicaSummariesForPods(jobPods)
-		}
-		jobStatus := jobSchedulerModels.GetJobStatusFromJob(kubeClient, &job, jobPodsMap[job.Name])
-		summary.Status = jobStatus.Status
-		summary.Message = jobStatus.Message
-		summaries = append(summaries, summary)
-	}
-
-	// Sort job-summaries descending
-	sort.Slice(summaries, func(i, j int) bool {
-		return utils.IsBefore(&summaries[j], &summaries[i])
-	})
-	return summaries
-}
-
-func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	var replicaSummaries []deploymentModels.ReplicaSummary
-	for _, pod := range jobPods {
-		replicaSummaries = append(replicaSummaries, deploymentModels.GetReplicaSummary(pod))
-	}
-	return replicaSummaries
 }
 
 func getPodNames(pods []corev1.Pod) []string {
@@ -255,46 +205,6 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 	}
 
 	return componentPods, nil
-}
-
-func getComponentJobsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]batchv1.Job, map[string][]corev1.Pod, error) {
-	jobLabelSelector := map[string]string{
-		kube.RadixComponentLabel: componentName,
-		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
-	}
-	jobList, err := client.BatchV1().Jobs(envNs).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(jobLabelSelector).String(),
-	})
-	if err != nil {
-		log.Errorf("error getting jobs: %v", err)
-		return nil, nil, err
-	}
-
-	jobPodMap := make(map[string][]corev1.Pod)
-
-	// Make API call to k8s only if there are actual jobs
-	if len(jobList.Items) > 0 {
-		jobPodLabelSelector := labels.Set{
-			kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
-		}
-		podList, err := client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(jobPodLabelSelector).String(),
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-
-		for _, pod := range podList.Items {
-			pod := pod
-			if jobName, labelExist := pod.GetLabels()[k8sJobNameLabel]; labelExist {
-				jobPodList := jobPodMap[jobName]
-				jobPodMap[jobName] = append(jobPodList, pod)
-			}
-		}
-
-	}
-
-	return jobList.Items, jobPodMap, nil
 }
 
 func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
@@ -370,7 +280,7 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 
 func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
 	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
-		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace, *auth.OAuth2)
+		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace)
 		if err != nil {
 			return
 		}
@@ -379,7 +289,7 @@ func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, comp
 	return
 }
 
-func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, componentName, envNamespace string, oauth2 v1.OAuth2) (*deploymentModels.OAuth2AuxiliaryResource, error) {
+func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, componentName, envNamespace string) (*deploymentModels.OAuth2AuxiliaryResource, error) {
 	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
 	oauthDeployment, err := getAuxiliaryResourceDeployment(kubeClient, appName, componentName, envNamespace, defaults.OAuthProxyAuxiliaryComponentType)
 	if err != nil {

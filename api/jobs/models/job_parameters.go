@@ -23,6 +23,15 @@ type JobParameters struct {
 
 	// For promote pipeline: Target environment for promotion
 	ToEnvironment string `json:"toEnvironment"`
+
+	// ImageRepository of the component, without image name and image-tag
+	ImageRepository string
+
+	// ImageName of the component, without repository name and image-tag
+	ImageName string
+
+	// ImageTag of the image - if empty will use default logic
+	ImageTag string
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

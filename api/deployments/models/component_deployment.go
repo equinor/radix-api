@@ -86,11 +86,6 @@ type Component struct {
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 
-	// Array of ScheduledJobList
-	//
-	// required: false
-	ScheduledJobList []ScheduledJobSummary `json:"scheduledJobList"`
-
 	// Auxiliary resources for this component
 	//
 	// required: false
@@ -269,37 +264,106 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created"`
+	Created string `json:"created,omitempty"`
 
 	// Started timestamp
 	//
 	// required: false
 	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started"`
+	Started string `json:"started,omitempty"`
 
 	// Ended timestamp
 	//
 	// required: false
 	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended"`
+	Ended string `json:"ended,omitempty"`
 
 	// Status of the job
 	//
-	// required: false
+	// required: true
 	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
 	// example: Waiting
 	Status string `json:"status"`
 
-	// Status message, if any, of the job
+	// Message of a status, if any, of the job
 	//
 	// required: false
 	// example: "Error occurred"
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 
 	// Array of ReplicaSummary
 	//
 	// required: false
-	ReplicaList []ReplicaSummary `json:"replicaList"`
+	ReplicaList []ReplicaSummary `json:"replicaList,omitempty"`
+
+	// JobId JobId, if any
+	//
+	// required: false
+	// example: "job1"
+	JobId string `json:"jobId,omitempty"`
+
+	// BatchName Batch name, if any
+	//
+	// required: false
+	// example: "batch-abc"
+	BatchName string `json:"batchName,omitempty"`
+}
+
+// ScheduledBatchSummary holds information about scheduled batch
+// swagger:model ScheduledBatchSummary
+type ScheduledBatchSummary struct {
+	// Name of the scheduled batch
+	//
+	// required: true
+	// example: batch-20181029135644-algpv-6hznh
+	Name string `json:"name"`
+
+	// Created timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Created string `json:"created,omitempty"`
+
+	// Started timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Started string `json:"started,omitempty"`
+
+	// Ended timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	Ended string `json:"ended,omitempty"`
+
+	// Status of the job
+	//
+	// required: true
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
+	// example: Waiting
+	Status string `json:"status"`
+
+	// Message of a status, if any, of the job
+	//
+	// required: false
+	// example: "Error occurred"
+	Message string `json:"message,omitempty"`
+
+	// ReplicaSummary
+	//
+	// required: false
+	Replica *ReplicaSummary `json:"replica,omitempty"`
+
+	// TotalJobCount count of jobs, requested to be scheduled by a batch
+	//
+	// required: true
+	// example: 5
+	TotalJobCount int `json:"totalJobCount"`
+
+	// Jobs within the batch of ScheduledJobSummary
+	//
+	// required: false
+	JobList []ScheduledJobSummary `json:"jobList,omitempty"`
 }
 
 func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
@@ -354,5 +418,21 @@ func (job *ScheduledJobSummary) GetEnded() string {
 }
 
 func (job *ScheduledJobSummary) GetStatus() string {
+	return job.Status
+}
+
+func (job *ScheduledBatchSummary) GetCreated() string {
+	return job.Created
+}
+
+func (job *ScheduledBatchSummary) GetStarted() string {
+	return job.Started
+}
+
+func (job *ScheduledBatchSummary) GetEnded() string {
+	return job.Ended
+}
+
+func (job *ScheduledBatchSummary) GetStatus() string {
 	return job.Status
 }

@@ -70,14 +70,14 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 
 	var secretObjName, partName string
 
-	if strings.HasSuffix(secretName, suffix.ExternalDNSCert) {
+	if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
 		// This is the cert part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSCert)
+		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
 		partName = tlsCertPart
 
-	} else if strings.HasSuffix(secretName, suffix.ExternalDNSKeyPart) {
+	} else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
 		// This is the key part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSKeyPart)
+		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
 		partName = tlsKeyPart
 
 	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
@@ -574,25 +574,25 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 				}
 			}
 
-			secretDTO := models.Secret{
-				Name:        externalAlias + suffix.ExternalDNSCert,
+			tlsCertSecretDTO := models.Secret{
+				Name:        externalAlias + suffix.ExternalDNSTLSCert,
 				DisplayName: "Certificate",
 				Resource:    externalAlias,
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),
 				Status:      certStatus,
 			}
-			secretDTOsMap[secretDTO.Name] = secretDTO
+			secretDTOsMap[tlsCertSecretDTO.Name] = tlsCertSecretDTO
 
-			secretDTO = models.Secret{
-				Name:        externalAlias + suffix.ExternalDNSKeyPart,
+			tlsKeySecretDTO := models.Secret{
+				Name:        externalAlias + suffix.ExternalDNSTLSKey,
 				DisplayName: "Key",
 				Resource:    externalAlias,
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),
 				Status:      keyStatus,
 			}
-			secretDTOsMap[secretDTO.Name] = secretDTO
+			secretDTOsMap[tlsKeySecretDTO.Name] = tlsKeySecretDTO
 		}
 	}
 
