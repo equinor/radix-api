@@ -396,7 +396,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
-					DisplayName: "Client ID",
+					DisplayName: "Azure Key vault 'keyVault1' Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -404,15 +404,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Client Secret",
+					DisplayName: "Azure Key vault 'keyVault1' Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Pending",
 				},
 				{
-					Name:        "SECRET_REF1",
-					DisplayName: "secret 'secret1'",
+					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
+					DisplayName: "Azure Key vault 'keyVault1' secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -420,7 +420,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
-					DisplayName: "Client ID",
+					DisplayName: "Azure Key vault 'keyVault2' Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -428,15 +428,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Client Secret",
+					DisplayName: "Azure Key vault 'keyVault2' Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Pending",
 				},
 				{
-					Name:        "SECRET_REF2",
-					DisplayName: "secret 'secret2'",
+					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
+					DisplayName: "Azure Key vault 'keyVault2' secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -495,7 +495,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
-					DisplayName: "Client ID",
+					DisplayName: "Azure Key vault 'keyVault1' Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -503,15 +503,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Client Secret",
+					DisplayName: "Azure Key vault 'keyVault1' Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Consistent",
 				},
 				{
-					Name:        "SECRET_REF1",
-					DisplayName: "secret 'secret1'",
+					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
+					DisplayName: "Azure Key vault 'keyVault1' secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -519,7 +519,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
-					DisplayName: "Client ID",
+					DisplayName: "Azure Key vault 'keyVault2' Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -527,15 +527,15 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Client Secret",
+					DisplayName: "Azure Key vault 'keyVault2' Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Consistent",
 				},
 				{
-					Name:        "SECRET_REF2",
-					DisplayName: "secret 'secret2'",
+					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
+					DisplayName: "Azure Key vault 'keyVault2' secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,

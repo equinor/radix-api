@@ -134,7 +134,7 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 }
 
 func (eh EnvironmentHandler) getBatchJobSummaryList(err error, kubeClient kubernetes.Interface, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
-	var summaries []deploymentModels.ScheduledJobSummary
+	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
 	batchJobs, err := getBatchJobs(kubeClient, namespace, jobComponentName, batchName)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (eh EnvironmentHandler) getBatchJobSummaryList(err error, kubeClient kubern
 
 func (eh EnvironmentHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 	jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
-	var summaries []deploymentModels.ScheduledJobSummary
+	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
 	for _, job := range jobs {
 		summary := eh.getScheduledJobSummary(&job, jobPodsMap)
 		summaries = append(summaries, *summary)
@@ -182,7 +182,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 }
 
 func (eh EnvironmentHandler) getScheduledBatchSummaryList(batches []batchv1.Job) ([]deploymentModels.ScheduledBatchSummary, error) {
-	var summaries []deploymentModels.ScheduledBatchSummary
+	summaries := make([]deploymentModels.ScheduledBatchSummary, 0) //return an array - not null
 	for _, batch := range batches {
 		summary, err := eh.getScheduledBatchSummary(&batch)
 		if err != nil {

@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
+	"github.com/equinor/radix-api/api/utils/secret"
 	errorutils "github.com/equinor/radix-common/utils/errors"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -121,7 +122,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientIdSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
 			for _, item := range azureKeyVault.Items {
-				b.secrets = append(b.secrets, item.EnvVar)
+				b.secrets = append(b.secrets, secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item))
 			}
 		}
 	}
