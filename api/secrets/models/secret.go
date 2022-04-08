@@ -56,28 +56,3 @@ const (
 	SecretTypeOAuth2Proxy           SecretType = "oauth2-proxy"
 	SecretTypeOrphaned              SecretType = "orphaned"
 )
-
-//GetSecretTypeDescription Gets description by the secret type
-func GetSecretTypeDescription(secretType SecretType) string {
-	switch secretType {
-	case SecretTypeGeneric:
-		return "Generic"
-	case SecretTypeClientCert:
-		return "TLS"
-	case SecretTypeAzureBlobFuseVolume:
-		return "Azure Blobfuse volume mount credential"
-	case SecretTypeCsiAzureBlobVolume:
-		return "Azure Blob volume mount credential"
-	case SecretTypeCsiAzureKeyVaultCreds:
-		return "Azure Key vault credential"
-	case SecretTypeCsiAzureKeyVaultItem:
-		return "Azure Key vault"
-	case SecretTypeClientCertificateAuth:
-		return "Authentication Client Certificate"
-	case SecretTypeOAuth2Proxy:
-		return "OAuth2 Proxy"
-	case SecretTypeOrphaned:
-		return "Orphaned"
-	}
-	return "Unsupported"
-}

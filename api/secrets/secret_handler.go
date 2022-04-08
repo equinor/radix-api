@@ -285,7 +285,7 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *v1.Radi
 				status = models.Orphan.String()
 			}
 			secretDTO := models.Secret{Name: clusterSecretName,
-				DisplayName: getSecretDisplayNameFor(models.SecretTypeOrphaned, clusterSecretName),
+				DisplayName: clusterSecretName,
 				Component:   componentName, Status: status, Type: models.SecretTypeOrphaned}
 			secretDTOsMap[clusterSecretNameAndComponentName] = secretDTO
 		}
@@ -339,7 +339,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 		}
 		secrets = append(secrets, models.Secret{
 			Name:        secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
-			DisplayName: getSecretDisplayNameFor(models.SecretTypeCsiAzureKeyVaultCreds, "Client ID"),
+			DisplayName: "Client ID",
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
 			Status:      clientIdStatus,
@@ -347,7 +347,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 		)
 		secrets = append(secrets, models.Secret{
 			Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
-			DisplayName: getSecretDisplayNameFor(models.SecretTypeCsiAzureKeyVaultCreds, "Client Secret"),
+			DisplayName: "Client Secret",
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
 			Status:      clientSecretStatus,
@@ -355,13 +355,6 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 		)
 	}
 	return secrets, nil
-}
-
-func getSecretDisplayNameFor(secretType models.SecretType, secretPartDisplayName string) string {
-	if len(secretPartDisplayName) == 0 {
-		return models.GetSecretTypeDescription(secretType)
-	}
-	return fmt.Sprintf("%s %s", models.GetSecretTypeDescription(secretType), secretPartDisplayName)
 }
 
 func (eh SecretHandler) getBlobFuseSecrets(component v1.RadixCommonDeployComponent, envNamespace string, volumeMount v1.RadixVolumeMount) (models.Secret, models.Secret) {
@@ -408,7 +401,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 	//"accountkey"
 	accountKeySecretDTO := models.Secret{
 		Name:        secretName + accountKeyPartSuffix,
-		DisplayName: getSecretDisplayNameFor(secretType, "Account Key"),
+		DisplayName: "Account Key",
 		Resource:    volumeMountName,
 		Component:   component.GetName(),
 		Status:      accountkeyStatus,
@@ -416,7 +409,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 	//"accountname"
 	accountNameSecretDTO := models.Secret{
 		Name:        secretName + accountNamePartSuffix,
-		DisplayName: getSecretDisplayNameFor(secretType, "Account Name"),
+		DisplayName: "Account Name",
 		Resource:    volumeMountName,
 		Component:   component.GetName(),
 		Status:      accountnameStatus,
@@ -521,7 +514,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(c
 		}
 
 		secrets = append(secrets, models.Secret{Name: secretName,
-			DisplayName: models.GetSecretTypeDescription(models.SecretTypeClientCertificateAuth),
+			DisplayName: "",
 			Type:        models.SecretTypeClientCertificateAuth, Component: component.GetName(), Status: secretStatus})
 	}
 
@@ -559,16 +552,16 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component v1
 		}
 
 		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2ClientSecret,
-			DisplayName: getSecretDisplayNameFor(models.SecretTypeOAuth2Proxy, "Client Secret"),
+			DisplayName: "Client Secret",
 			Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(),
 			Status: clientSecretStatus})
 		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2CookieSecret,
-			DisplayName: getSecretDisplayNameFor(models.SecretTypeOAuth2Proxy, "Cookie Secret"),
+			DisplayName: "Cookie Secret",
 			Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: cookieSecretStatus})
 
 		if oauth2.SessionStoreType == v1.SessionStoreRedis {
 			secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2RedisPassword,
-				DisplayName: getSecretDisplayNameFor(models.SecretTypeOAuth2Proxy, "Redis Password"),
+				DisplayName: "Redis Password",
 				Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: redisPasswordStatus})
 		}
 	}
@@ -604,7 +597,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 
 			tlsCertSecretDTO := models.Secret{
 				Name:        externalAlias + suffix.ExternalDNSTLSCert,
-				DisplayName: getSecretDisplayNameFor(models.SecretTypeClientCert, "Certificate"),
+				DisplayName: "Certificate",
 				Resource:    externalAlias,
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),
@@ -614,7 +607,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 
 			tlsKeySecretDTO := models.Secret{
 				Name:        externalAlias + suffix.ExternalDNSTLSKey,
-				DisplayName: getSecretDisplayNameFor(models.SecretTypeClientCert, "Key"),
+				DisplayName: "Key",
 				Resource:    externalAlias,
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),

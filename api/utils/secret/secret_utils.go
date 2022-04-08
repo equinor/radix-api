@@ -2,7 +2,6 @@ package secret
 
 import (
 	"fmt"
-	"github.com/equinor/radix-api/api/secrets/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -33,8 +32,7 @@ func GetSecretNameForAzureKeyVaultItem(azureKeyVaultName string, item *v1.RadixA
 
 //GetSecretDisplayNameForAzureKeyVaultItem Get the display name of the secret by Azure Key vault item properties
 func GetSecretDisplayNameForAzureKeyVaultItem(item *v1.RadixAzureKeyVaultItem) string {
-	displayName := fmt.Sprintf("%s %s '%s'", models.GetSecretTypeDescription(models.SecretTypeCsiAzureKeyVaultItem),
-		getAzureKeyVaultItemType(item), item.Name)
+	displayName := fmt.Sprintf("%s '%s'", getAzureKeyVaultItemType(item), item.Name)
 	if item.Alias != nil && len(*item.Alias) > 0 {
 		displayName = fmt.Sprintf("%s, file '%s'", displayName, *item.Alias)
 	}
