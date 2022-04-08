@@ -792,11 +792,11 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 
 	assert.NoError(t, err)
 	expectedSecrets := []models.Secret{
-		{Name: alias + "-key", DisplayName: "TLS Key for ",
+		{Name: alias + "-key", DisplayName: "Key",
 			Status:   models.Pending.String(),
 			Resource: alias,
 			Type:     models.SecretTypeClientCert, Component: componentName},
-		{Name: alias + "-cert", DisplayName: "TLS Certificate", Status: models.Pending.String(), Resource: alias,
+		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias,
 			Type: models.SecretTypeClientCert, Component: componentName},
 	}
 	assert.ElementsMatch(t, expectedSecrets, secrets)

@@ -396,7 +396,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
-					DisplayName: "Azure Key vault 'keyVault1' Client ID",
+					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -404,7 +404,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Azure Key vault 'keyVault1' Client Secret",
+					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -412,7 +412,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
-					DisplayName: "Azure Key vault 'keyVault1' secret 'secret1'",
+					DisplayName: "secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -420,7 +420,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
-					DisplayName: "Azure Key vault 'keyVault2' Client ID",
+					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -428,7 +428,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Azure Key vault 'keyVault2' Client Secret",
+					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -436,7 +436,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
-					DisplayName: "Azure Key vault 'keyVault2' secret 'secret2'",
+					DisplayName: "secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -495,7 +495,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientid",
-					DisplayName: "Azure Key vault 'keyVault1' Client ID",
+					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -503,7 +503,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Azure Key vault 'keyVault1' Client Secret",
+					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -511,7 +511,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
-					DisplayName: "Azure Key vault 'keyVault1' secret 'secret1'",
+					DisplayName: "secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -519,7 +519,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
-					DisplayName: "Azure Key vault 'keyVault2' Client ID",
+					DisplayName: "Client ID",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -527,7 +527,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
-					DisplayName: "Azure Key vault 'keyVault2' Client Secret",
+					DisplayName: "Client Secret",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -535,7 +535,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
-					DisplayName: "Azure Key vault 'keyVault2' secret 'secret2'",
+					DisplayName: "secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -556,7 +556,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -584,7 +584,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Consistent",
@@ -604,7 +604,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -651,7 +651,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -670,7 +670,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -689,7 +689,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -708,7 +708,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -727,7 +727,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
