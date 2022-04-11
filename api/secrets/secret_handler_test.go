@@ -411,7 +411,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "SECRET_REF1",
+					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
 					DisplayName: "secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
@@ -435,7 +435,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Pending",
 				},
 				{
-					Name:        "SECRET_REF2",
+					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
 					DisplayName: "secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
@@ -510,7 +510,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Consistent",
 				},
 				{
-					Name:        "SECRET_REF1",
+					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
 					DisplayName: "secret 'secret1'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
@@ -534,7 +534,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Status:      "Consistent",
 				},
 				{
-					Name:        "SECRET_REF2",
+					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
 					DisplayName: "secret 'secret2'",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
@@ -556,7 +556,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -584,7 +584,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Consistent",
@@ -604,7 +604,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -651,7 +651,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -670,7 +670,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -689,7 +689,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -708,7 +708,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
@@ -727,7 +727,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "component1-clientcertca",
-					DisplayName: "Client certificate",
+					DisplayName: "",
 					Type:        secretModels.SecretTypeClientCertificateAuth,
 					Component:   componentName1,
 					Status:      "Pending",
