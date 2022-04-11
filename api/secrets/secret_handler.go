@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
+	"github.com/equinor/radix-api/api/utils/secret"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -283,7 +284,9 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *v1.Radi
 			if _, exists := secretNamesMap[clusterSecretName]; !exists {
 				status = models.Orphan.String()
 			}
-			secretDTO := models.Secret{Name: clusterSecretName, DisplayName: clusterSecretName, Component: componentName, Status: status, Type: models.SecretTypeOrphaned}
+			secretDTO := models.Secret{Name: clusterSecretName,
+				DisplayName: clusterSecretName,
+				Component:   componentName, Status: status, Type: models.SecretTypeOrphaned}
 			secretDTOsMap[clusterSecretNameAndComponentName] = secretDTO
 		}
 	}
@@ -334,15 +337,16 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 				clientSecretStatus = models.Pending.String()
 			}
 		}
-
-		secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+		secrets = append(secrets, models.Secret{
+			Name:        secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 			DisplayName: "Client ID",
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
 			Status:      clientIdStatus,
 			Type:        models.SecretTypeCsiAzureKeyVaultCreds},
 		)
-		secrets = append(secrets, models.Secret{Name: secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+		secrets = append(secrets, models.Secret{
+			Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 			DisplayName: "Client Secret",
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
@@ -395,9 +399,21 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 		}
 	}
 	//"accountkey"
-	accountKeySecretDTO := models.Secret{Name: secretName + accountKeyPartSuffix, DisplayName: "Account Key", Resource: volumeMountName, Component: component.GetName(), Status: accountkeyStatus, Type: secretType}
+	accountKeySecretDTO := models.Secret{
+		Name:        secretName + accountKeyPartSuffix,
+		DisplayName: "Account Key",
+		Resource:    volumeMountName,
+		Component:   component.GetName(),
+		Status:      accountkeyStatus,
+		Type:        secretType}
 	//"accountname"
-	accountNameSecretDTO := models.Secret{Name: secretName + accountNamePartSuffix, DisplayName: "Account Name", Resource: volumeMountName, Component: component.GetName(), Status: accountnameStatus, Type: secretType}
+	accountNameSecretDTO := models.Secret{
+		Name:        secretName + accountNamePartSuffix,
+		DisplayName: "Account Name",
+		Resource:    volumeMountName,
+		Component:   component.GetName(),
+		Status:      accountnameStatus,
+		Type:        secretType}
 	return accountKeySecretDTO, accountNameSecretDTO
 }
 
@@ -467,13 +483,9 @@ func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixComm
 	secretRefs := component.GetSecretRefs()
 	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
 		for _, item := range azureKeyVault.Items {
-			itemType := string(v1.RadixAzureKeyVaultObjectTypeSecret)
-			if item.Type != nil {
-				itemType = string(*item.Type)
-			}
 			secrets = append(secrets, models.Secret{
-				Name:        item.EnvVar,
-				DisplayName: fmt.Sprintf("%s '%s'", itemType, item.Name),
+				Name:        secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item),
+				DisplayName: secret.GetSecretDisplayNameForAzureKeyVaultItem(&item),
 				Type:        models.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    azureKeyVault.Name,
 				Component:   component.GetName(),
@@ -501,7 +513,9 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(c
 			}
 		}
 
-		secrets = append(secrets, models.Secret{Name: secretName, DisplayName: "Client certificate", Type: models.SecretTypeClientCertificateAuth, Component: component.GetName(), Status: secretStatus})
+		secrets = append(secrets, models.Secret{Name: secretName,
+			DisplayName: "",
+			Type:        models.SecretTypeClientCertificateAuth, Component: component.GetName(), Status: secretStatus})
 	}
 
 	return secrets
@@ -537,11 +551,18 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component v1
 			}
 		}
 
-		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: clientSecretStatus})
-		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: cookieSecretStatus})
+		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2ClientSecret,
+			DisplayName: "Client Secret",
+			Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(),
+			Status: clientSecretStatus})
+		secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2CookieSecret,
+			DisplayName: "Cookie Secret",
+			Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: cookieSecretStatus})
 
 		if oauth2.SessionStoreType == v1.SessionStoreRedis {
-			secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: redisPasswordStatus})
+			secrets = append(secrets, models.Secret{Name: component.GetName() + suffix.OAuth2RedisPassword,
+				DisplayName: "Redis Password",
+				Type:        models.SecretTypeOAuth2Proxy, Component: component.GetName(), Status: redisPasswordStatus})
 		}
 	}
 

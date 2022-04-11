@@ -55,5 +55,4 @@ const (
 	SecretTypeClientCertificateAuth SecretType = "client-cert-auth"
 	SecretTypeOAuth2Proxy           SecretType = "oauth2-proxy"
 	SecretTypeOrphaned              SecretType = "orphaned"
-	SecretTypePending               SecretType = "pending"
 )
