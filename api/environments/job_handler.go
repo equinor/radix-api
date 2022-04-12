@@ -168,7 +168,6 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 		Name:      job.Name,
 		Created:   radixutils.FormatTimestamp(creationTimestamp.Time),
 		Started:   radixutils.FormatTime(job.Status.StartTime),
-		Ended:     radixutils.FormatTime(job.Status.CompletionTime),
 		BatchName: batchName,
 	}
 
@@ -178,6 +177,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 	jobStatus := jobSchedulerApi.GetJobStatusFromJob(eh.kubeUtil.KubeClient(), job, jobPodsMap[job.Name])
 	summary.Status = jobStatus.Status
 	summary.Message = jobStatus.Message
+	summary.Ended = jobStatus.Ended
 	return &summary
 }
 
