@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	_ "github.com/equinor/radix-api/swaggerui" // statik files
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rakyll/statik/fs"
@@ -83,7 +84,8 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 		controllers,
 	}
 
-	return getCORSHandler(server)
+	corsHandler := getCORSHandler(server)
+	return handlers.CompressHandler(corsHandler)
 }
 
 func getCORSHandler(apiRouter *Server) http.Handler {
