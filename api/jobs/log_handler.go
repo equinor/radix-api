@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -35,12 +36,19 @@ func (jh JobHandler) HandleGetApplicationJobLogs(appName, jobName string, sinceT
 }
 
 func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step, sinceTime *time.Time) jobModels.StepLog {
+	var buildLog string
 	podHandler := pods.Init(client)
-	buildLog, err := podHandler.HandleGetAppPodLog(appName, step.PodName, step.Name, sinceTime)
+	logReader, err := podHandler.HandleGetAppPodLog(appName, step.PodName, step.Name, sinceTime)
+
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		buildLog = fmt.Sprintf("%v", err)
+	} else {
+		var buf bytes.Buffer
+		buf.ReadFrom(logReader)
+		buildLog = buf.String()
 	}
+
 	return jobModels.StepLog{
 		Name:    step.Name,
 		Log:     buildLog,

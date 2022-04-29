@@ -1,14 +1,15 @@
 package deployments
 
 import (
-	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
-	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/models"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/gorilla/mux"
 )
 
 const rootPath = "/applications/{appName}"
@@ -283,11 +284,11 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	deployHandler := Init(accounts)
 	log, err := deployHandler.GetLogs(appName, podName, &since)
-
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
+	defer log.Close()
 
-	radixhttp.StringResponse(w, r, log)
+	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 }
