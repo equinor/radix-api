@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"context"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ import (
 )
 
 type DeployHandler interface {
-	GetLogs(appName, podName string, sinceTime *time.Time) (string, error)
+	GetLogs(appName, podName string, sinceTime *time.Time) (io.ReadCloser, error)
 	GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error)
 	GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error)
@@ -47,12 +48,12 @@ func Init(accounts models.Accounts) DeployHandler {
 }
 
 // GetLogs handler for GetLogs
-func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
+func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	ns := operatorUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
-		return "", deploymentModels.NonExistingApplication(err, appName)
+		return nil, deploymentModels.NonExistingApplication(err, appName)
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.kubeClient)
@@ -60,12 +61,12 @@ func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Ti
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		return log, nil
 	}
-	return "", deploymentModels.NonExistingPod(appName, podName)
+	return nil, deploymentModels.NonExistingPod(appName, podName)
 }
 
 // GetDeploymentsForApplication Lists deployments across environments
