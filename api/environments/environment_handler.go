@@ -2,6 +2,7 @@ package environments
 
 import (
 	"context"
+	"io"
 	"strings"
 	"time"
 
@@ -345,36 +346,26 @@ func (eh EnvironmentHandler) getServiceAccount() models.Account {
 }
 
 // GetLogs handler for GetLogs
-func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time) (string, error) {
+func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
 	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime)
 	if errors.IsNotFound(err) {
-		return "", err
+		return nil, err
 	}
 
 	return log, nil
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
-func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time) (string, error) {
+func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	handler := pods.Init(eh.client)
-	log, err := handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime)
-	if err != nil {
-		return "", err
-	}
-
-	return log, nil
+	return handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
-func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (string, error) {
+func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	log, err := podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime)
-	if err != nil {
-		return "", err
-	}
-
-	return log, nil
+	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime)
 }
 
 // StopEnvironment Stops all components in the environment

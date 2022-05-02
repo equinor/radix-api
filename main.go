@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/equinor/radix-api/api/secrets"
 	"net/http"
 	"os"
+
+	"github.com/equinor/radix-api/api/secrets"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 

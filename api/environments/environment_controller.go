@@ -1020,13 +1020,13 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	eh := Init(WithAccounts(accounts))
 	log, err := eh.GetLogs(appName, envName, podName, &since)
-
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
+	defer log.Close()
 
-	radixhttp.StringResponse(w, r, log)
+	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 }
 
 // GetScheduledJobLog Get log from a scheduled job
@@ -1097,13 +1097,13 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 
 	eh := Init(WithAccounts(accounts))
 	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since)
-
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
+	defer log.Close()
 
-	radixhttp.StringResponse(w, r, log)
+	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 
 }
 
@@ -1406,11 +1406,11 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 
 	eh := Init(WithAccounts(accounts))
 	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since)
-
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
+	defer log.Close()
 
-	radixhttp.StringResponse(w, r, log)
+	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 }

@@ -5,6 +5,7 @@
 package mock
 
 import (
+	io "io"
 	reflect "reflect"
 	time "time"
 
@@ -126,10 +127,10 @@ func (mr *MockDeployHandlerMockRecorder) GetLatestDeploymentForApplicationEnviro
 }
 
 // GetLogs mocks base method.
-func (m *MockDeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (string, error) {
+func (m *MockDeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLogs", appName, podName, sinceTime)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

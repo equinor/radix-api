@@ -44,7 +44,7 @@ spec:
               memory: "400M"
               cpu: "250m"
             limits:
-              memory: "400M"
+              memory: "1Gi"
               cpu: "2000m"
           variables:
             PIPELINE_IMG_TAG: "release-latest"
