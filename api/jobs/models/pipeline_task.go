@@ -13,7 +13,7 @@ type PipelineTask struct {
 	//
 	// required: false
 	// example: radix-tekton-task-dev-2022-05-09-abcde
-	RealName string `json:"RealName"`
+	RealName string `json:"realName"`
 
 	// Status of the task
 	//
@@ -42,5 +42,5 @@ type PipelineTask struct {
 	// Pod name
 	//
 	// required: false
-	PodName string `json:"-"`
+	PodName string `json:"podName"`
 }
