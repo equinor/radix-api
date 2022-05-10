@@ -4,28 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"sort"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"strings"
 
-	deployments "github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	knative "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 const workerImage = "radix-pipeline"
-
-// RadixJobTypeJob TODO: Move this into kube, or another central location
-const RadixJobTypeJob = "job"
 
 func stepNotFoundError(stepName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("step %s not found", stepName))
@@ -110,7 +109,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	jobComponents, err := jh.getJobComponents(appName, jobName, jobDeployments)
+	jobComponents, err := jh.getJobComponents(appName, jobDeployments)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +157,89 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 	return vulnerabilities, nil
 }
 
+// GetTektonPipelineRuns Get the Tekton pipeline-runs
+func (jh JobHandler) GetTektonPipelineRuns(appName, jobName string) ([]jobModels.PipelineRun, error) {
+	namespace := crdUtils.GetAppNamespace(appName)
+	pipelineRunList, err := jh.userAccount.TektonClient.TektonV1beta1().PipelineRuns(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobName),
+	})
+	if err != nil {
+		return nil, err
+	}
+	var pipelineRuns []jobModels.PipelineRun
+	for _, pipelineRun := range pipelineRunList.Items {
+		pipelineRunModel := jobModels.PipelineRun{
+			Name:     pipelineRun.ObjectMeta.Annotations["radix.equinor.com/tekton-pipeline-name"],
+			RealName: pipelineRun.GetName(),
+			Started:  radixutils.FormatTime(pipelineRun.Status.StartTime),
+			Ended:    radixutils.FormatTime(pipelineRun.Status.CompletionTime),
+		}
+		pipelineRunModel.Tasks = getPipelineRunTaskModels(&pipelineRun)
+		runCondition := getLastReadyCondition(pipelineRun.Status.Conditions)
+		if runCondition != nil {
+			pipelineRunModel.Status = runCondition.Reason
+			pipelineRunModel.StatusMessage = runCondition.Message
+		}
+		pipelineRuns = append(pipelineRuns, pipelineRunModel)
+	}
+	return pipelineRuns, nil
+}
+
+func getPipelineRunTaskModels(pipelineRun *v1beta1.PipelineRun) []jobModels.PipelineTask {
+	var taskModels []jobModels.PipelineTask
+	for realTaskName, taskRunSpec := range pipelineRun.Status.TaskRuns {
+		pipelineTaskModel := jobModels.PipelineTask{
+			Name:     taskRunSpec.PipelineTaskName,
+			RealName: realTaskName,
+		}
+		if taskRunSpec.Status != nil {
+			pipelineTaskModel.Started = radixutils.FormatTime(taskRunSpec.Status.StartTime)
+			pipelineTaskModel.Ended = radixutils.FormatTime(taskRunSpec.Status.CompletionTime)
+			pipelineTaskModel.PodName = taskRunSpec.Status.PodName
+			taskCondition := getLastReadyCondition(taskRunSpec.Status.Conditions)
+			if taskCondition != nil {
+				pipelineTaskModel.Status = taskCondition.Reason
+				pipelineTaskModel.StatusMessage = taskCondition.Message
+			}
+		}
+		taskModels = append(taskModels, pipelineTaskModel)
+	}
+	return sortPipelineTasks(taskModels)
+}
+
+func getLastReadyCondition(conditions knative.Conditions) *apis.Condition {
+	var taskConditions knative.Conditions
+	for _, condition := range conditions {
+		if condition.Status == corev1.ConditionTrue {
+			taskConditions = append(taskConditions, condition)
+		}
+	}
+	if len(taskConditions) > 0 {
+		return &sortPipelineTaskStatusConditionsDesc(taskConditions)[0]
+	}
+	return nil
+}
+
+func sortPipelineTaskStatusConditionsDesc(taskConditions knative.Conditions) knative.Conditions {
+	sort.Slice(taskConditions, func(i, j int) bool {
+		if taskConditions[i].LastTransitionTime.Inner.IsZero() || taskConditions[j].LastTransitionTime.Inner.IsZero() {
+			return false
+		}
+		return taskConditions[j].LastTransitionTime.Inner.Before(&taskConditions[i].LastTransitionTime.Inner)
+	})
+	return taskConditions
+}
+
+func sortPipelineTasks(tasks []jobModels.PipelineTask) []jobModels.PipelineTask {
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Started == "" || tasks[j].Started == "" {
+			return false
+		}
+		return tasks[i].Started < tasks[j].Started
+	})
+	return tasks
+}
+
 func getStepFromRadixJob(job *v1.RadixJob, stepName string) *v1.RadixJobStep {
 	for _, step := range job.Status.Steps {
 		if step.Name == stepName {
@@ -183,14 +265,14 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 }
 
 func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(jh.serviceAccount.RadixClient, corev1.NamespaceAll)
+	return jh.getJobsInNamespace(corev1.NamespaceAll)
 }
 
 func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(jh.userAccount.RadixClient, crdUtils.GetAppNamespace(appName))
+	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
 }
 
-func (jh JobHandler) getJobsInNamespace(radixClient radixclient.Interface, namespace string) ([]*jobModels.JobSummary, error) {
+func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSummary, error) {
 	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -249,7 +331,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 	return applicationJob, nil
 }
 
-func (jh JobHandler) getJobComponents(appName string, jobName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
+func (jh JobHandler) getJobComponents(appName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
 	var jobComponents []*deploymentModels.ComponentSummary
 
 	if len(jobDeployments) > 0 {

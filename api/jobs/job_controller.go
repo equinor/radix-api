@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	deployments "github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -51,6 +51,11 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Path:        rootPath + "/jobs/{jobName}/steps/{stepName}/output/scan",
 			Method:      "GET",
 			HandlerFunc: GetPipelineJobStepScanOutput,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/pipelinerun",
+			Method:      "GET",
+			HandlerFunc: GetTektonPipelineRun,
 		},
 	}
 
@@ -323,4 +328,55 @@ func GetPipelineJobStepScanOutput(accounts models.Accounts, w http.ResponseWrite
 	}
 
 	radixhttp.JSONResponse(w, r, scanDetails)
+}
+
+// GetTektonPipelineRun Get the Tekton pipeline overview
+func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelinerun pipeline-job getTektonPipeline
+	// ---
+	// summary: Gets list of vulnerabilities found by the scan step
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "List of PipelineRun-s"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/PipelineRun"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	handler := Init(accounts, deployments.Init(accounts))
+	tektonPipelineRuns, err := handler.GetTektonPipelineRuns(appName, jobName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, tektonPipelineRuns)
 }

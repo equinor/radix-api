@@ -1070,7 +1070,7 @@ func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	secretproviderclient secretsstorevclient.Interface,
 	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, secretproviderclient, client, radixclient, secretproviderclient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, secretproviderclient, nil, client, radixclient, secretproviderclient, nil, "", radixmodels.Impersonation{})
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)
