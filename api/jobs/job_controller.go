@@ -53,9 +53,9 @@ func (jc *jobController) GetRoutes() models.Routes {
 			HandlerFunc: GetPipelineJobStepScanOutput,
 		},
 		models.Route{
-			Path:        rootPath + "/jobs/{jobName}/pipelinerun",
+			Path:        rootPath + "/jobs/{jobName}/pipelineruns",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRun,
+			HandlerFunc: GetTektonPipelineRuns,
 		},
 	}
 
@@ -330,9 +330,9 @@ func GetPipelineJobStepScanOutput(accounts models.Accounts, w http.ResponseWrite
 	radixhttp.JSONResponse(w, r, scanDetails)
 }
 
-// GetTektonPipelineRun Get the Tekton pipeline overview
-func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelinerun pipeline-job getTektonPipeline
+// GetTektonPipelineRuns Get the Tekton pipeline-runs overview
+func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelinerun pipeline-job getTektonPipelines
 	// ---
 	// summary: Gets list of vulnerabilities found by the scan step
 	// parameters:
