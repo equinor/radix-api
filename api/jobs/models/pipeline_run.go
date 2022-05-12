@@ -19,7 +19,7 @@ type PipelineRun struct {
 	//
 	// required: false
 	// example: radix-tekton-pipelinerun-dev-2022-05-09-abcde
-	RealName string `json:"RealName"`
+	RealName string `json:"realName"`
 
 	// Status of the step
 	//

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"sort"
 	"strings"
 
@@ -12,12 +11,14 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -159,24 +160,21 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
 func (jh JobHandler) GetTektonPipelineRuns(appName, jobName string) ([]jobModels.PipelineRun, error) {
-	namespace := crdUtils.GetAppNamespace(appName)
-	pipelineRunList, err := jh.userAccount.TektonClient.TektonV1beta1().PipelineRuns(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixJobNameLabel, jobName),
-	})
+	pipelineRuns, err := tekton.GetTektonPipelineRuns(jh.userAccount.TektonClient, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
-	var pipelineRuns []jobModels.PipelineRun
-	for _, pipelineRun := range pipelineRunList.Items {
+	var pipelineRunModels []jobModels.PipelineRun
+	for _, pipelineRun := range pipelineRuns {
 		pipelineRunModel := getPipelineRunModel(&pipelineRun)
-		pipelineRuns = append(pipelineRuns, *pipelineRunModel)
+		pipelineRunModels = append(pipelineRunModels, *pipelineRunModel)
 	}
-	return pipelineRuns, nil
+	return pipelineRunModels, nil
 }
 
 // GetTektonPipelineRun Get the Tekton pipeline run
 func (jh JobHandler) GetTektonPipelineRun(appName, jobName, pipelineRunName string) (*jobModels.PipelineRun, error) {
-	pipelineRun, err := jh.getPipelineRun(appName, jobName, pipelineRunName)
+	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
@@ -185,24 +183,12 @@ func (jh JobHandler) GetTektonPipelineRun(appName, jobName, pipelineRunName stri
 
 // GetTektonPipelineRunTasks Get the Tekton pipeline run tasks
 func (jh JobHandler) GetTektonPipelineRunTasks(appName, jobName, pipelineRunName string) ([]jobModels.PipelineTask, error) {
-	pipelineRun, err := jh.getPipelineRun(appName, jobName, pipelineRunName)
+	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
 	taskModels := getPipelineRunTaskModels(pipelineRun)
 	return sortPipelineTasks(taskModels), nil
-}
-
-func (jh JobHandler) getPipelineRun(appName string, jobName string, pipelineRunName string) (*v1beta1.PipelineRun, error) {
-	namespace := crdUtils.GetAppNamespace(appName)
-	pipelineRun, err := jh.userAccount.TektonClient.TektonV1beta1().PipelineRuns(namespace).Get(context.TODO(), pipelineRunName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	if pipelineRun.ObjectMeta.Labels[kube.RadixJobNameLabel] != jobName {
-		return nil, fmt.Errorf("pipeline run %s belongs to different pipeline job than requested %s", pipelineRunName, jobName)
-	}
-	return pipelineRun, nil
 }
 
 func getPipelineRunModel(pipelineRun *v1beta1.PipelineRun) *jobModels.PipelineRun {
