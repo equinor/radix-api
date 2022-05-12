@@ -57,6 +57,16 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetTektonPipelineRuns,
 		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}",
+			Method:      "GET",
+			HandlerFunc: GetTektonPipelineRun,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks",
+			Method:      "GET",
+			HandlerFunc: GetTektonPipelineRunTasks,
+		},
 	}
 
 	return routes
@@ -330,11 +340,11 @@ func GetPipelineJobStepScanOutput(accounts models.Accounts, w http.ResponseWrite
 	radixhttp.JSONResponse(w, r, scanDetails)
 }
 
-// GetTektonPipelineRuns Get the Tekton pipeline-runs overview
+// GetTektonPipelineRuns Get the Tekton pipeline runs overview
 func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelinerun pipeline-job getTektonPipelines
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns pipeline-job getTektonPipelineRuns
 	// ---
-	// summary: Gets list of vulnerabilities found by the scan step
+	// summary: Gets list of pipeline runs for a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -379,4 +389,111 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 	}
 
 	radixhttp.JSONResponse(w, r, tektonPipelineRuns)
+}
+
+// GetTektonPipelineRun Get the Tekton pipeline run overview
+func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName} pipeline-job getTektonPipelineRun
+	// ---
+	// summary: Gets a pipeline run for a pipeline-job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// - name: pipelineRunName
+	//   in: path
+	//   description: Name of pipeline run
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "List of PipelineRun-s"
+	//     schema:
+	//       "$ref": "#/definitions/PipelineRun"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	pipelineRunName := mux.Vars(r)["pipelineRunName"]
+
+	handler := Init(accounts, deployments.Init(accounts))
+	tektonPipelineRun, err := handler.GetTektonPipelineRun(appName, jobName, pipelineRunName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, tektonPipelineRun)
+}
+
+// GetTektonPipelineRunTasks Get the Tekton task list of a pipeline run
+func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks pipeline-job getTektonPipelineRunTasks
+	// ---
+	// summary: Gets list of pipeline runs for a pipeline-job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "List of Pipeline Tasks"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/PipelineTask"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	pipelineRunName := mux.Vars(r)["pipelineRunName"]
+
+	handler := Init(accounts, deployments.Init(accounts))
+	tektonTasks, err := handler.GetTektonPipelineRunTasks(appName, jobName, pipelineRunName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, tektonTasks)
 }

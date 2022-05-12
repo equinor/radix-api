@@ -9,7 +9,7 @@ type PipelineTask struct {
 	// example: build
 	Name string `json:"name"`
 
-	// RealName Name of the pipeline-run in the namespace
+	// RealName Name of the pipeline run in the namespace
 	//
 	// required: false
 	// example: radix-tekton-task-dev-2022-05-09-abcde
