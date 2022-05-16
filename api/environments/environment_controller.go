@@ -1142,7 +1142,9 @@ func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	//   "200":
 	//     description: "scheduled jobs"
 	//     schema:
-	//        type: "string"
+	//        type: array
+	//        items:
+	//          "$ref": "#/definitions/ScheduledJobSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -1198,9 +1200,9 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "scheduled jobs"
+	//     description: "scheduled job"
 	//     schema:
-	//        type: "string"
+	//        "$ref": "#/definitions/ScheduledJobSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -1252,9 +1254,11 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "scheduled jobs"
+	//     description: "scheduled batches"
 	//     schema:
-	//        type: "string"
+	//        type: array
+	//        items:
+	//          "$ref": "#/definitions/ScheduledBatchSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -1310,9 +1314,9 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "scheduled jobs"
+	//     description: "scheduled batch"
 	//     schema:
-	//        type: "string"
+	//        "$ref": "#/definitions/ScheduledBatchSummary"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
