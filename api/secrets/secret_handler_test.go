@@ -412,7 +412,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
-					DisplayName: "secret 'secret1'",
+					DisplayName: "secret secret1",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -436,7 +436,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
-					DisplayName: "secret 'secret2'",
+					DisplayName: "secret secret2",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -511,7 +511,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
-					DisplayName: "secret 'secret1'",
+					DisplayName: "secret secret1",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
@@ -535,7 +535,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
-					DisplayName: "secret 'secret2'",
+					DisplayName: "secret secret2",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
@@ -1513,7 +1513,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 	secretMap := getSecretMap(secrets)
 	for _, expectedSecret := range scenario.expectedSecrets {
 		secret, exists := secretMap[expectedSecret.Name]
-		s.True(exists, "Missed secret '%s'", expectedSecret.Name)
+		s.True(exists, "Missed secret %s", expectedSecret.Name)
 		s.Equal(expectedSecret.Type, secret.Type, "Not expected secret Type")
 		s.Equal(expectedSecret.Component, secret.Component, "Not expected secret Component")
 		s.Equal(expectedSecret.DisplayName, secret.DisplayName, "Not expected secret Component")

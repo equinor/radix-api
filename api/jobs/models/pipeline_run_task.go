@@ -1,27 +1,33 @@
 package models
 
-// PipelineRun holds general information about pipeline run
-// swagger:model PipelineRun
-type PipelineRun struct {
-	// Name Original name of the pipeline run
+// PipelineRunTask holds general information about pipeline run task
+// swagger:model PipelineRunTask
+type PipelineRunTask struct {
+	// Name of the task
 	//
 	// required: true
-	// example: build-pipeline
+	// example: build
 	Name string `json:"name"`
-
-	// Env Environment of the pipeline run
-	//
-	// required: true
-	// example: prod
-	Env string `json:"env"`
 
 	// RealName Name of the pipeline run in the namespace
 	//
 	// required: true
-	// example: radix-tekton-pipelinerun-dev-2022-05-09-abcde
+	// example: radix-tekton-task-dev-2022-05-09-abcde
 	RealName string `json:"realName"`
 
-	// Status of the step
+	// PipelineRunEnv Environment of the pipeline run
+	//
+	// required: true
+	// example: prod
+	PipelineRunEnv string `json:"pipelineRunEnv"`
+
+	// PipelineName of the task
+	//
+	// required: true
+	// example: build-pipeline
+	PipelineName string `json:"pipelineName"`
+
+	// Status of the task
 	//
 	// required: false
 	// Enum: Waiting,Running,Succeeded,Failed

@@ -3,6 +3,7 @@ package tekton
 import (
 	"context"
 	"fmt"
+
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
