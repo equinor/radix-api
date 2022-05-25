@@ -80,7 +80,7 @@ func (jc *jobController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName}",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRunTaskLogs,
+			HandlerFunc: GetTektonPipelineRunTaskStepLogs,
 		},
 	}
 
@@ -465,7 +465,7 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks pipeline-job getTektonPipelineRunTasks
 	// ---
-	// summary: Gets list of pipeline runs for a pipeline-job
+	// summary: Gets list of pipeline run tasks of a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -522,7 +522,7 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName} pipeline-job getTektonPipelineRunTask
 	// ---
-	// summary: Gets list of pipeline runs for a pipeline-job
+	// summary: Gets list of pipeline run task of a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -583,7 +583,7 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/steps pipeline-job getTektonPipelineRunTaskSteps
 	// ---
-	// summary: Gets list of pipeline runs for a pipeline-job
+	// summary: Gets list of steps for a pipeline run task of a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -642,11 +642,11 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 	radixhttp.JSONResponse(w, r, tektonTaskSteps)
 }
 
-// GetTektonPipelineRunTaskLogs Get logs of a pipeline run task for a pipeline job
-func GetTektonPipelineRunTaskLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName} pipeline-job getTektonPipelineRunTaskLogs
+// GetTektonPipelineRunTaskStepLogs Get step logs of a pipeline run task for a pipeline job
+func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName} pipeline-job getTektonPipelineRunTaskStepLogs
 	// ---
-	// summary: Gets list of pipeline runs for a pipeline-job
+	// summary: Gets logs of pipeline runs for a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -719,7 +719,7 @@ func GetTektonPipelineRunTaskLogs(accounts models.Accounts, w http.ResponseWrite
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetTektonPipelineRunTaskLogs(appName, jobName, pipelineRunName, taskName, stepName, &since)
+	log, err := handler.GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName, &since)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

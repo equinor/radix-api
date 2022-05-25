@@ -39,8 +39,8 @@ func (jh JobHandler) GetApplicationJobLogs(appName, jobName string, sinceTime *t
 	return logs, nil
 }
 
-// GetTektonPipelineRunTaskLogs Get logs of a pipeline run task for a pipeline job
-func (jh JobHandler) GetTektonPipelineRunTaskLogs(appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time) (io.ReadCloser, error) {
+// GetTektonPipelineRunTaskStepLogs Get logs of a pipeline run task for a pipeline job
+func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time) (io.ReadCloser, error) {
 	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		if errors.IsNotFound(err) {
