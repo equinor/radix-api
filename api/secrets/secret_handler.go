@@ -324,7 +324,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 
 		secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
 		if err != nil {
-			log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+			log.Warnf("Error on retrieving secret %s. Message: %s", secretName, err.Error())
 			clientIdStatus = models.Pending.String()
 			clientSecretStatus = models.Pending.String()
 		} else {
@@ -385,7 +385,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 
 	secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
-		log.Warnf("Error on retrieving secret '%s'. Message: %s", secretName, err.Error())
+		log.Warnf("Error on retrieving secret %s. Message: %s", secretName, err.Error())
 		accountkeyStatus = models.Pending.String()
 		accountnameStatus = models.Pending.String()
 	} else {
@@ -580,7 +580,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 
 			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias, metav1.GetOptions{})
 			if err != nil {
-				log.Warnf("Error on retrieving secret '%s'. Message: %s", externalAlias, err.Error())
+				log.Warnf("Error on retrieving secret %s. Message: %s", externalAlias, err.Error())
 				certStatus = models.Pending.String()
 				keyStatus = models.Pending.String()
 			} else {

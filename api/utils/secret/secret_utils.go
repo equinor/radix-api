@@ -32,9 +32,9 @@ func GetSecretNameForAzureKeyVaultItem(azureKeyVaultName string, item *v1.RadixA
 
 //GetSecretDisplayNameForAzureKeyVaultItem Get the display name of the secret by Azure Key vault item properties
 func GetSecretDisplayNameForAzureKeyVaultItem(item *v1.RadixAzureKeyVaultItem) string {
-	displayName := fmt.Sprintf("%s '%s'", getAzureKeyVaultItemType(item), item.Name)
+	displayName := fmt.Sprintf("%s %s", getAzureKeyVaultItemType(item), item.Name)
 	if item.Alias != nil && len(*item.Alias) > 0 {
-		displayName = fmt.Sprintf("%s, file '%s'", displayName, *item.Alias)
+		displayName = fmt.Sprintf("%s, file %s", displayName, *item.Alias)
 	}
 	return displayName
 }

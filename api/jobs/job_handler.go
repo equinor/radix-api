@@ -5,27 +5,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"strings"
 
-	deployments "github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/go-openapi/errors"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	knative "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-const workerImage = "radix-pipeline"
-
-// RadixJobTypeJob TODO: Move this into kube, or another central location
-const RadixJobTypeJob = "job"
+const (
+	workerImage              = "radix-pipeline"
+	tektonRealNameAnnotation = "radix.equinor.com/tekton-pipeline-name"
+)
 
 func stepNotFoundError(stepName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("step %s not found", stepName))
@@ -110,7 +114,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	jobComponents, err := jh.getJobComponents(appName, jobName, jobDeployments)
+	jobComponents, err := jh.getJobComponents(appName, jobDeployments)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +162,219 @@ func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName str
 	return vulnerabilities, nil
 }
 
+// GetTektonPipelineRuns Get the Tekton pipeline runs
+func (jh JobHandler) GetTektonPipelineRuns(appName, jobName string) ([]jobModels.PipelineRun, error) {
+	pipelineRuns, err := tekton.GetTektonPipelineRuns(jh.userAccount.TektonClient, appName, jobName)
+	if err != nil {
+		return nil, err
+	}
+	var pipelineRunModels []jobModels.PipelineRun
+	for _, pipelineRun := range pipelineRuns {
+		pipelineRunModel := getPipelineRunModel(&pipelineRun)
+		pipelineRunModels = append(pipelineRunModels, *pipelineRunModel)
+	}
+	return pipelineRunModels, nil
+}
+
+// GetTektonPipelineRun Get the Tekton pipeline run
+func (jh JobHandler) GetTektonPipelineRun(appName, jobName, pipelineRunName string) (*jobModels.PipelineRun, error) {
+	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	if err != nil {
+		return nil, err
+	}
+	return getPipelineRunModel(pipelineRun), nil
+}
+
+// GetTektonPipelineRunTasks Get the Tekton pipeline run tasks
+func (jh JobHandler) GetTektonPipelineRunTasks(appName, jobName, pipelineRunName string) ([]jobModels.PipelineRunTask, error) {
+	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(appName, jobName, pipelineRunName)
+	if err != nil {
+		return nil, err
+	}
+	taskModels := getPipelineRunTaskModels(pipelineRun, taskNameToRealNameMap)
+	return sortPipelineTasks(taskModels), nil
+}
+
+func (jh JobHandler) getPipelineRunWithTasks(appName string, jobName string, pipelineRunName string) (*v1beta1.PipelineRun, map[string]string, error) {
+	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if pipelineRun.Spec.PipelineRef == nil || len(pipelineRun.Spec.PipelineRef.Name) == 0 {
+		return nil, nil, fmt.Errorf("the Pipeline Run %s does not have reference to the Pipeline", pipelineRunName)
+	}
+	taskNameToRealNameMap := make(map[string]string, len(pipelineRun.Status.PipelineSpec.Tasks))
+	for _, task := range pipelineRun.Status.PipelineSpec.Tasks {
+		if task.TaskRef != nil {
+			taskNameToRealNameMap[task.Name] = task.TaskRef.Name
+		}
+	}
+	return pipelineRun, taskNameToRealNameMap, nil
+}
+
+// GetTektonPipelineRunTask Get the Tekton pipeline run task
+func (jh JobHandler) GetTektonPipelineRunTask(appName, jobName, pipelineRunName, taskName string) (*jobModels.PipelineRunTask, error) {
+	pipelineRun, taskRunSpec, taskRealName, err := jh.getPipelineRunAndTask(appName, jobName, pipelineRunName, taskName)
+	if err != nil {
+		return nil, err
+	}
+	return getPipelineRunTaskModelByTaskSpec(pipelineRun, taskRunSpec, taskRealName), nil
+}
+
+// GetTektonPipelineRunTaskSteps Get the Tekton pipeline run task steps
+func (jh JobHandler) GetTektonPipelineRunTaskSteps(appName, jobName, pipelineRunName, taskName string) ([]jobModels.PipelineRunTaskStep, error) {
+	_, taskRunSpec, _, err := jh.getPipelineRunAndTask(appName, jobName, pipelineRunName, taskName)
+	if err != nil {
+		return nil, err
+	}
+	return buildPipelineRunTaskStepModels(taskRunSpec), nil
+}
+
+func (jh JobHandler) getPipelineRunAndTask(appName string, jobName string, pipelineRunName string, taskName string) (*v1beta1.PipelineRun, *v1beta1.PipelineRunTaskRunStatus, string, error) {
+	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(appName, jobName, pipelineRunName)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	taskRunSpec, taskRealName, err := getPipelineRunTaskSpecByName(pipelineRun, taskNameToRealNameMap, taskName)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return pipelineRun, taskRunSpec, taskRealName, nil
+}
+
+func getPipelineRunModel(pipelineRun *v1beta1.PipelineRun) *jobModels.PipelineRun {
+	pipelineRunModel := jobModels.PipelineRun{
+		Name:     pipelineRun.ObjectMeta.Annotations[tektonRealNameAnnotation],
+		Env:      pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
+		RealName: pipelineRun.GetName(),
+		Started:  radixutils.FormatTime(pipelineRun.Status.StartTime),
+		Ended:    radixutils.FormatTime(pipelineRun.Status.CompletionTime),
+	}
+	runCondition := getLastReadyCondition(pipelineRun.Status.Conditions)
+	if runCondition != nil {
+		pipelineRunModel.Status = runCondition.Reason
+		pipelineRunModel.StatusMessage = runCondition.Message
+	}
+	return &pipelineRunModel
+}
+
+func getPipelineRunTaskModels(pipelineRun *v1beta1.PipelineRun, taskNameToRealNameMap map[string]string) []jobModels.PipelineRunTask {
+	var taskModels []jobModels.PipelineRunTask
+	for _, taskRunSpec := range pipelineRun.Status.TaskRuns {
+		if taskRealName, ok := taskNameToRealNameMap[taskRunSpec.PipelineTaskName]; ok {
+			pipelineTaskModel := getPipelineRunTaskModelByTaskSpec(pipelineRun, taskRunSpec, taskRealName)
+			taskModels = append(taskModels, *pipelineTaskModel)
+		}
+	}
+	return taskModels
+}
+
+func getPipelineTaskByName(pipelineTaskMap map[string]*v1beta1.PipelineTask, pipelineTaskName string) (*v1beta1.PipelineTask, error) {
+	pipelineTask, ok := pipelineTaskMap[pipelineTaskName]
+	if !ok {
+		return nil, fmt.Errorf("a Pipeline Run Task %s is missing in the Pipeline", pipelineTaskName)
+	}
+	if pipelineTask.TaskRef == nil || len(pipelineTask.TaskRef.Name) == 0 {
+		return nil, fmt.Errorf("missing or invalid TaskRef in the Pipeline Run Task %s", pipelineTaskName)
+	}
+	return pipelineTask, nil
+}
+
+func getPipelineRunTaskModelByTaskSpec(pipelineRun *v1beta1.PipelineRun, taskRunSpec *v1beta1.PipelineRunTaskRunStatus, realTaskName string) *jobModels.PipelineRunTask {
+	pipelineTaskModel := jobModels.PipelineRunTask{
+		Name:           taskRunSpec.PipelineTaskName,
+		RealName:       realTaskName,
+		PipelineRunEnv: pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
+		PipelineName:   pipelineRun.ObjectMeta.Annotations[tektonRealNameAnnotation],
+	}
+	if taskRunSpec.Status != nil {
+		pipelineTaskModel.Started = radixutils.FormatTime(taskRunSpec.Status.StartTime)
+		pipelineTaskModel.Ended = radixutils.FormatTime(taskRunSpec.Status.CompletionTime)
+		taskCondition := getLastReadyCondition(taskRunSpec.Status.Conditions)
+		if taskCondition != nil {
+			pipelineTaskModel.Status = taskCondition.Reason
+			pipelineTaskModel.StatusMessage = taskCondition.Message
+		}
+	}
+	return &pipelineTaskModel
+}
+
+func getPipelineRunTaskSpecByName(pipelineRun *v1beta1.PipelineRun, taskNameToRealNameMap map[string]string, taskName string) (*v1beta1.PipelineRunTaskRunStatus, string, error) {
+	for _, taskRunSpec := range pipelineRun.Status.TaskRuns {
+		if taskRealName, ok := taskNameToRealNameMap[taskRunSpec.PipelineTaskName]; ok && strings.EqualFold(taskRealName, taskName) {
+			return taskRunSpec, taskRealName, nil
+		}
+	}
+	return nil, "", errors.NotFound("task %s not found", taskName)
+}
+
+func buildPipelineRunTaskStepModels(taskRunSpec *v1beta1.PipelineRunTaskRunStatus) []jobModels.PipelineRunTaskStep {
+	var stepsModels []jobModels.PipelineRunTaskStep
+	for _, stepStatus := range taskRunSpec.Status.TaskRunStatusFields.Steps {
+		stepModel := jobModels.PipelineRunTaskStep{Name: stepStatus.Name}
+		if stepStatus.Terminated != nil {
+			stepModel.Started = radixutils.FormatTime(&stepStatus.Terminated.StartedAt)
+			stepModel.Ended = radixutils.FormatTime(&stepStatus.Terminated.FinishedAt)
+			stepModel.Status = stepStatus.Terminated.Reason
+			stepModel.StatusMessage = stepStatus.Terminated.Message
+		} else if stepStatus.Running != nil {
+			stepModel.Started = radixutils.FormatTime(&stepStatus.Running.StartedAt)
+			stepModel.Status = jobModels.Running.String()
+		} else if stepStatus.Waiting != nil {
+			stepModel.Status = stepStatus.Waiting.Reason
+			stepModel.StatusMessage = stepStatus.Waiting.Message
+		}
+		stepsModels = append(stepsModels, stepModel)
+	}
+	return stepsModels
+}
+
+func sortPipelineTaskSteps(steps []jobModels.PipelineRunTaskStep) []jobModels.PipelineRunTaskStep {
+	sort.Slice(steps, func(i, j int) bool {
+		if steps[i].Started == "" || steps[j].Started == "" {
+			return false
+		}
+		return steps[i].Started < steps[j].Started
+	})
+	return steps
+}
+
+func getLastReadyCondition(conditions knative.Conditions) *apis.Condition {
+	if len(conditions) == 1 {
+		return &conditions[0]
+	}
+	conditions = sortPipelineTaskStatusConditionsDesc(conditions)
+	for _, condition := range conditions {
+		if condition.Status == corev1.ConditionTrue {
+			return &condition
+		}
+	}
+	if len(conditions) > 0 {
+		return &conditions[0]
+	}
+	return nil
+}
+
+func sortPipelineTaskStatusConditionsDesc(conditions knative.Conditions) knative.Conditions {
+	sort.Slice(conditions, func(i, j int) bool {
+		if conditions[i].LastTransitionTime.Inner.IsZero() || conditions[j].LastTransitionTime.Inner.IsZero() {
+			return false
+		}
+		return conditions[j].LastTransitionTime.Inner.Before(&conditions[i].LastTransitionTime.Inner)
+	})
+	return conditions
+}
+
+func sortPipelineTasks(tasks []jobModels.PipelineRunTask) []jobModels.PipelineRunTask {
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Started == "" || tasks[j].Started == "" {
+			return false
+		}
+		return tasks[i].Started < tasks[j].Started
+	})
+	return tasks
+}
+
 func getStepFromRadixJob(job *v1.RadixJob, stepName string) *v1.RadixJobStep {
 	for _, step := range job.Status.Steps {
 		if step.Name == stepName {
@@ -183,14 +400,14 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 }
 
 func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(jh.serviceAccount.RadixClient, corev1.NamespaceAll)
+	return jh.getJobsInNamespace(corev1.NamespaceAll)
 }
 
 func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(jh.userAccount.RadixClient, crdUtils.GetAppNamespace(appName))
+	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
 }
 
-func (jh JobHandler) getJobsInNamespace(radixClient radixclient.Interface, namespace string) ([]*jobModels.JobSummary, error) {
+func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSummary, error) {
 	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -249,7 +466,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 	return applicationJob, nil
 }
 
-func (jh JobHandler) getJobComponents(appName string, jobName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
+func (jh JobHandler) getJobComponents(appName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
 	var jobComponents []*deploymentModels.ComponentSummary
 
 	if len(jobDeployments) > 0 {

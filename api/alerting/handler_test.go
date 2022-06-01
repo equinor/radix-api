@@ -29,7 +29,7 @@ func (s *HandlerTestSuite) SetupTest() {
 	inKubeClient, outKubeClient := kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
 	inRadixClient, outRadixClient := radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
 	inSecretProviderClient, outSecretProviderClient := secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
-	s.accounts = models.NewAccounts(inKubeClient, inRadixClient, inSecretProviderClient, outKubeClient, outRadixClient, outSecretProviderClient, "", radixmodels.Impersonation{})
+	s.accounts = models.NewAccounts(inKubeClient, inRadixClient, inSecretProviderClient, nil, outKubeClient, outRadixClient, outSecretProviderClient, nil, "", radixmodels.Impersonation{})
 }
 
 func TestHandlerTestSuite(t *testing.T) {
