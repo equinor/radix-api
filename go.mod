@@ -4,9 +4,10 @@ go 1.17
 
 require (
 	github.com/equinor/radix-common v1.1.11
-	github.com/equinor/radix-job-scheduler v1.5.24
-	github.com/equinor/radix-operator v1.20.2
+	github.com/equinor/radix-job-scheduler v1.5.26
+	github.com/equinor/radix-operator v1.21.2
 	github.com/evanphx/json-patch v4.12.0+incompatible
+	github.com/go-openapi/errors v0.19.8
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang-jwt/jwt/v4 v4.3.0
 	github.com/golang/mock v1.6.0
@@ -26,8 +27,8 @@ require (
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v1.5.2
-	sigs.k8s.io/secrets-store-csi-driver v1.1.0
 	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
+	sigs.k8s.io/secrets-store-csi-driver v1.1.0
 )
 
 require (
@@ -54,7 +55,6 @@ require (
 	github.com/go-kit/log v0.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
-	github.com/go-openapi/errors v0.19.8 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
@@ -112,7 +112,6 @@ require (
 	k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89 // indirect
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
-	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
