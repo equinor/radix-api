@@ -296,6 +296,10 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *v1beta1.PipelineRun, taskRun
 			pipelineTaskModel.StatusMessage = taskCondition.Message
 		}
 	}
+	logEmbeddedCommandIndex := strings.Index(pipelineTaskModel.StatusMessage, "for logs run")
+	if logEmbeddedCommandIndex >= 0 { //Avoid to publish kubectl command, provided by Tekton component after "for logs run" prefix for failed task step
+		pipelineTaskModel.StatusMessage = pipelineTaskModel.StatusMessage[0:logEmbeddedCommandIndex]
+	}
 	return &pipelineTaskModel
 }
 
