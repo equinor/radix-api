@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -120,16 +121,16 @@ func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interf
 }
 
 //GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil
+func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil, nil
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubefake client
-func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil
+func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil, nil
 }
 
 // GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
-func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil
+func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
+	return ku.kubeFake, ku.radixFake, nil, nil
 }

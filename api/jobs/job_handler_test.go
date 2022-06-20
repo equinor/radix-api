@@ -60,7 +60,7 @@ func TestRunJobHandlerTestSuite(t *testing.T) {
 
 func (s *JobHandlerTestSuite) SetupTest() {
 	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, s.inSecretProviderClient, s.outSecretProviderClient = s.getUtils()
-	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 

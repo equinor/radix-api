@@ -132,7 +132,7 @@ func (eh *envVarsHandler) ChangeEnvVar(appName, envName, componentName string, e
 		}
 		currentEnvVarValue, foundEnvVar := desiredEnvVarsConfigMap.Data[envVarParam.Name]
 		if !foundEnvVar {
-			log.Infof("Not found changing variable '%s'", envVarParam.Name)
+			log.Infof("Not found changing variable %s", envVarParam.Name)
 			hasChanges = true
 			if _, foundMetadata := envVarsMetadataMap[envVarParam.Name]; foundMetadata { //in case outdated metadata exists from past
 				delete(envVarsMetadataMap, envVarParam.Name)

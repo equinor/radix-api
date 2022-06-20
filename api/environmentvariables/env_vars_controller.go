@@ -163,7 +163,7 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 		return
 	}
 
-	log.Debugf("Update %d environment variables for app: '%s', env: '%s', component: '%s'", len(envVarParameters), appName, envName, componentName)
+	log.Debugf("Update %d environment variables for app: %s, env: %s, component: %s", len(envVarParameters), appName, envName, componentName)
 
 	envVarsHandler := controller.handlerFactory.createHandler(accounts)
 

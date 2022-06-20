@@ -916,7 +916,7 @@ func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	secretproviderclient secretsstorevclient.Interface,
 	handlerConfig ...SecretHandlerOptions) SecretHandler {
-	accounts := apiModels.NewAccounts(client, radixclient, secretproviderclient, client, radixclient, secretproviderclient, "", radixmodels.Impersonation{})
+	accounts := apiModels.NewAccounts(client, radixclient, secretproviderclient, nil, client, radixclient, secretproviderclient, nil, "", radixmodels.Impersonation{})
 	options := []SecretHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)
