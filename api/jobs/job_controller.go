@@ -31,11 +31,6 @@ func (jc *jobController) GetRoutes() models.Routes {
 			HandlerFunc: GetApplicationJobs,
 		},
 		models.Route{
-			Path:        rootPath + "/jobs/{jobName}/logs",
-			Method:      "GET",
-			HandlerFunc: GetPipelineJobLogs,
-		},
-		models.Route{
 			Path:        rootPath + "/jobs/{jobName}",
 			Method:      "GET",
 			HandlerFunc: GetApplicationJob,
@@ -88,65 +83,6 @@ func (jc *jobController) GetRoutes() models.Routes {
 	}
 
 	return routes
-}
-
-// GetPipelineJobLogs Get logs of a pipeline-job for an application
-func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs pipeline-job getApplicationJobLogs
-	// ---
-	// summary: Gets a pipeline logs, by combining different steps (jobs) logs
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: name of Radix application
-	//   type: string
-	//   required: true
-	// - name: jobName
-	//   in: path
-	//   description: Name of pipeline job
-	//   type: string
-	//   required: true
-	// - name: sinceTime
-	//   in: query
-	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
-	//   type: string
-	//   format: date-time
-	//   required: false
-	// - name: lines
-	//   in: query
-	//   description: Get log lines (example 1000)
-	//   type: string
-	//   format: number
-	//   required: false
-	// - name: file
-	//   in: query
-	//   description: Get log as a file if true
-	//   type: string
-	//   format: boolean
-	//   required: false
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: "Successful operation"
-	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/StepLog"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "404":
-	//     description: "Not found"
-	radixhttp.ErrorResponse(w, r, fmt.Errorf("Obsolete")) //TODO remove
-	return
 }
 
 // GetApplicationJobs gets pipeline-job summaries
