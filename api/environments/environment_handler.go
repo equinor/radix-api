@@ -363,9 +363,9 @@ func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobN
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
-func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime, nil)
+	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime, logLines)
 }
 
 // StopEnvironment Stops all components in the environment
