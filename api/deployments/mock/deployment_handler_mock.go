@@ -127,16 +127,16 @@ func (mr *MockDeployHandlerMockRecorder) GetLatestDeploymentForApplicationEnviro
 }
 
 // GetLogs mocks base method.
-func (m *MockDeployHandler) GetLogs(appName, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
+func (m *MockDeployHandler) GetLogs(appName, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLogs", appName, podName, sinceTime)
+	ret := m.ctrl.Call(m, "GetLogs", appName, podName, sinceTime, logLines)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLogs indicates an expected call of GetLogs.
-func (mr *MockDeployHandlerMockRecorder) GetLogs(appName, podName, sinceTime interface{}) *gomock.Call {
+func (mr *MockDeployHandlerMockRecorder) GetLogs(appName, podName, sinceTime, logLines interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockDeployHandler)(nil).GetLogs), appName, podName, sinceTime)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockDeployHandler)(nil).GetLogs), appName, podName, sinceTime, logLines)
 }
