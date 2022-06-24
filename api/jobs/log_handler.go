@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"io"
 	"strings"
 	"time"
@@ -85,6 +86,38 @@ func (jh JobHandler) getTaskPodAndContainerName(pipelineRun *v1beta1.PipelineRun
 		return "", "", fmt.Errorf("missing task %s or step %s", taskName, stepName)
 	}
 	return podName, containerName, nil
+}
+
+// GetPipelineJobStepLogs Get logs of a pipeline job step
+func (jh JobHandler) GetPipelineJobStepLogs(appName, jobName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), jobName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, jobModels.PipelineNotFoundError(appName, jobName)
+		}
+		return nil, err
+	}
+	stepPodName := getPodNameForStep(job, stepName)
+	if len(stepPodName) == 0 {
+		return nil, jobModels.PipelineStepNotFoundError(appName, jobName, stepName)
+	}
+
+	podHandler := pods.Init(jh.userAccount.Client)
+	logReader, err := podHandler.HandleGetAppPodLog(appName, stepPodName, stepName, sinceTime, logLines)
+	if err != nil {
+		log.Warnf("Failed to get build logs. %v", err)
+		return nil, err
+	}
+	return logReader, nil
+}
+
+func getPodNameForStep(job *v1.RadixJob, stepName string) string {
+	for _, jobStep := range job.Status.Steps {
+		if strings.EqualFold(jobStep.Name, stepName) {
+			return jobStep.PodName
+		}
+	}
+	return ""
 }
 
 func getStepLog(client kubernetes.Interface, appName string, step jobModels.Step, sinceTime *time.Time, logLines *int64) jobModels.StepLog {
