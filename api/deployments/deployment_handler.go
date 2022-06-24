@@ -57,7 +57,7 @@ func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Ti
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.kubeClient)
-		log, err := podHandler.HandleGetEnvironmentPodLog(appName, env.Name, podName, "", sinceTime)
+		log, err := podHandler.HandleGetEnvironmentPodLog(appName, env.Name, podName, "", sinceTime, nil)
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {

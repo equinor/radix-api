@@ -1,16 +1,15 @@
 package jobs
 
 import (
-	"net/http"
-	"sort"
-	"strings"
-	"time"
-
+	"fmt"
 	"github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/gorilla/mux"
+	"net/http"
+	"sort"
+	"time"
 )
 
 const rootPath = "/applications/{appName}"
@@ -109,6 +108,18 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   type: string
 	//   format: date-time
 	//   required: false
+	// - name: lines
+	//   in: query
+	//   description: Get log lines (example 1000)
+	//   type: string
+	//   format: number
+	//   required: false
+	// - name: file
+	//   in: query
+	//   description: Get log as a file if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -132,21 +143,14 @@ func GetPipelineJobLogs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
-	sinceTime := r.FormValue("sinceTime")
-
-	var since time.Time
-	var err error
-
-	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = radixutils.ParseTimestamp(sinceTime)
-		if err != nil {
-			radixhttp.ErrorResponse(w, r, err)
-			return
-		}
+	since, _, logLines, err := logs.GetLogParams(r) //TODO - extract logs separately to save asFile
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	pipelines, err := handler.GetApplicationJobLogs(appName, jobName, &since)
+	pipelines, err := handler.GetApplicationJobLogs(appName, jobName, &since, logLines)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -679,6 +683,18 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	//   type: string
 	//   format: date-time
 	//   required: false
+	// - name: lines
+	//   in: query
+	//   description: Get log lines (example 1000)
+	//   type: string
+	//   format: number
+	//   required: false
+	// - name: file
+	//   in: query
+	//   description: Get log as a file if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -705,26 +721,24 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 	taskName := mux.Vars(r)["taskName"]
 	stepName := mux.Vars(r)["stepName"]
-	sinceTime := r.FormValue("sinceTime")
-
-	var since time.Time
-	var err error
-
-	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = radixutils.ParseTimestamp(sinceTime)
-		if err != nil {
-			radixhttp.ErrorResponse(w, r, err)
-			return
-		}
+	since, asFile, logLines, err := logs.GetLogParams(r)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName, &since)
+	log, err := handler.GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 	defer log.Close()
 
-	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
+	if asFile {
+		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
+		radixhttp.ReaderFileResponse(w, log, fileName, "text/plain; charset=utf-8")
+	} else {
+		radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
+	}
 }
