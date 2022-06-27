@@ -30,9 +30,9 @@ func (ec *secretController) GetRoutes() models.Routes {
 			HandlerFunc: ChangeComponentSecret,
 		},
 		//models.Route{
-		//	Path:        rootPath + "/environments/{envName}/components/{componentName}/csivolumes/vol1/secrets/accountName",
-		//	Method:      "PUT",
-		//	HandlerFunc: ChangeComponentSecret,
+		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{storageName}",
+		//    Method:      "PUT",
+		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
 		//},
 	}
 	return routes

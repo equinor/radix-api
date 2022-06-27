@@ -3,6 +3,7 @@ package secrets
 import (
 	"context"
 	"fmt"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
@@ -36,15 +37,17 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	return func(eh *SecretHandler) {
 		eh.client = accounts.UserAccount.Client
 		eh.radixclient = accounts.UserAccount.RadixClient
+		eh.secretproviderclient = accounts.UserAccount.SecretProviderClient
 		eh.deployHandler = deployments.Init(accounts)
 	}
 }
 
 // SecretHandler Instance variables
 type SecretHandler struct {
-	client        kubernetes.Interface
-	radixclient   radixclient.Interface
-	deployHandler deployments.DeployHandler
+	client               kubernetes.Interface
+	radixclient          radixclient.Interface
+	secretproviderclient secretsstorevclient.Interface
+	deployHandler        deployments.DeployHandler
 }
 
 // Init Constructor.
@@ -455,17 +458,26 @@ func (eh SecretHandler) getSecretsFromComponentAuthentication(component v1.Radix
 	return secrets, nil
 }
 
+type azureKeyValueSecretStatus struct {
+	replicaName   string
+	secretVersion string
+}
+
 func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
 	var secrets []models.Secret
+	azureKeyValueSecretMap, err := eh.getAzureKeyValueSecretMap(envNamespace)
+	if err != nil {
+		return nil, err
+	}
 	for _, component := range radixDeployment.Spec.Components {
-		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&component, envNamespace)
+		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&component, envNamespace, azureKeyValueSecretMap)
 		if err != nil {
 			return nil, err
 		}
 		secrets = append(secrets, componentSecrets...)
 	}
 	for _, jobComponent := range radixDeployment.Spec.Jobs {
-		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&jobComponent, envNamespace)
+		componentSecrets, err := eh.getRadixCommonComponentSecretRefs(&jobComponent, envNamespace, azureKeyValueSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -474,7 +486,28 @@ func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment
 	return secrets, nil
 }
 
-func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string) ([]models.Secret, error) {
+func (eh SecretHandler) getAzureKeyValueSecretMap(envNamespace string) (map[string][]azureKeyValueSecretStatus, error) {
+	azureKeyValueSecretMap := make(map[string][]azureKeyValueSecretStatus)
+	azureKeyValueSecretStatusList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClassPodStatuses(envNamespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	//TODO - add level for a key-vault
+	for _, item := range azureKeyValueSecretStatusList.Items {
+		for _, secretVersion := range item.Status.Objects {
+			if _, exists := azureKeyValueSecretMap[secretVersion.ID]; !exists {
+				azureKeyValueSecretMap[secretVersion.ID] = []azureKeyValueSecretStatus{}
+			}
+			azureKeyValueSecretMap[secretVersion.ID] = append(azureKeyValueSecretMap[secretVersion.ID], azureKeyValueSecretStatus{
+				replicaName:   item.Status.PodName,
+				secretVersion: secretVersion.Version,
+			})
+		}
+	}
+	return azureKeyValueSecretMap, nil
+}
+
+func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixCommonDeployComponent, envNamespace string, azureKeyVaultSecretMap map[string][]azureKeyValueSecretStatus) ([]models.Secret, error) {
 	secrets, err := eh.getCredentialSecretsForSecretRefs(component, envNamespace)
 	if err != nil {
 		return nil, err
@@ -483,14 +516,25 @@ func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixComm
 	secretRefs := component.GetSecretRefs()
 	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
 		for _, item := range azureKeyVault.Items {
-			secrets = append(secrets, models.Secret{
+			secretItem := models.Secret{
 				Name:        secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item),
 				DisplayName: secret.GetSecretDisplayNameForAzureKeyVaultItem(&item),
 				Type:        models.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    azureKeyVault.Name,
 				Component:   component.GetName(),
 				Status:      models.External.String(),
-			})
+			}
+			secretStatusKey := secret.GetStatusKeySecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item)
+			statusDetailsItems := []string{"Versions:"}
+			if versions, ok := azureKeyVaultSecretMap[secretStatusKey]; ok {
+				for _, version := range versions {
+					statusDetailsItems = append(statusDetailsItems, fmt.Sprintf("%s: %s", version.replicaName, version.secretVersion))
+				}
+			}
+			if len(statusDetailsItems) > 1 {
+				secretItem.StatusDetails = strings.Join(statusDetailsItems, "\n")
+			}
+			secrets = append(secrets, secretItem)
 		}
 	}
 

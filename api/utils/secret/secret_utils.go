@@ -24,6 +24,11 @@ func FixedStringRunes(n int, character rune) string {
 	return string(b)
 }
 
+//GetStatusKeySecretNameForAzureKeyVaultItem Get the status key for the the secret by Azure Key vault item properties
+func GetStatusKeySecretNameForAzureKeyVaultItem(azureKeyVaultName string, item *v1.RadixAzureKeyVaultItem) string {
+	return fmt.Sprintf("%s/%s", getAzureKeyVaultItemType(item), item.Name)
+}
+
 //GetSecretNameForAzureKeyVaultItem Get the name of the secret by Azure Key vault item properties
 func GetSecretNameForAzureKeyVaultItem(azureKeyVaultName string, item *v1.RadixAzureKeyVaultItem) string {
 	displayName := fmt.Sprintf("AzureKeyVaultItem-%s--%s--%s", azureKeyVaultName, getAzureKeyVaultItemType(item), item.Name)

@@ -1475,11 +1475,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
 			appName := anyAppName
 			envName := anyEnvironment
-			kubeClient, radixClient, _ := s.getUtils()
+			kubeClient, radixClient, secretProviderClient := s.getUtils()
 			secretHandler := SecretHandler{
-				client:        kubeClient,
-				radixclient:   radixClient,
-				deployHandler: nil,
+				client:               kubeClient,
+				radixclient:          radixClient,
+				secretproviderclient: secretProviderClient,
+				deployHandler:        nil,
 			}
 			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 			if scenario.secretExists {
@@ -1523,12 +1524,13 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 }
 
 func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario, appName, envName, deploymentName string) (SecretHandler, *deployMock.MockDeployHandler) {
-	kubeClient, radixClient, _ := s.getUtils()
+	kubeClient, radixClient, secretProviderClient := s.getUtils()
 	deployHandler := deployMock.NewMockDeployHandler(ctrl)
 	secretHandler := SecretHandler{
-		client:        kubeClient,
-		radixclient:   radixClient,
-		deployHandler: deployHandler,
+		client:               kubeClient,
+		radixclient:          radixClient,
+		secretproviderclient: secretProviderClient,
+		deployHandler:        deployHandler,
 	}
 	appAppNamespace := operatorUtils.GetAppNamespace(appName)
 	ra := &v1.RadixApplication{
