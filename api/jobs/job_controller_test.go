@@ -135,7 +135,8 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 
 	t.Run("job doesn't exist", func(t *testing.T) {
 		aJobName := "aJobName"
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
+		cloneConfigStepName := "clone-config"
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs/%s", anyAppName, aJobName, cloneConfigStepName))
 		response := <-responseChannel
 
 		err, _ := controllertest.GetErrorResponse(response)
@@ -145,7 +146,7 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 		commonTestUtils.ApplyApplication(builders.ARadixApplication().
 			WithAppName(anyAppName))
 
-		responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs", anyAppName, aJobName))
+		responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs/%s", anyAppName, aJobName, cloneConfigStepName))
 		response = <-responseChannel
 
 		pipelineNotFoundError := jobmodels.PipelineNotFoundError(anyAppName, aJobName)
