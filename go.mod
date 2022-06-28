@@ -3,9 +3,9 @@ module github.com/equinor/radix-api
 go 1.17
 
 require (
-	github.com/equinor/radix-common v1.1.11
-	github.com/equinor/radix-job-scheduler v1.5.26
-	github.com/equinor/radix-operator v1.21.2
+	github.com/equinor/radix-common v1.1.12
+	github.com/equinor/radix-job-scheduler v1.5.28
+	github.com/equinor/radix-operator v1.21.6
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/go-openapi/errors v0.19.8
 	github.com/go-openapi/strfmt v0.20.1
@@ -94,7 +94,7 @@ require (
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
