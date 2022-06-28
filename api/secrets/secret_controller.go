@@ -34,6 +34,11 @@ func (ec *secretController) GetRoutes() models.Routes {
 		//    Method:      "PUT",
 		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
 		//},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName}",
+			Method:      "GET",
+			HandlerFunc: GetAzureKeyVaultSecretStatus,
+		},
 	}
 	return routes
 }
@@ -110,6 +115,83 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	handler := Init(WithAccounts(accounts))
 
 	if err := handler.ChangeComponentSecret(appName, envName, componentName, secretName, secretParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// GetAzureKeyVaultSecretStatus Gets an application environment component Azure Key vault secret status
+func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName} environment getAzureKeyVaultSecretStatus
+	// ---
+	// summary: Update an application environment component secret
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: secret of Radix application
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: secret component of Radix application
+	//   type: string
+	//   required: true
+	// - name: storageName
+	//   in: path
+	//   description: environment component Azure Key vault storage name
+	//   type: string
+	//   required: true
+	// - name: secretName
+	//   in: query
+	//   description: environment component Azure Key vault secret name
+	//   type: string
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/AzureKeyVaultSecretStatus"
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	storageName := mux.Vars(r)["storageName"]
+	secretName := r.FormValue("secretName")
+
+	handler := Init(WithAccounts(accounts))
+
+	if err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}

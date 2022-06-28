@@ -41,12 +41,6 @@ type Secret struct {
 	// required: false
 	// example: Consistent
 	Status string `json:"status,omitempty"`
-
-	// StatusDetails of the secret. Free text description
-	//
-	// required: false
-	// example: "Version abc"
-	StatusDetails string `json:"statusDetails,omitempty"`
 }
 
 type SecretType string

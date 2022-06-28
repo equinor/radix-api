@@ -465,7 +465,7 @@ type azureKeyValueSecretStatus struct {
 
 func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
 	var secrets []models.Secret
-	azureKeyValueSecretMap, err := eh.getAzureKeyValueSecretMap(envNamespace)
+	azureKeyValueSecretMap, err := eh.getAzureKeyVaultSecretMap(envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +486,7 @@ func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment
 	return secrets, nil
 }
 
-func (eh SecretHandler) getAzureKeyValueSecretMap(envNamespace string) (map[string][]azureKeyValueSecretStatus, error) {
+func (eh SecretHandler) getAzureKeyVaultSecretMap(envNamespace string) (map[string][]azureKeyValueSecretStatus, error) {
 	azureKeyValueSecretMap := make(map[string][]azureKeyValueSecretStatus)
 	azureKeyValueSecretStatusList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClassPodStatuses(envNamespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
@@ -522,17 +522,11 @@ func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixComm
 				Type:        models.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    azureKeyVault.Name,
 				Component:   component.GetName(),
-				Status:      models.External.String(),
+				Status:      models.Pending.String(),
 			}
 			secretStatusKey := secret.GetStatusKeySecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item)
-			statusDetailsItems := []string{"Versions:"}
-			if versions, ok := azureKeyVaultSecretMap[secretStatusKey]; ok {
-				for _, version := range versions {
-					statusDetailsItems = append(statusDetailsItems, fmt.Sprintf("%s: %s", version.replicaName, version.secretVersion))
-				}
-			}
-			if len(statusDetailsItems) > 1 {
-				secretItem.StatusDetails = strings.Join(statusDetailsItems, "\n")
+			if versions, ok := azureKeyVaultSecretMap[secretStatusKey]; ok && len(versions) > 0 { //TODO this can be old pods with old versions
+				secretItem.Status = models.Consistent.String()
 			}
 			secrets = append(secrets, secretItem)
 		}
@@ -662,4 +656,24 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 	}
 
 	return secretDTOsMap, nil
+}
+
+//GetAzureKeyVaultSecretStatus Gets list of Azure Key vault secret statuses for the storage in the component
+func (eh SecretHandler) GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName string) ([]models.AzureKeyVaultSecretStatus, error) {
+	var statuses []models.AzureKeyVaultSecretStatus
+	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
+	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretMap(envNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if versions, ok := azureKeyVaultSecretMap[secretName]; ok {
+		for _, version := range versions {
+			statuses = append(statuses, models.AzureKeyVaultSecretStatus{
+				Name:    storageName,
+				PodName: version.replicaName,
+				Version: version.secretVersion,
+			})
+		}
+	}
+	return statuses, nil
 }
