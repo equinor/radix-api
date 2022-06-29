@@ -1,14 +1,15 @@
 package deployments
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/gorilla/mux"
 )
 
@@ -247,6 +248,18 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   type: string
 	//   format: date-time
 	//   required: false
+	// - name: lines
+	//   in: query
+	//   description: Get log lines (example 1000)
+	//   type: string
+	//   format: number
+	//   required: false
+	// - name: file
+	//   in: query
+	//   description: Get log as a file if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -269,26 +282,24 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	sinceTime := r.FormValue("sinceTime")
-
-	var since time.Time
-	var err error
-
-	if !strings.EqualFold(strings.TrimSpace(sinceTime), "") {
-		since, err = radixutils.ParseTimestamp(sinceTime)
-		if err != nil {
-			radixhttp.ErrorResponse(w, r, err)
-			return
-		}
+	since, asFile, logLines, err := logs.GetLogParams(r)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
 	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(appName, podName, &since)
+	log, err := deployHandler.GetLogs(appName, podName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 	defer log.Close()
 
-	radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
+	if asFile {
+		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
+		radixhttp.ReaderFileResponse(w, log, fileName, "text/plain; charset=utf-8")
+	} else {
+		radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
+	}
 }

@@ -346,9 +346,9 @@ func (eh EnvironmentHandler) getServiceAccount() models.Account {
 }
 
 // GetLogs handler for GetLogs
-func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime)
+	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime, logLines)
 	if errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -357,15 +357,15 @@ func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
-func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetScheduledJobLogs(appName, envName, scheduledJobName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	handler := pods.Init(eh.client)
-	return handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime)
+	return handler.HandleGetEnvironmentScheduledJobLog(appName, envName, scheduledJobName, "", sinceTime, logLines)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
-func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime)
+	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(appName, envName, componentName, auxType, podName, sinceTime, logLines)
 }
 
 // StopEnvironment Stops all components in the environment
