@@ -486,7 +486,7 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 	//   "200":
 	//     description: "Pipeline Run Task"
 	//     schema:
-	//        $ref": "#/definitions/PipelineRunTask"
+	//        $ref: "#/definitions/PipelineRunTask"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
