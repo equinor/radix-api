@@ -631,11 +631,9 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Successful operation"
+	//     description: "Task step log"
 	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/StepLog"
+	//        type: "string"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -718,11 +716,9 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Successful operation"
+	//     description: "Job step log"
 	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/StepLog"
+	//        type: "string"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
