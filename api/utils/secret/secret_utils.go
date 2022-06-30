@@ -44,6 +44,11 @@ func GetSecretDisplayNameForAzureKeyVaultItem(item *v1.RadixAzureKeyVaultItem) s
 	return displayName
 }
 
+//GetSecretIdForAzureKeyVaultItem Get the ID for the secret by Azure Key vault item properties
+func GetSecretIdForAzureKeyVaultItem(item *v1.RadixAzureKeyVaultItem) string {
+	return fmt.Sprintf("%s/%s", getAzureKeyVaultItemType(item), item.Name)
+}
+
 func getAzureKeyVaultItemType(item *v1.RadixAzureKeyVaultItem) string {
 	if item.Type != nil {
 		return string(*item.Type)

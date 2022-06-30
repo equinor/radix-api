@@ -346,7 +346,8 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
 			Status:      clientIdStatus,
-			Type:        models.SecretTypeCsiAzureKeyVaultCreds},
+			Type:        models.SecretTypeCsiAzureKeyVaultCreds,
+			ID:          models.SecretIdClientId},
 		)
 		secrets = append(secrets, models.Secret{
 			Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
@@ -354,7 +355,8 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefs(component v1.RadixComm
 			Resource:    azureKeyVault.Name,
 			Component:   component.GetName(),
 			Status:      clientSecretStatus,
-			Type:        models.SecretTypeCsiAzureKeyVaultCreds},
+			Type:        models.SecretTypeCsiAzureKeyVaultCreds,
+			ID:          models.SecretIdClientSecret},
 		)
 	}
 	return secrets, nil
@@ -408,7 +410,8 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 		Resource:    volumeMountName,
 		Component:   component.GetName(),
 		Status:      accountkeyStatus,
-		Type:        secretType}
+		Type:        secretType,
+		ID:          models.SecretIdAccountKey}
 	//"accountname"
 	accountNameSecretDTO := models.Secret{
 		Name:        secretName + accountNamePartSuffix,
@@ -416,7 +419,8 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 		Resource:    volumeMountName,
 		Component:   component.GetName(),
 		Status:      accountnameStatus,
-		Type:        secretType}
+		Type:        secretType,
+		ID:          models.SecretIdAccountName}
 	return accountKeySecretDTO, accountNameSecretDTO
 }
 
@@ -523,6 +527,7 @@ func (eh SecretHandler) getRadixCommonComponentSecretRefs(component v1.RadixComm
 				Resource:    azureKeyVault.Name,
 				Component:   component.GetName(),
 				Status:      models.Pending.String(),
+				ID:          secret.GetSecretIdForAzureKeyVaultItem(&item),
 			}
 			secretStatusKey := secret.GetStatusKeySecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item)
 			if versions, ok := azureKeyVaultSecretMap[secretStatusKey]; ok && len(versions) > 0 { //TODO this can be old pods with old versions
@@ -640,6 +645,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),
 				Status:      certStatus,
+				ID:          models.SecretIdCert,
 			}
 			secretDTOsMap[tlsCertSecretDTO.Name] = tlsCertSecretDTO
 
@@ -650,6 +656,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, en
 				Type:        models.SecretTypeClientCert,
 				Component:   component.GetName(),
 				Status:      keyStatus,
+				ID:          models.SecretIdKey,
 			}
 			secretDTOsMap[tlsKeySecretDTO.Name] = tlsKeySecretDTO
 		}

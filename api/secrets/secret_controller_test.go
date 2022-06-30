@@ -58,7 +58,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewSecretController())
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController())
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -795,9 +795,9 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 		{Name: alias + "-key", DisplayName: "Key",
 			Status:   models.Pending.String(),
 			Resource: alias,
-			Type:     models.SecretTypeClientCert, Component: componentName},
+			Type:     models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdKey},
 		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias,
-			Type: models.SecretTypeClientCert, Component: componentName},
+			Type: models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdCert},
 	}
 	assert.ElementsMatch(t, expectedSecrets, secrets)
 	for _, s := range secrets {

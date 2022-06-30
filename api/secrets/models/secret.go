@@ -27,6 +27,12 @@ type Secret struct {
 	// example: volumeAbc
 	Resource string `json:"resource,omitempty"`
 
+	// ID of the secret within the Resource
+	//
+	// required: false
+	// example: clientId
+	ID string `json:"id,omitempty"`
+
 	// Component name of the component having the secret
 	//
 	// required: false
@@ -55,4 +61,13 @@ const (
 	SecretTypeClientCertificateAuth SecretType = "client-cert-auth"
 	SecretTypeOAuth2Proxy           SecretType = "oauth2-proxy"
 	SecretTypeOrphaned              SecretType = "orphaned"
+)
+
+const (
+	SecretIdKey          string = "key"
+	SecretIdCert         string = "cert"
+	SecretIdClientId     string = "clientId"
+	SecretIdClientSecret string = "clientSecret"
+	SecretIdAccountName  string = "accountName"
+	SecretIdAccountKey   string = "accountKey"
 )

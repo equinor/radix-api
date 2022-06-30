@@ -22,16 +22,18 @@ import (
 
 // Utils Instance variables
 type Utils struct {
-	client      kubernetes.Interface
-	radixclient radixclient.Interface
-	controllers []models.Controller
+	client               kubernetes.Interface
+	radixclient          radixclient.Interface
+	secretproviderclient secretsstorevclient.Interface
+	controllers          []models.Controller
 }
 
 // NewTestUtils Constructor
-func NewTestUtils(client kubernetes.Interface, radixclient radixclient.Interface, controllers ...models.Controller) Utils {
+func NewTestUtils(client kubernetes.Interface, radixclient radixclient.Interface, secretproviderclient secretsstorevclient.Interface, controllers ...models.Controller) Utils {
 	return Utils{
 		client,
 		radixclient,
+		secretproviderclient,
 		controllers,
 	}
 }
@@ -49,7 +51,7 @@ func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *htt
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
-		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient), tu.controllers...).ServeHTTP(rr, req)
+		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 		close(response)
 	}()
@@ -73,7 +75,7 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
-		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient), tu.controllers...).ServeHTTP(rr, req)
+		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 		close(response)
 	}()
@@ -108,29 +110,31 @@ func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) er
 }
 
 type kubeUtilMock struct {
-	kubeFake  kubernetes.Interface
-	radixFake radixclient.Interface
+	kubeFake           kubernetes.Interface
+	radixFake          radixclient.Interface
+	secretProviderFake secretsstorevclient.Interface
 }
 
 // NewKubeUtilMock Constructor
-func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interface) utils.KubeUtil {
+func NewKubeUtilMock(client kubernetes.Interface, radixclient radixclient.Interface, secretproviderclient secretsstorevclient.Interface) utils.KubeUtil {
 	return &kubeUtilMock{
 		client,
 		radixclient,
+		secretproviderclient,
 	}
 }
 
 //GetOutClusterKubernetesClient Gets a kubefake client using the bearer token from the radix api client
 func (ku *kubeUtilMock) GetOutClusterKubernetesClient(_ string, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil, nil
+	return ku.kubeFake, ku.radixFake, ku.secretProviderFake, nil
 }
 
 //GetOutClusterKubernetesClientWithImpersonation Gets a kubefake client
 func (ku *kubeUtilMock) GetOutClusterKubernetesClientWithImpersonation(_ string, impersonation radixmodels.Impersonation, _ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil, nil
+	return ku.kubeFake, ku.radixFake, ku.secretProviderFake, nil
 }
 
 // GetInClusterKubernetesClient Gets a kubefake client using the config of the running pod
 func (ku *kubeUtilMock) GetInClusterKubernetesClient(_ ...utils.RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, tektonclient.Interface) {
-	return ku.kubeFake, ku.radixFake, nil, nil
+	return ku.kubeFake, ku.radixFake, ku.secretProviderFake, nil
 }

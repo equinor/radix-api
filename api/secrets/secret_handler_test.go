@@ -149,6 +149,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias-1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdKey,
 				},
 				{
 					Name:        "deployed-alias-1-cert",
@@ -157,6 +158,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias-1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdCert,
 				},
 				{
 					Name:        "deployed-alias-2-key",
@@ -165,6 +167,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias-2",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdKey,
 				},
 				{
 					Name:        "deployed-alias-2-cert",
@@ -173,6 +176,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias-2",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdCert,
 				},
 			},
 		},
@@ -196,6 +200,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdKey,
 				},
 				{
 					Name:        "deployed-alias-cert",
@@ -204,6 +209,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "deployed-alias",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdCert,
 				},
 			},
 		},
@@ -241,6 +247,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdAccountKey,
 				},
 				{
 					Name:        "component1-volume1-csiazurecreds-accountname",
@@ -249,6 +256,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdAccountName,
 				},
 				{
 					Name:        "job1-volume2-csiazurecreds-accountkey",
@@ -257,6 +265,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume2",
 					Component:   jobName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdAccountKey,
 				},
 				{
 					Name:        "job1-volume2-csiazurecreds-accountname",
@@ -265,6 +274,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume2",
 					Component:   jobName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdAccountName,
 				},
 			},
 		},
@@ -318,6 +328,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume1",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdAccountKey,
 				},
 				{
 					Name:        "component1-volume1-csiazurecreds-accountname",
@@ -326,6 +337,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume1",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdAccountName,
 				},
 				{
 					Name:        "job1-volume2-csiazurecreds-accountkey",
@@ -334,6 +346,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume2",
 					Component:   jobName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdAccountKey,
 				},
 				{
 					Name:        "job1-volume2-csiazurecreds-accountname",
@@ -342,6 +355,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "volume2",
 					Component:   jobName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdAccountName,
 				},
 			},
 		},
@@ -401,6 +415,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdClientId,
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
@@ -409,6 +424,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
@@ -416,7 +432,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
-					Status:      "External",
+					Status:      "Pending",
+					ID:          "secret/secret1",
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
@@ -425,6 +442,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdClientId,
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
@@ -433,6 +451,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Pending",
+					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
@@ -440,7 +459,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
-					Status:      "External",
+					Status:      "Pending",
+					ID:          "secret/secret1",
 				},
 			},
 		},
@@ -500,6 +520,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdClientId,
 				},
 				{
 					Name:        "component1-keyvault1-csiazkvcreds-azkv-clientsecret",
@@ -508,6 +529,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault1",
 					Component:   componentName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
@@ -515,7 +537,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
 					Component:   componentName1,
-					Status:      "External",
+					Status:      "Pending",
+					ID:          "secret/secret1",
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientid",
@@ -524,6 +547,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdClientId,
 				},
 				{
 					Name:        "job1-keyvault2-csiazkvcreds-azkv-clientsecret",
@@ -532,6 +556,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "keyVault2",
 					Component:   jobName1,
 					Status:      "Consistent",
+					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
 					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
@@ -539,7 +564,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
 					Component:   jobName1,
-					Status:      "External",
+					Status:      "Pending",
+					ID:          "secret/secret2",
 				},
 			},
 		},

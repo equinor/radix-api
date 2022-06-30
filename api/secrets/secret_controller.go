@@ -124,7 +124,7 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 
 // GetAzureKeyVaultSecretStatus Gets an application environment component Azure Key vault secret status
 func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName} environment getAzureKeyVaultSecretStatus
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName} environment getAzureKeyVaultSecretStatus
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:
@@ -191,10 +191,11 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 
 	handler := Init(WithAccounts(accounts))
 
-	if err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName); err != nil {
+	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName)
+	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	radixhttp.JSONResponse(w, r, secretStatuses)
 }

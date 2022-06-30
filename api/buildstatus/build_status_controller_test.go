@@ -29,7 +29,7 @@ const (
 	egressIps         = "0.0.0.0"
 )
 
-func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
+func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secretproviderfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -40,11 +40,11 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset) {
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
-	return &commonTestUtils, kubeclient, radixclient
+	return &commonTestUtils, kubeclient, radixclient, secretproviderclient
 }
 
 func TestGetBuildStatus(t *testing.T) {
-	commonTestUtils, kubeclient, radixclient := setupTest()
+	commonTestUtils, kubeclient, radixclient, secretproviderclient := setupTest()
 
 	jobStartReferenceTime := time.Date(2020, 1, 10, 0, 0, 0, 0, time.UTC)
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
@@ -93,11 +93,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Return(expected, nil).
 			Times(1)
 
-		controllerTestUtils := controllertest.NewTestUtils(
-			kubeclient,
-			radixclient,
-			NewBuildStatusController(fakeBuildStatus),
-		)
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
@@ -126,11 +122,7 @@ func TestGetBuildStatus(t *testing.T) {
 				return nil, nil
 			})
 
-		controllerTestUtils := controllertest.NewTestUtils(
-			kubeclient,
-			radixclient,
-			NewBuildStatusController(fakeBuildStatus),
-		)
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
@@ -158,11 +150,7 @@ func TestGetBuildStatus(t *testing.T) {
 				return nil, nil
 			})
 
-		controllerTestUtils := controllertest.NewTestUtils(
-			kubeclient,
-			radixclient,
-			NewBuildStatusController(fakeBuildStatus),
-		)
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=deploy")
 		response := <-responseChannel
@@ -190,11 +178,7 @@ func TestGetBuildStatus(t *testing.T) {
 				return nil, nil
 			})
 
-		controllerTestUtils := controllertest.NewTestUtils(
-			kubeclient,
-			radixclient,
-			NewBuildStatusController(fakeBuildStatus),
-		)
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=promote")
 		response := <-responseChannel
@@ -216,11 +200,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Return(nil, errors.New("error")).
 			Times(1)
 
-		controllerTestUtils := controllertest.NewTestUtils(
-			kubeclient,
-			radixclient,
-			NewBuildStatusController(fakeBuildStatus),
-		)
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
