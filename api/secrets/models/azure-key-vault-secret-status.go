@@ -9,11 +9,11 @@ type AzureKeyVaultSecretStatus struct {
 	// example: secret/some-name
 	Name string `json:"name"`
 
-	// PodName used the secret
+	// ReplicaName which uses the secret
 	//
 	// required: true
 	// example: abcdf
-	PodName string `json:"podName"`
+	ReplicaName string `json:"replicaName"`
 
 	// Version of the secret
 	//

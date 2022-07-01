@@ -490,9 +490,9 @@ func (eh SecretHandler) getSecretRefsSecrets(radixDeployment *v1.RadixDeployment
 	return secrets, nil
 }
 
-func (eh SecretHandler) getAzureKeyVaultSecretMap(envNamespace string) (map[string][]azureKeyValueSecretStatus, error) {
+func (eh SecretHandler) getAzureKeyVaultSecretMap(namespace string) (map[string][]azureKeyValueSecretStatus, error) {
 	azureKeyValueSecretMap := make(map[string][]azureKeyValueSecretStatus)
-	azureKeyValueSecretStatusList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClassPodStatuses(envNamespace).List(context.Background(), metav1.ListOptions{})
+	azureKeyValueSecretStatusList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClassPodStatuses(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -676,9 +676,9 @@ func (eh SecretHandler) GetAzureKeyVaultSecretStatus(appName, envName, component
 	if versions, ok := azureKeyVaultSecretMap[secretName]; ok {
 		for _, version := range versions {
 			statuses = append(statuses, models.AzureKeyVaultSecretStatus{
-				Name:    storageName,
-				PodName: version.replicaName,
-				Version: version.secretVersion,
+				Name:        storageName,
+				ReplicaName: version.replicaName,
+				Version:     version.secretVersion,
 			})
 		}
 	}
