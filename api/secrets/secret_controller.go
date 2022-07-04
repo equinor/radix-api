@@ -191,7 +191,7 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 
 	handler := Init(WithAccounts(accounts))
 
-	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName)
+	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, secretName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

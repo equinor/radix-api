@@ -3,12 +3,21 @@ package models
 // AzureKeyVaultSecretStatus holds status of a Azure Key vault secret
 // swagger:model AzureKeyVaultSecretStatus
 type AzureKeyVaultSecretStatus struct {
-	// Name of the secret or its property, related to type and resource)
+	// Status of the secret
 	//
 	// required: true
-	// example: secret/some-name
-	Name string `json:"name"`
+	// example: Consistent
+	Status string `json:"status"`
 
+	// Versions of the secret
+	//
+	// required: false
+	Versions []AzureKeyVaultSecretVersion `json:"versions,omitempty"`
+}
+
+// AzureKeyVaultSecretVersion holds a version of a Azure Key vault secret
+// swagger:model AzureKeyVaultSecretVersion
+type AzureKeyVaultSecretVersion struct {
 	// ReplicaName which uses the secret
 	//
 	// required: true
