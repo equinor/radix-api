@@ -28,10 +28,9 @@ import (
 )
 
 const (
-	secretDefaultData    = "xx"
-	tlsCertPart          = "tls.crt"
-	tlsKeyPart           = "tls.key"
-	csiSecretStoreDriver = "secrets-store.csi.k8s.io"
+	secretDefaultData = "xx"
+	tlsCertPart       = "tls.crt"
+	tlsKeyPart        = "tls.key"
 )
 
 // SecretHandlerOptions defines a configuration function
@@ -176,7 +175,7 @@ func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName
 		return []models.Secret{}, nil
 	}
 
-	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(rd, envName, envNamespace)
+	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(rd, envNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +320,7 @@ func (eh SecretHandler) getCredentialSecretsForBlobVolumes(component v1.RadixCom
 
 func (eh SecretHandler) getCredentialSecretsForSecretRefsAzureKeyVault(envNamespace, componentName, azureKeyVaultName string) ([]models.Secret, error) {
 	var secrets []models.Secret
-	secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(componentName, azureKeyVault.Name)
+	secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(componentName, azureKeyVaultName)
 	clientIdStatus := models.Consistent.String()
 	clientSecretStatus := models.Consistent.String()
 
@@ -343,7 +342,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefsAzureKeyVault(envNamesp
 	secrets = append(secrets, models.Secret{
 		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 		DisplayName: "Client ID",
-		Resource:    azureKeyVault.Name,
+		Resource:    azureKeyVaultName,
 		Component:   componentName,
 		Status:      clientIdStatus,
 		Type:        models.SecretTypeCsiAzureKeyVaultCreds,
@@ -352,7 +351,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefsAzureKeyVault(envNamesp
 	secrets = append(secrets, models.Secret{
 		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 		DisplayName: "Client Secret",
-		Resource:    azureKeyVault.Name,
+		Resource:    azureKeyVaultName,
 		Component:   componentName,
 		Status:      clientSecretStatus,
 		Type:        models.SecretTypeCsiAzureKeyVaultCreds,
@@ -496,34 +495,6 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *v1
 	return secrets, nil
 }
 
-//func (eh SecretHandler) getCsiSecretProviderNameSetMapForDeployedComponents(appName, envNamespace string) (map[string]map[string]bool, error) {
-//    deploymentList, err := eh.client.AppsV1().Deployments(envNamespace).List(context.Background(), metav1.ListOptions{
-//        LabelSelector: getLabelSelectorForRadixComponents(appName),
-//    })
-//    if err != nil {
-//        return nil, err
-//    }
-//    classNameSetMap := make(map[string]map[string]bool)
-//    for _, deployment := range deploymentList.Items {
-//        classNameSet := make(map[string]bool)
-//        for _, volume := range deployment.Spec.Template.Spec.Volumes {
-//            if volume.CSI == nil || !strings.EqualFold(volume.CSI.Driver, csiSecretStoreDriver) {
-//                continue
-//            }
-//            className := volume.CSI.VolumeAttributes["secretProviderClass"]
-//            if len(className) > 0 {
-//                classNameSet[className] = true
-//            }
-//        }
-//        classNameSetMap[deployment.GetName()] = classNameSet
-//    }
-//    return classNameSetMap, nil
-//}
-
-func getLabelSelectorForRadixComponents(appName string) string {
-	return fmt.Sprintf("%s=%s, %s in (%s, %s)", kube.RadixAppLabel, appName, kube.RadixComponentTypeLabel, v1.RadixComponentTypeComponent, v1.RadixComponentTypeJobScheduler)
-}
-
 func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, componentName string, secretRefs *v1.RadixSecretRefs,
 	secretProviderClassMap map[string]secretsv1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) ([]models.Secret, error) {
 	var secrets []models.Secret
@@ -574,10 +545,6 @@ func getComponentSecretProviderClassMapForAzureKeyVault(componentSecretProviderC
 }
 
 func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, storageName string) (map[string][]models.AzureKeyVaultSecretVersion, error) {
-	activeCsiSecretProviderNameSet, err := eh.getComponentCsiSecretProviderNameSet(envNamespace, componentName)
-	if err != nil {
-		return nil, err
-	}
 	secretProviderClassMap, err := eh.getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, storageName)
 	if err != nil {
 		return nil, err
@@ -593,11 +560,9 @@ func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace,
 			continue
 		}
 		for _, secretVersion := range secretsInPod.Status.Objects {
-			_, secretProviderClassIsActive := activeCsiSecretProviderNameSet[secretsInPod.Status.SecretProviderClassName]
 			secretStatusMap[secretVersion.ID] = append(secretStatusMap[secretVersion.ID], models.AzureKeyVaultSecretVersion{
 				ReplicaName: secretsInPod.Status.PodName,
 				Version:     secretVersion.Version,
-				Active:      secretProviderClassIsActive,
 			})
 		}
 	}
@@ -709,7 +674,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component v1
 	return secrets, nil
 }
 
-func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, envName, envNamespace string) (map[string]models.Secret, error) {
+func (eh SecretHandler) getSecretsFromTLSCertificates(rd *v1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
 	secretDTOsMap := make(map[string]models.Secret)
 
 	for _, component := range rd.Spec.Components {
@@ -781,9 +746,9 @@ func (eh SecretHandler) getCsiSecretStoreSecretMap(namespace string) (map[string
 		return nil, err
 	}
 	secretMap := make(map[string]corev1.Secret)
-	for _, secret := range secretList.Items {
-		secret := secret
-		secretMap[secret.GetName()] = secret
+	for _, secretItem := range secretList.Items {
+		secretItem := secretItem
+		secretMap[secretItem.GetName()] = secretItem
 	}
 	return secretMap, nil
 }
