@@ -29,4 +29,10 @@ type AzureKeyVaultSecretVersion struct {
 	// required: true
 	// example: 0123456789
 	Version string `json:"version"`
+
+	// Active status of the secret
+	//
+	// required: true
+	// example: true
+	Active bool
 }

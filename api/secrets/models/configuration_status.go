@@ -10,6 +10,9 @@ const (
 	// Consistent In configuration and in cluster
 	Consistent
 
+	// Outdated In cluster but not active
+	Outdated
+
 	// Orphan In cluster and not in configuration
 	Orphan
 
