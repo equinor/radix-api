@@ -462,10 +462,10 @@ func (eh SecretHandler) getSecretsFromComponentAuthentication(component v1.Radix
 }
 
 func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *v1.RadixDeployment, envNamespace string) ([]models.Secret, error) {
-	deploymentsCsiSecretProviderNameSetMap, err := eh.getDeploymentsCsiSecretProviderNameSetMap(appName, envNamespace, radixDeployment.GetName())
-	if err != nil {
-		return nil, err
-	}
+	//deploymentsCsiSecretProviderNameSetMap, err := eh.getCsiSecretProviderNameSetMapForDeployedComponents(appName, envNamespace)
+	//if err != nil {
+	//    return nil, err
+	//}
 	secretProviderClassMapForDeployment, err := eh.getAzureKeyVaultSecretProviderClassMapForAppDeployment(appName, envNamespace, radixDeployment.GetName())
 	if err != nil {
 		return nil, err
@@ -477,7 +477,7 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *v1
 	var secrets []models.Secret
 	for _, component := range radixDeployment.Spec.Components {
 		secretRefs := component.GetSecretRefs()
-		activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[component.GetName()]
+		//activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[component.GetName()]
 		componentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		if err != nil {
 			return nil, err
@@ -486,7 +486,7 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *v1
 	}
 	for _, jobComponent := range radixDeployment.Spec.Jobs {
 		secretRefs := jobComponent.GetSecretRefs()
-		activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[jobComponent.GetName()]
+		//activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[jobComponent.GetName()]
 		jobComponentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		if err != nil {
 			return nil, err
@@ -496,33 +496,32 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *v1
 	return secrets, nil
 }
 
-func (eh SecretHandler) getDeploymentsCsiSecretProviderNameSetMap(appName, envNamespace, deploymentName string) (map[string]bool, error) {
-	deployment, err := eh.client.AppsV1().Deployments(envNamespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return getDeploymentCsiSecretProviderNameSet(deployment), nil
-}
+//func (eh SecretHandler) getCsiSecretProviderNameSetMapForDeployedComponents(appName, envNamespace string) (map[string]map[string]bool, error) {
+//    deploymentList, err := eh.client.AppsV1().Deployments(envNamespace).List(context.Background(), metav1.ListOptions{
+//        LabelSelector: getLabelSelectorForRadixComponents(appName),
+//    })
+//    if err != nil {
+//        return nil, err
+//    }
+//    classNameSetMap := make(map[string]map[string]bool)
+//    for _, deployment := range deploymentList.Items {
+//        classNameSet := make(map[string]bool)
+//        for _, volume := range deployment.Spec.Template.Spec.Volumes {
+//            if volume.CSI == nil || !strings.EqualFold(volume.CSI.Driver, csiSecretStoreDriver) {
+//                continue
+//            }
+//            className := volume.CSI.VolumeAttributes["secretProviderClass"]
+//            if len(className) > 0 {
+//                classNameSet[className] = true
+//            }
+//        }
+//        classNameSetMap[deployment.GetName()] = classNameSet
+//    }
+//    return classNameSetMap, nil
+//}
 
-func (eh SecretHandler) getComponentCsiSecretProviderNameSet(envNamespace, componentName string) (map[string]bool, error) {
-	deployment, err := eh.client.AppsV1().Deployments(envNamespace).Get(context.Background(), componentName, metav1.GetOptions{})
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return make(map[string]bool), err
-		}
-		return nil, err
-	}
-	classNameSet := make(map[string]bool)
-	for _, volume := range deployment.Spec.Template.Spec.Volumes {
-		if volume.CSI == nil || !strings.EqualFold(volume.CSI.Driver, csiSecretStoreDriver) {
-			continue
-		}
-		className := volume.CSI.VolumeAttributes["secretProviderClass"]
-		if len(className) > 0 {
-			classNameSet[className] = true
-		}
-	}
-	return classNameSet, nil
+func getLabelSelectorForRadixComponents(appName string) string {
+	return fmt.Sprintf("%s=%s, %s in (%s, %s)", kube.RadixAppLabel, appName, kube.RadixComponentTypeLabel, v1.RadixComponentTypeComponent, v1.RadixComponentTypeJobScheduler)
 }
 
 func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, componentName string, secretRefs *v1.RadixSecretRefs,
@@ -550,9 +549,9 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 	return secrets, nil
 }
 
-func getAzureKeyVaultSecretStatus(azureKeyVault string, secretProviderClassMap map[string]secretsv1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
+func getAzureKeyVaultSecretStatus(azureKeyVaultName string, secretProviderClassMap map[string]secretsv1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
 	secretStatus := models.Pending.String()
-	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(secretProviderClassMap, azureKeyVault.Name)
+	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(secretProviderClassMap, azureKeyVaultName)
 	if secretProviderClass != nil {
 		secretStatus = models.Consistent.String()
 		for _, secretObject := range secretProviderClass.Spec.SecretObjects {
