@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"io"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/api/utils/tekton"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -89,7 +89,7 @@ func (jh JobHandler) GetPipelineJobStepLogs(appName, jobName, stepName string, s
 	return logReader, nil
 }
 
-func getPodNameForStep(job *v1.RadixJob, stepName string) string {
+func getPodNameForStep(job *radixv1.RadixJob, stepName string) string {
 	for _, jobStep := range job.Status.Steps {
 		if strings.EqualFold(jobStep.Name, stepName) {
 			return jobStep.PodName
