@@ -29,16 +29,17 @@ func (ec *secretController) GetRoutes() models.Routes {
 			Method:      "PUT",
 			HandlerFunc: ChangeComponentSecret,
 		},
-		//models.Route{
-		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{storageName}",
-		//    Method:      "PUT",
-		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
-		//},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName}",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}",
 			Method:      "GET",
 			HandlerFunc: GetAzureKeyVaultSecretStatus,
 		},
+		//TODO reimplement change-secrets individually for each secret type
+		//models.Route{
+		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{azureKeyVaultName}",
+		//    Method:      "PUT",
+		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
+		//},
 	}
 	return routes
 }
@@ -124,7 +125,7 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 
 // GetAzureKeyVaultSecretStatus Gets an application environment component Azure Key vault secret status
 func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{storageName} environment getAzureKeyVaultSecretStatus
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretStatus
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:
@@ -143,14 +144,14 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 	//   description: secret component of Radix application
 	//   type: string
 	//   required: true
-	// - name: storageName
+	// - name: azureKeyVaultName
 	//   in: path
-	//   description: environment component Azure Key vault storage name
+	//   description: Azure Key vault name
 	//   type: string
 	//   required: true
 	// - name: secretName
 	//   in: query
-	//   description: environment component Azure Key vault secret name
+	//   description: secret (or key, cert) name in Azure Key vault
 	//   type: string
 	//   required: false
 	// - name: Impersonate-User
@@ -186,12 +187,12 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
-	storageName := mux.Vars(r)["storageName"]
+	azureKeyVaultName := mux.Vars(r)["azureKeyVaultName"]
 	secretName := r.FormValue("secretName")
 
 	handler := Init(WithAccounts(accounts))
 
-	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, storageName, secretName)
+	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
