@@ -521,13 +521,13 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 }
 
 func getAzureKeyVaultSecretStatus(azureKeyVaultName string, secretProviderClassMap map[string]secretsv1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
-	secretStatus := models.Pending.String()
+	secretStatus := models.NotAvailable.String()
 	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(secretProviderClassMap, azureKeyVaultName)
 	if secretProviderClass != nil {
 		secretStatus = models.Consistent.String()
 		for _, secretObject := range secretProviderClass.Spec.SecretObjects {
 			if _, ok := csiSecretStoreSecretMap[secretObject.SecretName]; !ok {
-				secretStatus = models.Pending.String() //Secrets does not exist for the secretProviderClass secret object
+				secretStatus = models.NotAvailable.String() //Secrets does not exist for the secretProviderClass secret object
 				break
 			}
 		}
