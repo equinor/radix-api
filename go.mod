@@ -7,8 +7,8 @@ require (
 	github.com/equinor/radix-job-scheduler v1.5.28
 	github.com/equinor/radix-operator v1.21.6
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/go-openapi/errors v0.19.8
-	github.com/go-openapi/strfmt v0.20.1
+	github.com/go-openapi/errors v0.20.2
+	github.com/go-openapi/strfmt v0.21.1
 	github.com/golang-jwt/jwt/v4 v4.3.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
@@ -16,7 +16,7 @@ require (
 	github.com/marstr/guid v1.1.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.54.0
 	github.com/prometheus/client_golang v1.12.1
-	github.com/rakyll/statik v0.1.7
+	github.com/rakyll/statik v0.1.6
 	github.com/rs/cors v1.8.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
@@ -43,7 +43,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
@@ -51,14 +51,14 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
-	github.com/felixge/httpsnoop v1.0.1 // indirect
+	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/go-kit/log v0.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kr/pretty v0.2.1 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
@@ -87,7 +87,8 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
-	go.mongodb.org/mongo-driver v1.5.1 // indirect
+	github.com/rogpeppe/go-internal v1.8.1 // indirect
+	go.mongodb.org/mongo-driver v1.8.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
