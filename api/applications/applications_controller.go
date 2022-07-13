@@ -117,10 +117,115 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        appPath + "/regenerate-deploy-key",
 			Method:      "POST",
 			HandlerFunc: RegenerateDeployKeyHandler,
+		},	
+		models.Route{
+			Path:        rootPath + "/adgroups",
+			Method:      "GET",
+			HandlerFunc: GetADGroups,
+		},
+		models.Route{
+			Path:        rootPath + "/adgroups",
+			Method:      "POST",
+			HandlerFunc: PostADGroups,
 		},
 	}
 
 	return routes
+}
+
+// GetADGroups get groups from active directory
+func GetADGroups(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /adgroups platform getADGroups
+	//
+	// ---
+	// summary: Lists the ADGroups.
+	// parameters:
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ADGroup"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
+	handler := Init(accounts)
+	adGroups, err := handler.GetADGroups()
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, adGroups)
+}
+
+func PostADGroups(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /adgroups platform postADGroups
+	// ---
+	// summary: Post ADGroups
+	// parameters:
+	// - name: ADGroups
+	//   in: body
+	//   description: List of ADGroups
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ADGroups"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//       "$ref": "#/definitions/ADGroups"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	// appName := mux.Vars(r)["appName"]
+	handler := Init(accounts)
+	var ADGroups applicationModels.ADGroups
+	if err := json.NewDecoder(r.Body).Decode(&ADGroups); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+	
+	adGroups, err := handler.PostADGroups(ADGroups)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, adGroups)
 }
 
 // ShowApplications Lists applications

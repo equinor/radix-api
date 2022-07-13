@@ -18,6 +18,31 @@ import (
 
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
+// GetADGroups list of groups
+func (ah ApplicationHandler) GetADGroups() ([]applicationModels.ADGroup, error) {
+
+	return []applicationModels.ADGroup{
+		{
+			Name: "Test1",
+			Id: "abc-123",
+		},
+		{
+			Name: "Test2",
+			Id: "def-456",
+		},
+		{
+			Name: "Test3",
+			Id: "ghi-789",
+		},
+	}, nil
+}
+
+// PostADGroups assign groups
+func (ah ApplicationHandler) PostADGroups(ADGroups applicationModels.ADGroups) (*applicationModels.ADGroups, error) {
+	
+	return &ADGroups, nil
+}
+
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
 func (ah ApplicationHandler) GetApplications(matcher applicationModels.ApplicationMatch, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})
