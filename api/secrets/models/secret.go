@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 // Secret holds general information about secret
 // swagger:model Secret
 type Secret struct {
@@ -71,3 +73,7 @@ const (
 	SecretIdAccountName  string = "accountName"
 	SecretIdAccountKey   string = "accountKey"
 )
+
+func (secret Secret) String() string {
+	return fmt.Sprintf("ID: %s, resource: %s, name: %s", secret.ID, secret.Resource, secret.Name)
+}
