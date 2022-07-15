@@ -46,7 +46,7 @@ func GetSecretIdForAzureKeyVaultItem(item *radixv1.RadixAzureKeyVaultItem) strin
 }
 
 func getAzureKeyVaultItemType(item *radixv1.RadixAzureKeyVaultItem) string {
-	if item.Type != nil {
+	if item.Type != nil && string(*item.Type) != "" {
 		return string(*item.Type)
 	}
 	return string(radixv1.RadixAzureKeyVaultObjectTypeSecret)
