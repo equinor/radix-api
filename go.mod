@@ -118,3 +118,4 @@ require (
 )
 
 replace k8s.io/client-go v1.5.2 => k8s.io/client-go v0.23.5
+replace github.com/equinor/radix-operator v1.21.6 => /home/anneli/GolandProjects/radix-operator

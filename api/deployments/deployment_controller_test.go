@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"testing"
@@ -174,10 +175,15 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
+	gitTags := "some tags go here"
+	gitCommitHash := "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
 
 	// Setup
+	annotations := make(map[string]string)
+	annotations[kube.RadixGitTagsAnnotation] = gitTags
+	annotations[kube.RadixCommitAnnotation] = gitCommitHash
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
@@ -189,6 +195,8 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
 	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
 	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, gitCommitHash, deployments[0].GitCommitHash)
+	assert.Equal(t, gitTags, deployments[0].GitTags)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
 	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
@@ -209,8 +217,11 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
+	annotations := make(map[string]string)
+	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
+	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"})
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
@@ -234,8 +245,11 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
+	annotations := make(map[string]string)
+	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
+	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
@@ -267,8 +281,11 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
+	annotations := make(map[string]string)
+	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
+	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"})
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments?latest=true", anyAppName))
 	response := <-responseChannel
@@ -374,7 +391,7 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 
 }
 
-func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string) {
+func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage string, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated time.Time, environments []string, annotations map[string]string) {
 	var environmentOne, environmentTwo string
 	var deploymentOneActiveTo, deploymentTwoActiveTo time.Time
 	var deploymentTwoCondition v1.RadixDeployCondition
@@ -395,6 +412,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithAnnotations(annotations).
 		WithDeploymentName(deploymentOneImage).
 		WithAppName(appName).
 		WithEnvironment(environmentOne).
@@ -406,6 +424,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithAnnotations(annotations).
 		WithDeploymentName(deploymentTwoImage).
 		WithAppName(appName).
 		WithEnvironment(environmentTwo).
@@ -417,6 +436,7 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 
 	commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
+		WithAnnotations(annotations).
 		WithDeploymentName(deploymentThreeImage).
 		WithAppName(appName).
 		WithEnvironment(environmentOne).

@@ -21,17 +21,21 @@ type DeploymentBuilder interface {
 	WithComponents(components []*Component) DeploymentBuilder
 	BuildDeploymentSummary() (*DeploymentSummary, error)
 	BuildDeployment() (*Deployment, error)
+	WithGitCommitHash(string) DeploymentBuilder
+	WithGitTags(string) DeploymentBuilder
 }
 
 type deploymentBuilder struct {
-	name        string
-	environment string
-	activeFrom  time.Time
-	activeTo    time.Time
-	jobName     string
-	pipelineJob *v1.RadixJob
-	components  []*Component
-	errors      []error
+	name          string
+	environment   string
+	activeFrom    time.Time
+	activeTo      time.Time
+	jobName       string
+	pipelineJob   *v1.RadixJob
+	components    []*Component
+	errors        []error
+	gitCommitHash string
+	gitTags       string
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
@@ -52,7 +56,9 @@ func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) Deploymen
 		WithJobName(jobName).
 		WithComponents(components).
 		WithActiveFrom(rd.Status.ActiveFrom.Time).
-		WithActiveTo(rd.Status.ActiveTo.Time)
+		WithActiveTo(rd.Status.ActiveTo.Time).
+		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
+		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation])
 
 	return b
 }
@@ -96,6 +102,16 @@ func (b *deploymentBuilder) WithActiveTo(activeTo time.Time) DeploymentBuilder {
 	return b
 }
 
+func (b *deploymentBuilder) WithGitCommitHash(gitCommitHash string) DeploymentBuilder {
+	b.gitCommitHash = gitCommitHash
+	return b
+}
+
+func (b *deploymentBuilder) WithGitTags(gitTags string) DeploymentBuilder {
+	b.gitTags = gitTags
+	return b
+}
+
 func (b *deploymentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
@@ -111,6 +127,8 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		ActiveFrom:                       radixutils.FormatTimestamp(b.activeFrom),
 		ActiveTo:                         radixutils.FormatTimestamp(b.activeTo),
 		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
+		GitCommitHash:                    b.gitCommitHash,
+		GitTags:                          b.gitTags,
 	}, b.buildError()
 }
 

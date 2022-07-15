@@ -54,4 +54,16 @@ type DeploymentSummary struct {
 	// required: false
 	// example: 2006-01-02T15:04:05Z
 	ActiveTo string `json:"activeTo,omitempty"`
+
+	// GitCommitHash the Git commit hash of the branch to build
+	//
+	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	GitCommitHash string `json:"gitCommitHash,omitempty"`
+
+	// GitTags the Git tags that the Git commit hash points to
+	//
+	// required: false
+	// example: "v1.22.1 v1.22.3"
+	GitTags string `json:"gitTags,omitempty"`
 }
