@@ -1718,15 +1718,14 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		(*scenario.init)(&secretHandler) //scenario optional custom init function
 	}
 	for _, secret := range scenario.existingSecrets {
-		secr := corev1.Secret{
+		_, _ = kubeClient.CoreV1().Secrets(envNamespace).Create(context.Background(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secret.secretName,
 				Namespace: envNamespace,
 				Labels:    secret.labels,
 			},
 			Data: secret.secretData,
-		}
-		_, _ = kubeClient.CoreV1().Secrets(envNamespace).Create(context.Background(), &secr, metav1.CreateOptions{})
+		}, metav1.CreateOptions{})
 	}
 	return secretHandler, deployHandler
 }
