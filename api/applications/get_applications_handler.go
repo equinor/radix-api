@@ -43,6 +43,12 @@ func (ah ApplicationHandler) PostADGroups(ADGroups applicationModels.ADGroups) (
 	return &ADGroups, nil
 }
 
+// PutADGroups assign groups
+func (ah ApplicationHandler) PutADGroups(ADGroups applicationModels.ADGroups) (*applicationModels.ADGroups, error) {
+	
+	return &ADGroups, nil
+}
+
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
 func (ah ApplicationHandler) GetApplications(matcher applicationModels.ApplicationMatch, hasAccess hasAccessToRR) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})

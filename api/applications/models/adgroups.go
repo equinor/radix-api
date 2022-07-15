@@ -6,6 +6,8 @@ type ADGroups struct {
 	// List of ADGroups
 	//
 	// required: true
-	// example: asd
-	ADGroups []*ADGroup `json:"adgroups"`
+	// example:
+	// id
+	// name
+	ADGroups []*ADGroup `json:"ADGroups"`
 }
