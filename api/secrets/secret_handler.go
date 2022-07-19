@@ -501,8 +501,8 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 			return nil, err
 		}
 		secrets = append(secrets, credSecrets...)
+		secretStatus := getAzureKeyVaultSecretStatus(azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
 		for _, item := range azureKeyVault.Items {
-			secretStatus := getAzureKeyVaultSecretStatus(azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
 			secrets = append(secrets, models.Secret{
 				Name:        secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item),
 				DisplayName: secret.GetSecretDisplayNameForAzureKeyVaultItem(&item),
