@@ -38,7 +38,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(appName string) ([]models.I
 			Server:   server,
 			Username: config.Username,
 			Email:    config.Email,
-			Status:   getImageHubSecretStatus(pendingImageHubSecrets, server),
+			Status:   getImageHubSecretStatus(pendingImageHubSecrets, server).String(),
 		})
 	}
 
@@ -54,12 +54,11 @@ func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(appName, server, pas
 	return application.UpdatePrivateImageHubsSecretsPassword(server, password)
 }
 
-func getImageHubSecretStatus(pendingImageHubSecrets []string, server string) string {
+func getImageHubSecretStatus(pendingImageHubSecrets []string, server string) models.ImageHubSecretStatus {
 	for _, val := range pendingImageHubSecrets {
 		if val == server {
-			return "Pending"
+			return models.Pending
 		}
 	}
-
-	return "Consistent"
+	return models.Consistent
 }

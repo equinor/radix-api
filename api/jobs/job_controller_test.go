@@ -48,7 +48,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewJobController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewJobController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, secretproviderclient
 }

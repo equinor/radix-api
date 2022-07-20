@@ -58,7 +58,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewSecretController())
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController())
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -434,7 +434,7 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 
 		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
-		assert.Equal(t, 4, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
 			if aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
@@ -444,9 +444,6 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 			}
 			if aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
-			}
-			if aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
 			}
 		}
 	}
@@ -490,7 +487,7 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 
 		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
-		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
 			if aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
@@ -500,15 +497,6 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 			}
 			if aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
-			}
-			if aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
-			}
-			if aSecret.Name == secretE {
-				assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan", test.name)
-			}
-			if aSecret.Name == secretF {
-				assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan", test.name)
 			}
 		}
 	}
@@ -637,7 +625,7 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 
 		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
-		assert.Equal(t, 8, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
 			if aSecret.Component == componentOneName && aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
@@ -648,10 +636,6 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 			if aSecret.Component == componentOneName && aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
 			}
-			if aSecret.Component == componentOneName && aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
-			}
-
 			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
 			}
@@ -660,9 +644,6 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 			}
 			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent", test.name)
-			}
-			if aSecret.Component == componentTwoName && aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan", test.name)
 			}
 		}
 	}
@@ -720,7 +701,7 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 
 		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
 
-		assert.Equal(t, 12, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
 			if aSecret.Component == componentOneName && aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
@@ -731,16 +712,6 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 			if aSecret.Component == componentOneName && aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
 			}
-			if aSecret.Component == componentOneName && aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentOneName, "Orphan", test.name)
-			}
-			if aSecret.Component == componentOneName && aSecret.Name == secretE {
-				assertSecretObject(t, aSecret, secretE, componentOneName, "Orphan", test.name)
-			}
-			if aSecret.Component == componentOneName && aSecret.Name == secretF {
-				assertSecretObject(t, aSecret, secretF, componentOneName, "Orphan", test.name)
-			}
-
 			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
 				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
 			}
@@ -749,15 +720,6 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 			}
 			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
 				assertSecretObject(t, aSecret, secretC, componentTwoName, "Pending", test.name)
-			}
-			if aSecret.Component == componentTwoName && aSecret.Name == secretD {
-				assertSecretObject(t, aSecret, secretD, componentTwoName, "Orphan", test.name)
-			}
-			if aSecret.Component == componentTwoName && aSecret.Name == secretE {
-				assertSecretObject(t, aSecret, secretE, componentTwoName, "Orphan", test.name)
-			}
-			if aSecret.Component == componentTwoName && aSecret.Name == secretF {
-				assertSecretObject(t, aSecret, secretF, componentTwoName, "Orphan", test.name)
 			}
 		}
 	}
@@ -795,9 +757,9 @@ func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
 		{Name: alias + "-key", DisplayName: "Key",
 			Status:   models.Pending.String(),
 			Resource: alias,
-			Type:     models.SecretTypeClientCert, Component: componentName},
+			Type:     models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdKey},
 		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias,
-			Type: models.SecretTypeClientCert, Component: componentName},
+			Type: models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdCert},
 	}
 	assert.ElementsMatch(t, expectedSecrets, secrets)
 	for _, s := range secrets {
