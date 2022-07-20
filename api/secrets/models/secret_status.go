@@ -12,7 +12,7 @@ const (
 
 	// NotAvailable In external secret configuration but in cluster
 	NotAvailable
-	Ï
+
 	numStatuses
 )
 
