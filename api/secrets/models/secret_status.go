@@ -10,12 +10,9 @@ const (
 	// Consistent In configuration and in cluster
 	Consistent
 
-	// Orphan In cluster and not in configuration
-	Orphan
-
 	// NotAvailable In external secret configuration but in cluster
 	NotAvailable
-
+	Ï
 	numStatuses
 )
 
@@ -23,5 +20,5 @@ func (p SecretStatus) String() string {
 	if p >= numStatuses {
 		return "Unsupported"
 	}
-	return [...]string{"Pending", "Consistent", "Orphan", "NotAvailable"}[p]
+	return [...]string{"Pending", "Consistent", "NotAvailable"}[p]
 }

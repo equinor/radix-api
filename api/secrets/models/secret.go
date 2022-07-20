@@ -44,7 +44,7 @@ type Secret struct {
 	// Status of the secret
 	// - Pending = Secret exists in Radix config, but not in cluster
 	// - Consistent = Secret exists in Radix config and in cluster
-	// - Orphan = Secret does not exist in Radix config, but exists in cluster
+	// - NotAvailable = Secret is available in external secret configuration but not in cluster
 	//
 	// required: false
 	// example: Consistent
@@ -62,7 +62,6 @@ const (
 	SecretTypeCsiAzureKeyVaultItem  SecretType = "csi-azure-key-vault-item"
 	SecretTypeClientCertificateAuth SecretType = "client-cert-auth"
 	SecretTypeOAuth2Proxy           SecretType = "oauth2-proxy"
-	SecretTypeOrphaned              SecretType = "orphaned"
 )
 
 const (

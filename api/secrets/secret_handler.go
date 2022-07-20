@@ -281,22 +281,6 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *radixv1
 			secretDTO := models.Secret{Name: secretName, DisplayName: secretName, Component: componentName, Status: status, Type: models.SecretTypeGeneric}
 			secretDTOsMap[secretNameAndComponentName] = secretDTO
 		}
-
-		// Handle Orphan secrets (exist in cluster, does not exist in config)
-		for clusterSecretName := range clusterSecretEntriesMap {
-			clusterSecretNameAndComponentName := fmt.Sprintf("%s-%s", clusterSecretName, componentName)
-			if _, exists := secretDTOsMap[clusterSecretNameAndComponentName]; exists {
-				continue
-			}
-			status := models.Consistent.String()
-			if _, exists := secretNamesMap[clusterSecretName]; !exists {
-				status = models.Orphan.String()
-			}
-			secretDTO := models.Secret{Name: clusterSecretName,
-				DisplayName: clusterSecretName,
-				Component:   componentName, Status: status, Type: models.SecretTypeOrphaned}
-			secretDTOsMap[clusterSecretNameAndComponentName] = secretDTO
-		}
 	}
 
 	return secretDTOsMap, nil
@@ -473,7 +457,6 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *ra
 	var secrets []models.Secret
 	for _, component := range radixDeployment.Spec.Components {
 		secretRefs := component.GetSecretRefs()
-		//activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[component.GetName()]
 		componentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		if err != nil {
 			return nil, err
@@ -482,7 +465,6 @@ func (eh SecretHandler) getSecretRefsSecrets(appName string, radixDeployment *ra
 	}
 	for _, jobComponent := range radixDeployment.Spec.Jobs {
 		secretRefs := jobComponent.GetSecretRefs()
-		//activeCsiSecretProviderClassNameSet := deploymentsCsiSecretProviderNameSetMap[jobComponent.GetName()]
 		jobComponentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		if err != nil {
 			return nil, err
