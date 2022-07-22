@@ -16,15 +16,12 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
 const (
@@ -40,19 +37,23 @@ type SecretHandlerOptions func(*SecretHandler)
 // WithAccounts configures all SecretHandler fields
 func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	return func(eh *SecretHandler) {
-		eh.client = accounts.UserAccount.Client
-		eh.radixclient = accounts.UserAccount.RadixClient
-		eh.secretproviderclient = accounts.UserAccount.SecretProviderClient
+		eh.userAccount = accounts.UserAccount
+		eh.serviceAccount = accounts.ServiceAccount
+		//eh.userAccount.Client = accounts.UserAccount.Client
+		//eh.radixclient = accounts.UserAccount.RadixClient
+		//eh.serviceAccount.SecretProviderClient = accounts.UserAccount.SecretProviderClient
 		eh.deployHandler = deployments.Init(accounts)
 	}
 }
 
 // SecretHandler Instance variables
 type SecretHandler struct {
-	client               kubernetes.Interface
-	radixclient          radixclient.Interface
-	secretproviderclient secretsstorevclient.Interface
-	deployHandler        deployments.DeployHandler
+	userAccount    apiModels.Account
+	serviceAccount apiModels.Account
+	//client               kubernetes.Interface
+	//radixclient          radixclient.Interface
+	//secretproviderclient secretsstorevclient.Interface
+	deployHandler deployments.DeployHandler
 }
 
 // Init Constructor.
@@ -140,7 +141,7 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 
 	}
 
-	secretObject, err := eh.client.CoreV1().Secrets(ns).Get(context.TODO(), secretObjName, metav1.GetOptions{})
+	secretObject, err := eh.userAccount.Client.CoreV1().Secrets(ns).Get(context.TODO(), secretObjName, metav1.GetOptions{})
 	if err != nil && k8sErrors.IsNotFound(err) {
 		return radixhttp.TypeMissingError("Secret object does not exist", err)
 	}
@@ -154,7 +155,7 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 
 	secretObject.Data[partName] = []byte(newSecretValue)
 
-	_, err = eh.client.CoreV1().Secrets(ns).Update(context.TODO(), secretObject, metav1.UpdateOptions{})
+	_, err = eh.userAccount.Client.CoreV1().Secrets(ns).Update(context.TODO(), secretObject, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName string) ([]models.Secret, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 
-	rd, err := eh.radixclient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	rd, err := eh.userAccount.RadixClient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return []models.Secret{}, nil
 	}
@@ -249,7 +250,7 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(activeDeployment *radixv1
 	for componentName, secretNamesMap := range componentSecretsMap {
 		secretObjectName := operatorutils.GetComponentSecretName(componentName)
 
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretObjectName, metav1.GetOptions{})
+		secret, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretObjectName, metav1.GetOptions{})
 		if err != nil && k8sErrors.IsNotFound(err) {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for secretName := range secretNamesMap {
@@ -309,7 +310,7 @@ func (eh SecretHandler) getCredentialSecretsForSecretRefsAzureKeyVault(envNamesp
 	clientIdStatus := models.Consistent.String()
 	clientSecretStatus := models.Consistent.String()
 
-	secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
+	secretValue, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.Background(), secretName, metav1.GetOptions{})
 	if err != nil {
 		log.Warnf("Error on retrieving secret %s. Message: %s", secretName, err.Error())
 		clientIdStatus = models.Pending.String()
@@ -371,7 +372,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 	accountkeyStatus := models.Consistent.String()
 	accountnameStatus := models.Consistent.String()
 
-	secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	secretValue, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		log.Warnf("Error on retrieving secret %s. Message: %s", secretName, err.Error())
 		accountkeyStatus = models.Pending.String()
@@ -528,7 +529,7 @@ func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace,
 	if err != nil {
 		return nil, err
 	}
-	secretsInPodStatusList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClassPodStatuses(envNamespace).List(context.Background(), metav1.ListOptions{})
+	secretsInPodStatusList, err := eh.serviceAccount.SecretProviderClient.SecretsstoreV1().SecretProviderClassPodStatuses(envNamespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +573,7 @@ func getAzureKeyVaultSecretRefSecretProviderClassLabels(appName string, componen
 }
 
 func (eh SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector string) (map[string]secretsstorev1.SecretProviderClass, error) {
-	secretProviderClassList, err := eh.secretproviderclient.SecretsstoreV1().SecretProviderClasses(envNamespace).
+	secretProviderClassList, err := eh.serviceAccount.SecretProviderClient.SecretsstoreV1().SecretProviderClasses(envNamespace).
 		List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return nil, err
@@ -591,7 +592,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationClientCertificate(c
 		secretName := operatorutils.GetComponentClientCertificateSecretName(component.GetName())
 		secretStatus := models.Consistent.String()
 
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		secret, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
 			secretStatus = models.Pending.String()
 		} else {
@@ -622,7 +623,7 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component ra
 		redisPasswordStatus := models.Consistent.String()
 
 		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
-		secret, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		secret, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 		if err != nil {
 			clientSecretStatus = models.Pending.String()
 			cookieSecretStatus = models.Pending.String()
@@ -666,7 +667,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 			certStatus := models.Consistent.String()
 			keyStatus := models.Consistent.String()
 
-			secretValue, err := eh.client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias, metav1.GetOptions{})
+			secretValue, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias, metav1.GetOptions{})
 			if err != nil {
 				log.Warnf("Error on retrieving secret %s. Message: %s", externalAlias, err.Error())
 				certStatus = models.Pending.String()
@@ -722,7 +723,7 @@ func (eh SecretHandler) GetAzureKeyVaultSecretStatus(appName, envName, component
 }
 
 func (eh SecretHandler) getCsiSecretStoreSecretMap(namespace string) (map[string]corev1.Secret, error) {
-	secretList, err := eh.client.CoreV1().Secrets(namespace).List(context.Background(), metav1.ListOptions{
+	secretList, err := eh.serviceAccount.Client.CoreV1().Secrets(namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.Set{secretStoreCsiManagedLabel: "true"}.String(),
 	})
 	if err != nil {
