@@ -10,6 +10,7 @@ import (
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -609,12 +610,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 				initFunc := func(secretHandler *SecretHandler) {
 					//map[componentName]map[azureKeyVaultName]secretProviderClassAndSecret
 					componentAzKeyVaultSecretProviderClassNameMap := map[string]map[string]secretProviderClassAndSecret{
-						componentName1: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[0]),
-						componentName2: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[1]),
-						componentName3: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[2]),
-						jobName1:       createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.jobs[0]),
+						componentName1: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0]),
+						componentName2: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[1]),
+						componentName3: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[2]),
+						jobName1:       createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.jobs[0]),
 					}
-					createSecretProviderClassPodStatuses(secretHandler.secretproviderclient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
+					createSecretProviderClassPodStatuses(secretHandler.serviceAccount.SecretProviderClient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
 				}
 				scenario.init = &initFunc
 			}),
@@ -629,12 +630,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 				initFunc := func(secretHandler *SecretHandler) {
 					//map[componentName]map[azureKeyVaultName]createSecretProviderClassName
 					componentAzKeyVaultSecretProviderClassNameMap := map[string]map[string]secretProviderClassAndSecret{
-						componentName1: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[0]),
-						componentName2: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[1]),
-						componentName3: createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[2]),
-						jobName1:       createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.jobs[0]),
+						componentName1: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0]),
+						componentName2: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[1]),
+						componentName3: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[2]),
+						jobName1:       createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.jobs[0]),
 					}
-					createSecretProviderClassPodStatuses(secretHandler.secretproviderclient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
+					createSecretProviderClassPodStatuses(secretHandler.serviceAccount.SecretProviderClient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
 				}
 				scenario.init = &initFunc
 			}),
@@ -718,8 +719,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefVers
 				scenario.setExpectedSecretStatus(jobName1, secretModels.SecretIdClientSecret, secretModels.Consistent)
 				scenario.setExpectedSecretStatus(jobName1, "secret/secret2", secretModels.NotAvailable)
 				initFunc := func(secretHandler *SecretHandler) {
-					createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[0])
-					createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.jobs[0])
+					createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0])
+					createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.jobs[0])
 				}
 				scenario.init = &initFunc
 			}),
@@ -733,13 +734,13 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefVers
 				scenario.setExpectedSecretStatus(jobName1, secretModels.SecretIdClientSecret, secretModels.Consistent)
 				scenario.setExpectedSecretStatus(jobName1, "secret/secret2", secretModels.Consistent)
 				initFunc := func(secretHandler *SecretHandler) {
-					componentSecretMap := createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.components[0])
-					jobSecretMap := createSecretProviderClass(secretHandler.secretproviderclient, deployment1, &scenario.jobs[0])
+					componentSecretMap := createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0])
+					jobSecretMap := createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.jobs[0])
 					for _, secretProviderClassAndSecret := range componentSecretMap {
-						createAzureKeyVaultCsiDriverSecret(secretHandler.client, secretProviderClassAndSecret.secretName, map[string]string{"SECRET1": "val1"})
+						createAzureKeyVaultCsiDriverSecret(secretHandler.userAccount.Client, secretProviderClassAndSecret.secretName, map[string]string{"SECRET1": "val1"})
 					}
 					for _, secretProviderClassAndSecret := range jobSecretMap {
-						createAzureKeyVaultCsiDriverSecret(secretHandler.client, secretProviderClassAndSecret.secretName, map[string]string{"SECRET2": "val2"})
+						createAzureKeyVaultCsiDriverSecret(secretHandler.userAccount.Client, secretProviderClassAndSecret.secretName, map[string]string{"SECRET2": "val2"})
 					}
 				}
 				scenario.init = &initFunc
@@ -1608,12 +1609,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
 			appName := anyAppName
 			envName := anyEnvironment
-			kubeClient, radixClient, secretProviderClient := s.getUtils()
+			userAccount, serviceAccount, kubeClient, _ := s.getUtils()
 			secretHandler := SecretHandler{
-				client:               kubeClient,
-				radixclient:          radixClient,
-				secretproviderclient: secretProviderClient,
-				deployHandler:        nil,
+				userAccount:    *userAccount,
+				serviceAccount: *serviceAccount,
 			}
 			appEnvNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 			if scenario.secretExists {
@@ -1686,13 +1685,12 @@ func (s *secretHandlerTestSuite) assertSecretVersionStatuses(expectedVersionsMap
 }
 
 func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenario *getSecretScenario, appName, envName, deploymentName string) (SecretHandler, *deployMock.MockDeployHandler) {
-	kubeClient, radixClient, secretProviderClient := s.getUtils()
+	userAccount, serviceAccount, kubeClient, radixClient := s.getUtils()
 	deployHandler := deployMock.NewMockDeployHandler(ctrl)
 	secretHandler := SecretHandler{
-		client:               kubeClient,
-		radixclient:          radixClient,
-		secretproviderclient: secretProviderClient,
-		deployHandler:        deployHandler,
+		userAccount:    *userAccount,
+		serviceAccount: *serviceAccount,
+		deployHandler:  deployHandler,
 	}
 	appAppNamespace := operatorUtils.GetAppNamespace(appName)
 	ra := &v1.RadixApplication{
@@ -1773,8 +1771,21 @@ func getSecretMap(secrets []secretModels.Secret) map[string]secretModels.Secret 
 	return secretMap
 }
 
-func (s *secretHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset) {
-	return kubefake.NewSimpleClientset(), radixfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
+func (s *secretHandlerTestSuite) getUtils() (*models.Account, *models.Account, *kubefake.Clientset, *radixfake.Clientset) {
+	kubeClient := kubefake.NewSimpleClientset()
+	radixClient := radixfake.NewSimpleClientset()
+	secretProviderClient := secretproviderfake.NewSimpleClientset()
+	userAccount := models.Account{
+		Client:               kubeClient,
+		RadixClient:          radixClient,
+		SecretProviderClient: secretProviderClient,
+	}
+	serviceAccount := models.Account{
+		Client:               kubeClient,
+		RadixClient:          radixClient,
+		SecretProviderClient: secretProviderClient,
+	}
+	return &userAccount, &serviceAccount, kubeClient, radixClient
 }
 
 func getVerificationTypePtr(verificationType v1.VerificationType) *v1.VerificationType {
@@ -2025,7 +2036,7 @@ func getReplicaNameToSecretProviderClassObjectsMap(secretIdMap map[string]map[st
 	objectsMap := make(map[string][]secretsstorev1.SecretProviderClassObject) //map[replicaName]SecretProviderClassObject
 	for secretId, versionReplicaNameMap := range secretIdMap {
 		for version, replicaNameMap := range versionReplicaNameMap {
-			for replicaName, _ := range replicaNameMap {
+			for replicaName := range replicaNameMap {
 				if _, ok := objectsMap[replicaName]; !ok {
 					objectsMap[replicaName] = []secretsstorev1.SecretProviderClassObject{}
 				}
