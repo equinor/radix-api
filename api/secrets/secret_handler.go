@@ -39,9 +39,6 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	return func(eh *SecretHandler) {
 		eh.userAccount = accounts.UserAccount
 		eh.serviceAccount = accounts.ServiceAccount
-		//eh.userAccount.Client = accounts.UserAccount.Client
-		//eh.radixclient = accounts.UserAccount.RadixClient
-		//eh.serviceAccount.SecretProviderClient = accounts.UserAccount.SecretProviderClient
 		eh.deployHandler = deployments.Init(accounts)
 	}
 }
@@ -50,15 +47,12 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 type SecretHandler struct {
 	userAccount    apiModels.Account
 	serviceAccount apiModels.Account
-	//client               kubernetes.Interface
-	//radixclient          radixclient.Interface
-	//secretproviderclient secretsstorevclient.Interface
-	deployHandler deployments.DeployHandler
+	deployHandler  deployments.DeployHandler
 }
 
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' SecretHandler.
-// SecretHandlerOptions are processed in the seqeunce they are passed to this function.
+// SecretHandlerOptions are processed in the sequence they are passed to this function.
 func Init(opts ...SecretHandlerOptions) SecretHandler {
 	eh := SecretHandler{}
 
