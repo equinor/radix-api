@@ -668,7 +668,7 @@ func (s *secretHandlerTestSuite) appendActualSecretVersions(component v1.RadixCo
 		for _, item := range azureKeyVault.Items {
 			secretId := secret.GetSecretIdForAzureKeyVaultItem(&item)
 
-			secretVersions, err := secretHandler.GetAzureKeyVaultSecretStatus(appName, environment, component.GetName(), azureKeyVault.Name, secretId)
+			secretVersions, err := secretHandler.GetAzureKeyVaultSecretVersions(appName, environment, component.GetName(), azureKeyVault.Name, secretId)
 			s.Nil(err)
 
 			versionReplicaNameMap := make(map[string]map[string]bool) //map[version]map[replicaName]bool
@@ -1674,7 +1674,7 @@ func (s *secretHandlerTestSuite) assertSecretVersionStatuses(expectedVersionsMap
 					expectedReplicaNamesMap, ok := expectedVersionsMap[version]
 					s.True(ok, "Missing AzureKeyVault item secretId version for the component %s, Azure Key vault %s secretId %s version %s", componentName, azKeyVaultName, secretId, version)
 					s.Equal(len(expectedReplicaNamesMap), len(actualReplicaNamesMap), "Not equal AzureKeyVault items count for the component %s, Azure Key vault %s secretId %s version %s", componentName, azKeyVaultName, secretId, version)
-					for replicaName, _ := range actualReplicaNamesMap {
+					for replicaName := range actualReplicaNamesMap {
 						_, ok := expectedReplicaNamesMap[replicaName]
 						s.True(ok, "Missing AzureKeyVault item secretId version replica for the component %s, Azure Key vault %s secretId %s version %s replicaName %s", componentName, azKeyVaultName, secretId, version, replicaName)
 					}

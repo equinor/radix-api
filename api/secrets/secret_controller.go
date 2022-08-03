@@ -32,7 +32,7 @@ func (ec *secretController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}",
 			Method:      "GET",
-			HandlerFunc: GetAzureKeyVaultSecretStatus,
+			HandlerFunc: GetAzureKeyVaultSecretVersions,
 		},
 		//TODO reimplement change-secrets individually for each secret type
 		//models.Route{
@@ -123,11 +123,11 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	radixhttp.JSONResponse(w, r, "Success")
 }
 
-// GetAzureKeyVaultSecretStatus Gets an application environment component Azure Key vault secret status
-func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretStatus
+// GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
+func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretVersions
 	// ---
-	// summary: Update an application environment component secret
+	// summary: Get Azure Key vault secret versions for a component
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -170,7 +170,7 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 	//     schema:
 	//        type: "array"
 	//        items:
-	//           "$ref": "#/definitions/AzureKeyVaultSecretStatus"
+	//           "$ref": "#/definitions/AzureKeyVaultSecretVersion"
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -192,7 +192,7 @@ func GetAzureKeyVaultSecretStatus(accounts models.Accounts, w http.ResponseWrite
 
 	handler := Init(WithAccounts(accounts))
 
-	secretStatuses, err := handler.GetAzureKeyVaultSecretStatus(appName, envName, componentName, azureKeyVaultName, secretName)
+	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
