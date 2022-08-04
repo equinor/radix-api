@@ -705,8 +705,8 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 	return secretDTOsMap, nil
 }
 
-//GetAzureKeyVaultSecretStatus Gets list of Azure Key vault secret statuses for the storage in the component
-func (eh SecretHandler) GetAzureKeyVaultSecretStatus(appName, envName, componentName, azureKeyVaultName, secretName string) ([]models.AzureKeyVaultSecretVersion, error) {
+//GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
+func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName string) ([]models.AzureKeyVaultSecretVersion, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
