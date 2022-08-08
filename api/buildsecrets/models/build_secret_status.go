@@ -1,11 +1,11 @@
 package models
 
-// ConfigurationStatus Enumeration of the statuses of configuration
-type ConfigurationStatus int
+// BuildSecretStatus Enumeration of the statuses of a build secret
+type BuildSecretStatus int
 
 const (
 	// Pending In configuration but not in cluster
-	Pending ConfigurationStatus = iota
+	Pending BuildSecretStatus = iota
 
 	// Consistent In configuration and in cluster
 	Consistent
@@ -13,7 +13,7 @@ const (
 	numStatuses
 )
 
-func (p ConfigurationStatus) String() string {
+func (p BuildSecretStatus) String() string {
 	if p >= numStatuses {
 		return "Unsupported"
 	}

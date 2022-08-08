@@ -60,7 +60,7 @@ type Component struct {
 	// Component secret names. From radixconfig.yaml
 	//
 	// required: false
-	// example: DB_CON,A_SECRET
+	// example: ["DB_CON", "A_SECRET"]
 	Secrets []string `json:"secrets"`
 
 	// Variable names map to values. From radixconfig.yaml
@@ -72,7 +72,7 @@ type Component struct {
 	//
 	// required: false
 	// deprecated: true
-	// example: server-78fc8857c4-hm76l,server-78fc8857c4-asfa2
+	// example: ["server-78fc8857c4-hm76l", "server-78fc8857c4-asfa2"]
 	// Deprecated: Use ReplicaList instead.
 	Replicas []string `json:"replicas"`
 
@@ -86,14 +86,10 @@ type Component struct {
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 
-	// Auxiliary resources for this component
-	//
-	// required: false
 	AuxiliaryResource `json:",inline"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component
-// swagger:model AuxiliaryResource
 type AuxiliaryResource struct {
 	// OAuth2 describes the oauth2 resource
 	//
@@ -217,9 +213,9 @@ type ReplicaStatus struct {
 	// - Running = Container in Running state
 	// - Terminated = Container in Terminated state
 	//
-	// Enum: Pending,Failing,Running,Terminated
+	// Enum: Pending,Failing,Running,Terminated,Starting
 	// required: true
-	// example: Pending, Failing, Running, Terminated, Starting
+	// example: Running
 	Status string `json:"status"`
 }
 

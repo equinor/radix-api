@@ -29,10 +29,16 @@ func (ec *secretController) GetRoutes() models.Routes {
 			Method:      "PUT",
 			HandlerFunc: ChangeComponentSecret,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}",
+			Method:      "GET",
+			HandlerFunc: GetAzureKeyVaultSecretVersions,
+		},
+		//TODO reimplement change-secrets individually for each secret type
 		//models.Route{
-		//	Path:        rootPath + "/environments/{envName}/components/{componentName}/csivolumes/vol1/secrets/accountName",
-		//	Method:      "PUT",
-		//	HandlerFunc: ChangeComponentSecret,
+		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{azureKeyVaultName}",
+		//    Method:      "PUT",
+		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
 		//},
 	}
 	return routes
@@ -115,4 +121,82 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	}
 
 	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
+func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretVersions
+	// ---
+	// summary: Get Azure Key vault secret versions for a component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: secret of Radix application
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: secret component of Radix application
+	//   type: string
+	//   required: true
+	// - name: azureKeyVaultName
+	//   in: path
+	//   description: Azure Key vault name
+	//   type: string
+	//   required: true
+	// - name: secretName
+	//   in: query
+	//   description: secret (or key, cert) name in Azure Key vault
+	//   type: string
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/AzureKeyVaultSecretVersion"
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	azureKeyVaultName := mux.Vars(r)["azureKeyVaultName"]
+	secretName := r.FormValue("secretName")
+
+	handler := Init(WithAccounts(accounts))
+
+	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, secretStatuses)
 }

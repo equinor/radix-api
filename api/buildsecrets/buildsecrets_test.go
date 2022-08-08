@@ -37,7 +37,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewBuildSecretsController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildSecretsController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
 }

@@ -31,14 +31,14 @@ const (
 )
 
 func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _, _ := setupTest()
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest()
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
 	handlerFactory.EXPECT().createHandler(gomock.Any()).Return(handler)
 	controller := (&envVarsController{}).withHandlerFactory(handlerFactory)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, controller)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, controller)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }

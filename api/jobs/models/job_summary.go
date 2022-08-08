@@ -75,7 +75,7 @@ type JobSummary struct {
 	// Environments the job deployed to
 	//
 	// required: false
-	// example: dev,qa
+	// example: ["dev", "qa"]
 	Environments []string `json:"environments,omitempty"`
 
 	// List of RadixJobStepScanOutput for a job
