@@ -66,9 +66,9 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Util
 	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secrets.NewSecretController())
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, NewEnvironmentController())
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewEnvironmentController())
 
 	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }

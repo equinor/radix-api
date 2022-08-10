@@ -36,7 +36,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	prometheusclient.Interface, secretsstorevclient.Interface) {
 	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient := apiUtils.SetupTest()
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, NewDeploymentController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, secretproviderclient, NewDeploymentController())
 	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {
