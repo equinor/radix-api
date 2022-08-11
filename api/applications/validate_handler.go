@@ -2,9 +2,11 @@ package applications
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"strings"
+
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -22,8 +24,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
-
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
 func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
 	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
@@ -32,11 +32,11 @@ func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
 	}
 
 	if rr.Spec.CloneURL == "" {
-		return false, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("Clone URL is missing"))
+		return false, radixhttp.ValidationError("Radix Registration", "Clone URL is missing")
 	}
 
 	if rr.Spec.DeployKey == "" {
-		return false, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("Deploy key is missing"))
+		return false, radixhttp.ValidationError("Radix Registration", "Deploy key is missing")
 	}
 
 	err = verifyDeployKey(account.Client, rr)
@@ -46,6 +46,9 @@ func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
 func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) error {
 	namespace := utils.GetAppNamespace(rr.Name)
 	jobApplied, err := createCloneJob(client, rr)
+	if err != nil {
+		return err
+	}
 
 	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(context.TODO(), metav1.ListOptions{
 		FieldSelector: fields.Set{"metadata.name": jobApplied.Name}.AsSelector().String(),
@@ -53,41 +56,43 @@ func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) erro
 	if err != nil {
 		return err
 	}
-	done := make(chan error)
-	go func() {
-		for {
-			select {
-			case events, ok := <-w.ResultChan():
-				if !ok {
-					done <- fmt.Errorf("Channel failed")
-				}
+	defer w.Stop()
+	defer cleanup(client, namespace, jobApplied)
 
-				j := events.Object.(*batchv1.Job)
-				switch {
-				case j.Status.Succeeded == 1:
-					cleanup(client, namespace, jobApplied)
-					done <- nil
-					return
-				case j.Status.Failed == 1:
-					cleanup(client, namespace, jobApplied)
-					done <- radixhttp.ValidationError("Radix Registration", fmt.Sprintf("Deploy key was invalid"))
-					return
-				default:
-					log.Debugf("Ongoing - build docker image")
-				}
+	for events := range w.ResultChan() {
+		j, ok := events.Object.(*batchv1.Job)
+		switch {
+		case ok && j.Status.Succeeded > 0:
+			return nil
+		case ok && j.Status.Failed > 0:
+			message := "Deploy key was invalid"
+			if isJobStatusFailedWithDeadlineExceeded(j) {
+				message = "Deploy key validation timed out"
 			}
+			return radixhttp.ValidationError("Radix Registration", message)
+		default:
+			log.Debugf("Ongoing - build docker image")
 		}
-	}()
+	}
 
-	err = <-done
-	return err
+	return errors.New("channel failed")
+}
+
+func isJobStatusFailedWithDeadlineExceeded(job *batchv1.Job) bool {
+	for _, cond := range job.Status.Conditions {
+		if cond.Type == batchv1.JobFailed && cond.Status == corev1.ConditionTrue && cond.Reason == "DeadlineExceeded" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
 	jobName := strings.ToLower(fmt.Sprintf("%s-%s", rr.Name, radixutils.RandString(5)))
 	namespace := utils.GetAppNamespace(rr.Name)
-	backOffLimit := int32(1)
-
+	backOffLimit := int32(0)
+	deadlineSeconds := operatornumbers.Int64Ptr(5 * 60)
 	defaultMode := int32(256)
 	privileged, allowPrivilegeEscalation := false, false
 	securityContext := corev1.SecurityContext{
@@ -107,11 +112,15 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backOffLimit,
+			BackoffLimit:          &backOffLimit,
+			ActiveDeadlineSeconds: deadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "radix-pipeline",
 					Containers:         initContainers,
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: operatornumbers.Int64Ptr(1000),
+					},
 					Volumes: []corev1.Volume{
 						{
 							Name: git.BuildContextVolumeName,

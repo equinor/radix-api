@@ -52,7 +52,7 @@ func getLatestPipelineJobToEnvironment(jobs []v1.RadixJob, env, pipeline string)
 	// Filter out all BuildDeploy jobs
 	allBuildDeployJobs := []v1.RadixJob{}
 	for _, job := range jobs {
-		if strings.ToLower(string(job.Spec.PipeLineType)) == strings.ToLower(pipeline) {
+		if strings.EqualFold(string(job.Spec.PipeLineType), pipeline) {
 			allBuildDeployJobs = append(allBuildDeployJobs, job)
 		}
 	}

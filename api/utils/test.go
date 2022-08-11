@@ -6,8 +6,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
@@ -38,7 +37,7 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 }
 
 // ApplyRegistrationWithSync syncs based on registration builder
-func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder utils.RegistrationBuilder) {
+func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder operatorutils.RegistrationBuilder) {
 	kubeUtils, _ := kube.New(client, radixclient, nil)
 	commonTestUtils.ApplyRegistration(registrationBuilder)
 
@@ -47,7 +46,7 @@ func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixcli
 }
 
 // ApplyApplicationWithSync syncs based on application builder, and default builder for registration.
-func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder utils.ApplicationBuilder) {
+func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder operatorutils.ApplicationBuilder) {
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
 	ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
@@ -60,7 +59,7 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder builders.DeploymentBuilder) {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
