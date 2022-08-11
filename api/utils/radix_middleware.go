@@ -123,7 +123,6 @@ func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.R
 
 func getBearerTokenFromHeader(r *http.Request, useOutClusterClient bool) (string, error) {
 	if useOutClusterClient {
-		// this is the default
 		return radixhttp.GetBearerTokenFromHeader(r)
 	}
 	// if we're in debug mode, arbitrary bearer token is injected
