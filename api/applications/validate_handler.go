@@ -101,7 +101,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		RunAsUser:                operatornumbers.Int64Ptr(1000),
 		RunAsGroup:               operatornumbers.Int64Ptr(1000),
 	}
-	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, applicationconfig.GetConfigBranch(rr), securityContext, "")
+	initContainers := git.CloneInitContainers(rr.Spec.CloneURL, applicationconfig.GetConfigBranch(rr), securityContext)
 
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

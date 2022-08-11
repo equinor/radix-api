@@ -37,10 +37,15 @@ type KubeUtil interface {
 	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface)
 	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface)
 	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface)
+	IsUseOutClusterClient() bool
 }
 
 type kubeUtil struct {
 	useOutClusterClient bool
+}
+
+func (ku *kubeUtil) IsUseOutClusterClient() bool {
+	return ku.useOutClusterClient
 }
 
 var (
@@ -58,12 +63,12 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 	}
 }
 
-//GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
+// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface) {
 	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{}, options...)
 }
 
-//GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
+// GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface) {
 	if ku.useOutClusterClient {
 		config := getOutClusterClientConfig(token, impersonation, options)
