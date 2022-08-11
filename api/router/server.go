@@ -118,6 +118,7 @@ func getCORSHandler(apiRouter *Server, useOutClusterClient bool) http.Handler {
 	if !useOutClusterClient {
 		// debugging mode
 		corsOptions.Debug = true
+		// necessary header to allow ajax requests directly from radix-web-console app in browser
 		corsOptions.AllowedHeaders = append(corsOptions.AllowedHeaders, "X-Requested-With")
 	}
 
