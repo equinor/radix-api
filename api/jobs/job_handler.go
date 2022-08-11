@@ -322,6 +322,17 @@ func buildPipelineRunTaskStepModels(taskRunSpec *v1beta1.PipelineRunTaskRunStatu
 	return stepsModels
 }
 
+//lint:ignore U1000 decide if we should use it for sorting task results
+func sortPipelineTaskSteps(steps []jobModels.PipelineRunTaskStep) []jobModels.PipelineRunTaskStep {
+	sort.Slice(steps, func(i, j int) bool {
+		if steps[i].Started == "" || steps[j].Started == "" {
+			return false
+		}
+		return steps[i].Started < steps[j].Started
+	})
+	return steps
+}
+
 func getLastReadyCondition(conditions knative.Conditions) *apis.Condition {
 	if len(conditions) == 1 {
 		return &conditions[0]
