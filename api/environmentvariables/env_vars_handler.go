@@ -2,9 +2,10 @@ package environmentvariables
 
 import (
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"sort"
 	"strings"
+
+	"github.com/equinor/radix-operator/pkg/apis/deployment"
 
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
@@ -134,9 +135,7 @@ func (eh *envVarsHandler) ChangeEnvVar(appName, envName, componentName string, e
 		if !foundEnvVar {
 			log.Infof("Not found changing variable %s", envVarParam.Name)
 			hasChanges = true
-			if _, foundMetadata := envVarsMetadataMap[envVarParam.Name]; foundMetadata { //in case outdated metadata exists from past
-				delete(envVarsMetadataMap, envVarParam.Name)
-			}
+			delete(envVarsMetadataMap, envVarParam.Name)
 			continue
 		}
 		newEnvVarValue := strings.TrimSpace(envVarParam.Value)

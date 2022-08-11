@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,22 +21,22 @@ func Test_EventHandler_Init(t *testing.T) {
 
 func Test_EventHandler_RadixEnvironmentNamespace(t *testing.T) {
 	appName, envName := "app", "env"
-	expected := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+	expected := operatorutils.GetEnvironmentNamespace(appName, envName)
+	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 	actual := RadixEnvironmentNamespace(ra, envName)()
 	assert.Equal(t, expected, actual)
 }
 
 func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 	appName, envName := "app", "env"
-	appNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
+	appNamespace := operatorutils.GetEnvironmentNamespace(appName, envName)
 	kubeClient := kubefake.NewSimpleClientset()
 
 	createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 	createKubernetesEvent(kubeClient, appNamespace, "ev2", "Normal", "pod2", "Pod")
 	createKubernetesEvent(kubeClient, "app2-env", "ev3", "Normal", "pod3", "Pod")
 
-	ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 	eventHandler := Init(kubeClient)
 	events, err := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
 	assert.Nil(t, err)
@@ -50,8 +50,8 @@ func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 
 func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 	appName, envName := "app", "env"
-	appNamespace := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	ra := builders.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
+	appNamespace := operatorutils.GetEnvironmentNamespace(appName, envName)
+	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 
 	t.Run("ObjectState is nil for normal event type", func(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset()

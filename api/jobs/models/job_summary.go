@@ -2,9 +2,7 @@ package models
 
 import (
 	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	batchv1 "k8s.io/api/batch/v1"
 )
 
 // JobSummary holds general information about job
@@ -123,14 +121,6 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	}
 
 	return pipelineJob
-}
-
-func getBranchFromAnnotation(job *batchv1.Job) string {
-	if len(job.Annotations) > 0 && job.Annotations[kube.RadixBranchAnnotation] != "" {
-		return job.Annotations[kube.RadixBranchAnnotation]
-	}
-
-	return job.Labels[kube.RadixBranchDeprecated]
 }
 
 func (job *JobSummary) GetCreated() string {

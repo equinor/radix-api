@@ -3,7 +3,7 @@ package models
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
+	"errors"
 	"html/template"
 	"strings"
 
@@ -90,7 +90,7 @@ func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.R
 	var buff bytes.Buffer
 	err := svgTemplate.Execute(&buff, &badgeData)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create SVG template")
+		return nil, errors.New("failed to create SVG template")
 	}
 	bytes := buff.Bytes()
 	return bytes, nil

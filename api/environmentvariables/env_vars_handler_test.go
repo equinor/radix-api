@@ -1,19 +1,19 @@
 package environmentvariables
 
 import (
+	"testing"
+
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func Test_GetEnvVars(t *testing.T) {
-	namespace := utils.GetEnvironmentNamespace(appName, environmentName)
+	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Get existing env vars", func(t *testing.T) {
 		t.Parallel()
 		_, _, _, commonTestUtils, kubeUtil, _ := setupTest()
@@ -22,7 +22,7 @@ func Test_GetEnvVars(t *testing.T) {
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder builders.DeployComponentBuilder) {
+		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap).
 				WithSecrets([]string{"SECRET1", "SECRET2"})
 		})
@@ -56,7 +56,7 @@ func Test_GetEnvVars(t *testing.T) {
 }
 
 func Test_ChangeGetEnvVars(t *testing.T) {
-	namespace := utils.GetEnvironmentNamespace(appName, environmentName)
+	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Change existing env var", func(t *testing.T) {
 		t.Parallel()
 		_, _, _, commonTestUtils, kubeUtil, _ := setupTest()
@@ -66,7 +66,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			"VAR2": "val2",
 			"VAR3": "val3",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder builders.DeployComponentBuilder) {
+		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
 		handler := envVarsHandler{
@@ -119,7 +119,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder builders.DeployComponentBuilder) {
+		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
 		handler := envVarsHandler{

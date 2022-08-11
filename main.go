@@ -32,9 +32,6 @@ import (
 
 	"github.com/equinor/radix-api/api/utils"
 
-	// Force loading of needed authentication library
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
 	_ "github.com/equinor/radix-api/docs"
 )
 
