@@ -18,5 +18,5 @@ func UnmatchedBranchToEnvironment(branch string) error {
 
 // OnePartOfDeployKeyIsNotAllowed Error message
 func OnePartOfDeployKeyIsNotAllowed() error {
-	return radixhttp.ValidationError("Radix Registration", fmt.Sprintf("Setting public key, but no private key is not valid"))
+	return radixhttp.ValidationError("Radix Registration", "Setting public key, but no private key is not valid")
 }

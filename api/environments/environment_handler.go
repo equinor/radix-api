@@ -96,8 +96,11 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 	}
 
 	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
-	environments = append(environments, orphanedEnvironments...)
+	if err != nil {
+		return nil, err
+	}
 
+	environments = append(environments, orphanedEnvironments...)
 	return environments, nil
 }
 
