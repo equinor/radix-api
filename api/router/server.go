@@ -83,16 +83,18 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 		controllers,
 	}
 
-	return getCORSHandler(server)
+	useOutClusterClient := kubeUtil.IsUseOutClusterClient()
+	return getCORSHandler(server, useOutClusterClient)
 }
 
-func getCORSHandler(apiRouter *Server) http.Handler {
+func getCORSHandler(apiRouter *Server, useOutClusterClient bool) http.Handler {
 	radixDNSZone := os.Getenv(radixDNSZoneEnvironmentVariable)
 
-	c := cors.New(cors.Options{
+	corsOptions := cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
+			"http://127.0.0.1:3000",
 			"http://localhost:8000",
 			"http://localhost:8086", // For swaggerui testing
 			// TODO: We should consider:
@@ -111,7 +113,15 @@ func getCORSHandler(apiRouter *Server) http.Handler {
 		MaxAge:           600,
 		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE", "PATCH"},
-	})
+	}
+
+	if !useOutClusterClient {
+		// debugging mode
+		corsOptions.Debug = true
+		corsOptions.AllowedHeaders = append(corsOptions.AllowedHeaders, "X-Requested-With")
+	}
+
+	c := cors.New(corsOptions)
 	return c.Handler(apiRouter.Middleware)
 }
 
