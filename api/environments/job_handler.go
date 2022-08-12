@@ -3,10 +3,11 @@ package environments
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"sort"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -125,7 +126,7 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 		batchPodSummary := deploymentModels.GetReplicaSummary(batchPod[0])
 		summary.Replica = &batchPodSummary
 	}
-	batchJobSummaryList, err := eh.getBatchJobSummaryList(err, kubeClient, namespace, jobComponentName, batchName, jobPodsMap)
+	batchJobSummaryList, err := eh.getBatchJobSummaryList(kubeClient, namespace, jobComponentName, batchName, jobPodsMap)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 	return summary, nil
 }
 
-func (eh EnvironmentHandler) getBatchJobSummaryList(err error, kubeClient kubernetes.Interface, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
+func (eh EnvironmentHandler) getBatchJobSummaryList(kubeClient kubernetes.Interface, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
 	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
 	batchJobs, err := getBatchJobs(kubeClient, namespace, jobComponentName, batchName)
 	if err != nil {

@@ -269,17 +269,6 @@ func getPipelineRunTaskModels(pipelineRun *v1beta1.PipelineRun, taskNameToRealNa
 	return taskModels
 }
 
-func getPipelineTaskByName(pipelineTaskMap map[string]*v1beta1.PipelineTask, pipelineTaskName string) (*v1beta1.PipelineTask, error) {
-	pipelineTask, ok := pipelineTaskMap[pipelineTaskName]
-	if !ok {
-		return nil, fmt.Errorf("a Pipeline Run Task %s is missing in the Pipeline", pipelineTaskName)
-	}
-	if pipelineTask.TaskRef == nil || len(pipelineTask.TaskRef.Name) == 0 {
-		return nil, fmt.Errorf("missing or invalid TaskRef in the Pipeline Run Task %s", pipelineTaskName)
-	}
-	return pipelineTask, nil
-}
-
 func getPipelineRunTaskModelByTaskSpec(pipelineRun *v1beta1.PipelineRun, taskRunSpec *v1beta1.PipelineRunTaskRunStatus, realTaskName string) *jobModels.PipelineRunTask {
 	pipelineTaskModel := jobModels.PipelineRunTask{
 		Name:           taskRunSpec.PipelineTaskName,
@@ -333,6 +322,7 @@ func buildPipelineRunTaskStepModels(taskRunSpec *v1beta1.PipelineRunTaskRunStatu
 	return stepsModels
 }
 
+//lint:ignore U1000 decide if we should use it for sorting task results
 func sortPipelineTaskSteps(steps []jobModels.PipelineRunTaskStep) []jobModels.PipelineRunTaskStep {
 	sort.Slice(steps, func(i, j int) bool {
 		if steps[i].Started == "" || steps[j].Started == "" {
@@ -448,7 +438,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 		if applicationJob[job.AppName] != nil {
 			continue
 		}
-		if forApplications[job.AppName] != true {
+		if !forApplications[job.AppName] {
 			continue
 		}
 

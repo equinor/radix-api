@@ -19,7 +19,8 @@ You need Go installed. Make sure `GOPATH` and `GOROOT` are properly set up.
 Also needed:
 
 - [`go-swagger`](https://github.com/go-swagger/go-swagger) (on a Mac, you can install it with Homebrew: `brew install go-swagger`)
-- [`statik`](https://github.com/rakyll/statik) (install with `go get github.com/rakyll/statik`)
+- [`statik`](https://github.com/rakyll/statik) (install with `go install github.com/rakyll/statik@v0.1.7`)
+- [`gomock`](https://github.com/golang/mock) (install with `go install github.com/golang/mock/mockgen@v1.6.0`)
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
@@ -44,9 +45,11 @@ The following env vars are needed. Useful default values in brackets.
 - `RADIX_CONTAINER_REGISTRY` - (`radixdev.azurecr.io`)
 - `PIPELINE_IMG_TAG` - (`master-latest`)
 
-You also probably want to start with the argument `--useOutClusterClient=false`. If this is set to `true` (the default) the program will connect to the K8S API host defined by the `K8S_API_HOST` env var and will require auth tokens in all client requests. Set to `false`, a service principal with superpowers is used to authorise the requests instead (**you still need to send** a `bearer whatever` auth header with the requests, but its value is ignored).
-
-When `useOutClusterClient` is `false`, the Radix API will connect to the currently-configured `kubectl` context.
+You also probably want to start with the argument `--useOutClusterClient=false`. When `useOutClusterClient` is `false`, several debugging settings are enabled:
+* a service principal with superpowers is used to authorize the requests, and the client's `Authorization` bearer token is ignored. 
+* the Radix API will connect to the currently-configured `kubectl` context and ignore `K8S_API_HOST`.
+* the server CORS settings are modified to accept the `X-Requested-With` header in incoming requests. This is necessary to allow direct requests from web browser while e.g. debugging [radix-web-console](https://github.com/equinor/radix-web-console).
+* verbose debugging output from CORS rule evaluation is logged to console.
 
 If you are using VSCode, there is a convenient launch configuration in `.vscode`.
 

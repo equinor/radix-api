@@ -28,7 +28,7 @@ func (jh JobHandler) StopJob(appName, jobName string) error {
 
 	_, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Update(context.TODO(), job, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to patch job object: %v", err)
+		return fmt.Errorf("failed to patch job object: %v", err)
 	}
 
 	return nil

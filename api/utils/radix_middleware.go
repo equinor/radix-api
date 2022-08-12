@@ -56,7 +56,8 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
-	token, err := radixhttp.GetBearerTokenFromHeader(r)
+	useOutClusterClient := handler.kubeUtil.IsUseOutClusterClient()
+	token, err := getBearerTokenFromHeader(r, useOutClusterClient)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -118,4 +119,12 @@ func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.R
 	accounts := models.Accounts{ServiceAccount: sa}
 
 	handler.next(accounts, w, r)
+}
+
+func getBearerTokenFromHeader(r *http.Request, useOutClusterClient bool) (string, error) {
+	if useOutClusterClient {
+		return radixhttp.GetBearerTokenFromHeader(r)
+	}
+	// if we're in debug mode, arbitrary bearer token is injected
+	return "some_arbitrary_token", nil
 }
