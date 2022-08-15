@@ -147,12 +147,22 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, err
 	}
 
-	return deploymentModels.NewDeploymentBuilder().
+	// getting RadixDeployment's RadixRegistration to fetch git repository url
+	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	dep, _ := deploymentModels.NewDeploymentBuilder().
 		WithRadixDeployment(*rd).
 		WithActiveTo(activeTo).
 		WithComponents(components).
+		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
+		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation]).
+		WithRadixRegistration(rr).
 		BuildDeployment()
 
+	return dep, nil
 }
 
 func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {
@@ -204,6 +214,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 
 	appNamespace := operatorUtils.GetAppNamespace(appName)
 	radixJobMap := make(map[string]*v1.RadixJob)
+
 	if jobName != "" {
 		radixJob, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
@@ -221,6 +232,12 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		}
 	}
 
+	// getting RadixDeployment's RadixRegistration to fetch git repository url
+	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	rds := sortRdsByActiveFromDesc(radixDeploymentList)
 	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
 	for _, rd := range rds {
@@ -232,6 +249,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 			NewDeploymentBuilder().
 			WithRadixDeployment(rd).
 			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]]).
+			WithRadixRegistration(rr).
 			BuildDeploymentSummary()
 		if err != nil {
 			return nil, err

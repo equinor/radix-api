@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 
 	t.Run("build with deployment", func(t *testing.T) {
 		t.Parallel()
+
 		b := NewDeploymentBuilder().WithRadixDeployment(
 			v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -75,6 +77,51 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				PipelineJobType:         string(v1.BuildDeploy),
 				PromotedFromEnvironment: promoteFromEnv,
 			},
+		}
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
+	appName, deploymentName, envName, jobName, activeFrom, activeTo, cloneUrl, repoUrl :=
+		"app-name", "deployment-name", "env-name", "job-name", time.Now().Add(-10*time.Second).Truncate(1*time.Second),
+		time.Now().Truncate(1*time.Second), "git@github.com:equinor/radix-canary-golang.git",
+		"https://github.com/equinor/radix-canary-golang"
+
+	rr := utils.NewRegistrationBuilder().
+		WithName(appName).
+		WithCloneURL(cloneUrl).
+		BuildRR()
+
+	t.Run("build with deployment", func(t *testing.T) {
+		t.Parallel()
+
+		b := NewDeploymentBuilder().WithRadixDeployment(
+			v1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   deploymentName,
+					Labels: map[string]string{kube.RadixJobNameLabel: jobName},
+				},
+				Spec: v1.RadixDeploymentSpec{
+					Environment: envName,
+				},
+				Status: v1.RadixDeployStatus{
+					ActiveFrom: metav1.NewTime(activeFrom),
+					ActiveTo:   metav1.NewTime(activeTo),
+				},
+			},
+		).WithRadixRegistration(rr)
+
+		actual, err := b.BuildDeployment()
+		assert.NoError(t, err)
+		expected := &Deployment{
+			Name:         deploymentName,
+			Components:   []*Component{},
+			CreatedByJob: jobName,
+			Environment:  envName,
+			ActiveFrom:   radixutils.FormatTimestamp(activeFrom),
+			ActiveTo:     radixutils.FormatTimestamp(activeTo),
+			Repository:   repoUrl,
 		}
 		assert.Equal(t, expected, actual)
 	})
