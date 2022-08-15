@@ -1,6 +1,7 @@
 package models
 
 import (
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"time"
 
 	radixutils "github.com/equinor/radix-common/utils"
@@ -23,6 +24,7 @@ type DeploymentBuilder interface {
 	BuildDeployment() (*Deployment, error)
 	WithGitCommitHash(string) DeploymentBuilder
 	WithGitTags(string) DeploymentBuilder
+	WithRadixRegistration(*v1.RadixRegistration) DeploymentBuilder
 }
 
 type deploymentBuilder struct {
@@ -36,6 +38,7 @@ type deploymentBuilder struct {
 	errors        []error
 	gitCommitHash string
 	gitTags       string
+	repository    string
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
@@ -112,6 +115,12 @@ func (b *deploymentBuilder) WithGitTags(gitTags string) DeploymentBuilder {
 	return b
 }
 
+func (b *deploymentBuilder) WithRadixRegistration(rr *v1.RadixRegistration) DeploymentBuilder {
+	gitCloneUrl := rr.Spec.CloneURL
+	b.repository = crdUtils.GetGithubRepositoryURLFromCloneURL(gitCloneUrl)
+	return b
+}
+
 func (b *deploymentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
@@ -148,12 +157,15 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 
 func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 	return &Deployment{
-		Name:         b.name,
-		Environment:  b.environment,
-		ActiveFrom:   radixutils.FormatTimestamp(b.activeFrom),
-		ActiveTo:     radixutils.FormatTimestamp(b.activeTo),
-		Components:   b.components,
-		CreatedByJob: b.jobName,
+		Name:          b.name,
+		Environment:   b.environment,
+		ActiveFrom:    radixutils.FormatTimestamp(b.activeFrom),
+		ActiveTo:      radixutils.FormatTimestamp(b.activeTo),
+		Components:    b.components,
+		CreatedByJob:  b.jobName,
+		GitCommitHash: b.gitCommitHash,
+		GitTags:       b.gitTags,
+		Repository:    b.repository,
 	}, b.buildError()
 }
 
