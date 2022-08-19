@@ -13,14 +13,24 @@ func ForAuxiliaryResource(appName, componentName, auxType string) kubeLabels.Set
 	return appSet
 }
 
+// ForApplication returns label selector for Radix application
 func ForApplication(appName string) kubeLabels.Set {
 	return kubeLabels.Set{
 		kube.RadixAppLabel: appName,
 	}
 }
 
+// ForIsAppAlias returns label selector for "radix-app-alias"="true"
 func ForIsAppAlias() kubeLabels.Set {
 	return kubeLabels.Set{
 		kube.RadixAppAliasLabel: "true",
+	}
+}
+
+// ForComponent returns label selector for Radix application component
+func ForComponent(appName, componentName string) kubeLabels.Set {
+	return kubeLabels.Set{
+		kube.RadixAppLabel:       appName,
+		kube.RadixComponentLabel: componentName,
 	}
 }

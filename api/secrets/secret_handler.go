@@ -3,11 +3,13 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/api/utils/secret"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -29,7 +31,11 @@ const (
 	tlsCertPart                = "tls.crt"
 	tlsKeyPart                 = "tls.key"
 	secretStoreCsiManagedLabel = "secrets-store.csi.k8s.io/managed"
+	k8sJobNameLabel            = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
+
+type podNameToSecretVersionMap map[string]string
+type secretIdToPodNameToSecretVersionMap map[string]podNameToSecretVersionMap
 
 // SecretHandlerOptions defines a configuration function
 type SecretHandlerOptions func(*SecretHandler)
@@ -518,7 +524,7 @@ func getComponentSecretProviderClassMapForAzureKeyVault(componentSecretProviderC
 	return nil
 }
 
-func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (map[string][]models.AzureKeyVaultSecretVersion, error) {
+func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
 	secretProviderClassMap, err := eh.getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
 		return nil, err
@@ -528,19 +534,19 @@ func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace,
 		return nil, err
 	}
 
-	secretStatusMap := make(map[string][]models.AzureKeyVaultSecretVersion)
+	secretStatusMap := make(secretIdToPodNameToSecretVersionMap)
 	for _, secretsInPod := range secretsInPodStatusList.Items {
 		if _, ok := secretProviderClassMap[secretsInPod.Status.SecretProviderClassName]; !ok {
 			continue
 		}
 		for _, secretVersion := range secretsInPod.Status.Objects {
-			secretStatusMap[secretVersion.ID] = append(secretStatusMap[secretVersion.ID], models.AzureKeyVaultSecretVersion{
-				ReplicaName: secretsInPod.Status.PodName,
-				Version:     secretVersion.Version,
-			})
+			if _, ok := secretStatusMap[secretVersion.ID]; !ok {
+				secretStatusMap[secretVersion.ID] = make(podNameToSecretVersionMap)
+			}
+			secretStatusMap[secretVersion.ID][secretsInPod.Status.PodName] = secretVersion.Version
 		}
 	}
-	return secretStatusMap, nil
+	return secretStatusMap, nil //map[secretType/secretName][podName]secretVersion
 }
 
 func (eh SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppDeployment(appName, envNamespace, deploymentName string) (map[string]secretsstorev1.SecretProviderClass, error) {
@@ -706,14 +712,58 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 }
 
 //GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
-func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName string) ([]models.AzureKeyVaultSecretVersion, error) {
+func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
 		return nil, err
 	}
-	secretVersions := azureKeyVaultSecretMap[secretName]
-	return secretVersions, nil
+	podSecretVersionMap := azureKeyVaultSecretMap[secretId]
+	podList, err := eh.userAccount.Client.CoreV1().Pods(envNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelselector.ForComponent(appName, componentName).String()})
+	if err != nil {
+		return nil, err
+	}
+	var azKeyVaultSecretVersions []models.AzureKeyVaultSecretVersion
+	pods := sortPodsDesc(podList.Items)
+	for _, pod := range pods {
+		secretVersion, ok := podSecretVersionMap[pod.GetName()]
+		if !ok {
+			continue
+		}
+		azureKeyVaultSecretVersion := models.AzureKeyVaultSecretVersion{
+			ReplicaName: pod.GetName(),
+			Version:     secretVersion,
+		}
+		if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true") {
+			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
+		} else if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
+			azureKeyVaultSecretVersion.JobName = pod.ObjectMeta.Labels[k8sJobNameLabel]
+			if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok {
+				azureKeyVaultSecretVersion.BatchName = batchName
+			}
+		}
+		azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
+	}
+	return azKeyVaultSecretVersions, nil
+}
+
+func podIsJobScheduler(pod *corev1.Pod) bool {
+	return strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true")
+}
+
+func podIsForScheduledJob(pod *corev1.Pod) bool {
+	if !strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
+		return false
+	}
+	jobName, ok := pod.ObjectMeta.Labels[k8sJobNameLabel]
+	return ok && len(jobName) > 0
+}
+
+func sortPodsDesc(pods []corev1.Pod) []corev1.Pod {
+	sort.Slice(pods, func(i, j int) bool {
+		return pods[j].ObjectMeta.CreationTimestamp.Before(&pods[i].ObjectMeta.CreationTimestamp)
+	})
+	return pods
 }
 
 func (eh SecretHandler) getCsiSecretStoreSecretMap(namespace string) (map[string]corev1.Secret, error) {

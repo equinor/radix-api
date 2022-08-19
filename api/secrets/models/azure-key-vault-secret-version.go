@@ -9,6 +9,18 @@ type AzureKeyVaultSecretVersion struct {
 	// example: abcdf
 	ReplicaName string `json:"replicaName"`
 
+	// JobName which uses the secret
+	//
+	// required: true
+	// example: job-abc
+	JobName string `json:"jobName"`
+
+	// BatchName which uses the secret
+	//
+	// required: true
+	// example: batch-abc
+	BatchName string `json:"batchName"`
+
 	// Version of the secret
 	//
 	// required: true
