@@ -13,12 +13,14 @@ import (
 	"github.com/equinor/radix-api/api/utils/secret"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -718,13 +720,20 @@ func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, compone
 	if err != nil {
 		return nil, err
 	}
-	podSecretVersionMap := azureKeyVaultSecretMap[secretId]
 	podList, err := eh.userAccount.Client.CoreV1().Pods(envNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelselector.ForComponent(appName, componentName).String()})
 	if err != nil {
 		return nil, err
 	}
-	var azKeyVaultSecretVersions []models.AzureKeyVaultSecretVersion
 	pods := sortPodsDesc(podList.Items)
+	return eh.getAzKeyVaultSecretVersions(appName, envNamespace, componentName, pods, azureKeyVaultSecretMap[secretId])
+}
+
+func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
+	jobMap, err := eh.getJobMap(appName, envNamespace, componentName)
+	if err != nil {
+		return nil, err
+	}
+	var azKeyVaultSecretVersions []models.AzureKeyVaultSecretVersion
 	for _, pod := range pods {
 		secretVersion, ok := podSecretVersionMap[pod.GetName()]
 		if !ok {
@@ -736,15 +745,43 @@ func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, compone
 		}
 		if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true") {
 			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
-		} else if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
-			azureKeyVaultSecretVersion.JobName = pod.ObjectMeta.Labels[k8sJobNameLabel]
-			if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok {
+			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
+			continue
+		}
+		if !strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
+			continue
+		}
+		jobName := pod.ObjectMeta.Labels[k8sJobNameLabel]
+		job, ok := jobMap[jobName]
+		if !ok {
+			continue
+		}
+		azureKeyVaultSecretVersion.JobName = jobName
+		jobCreated := job.GetCreationTimestamp()
+		azureKeyVaultSecretVersion.JobCreated = radixutils.FormatTime(&jobCreated)
+		if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok {
+			if batch, ok := jobMap[batchName]; ok {
 				azureKeyVaultSecretVersion.BatchName = batchName
+				batchCreated := batch.GetCreationTimestamp()
+				azureKeyVaultSecretVersion.BatchCreated = radixutils.FormatTime(&batchCreated)
 			}
 		}
 		azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 	}
 	return azKeyVaultSecretVersions, nil
+}
+
+func (eh SecretHandler) getJobMap(appName, namespace, componentName string) (map[string]batchv1.Job, error) {
+	jobMap := make(map[string]batchv1.Job)
+	jobList, err := eh.userAccount.Client.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelselector.JobAndBatchJobsForComponent(appName, componentName)})
+	if err != nil {
+		return nil, err
+	}
+	for _, job := range jobList.Items {
+		job := job
+		jobMap[job.GetName()] = job
+	}
+	return jobMap, nil
 }
 
 func podIsJobScheduler(pod *corev1.Pod) bool {

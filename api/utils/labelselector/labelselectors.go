@@ -1,6 +1,8 @@
 package labelselector
 
 import (
+	"fmt"
+
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	kubeLabels "k8s.io/apimachinery/pkg/labels"
 )
@@ -33,4 +35,9 @@ func ForComponent(appName, componentName string) kubeLabels.Set {
 		kube.RadixAppLabel:       appName,
 		kube.RadixComponentLabel: componentName,
 	}
+}
+
+// JobAndBatchJobsForComponent returns label selector for Radix application job-component jobs and batches
+func JobAndBatchJobsForComponent(appName, componentName string) string {
+	return fmt.Sprintf("%s=%s, %s=%s, %s in (%s, %s)", kube.RadixAppLabel, appName, kube.RadixComponentLabel, componentName, kube.RadixJobTypeLabel, kube.RadixJobTypeJobSchedule, kube.RadixJobTypeBatchSchedule)
 }
