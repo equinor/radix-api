@@ -66,7 +66,7 @@ func (updater *radixDeployJobComponentUpdater) setEnvironmentVariablesToComponen
 }
 
 func (updater *radixDeployJobComponentUpdater) setReplicasToComponent(replicas *int) {
-	updater.base.radixDeployment.Spec.Jobs[updater.base.componentIndex].Replicas = replicas
+	//job component has always 1 replica
 }
 
 func (updater *radixDeployJobComponentUpdater) getComponentStatus() string {

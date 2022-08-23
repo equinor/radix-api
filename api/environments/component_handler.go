@@ -30,6 +30,9 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	if err != nil {
 		return err
 	}
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
+	}
 	componentStatus := updater.getComponentStatus()
 	if strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
 		return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
@@ -43,6 +46,9 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
 	if err != nil {
 		return err
+	}
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
