@@ -2,6 +2,10 @@ package environments
 
 import (
 	"context"
+	"encoding/json"
+	radixutils "github.com/equinor/radix-common/utils"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"io"
 	"strings"
 	"time"
@@ -474,4 +478,65 @@ func (eh EnvironmentHandler) RestartApplication(appName string) error {
 		}
 	}
 	return nil
+}
+
+func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, componentName string) (radixDeployCommonComponentUpdater, error) {
+	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	baseUpdater := &baseComponentUpdater{
+		appName:       appName,
+		envName:       envName,
+		componentName: componentName,
+		eh:            eh,
+		rd:            rd,
+	}
+	var updater radixDeployCommonComponentUpdater
+	var componentToPatch v1.RadixCommonDeployComponent
+	componentIndex, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
+	if componentIndex >= 0 && componentToPatch != nil {
+		updater = &radixDeployComponentUpdater{base: baseUpdater}
+	} else {
+		componentIndex, componentToPatch = deployUtils.GetDeploymentJobComponent(rd, componentName)
+		if componentIndex < 0 || componentToPatch == nil {
+			return nil, environmentModels.NonExistingComponent(appName, componentName)
+		}
+		updater = &radixDeployJobComponentUpdater{base: baseUpdater}
+	}
+
+	baseUpdater.componentIndex = componentIndex
+	baseUpdater.componentToPatch = componentToPatch
+
+	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
+	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
+	if err != nil {
+		return nil, err
+	}
+	return updater, nil
+}
+
+func (eh EnvironmentHandler) patchRadixDeployment(updater radixDeployCommonComponentUpdater, envVarName string) error {
+
+	rd := updater.getRd()
+	oldJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
+
+	environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
+	if environmentVariables == nil {
+		environmentVariables = make(map[string]string)
+	}
+
+	environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
+	updater.setEnvironmentVariablesToComponent(environmentVariables)
+
+	newJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
+
+	return eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
 }

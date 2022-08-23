@@ -17,7 +17,7 @@ import (
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonPatch "github.com/evanphx/json-patch"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,12 +75,6 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
-
-	replicas, err := getReplicasForComponentInEnvironment(environmentConfig)
-	if err != nil {
-		return err
-	}
-
 	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
 	if err != nil {
 		return err
@@ -91,6 +85,10 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	}
 
 	log.Infof("Starting component %s, %s", componentName, appName)
+	replicas, err := getReplicasForComponentInEnvironment(environmentConfig)
+	if err != nil {
+		return err
+	}
 	err = eh.patchReplicasOnRD(rd, index, replicas)
 	if err != nil {
 		return err
@@ -102,34 +100,15 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 // RestartComponent Restarts a component
 func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName string) error {
 	log.Infof("Restarting component %s, %s", componentName, appName)
-	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
+	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
 	if err != nil {
 		return err
 	}
-
-	index, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
-	if componentToPatch == nil {
-		return environmentModels.NonExistingComponent(appName, componentName)
+	componentStatus := updater.getComponentStatus()
+	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
+		return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
 	}
-
-	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
-	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
-
-	componentState, err := deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
-	if err != nil {
-		return err
-	}
-
-	if !strings.EqualFold(componentState.Status, deploymentModels.ConsistentComponent.String()) {
-		return environmentModels.CannotRestartComponent(appName, componentName, componentState.Status)
-	}
-
-	err = eh.patchRdForRestart(rd, index, componentToPatch)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return eh.patchRadixDeployment(updater, defaults.RadixRestartEnvironmentVariable)
 }
 
 // RestartComponentAuxiliaryResource Restarts a component's auxiliary resource
@@ -162,20 +141,20 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 	// Get Kubernetes deployment object for auxiliary resource
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
 	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	deployments, err := eh.client.AppsV1().Deployments(envNs).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	deploymentList, err := eh.client.AppsV1().Deployments(envNs).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
 	// Return error if deployment object not found
-	if len(deployments.Items) == 0 {
+	if len(deploymentList.Items) == 0 {
 		return environmentModels.MissingAuxiliaryResourceDeployment(appName, componentName)
 	}
 
-	if !canDeploymentBeRestarted(&deployments.Items[0]) {
+	if !canDeploymentBeRestarted(&deploymentList.Items[0]) {
 		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
 
-	return eh.patchDeploymentForRestart(&deployments.Items[0])
+	return eh.patchDeploymentForRestart(&deploymentList.Items[0])
 }
 
 func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
@@ -204,40 +183,12 @@ func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deploy
 	})
 }
 
-func getReplicasForComponentInEnvironment(environmentConfig *v1.RadixEnvironmentConfig) (*int, error) {
+func getReplicasForComponentInEnvironment(environmentConfig v1.RadixCommonEnvironmentConfig) (*int, error) {
 	if environmentConfig != nil {
-		return environmentConfig.Replicas, nil
+		return environmentConfig.GetReplicas(), nil
 	}
 
 	return nil, nil
-}
-
-func (eh EnvironmentHandler) patchRdForRestart(rd *v1.RadixDeployment, componentIndex int, componentToPatch *v1.RadixDeployComponent) error {
-
-	oldJSON, err := json.Marshal(rd)
-	if err != nil {
-		return err
-	}
-
-	environmentVariables := componentToPatch.EnvironmentVariables
-	if environmentVariables == nil {
-		environmentVariables = make(map[string]string)
-	}
-
-	environmentVariables[defaults.RadixRestartEnvironmentVariable] = radixutils.FormatTimestamp(time.Now())
-	rd.Spec.Components[componentIndex].EnvironmentVariables = environmentVariables
-
-	newJSON, err := json.Marshal(rd)
-	if err != nil {
-		return err
-	}
-
-	err = eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (eh EnvironmentHandler) patchReplicasOnRD(rd *v1.RadixDeployment, componentIndex int, replicas *int) error {
@@ -266,7 +217,7 @@ func (eh EnvironmentHandler) patchReplicasOnRD(rd *v1.RadixDeployment, component
 }
 
 func (eh EnvironmentHandler) patch(namespace, name string, oldJSON, newJSON []byte) error {
-	patchBytes, err := jsonpatch.CreateMergePatch(oldJSON, newJSON)
+	patchBytes, err := jsonPatch.CreateMergePatch(oldJSON, newJSON)
 
 	if err != nil {
 		log.Fatalln(err)

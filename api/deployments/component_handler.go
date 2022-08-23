@@ -15,6 +15,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,35 +88,68 @@ func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponen
 	if err != nil {
 		return nil, err
 	}
+	if component.GetType() == v1.RadixComponentTypeComponent {
+		hpaSummary, err := deploy.getHpaSummary(component, envNs)
+		if err != nil {
+			return nil, err
+		}
+		deploymentComponent.HorizontalScalingSummary = hpaSummary
+	}
+	return deploymentComponent, nil
+}
 
+func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
 	hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	if err == nil {
-		minReplicas := int32(1)
-		if hpa.Spec.MinReplicas != nil {
-			minReplicas = *hpa.Spec.MinReplicas
-		}
-		maxReplicas := hpa.Spec.MaxReplicas
-		currentCPUUtil := int32(0)
-		if hpa.Status.CurrentCPUUtilizationPercentage != nil {
-			currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
-		}
-		targetCPUUtil := defaultTargetCPUUtilization
-		if hpa.Spec.TargetCPUUtilizationPercentage != nil {
-			targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
-		}
-		hpaSummary := deploymentModels.HorizontalScalingSummary{
-			MinReplicas:                     minReplicas,
-			MaxReplicas:                     maxReplicas,
-			CurrentCPUUtilizationPercentage: currentCPUUtil,
-			TargetCPUUtilizationPercentage:  targetCPUUtil,
-		}
-		deploymentComponent.HorizontalScalingSummary = &hpaSummary
-	}
 
-	return deploymentComponent, nil
+	minReplicas := int32(1)
+	if hpa.Spec.MinReplicas != nil {
+		minReplicas = *hpa.Spec.MinReplicas
+	}
+	maxReplicas := hpa.Spec.MaxReplicas
+	currentCPUUtil := int32(0)
+	if hpa.Status.CurrentCPUUtilizationPercentage != nil {
+		currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
+	}
+	targetCPUUtil := defaultTargetCPUUtilization
+	if hpa.Spec.TargetCPUUtilizationPercentage != nil {
+		targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
+	}
+	hpaSummary := deploymentModels.HorizontalScalingSummary{
+		MinReplicas:                     minReplicas,
+		MaxReplicas:                     maxReplicas,
+		CurrentCPUUtilizationPercentage: currentCPUUtil,
+		TargetCPUUtilizationPercentage:  targetCPUUtil,
+	}
+	return &hpaSummary, nil
+}
+
+func getHorizontalScalingSummary(hpa *autoscalingv1.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
+	minReplicas := int32(1)
+	if hpa.Spec.MinReplicas != nil {
+		minReplicas = *hpa.Spec.MinReplicas
+	}
+	maxReplicas := hpa.Spec.MaxReplicas
+	currentCPUUtil := int32(0)
+	if hpa.Status.CurrentCPUUtilizationPercentage != nil {
+		currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
+	}
+	targetCPUUtil := defaultTargetCPUUtilization
+	if hpa.Spec.TargetCPUUtilizationPercentage != nil {
+		targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
+	}
+	hpaSummary := deploymentModels.HorizontalScalingSummary{
+		MinReplicas:                     minReplicas,
+		MaxReplicas:                     maxReplicas,
+		CurrentCPUUtilizationPercentage: currentCPUUtil,
+		TargetCPUUtilizationPercentage:  targetCPUUtil,
+	}
+	return &hpaSummary
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
@@ -124,7 +158,7 @@ func GetComponentStateFromSpec(
 	appName string,
 	deployment *deploymentModels.DeploymentSummary,
 	deploymentStatus v1.RadixDeployStatus,
-	environmentConfig *v1.RadixEnvironmentConfig,
+	environmentConfig v1.RadixCommonEnvironmentConfig,
 	component v1.RadixCommonDeployComponent) (*deploymentModels.Component, error) {
 
 	var environmentVariables map[string]string
@@ -207,28 +241,28 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 	return componentPods, nil
 }
 
-func runningReplicaDiffersFromConfig(environmentConfig *v1.RadixEnvironmentConfig, actualPods []corev1.Pod) bool {
+func runningReplicaDiffersFromConfig(environmentConfig v1.RadixCommonEnvironmentConfig, actualPods []corev1.Pod) bool {
 	actualPodsLength := len(actualPods)
-	if environmentConfig != nil {
-		// No HPA config
-		if environmentConfig.HorizontalScaling == nil {
-			if environmentConfig.Replicas != nil {
-				return actualPodsLength != *environmentConfig.Replicas
-			}
-			return actualPodsLength != deployment.DefaultReplicas
-		}
-		// With HPA config
-		if environmentConfig.Replicas != nil && *environmentConfig.Replicas == 0 {
-			return actualPodsLength != *environmentConfig.Replicas
-		}
-		if environmentConfig.HorizontalScaling.MinReplicas != nil {
-			return actualPodsLength < int(*environmentConfig.HorizontalScaling.MinReplicas) ||
-				actualPodsLength > int(environmentConfig.HorizontalScaling.MaxReplicas)
-		}
-		return actualPodsLength < deployment.DefaultReplicas ||
-			actualPodsLength > int(environmentConfig.HorizontalScaling.MaxReplicas)
+	if radixutils.IsNil(environmentConfig) {
+		return actualPodsLength != deployment.DefaultReplicas
 	}
-	return actualPodsLength != deployment.DefaultReplicas
+	// No HPA config
+	if environmentConfig.GetHorizontalScaling() == nil {
+		if environmentConfig.GetReplicas() != nil {
+			return actualPodsLength != *environmentConfig.GetReplicas()
+		}
+		return actualPodsLength != deployment.DefaultReplicas
+	}
+	// With HPA config
+	if environmentConfig.GetReplicas() != nil && *environmentConfig.GetReplicas() == 0 {
+		return actualPodsLength != *environmentConfig.GetReplicas()
+	}
+	if environmentConfig.GetHorizontalScaling().MinReplicas != nil {
+		return actualPodsLength < int(*environmentConfig.GetHorizontalScaling().MinReplicas) ||
+			actualPodsLength > int(environmentConfig.GetHorizontalScaling().MaxReplicas)
+	}
+	return actualPodsLength < deployment.DefaultReplicas ||
+		actualPodsLength > int(environmentConfig.GetHorizontalScaling().MaxReplicas)
 }
 
 func runningReplicaDiffersFromSpec(component v1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
@@ -359,33 +393,37 @@ func runningComponentReplicaIsOutdated(component v1.RadixCommonDeployComponent, 
 func getStatusOfActiveDeployment(
 	component v1.RadixCommonDeployComponent,
 	deploymentStatus v1.RadixDeployStatus,
-	environmentConfig *v1.RadixEnvironmentConfig,
+	environmentConfig v1.RadixCommonEnvironmentConfig,
 	pods []corev1.Pod) (deploymentModels.ComponentStatus, error) {
 
-	status := deploymentModels.ConsistentComponent
-
-	if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
-		!runningReplicaDiffersFromSpec(component, pods) &&
-		len(pods) == 0 {
-		status = deploymentModels.StoppedComponent
-	} else if runningReplicaIsOutdated(component, pods) {
-		status = deploymentModels.ComponentOutdated
-	} else if runningReplicaDiffersFromSpec(component, pods) {
-		status = deploymentModels.ComponentReconciling
-	} else {
-		restarted := component.GetEnvironmentVariables()[defaults.RadixRestartEnvironmentVariable]
-		if !strings.EqualFold(restarted, "") {
-			restartedTime, err := radixutils.ParseTimestamp(restarted)
-			if err != nil {
-				return status, err
-			}
-
-			reconciledTime := deploymentStatus.Reconciled
-			if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
-				status = deploymentModels.ComponentRestarting
-			}
+	if component.GetType() == v1.RadixComponentTypeComponent {
+		if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
+			!runningReplicaDiffersFromSpec(component, pods) &&
+			len(pods) == 0 {
+			return deploymentModels.StoppedComponent, nil
+		}
+		if runningReplicaDiffersFromSpec(component, pods) {
+			return deploymentModels.ComponentReconciling, nil
+		}
+	} else if component.GetType() == v1.RadixComponentTypeJobScheduler {
+		if len(pods) == 0 {
+			return deploymentModels.StoppedComponent, nil
 		}
 	}
-
-	return status, nil
+	if runningReplicaIsOutdated(component, pods) {
+		return deploymentModels.ComponentOutdated, nil
+	}
+	restarted := component.GetEnvironmentVariables()[defaults.RadixRestartEnvironmentVariable]
+	if strings.EqualFold(restarted, "") {
+		return deploymentModels.ConsistentComponent, nil
+	}
+	restartedTime, err := radixutils.ParseTimestamp(restarted)
+	if err != nil {
+		return deploymentModels.ConsistentComponent, err
+	}
+	reconciledTime := deploymentStatus.Reconciled
+	if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
+		return deploymentModels.ComponentRestarting, nil
+	}
+	return deploymentModels.ConsistentComponent, nil
 }
