@@ -486,11 +486,10 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, co
 		return nil, err
 	}
 	baseUpdater := &baseComponentUpdater{
-		appName:       appName,
-		envName:       envName,
-		componentName: componentName,
-		eh:            eh,
-		rd:            rd,
+		appName:         appName,
+		envName:         envName,
+		componentName:   componentName,
+		radixDeployment: rd,
 	}
 	var updater radixDeployCommonComponentUpdater
 	var componentToPatch v1.RadixCommonDeployComponent
@@ -509,34 +508,64 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, co
 	baseUpdater.componentToPatch = componentToPatch
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
-	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, environmentConfig, componentToPatch)
+	baseUpdater.environmentConfig = configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch)
 	if err != nil {
 		return nil, err
 	}
 	return updater, nil
 }
 
-func (eh EnvironmentHandler) patchRadixDeployment(updater radixDeployCommonComponentUpdater, envVarName string) error {
+func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(updater radixDeployCommonComponentUpdater, envVarName string) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
+		if environmentVariables == nil {
+			environmentVariables = make(map[string]string)
+		}
+		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
+		updater.setEnvironmentVariablesToComponent(environmentVariables)
+		return nil
+	})
+}
 
-	rd := updater.getRd()
+func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 1
+		replicas, err := getReplicasForComponentInEnvironment(updater.getEnvironmentConfig())
+		if err != nil {
+			return err
+		}
+		if replicas != nil {
+			newReplica = *replicas
+		}
+		updater.setReplicasToComponent(&newReplica)
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 0
+		updater.setReplicasToComponent(&newReplica)
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, commitFunc func(updater radixDeployCommonComponentUpdater) error) error {
+	rd := updater.getRadixDeployment()
 	oldJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
 	}
 
-	environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
-	if environmentVariables == nil {
-		environmentVariables = make(map[string]string)
-	}
-
-	environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
-	updater.setEnvironmentVariablesToComponent(environmentVariables)
-
+	commitFunc(updater)
 	newJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
 	}
-
-	return eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
+	err = eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
+	if err != nil {
+		return err
+	}
+	return nil
 }
