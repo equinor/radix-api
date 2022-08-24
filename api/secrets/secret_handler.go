@@ -739,9 +739,11 @@ func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace
 		if !ok {
 			continue
 		}
+		podCreated := pod.GetCreationTimestamp()
 		azureKeyVaultSecretVersion := models.AzureKeyVaultSecretVersion{
-			ReplicaName: pod.GetName(),
-			Version:     secretVersion,
+			ReplicaName:    pod.GetName(),
+			ReplicaCreated: radixutils.FormatTime(&podCreated),
+			Version:        secretVersion,
 		}
 		if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true") {
 			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
@@ -782,18 +784,6 @@ func (eh SecretHandler) getJobMap(appName, namespace, componentName string) (map
 		jobMap[job.GetName()] = job
 	}
 	return jobMap, nil
-}
-
-func podIsJobScheduler(pod *corev1.Pod) bool {
-	return strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true")
-}
-
-func podIsForScheduledJob(pod *corev1.Pod) bool {
-	if !strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
-		return false
-	}
-	jobName, ok := pod.ObjectMeta.Labels[k8sJobNameLabel]
-	return ok && len(jobName) > 0
 }
 
 func sortPodsDesc(pods []corev1.Pod) []corev1.Pod {
