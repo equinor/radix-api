@@ -2,26 +2,27 @@ package environments
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"time"
-
-	"github.com/equinor/radix-api/api/secrets"
-	"github.com/equinor/radix-api/api/utils/labelselector"
-
-	log "github.com/sirupsen/logrus"
-
-	"github.com/equinor/radix-api/api/pods"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
 	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
+	radixutils "github.com/equinor/radix-common/utils"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -472,6 +473,96 @@ func (eh EnvironmentHandler) RestartApplication(appName string) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, componentName string) (radixDeployCommonComponentUpdater, error) {
+	deploymentSummary, rd, err := eh.getRadixDeployment(appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	baseUpdater := &baseComponentUpdater{
+		appName:         appName,
+		envName:         envName,
+		componentName:   componentName,
+		radixDeployment: rd,
+	}
+	var updater radixDeployCommonComponentUpdater
+	var componentToPatch v1.RadixCommonDeployComponent
+	componentIndex, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
+	if !radixutils.IsNil(componentToPatch) {
+		updater = &radixDeployComponentUpdater{base: baseUpdater}
+	} else {
+		componentIndex, componentToPatch = deployUtils.GetDeploymentJobComponent(rd, componentName)
+		if radixutils.IsNil(componentToPatch) {
+			return nil, environmentModels.NonExistingComponent(appName, componentName)
+		}
+		updater = &radixDeployJobComponentUpdater{base: baseUpdater}
+	}
+
+	baseUpdater.componentIndex = componentIndex
+	baseUpdater.componentToPatch = componentToPatch
+
+	ra, _ := eh.getRadixApplicationInAppNamespace(appName)
+	baseUpdater.environmentConfig = configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch)
+	if err != nil {
+		return nil, err
+	}
+	return updater, nil
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(updater radixDeployCommonComponentUpdater, envVarName string) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
+		if environmentVariables == nil {
+			environmentVariables = make(map[string]string)
+		}
+		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
+		updater.setEnvironmentVariablesToComponent(environmentVariables)
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 1
+		replicas, err := getReplicasForComponentInEnvironment(updater.getEnvironmentConfig())
+		if err != nil {
+			return err
+		}
+		if replicas != nil {
+			newReplica = *replicas
+		}
+		updater.setReplicasToComponent(&newReplica)
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 0
+		updater.setReplicasToComponent(&newReplica)
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, commitFunc func(updater radixDeployCommonComponentUpdater) error) error {
+	rd := updater.getRadixDeployment()
+	oldJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
+
+	commitFunc(updater)
+	newJSON, err := json.Marshal(rd)
+	if err != nil {
+		return err
+	}
+	err = eh.patch(rd.GetNamespace(), rd.GetName(), oldJSON, newJSON)
+	if err != nil {
+		return err
 	}
 	return nil
 }
