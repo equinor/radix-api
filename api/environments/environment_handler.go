@@ -3,29 +3,26 @@ package environments
 import (
 	"context"
 	"encoding/json"
-	radixutils "github.com/equinor/radix-common/utils"
-	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
-	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"io"
 	"strings"
 	"time"
-
-	"github.com/equinor/radix-api/api/secrets"
-	"github.com/equinor/radix-api/api/utils/labelselector"
-
-	log "github.com/sirupsen/logrus"
-
-	"github.com/equinor/radix-api/api/pods"
 
 	"github.com/equinor/radix-api/api/deployments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
 	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
+	radixutils "github.com/equinor/radix-common/utils"
+	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -494,11 +491,11 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, co
 	var updater radixDeployCommonComponentUpdater
 	var componentToPatch v1.RadixCommonDeployComponent
 	componentIndex, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
-	if componentIndex >= 0 && componentToPatch != nil {
+	if !radixutils.IsNil(componentToPatch) {
 		updater = &radixDeployComponentUpdater{base: baseUpdater}
 	} else {
 		componentIndex, componentToPatch = deployUtils.GetDeploymentJobComponent(rd, componentName)
-		if componentIndex < 0 || componentToPatch == nil {
+		if radixutils.IsNil(componentToPatch) {
 			return nil, environmentModels.NonExistingComponent(appName, componentName)
 		}
 		updater = &radixDeployJobComponentUpdater{base: baseUpdater}

@@ -15,7 +15,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,29 +126,6 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 		TargetCPUUtilizationPercentage:  targetCPUUtil,
 	}
 	return &hpaSummary, nil
-}
-
-func getHorizontalScalingSummary(hpa *autoscalingv1.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
-	minReplicas := int32(1)
-	if hpa.Spec.MinReplicas != nil {
-		minReplicas = *hpa.Spec.MinReplicas
-	}
-	maxReplicas := hpa.Spec.MaxReplicas
-	currentCPUUtil := int32(0)
-	if hpa.Status.CurrentCPUUtilizationPercentage != nil {
-		currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
-	}
-	targetCPUUtil := defaultTargetCPUUtilization
-	if hpa.Spec.TargetCPUUtilizationPercentage != nil {
-		targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
-	}
-	hpaSummary := deploymentModels.HorizontalScalingSummary{
-		MinReplicas:                     minReplicas,
-		MaxReplicas:                     maxReplicas,
-		CurrentCPUUtilizationPercentage: currentCPUUtil,
-		TargetCPUUtilizationPercentage:  targetCPUUtil,
-	}
-	return &hpaSummary
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
