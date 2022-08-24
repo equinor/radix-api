@@ -26,7 +26,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
-	k8s.io/client-go v1.5.2
+	k8s.io/client-go v0.23.9
 	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
 	sigs.k8s.io/secrets-store-csi-driver v1.1.0
 )
@@ -110,4 +110,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace k8s.io/client-go v1.5.2 => k8s.io/client-go v0.23.5
+replace github.com/equinor/radix-operator => /home/nst/go/src/github.com/equinor/radix-operator
