@@ -751,6 +751,7 @@ func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace
 			continue
 		}
 		if !strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
+			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 			continue
 		}
 		jobName := pod.ObjectMeta.Labels[k8sJobNameLabel]

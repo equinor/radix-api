@@ -19,6 +19,7 @@ import (
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -598,15 +599,11 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 					createRadixDeployComponent(componentName3, keyVaultName3, v1.RadixAzureKeyVaultObjectTypeSecret, secret1, secretEnvVar1),
 				}
 				scenario.jobs = []v1.RadixDeployJobComponent{createRadixDeployJobComponent(jobName1, keyVaultName2, secret2, secretEnvVar2)}
-				scenario.setExpectedSecretVersion(componentName1, keyVaultName1, v1.RadixAzureKeyVaultObjectTypeSecret, secret1, "version-c11", "replica-name-c11")
 				scenario.setExpectedSecretVersion(componentName1, keyVaultName1, v1.RadixAzureKeyVaultObjectTypeSecret, secret1, "version-c12", "replica-name-c11")
 				scenario.setExpectedSecretVersion(componentName1, keyVaultName1, v1.RadixAzureKeyVaultObjectTypeSecret, secret1, "version-c11", "replica-name-c12")
 				scenario.setExpectedSecretVersion(componentName1, keyVaultName1, v1.RadixAzureKeyVaultObjectTypeSecret, secret1, "version-c3", "replica-name-c13")
 				scenario.setExpectedSecretVersion(componentName2, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret3, "version-c21", "replica-name-c21")
-				scenario.setExpectedSecretVersion(componentName2, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret3, "version-c22", "replica-name-c21")
 				scenario.setExpectedSecretVersion(jobName1, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret2, "version-j1", "replica-name-j1")
-				scenario.setExpectedSecretVersion(jobName1, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret2, "version-j2", "replica-name-j1")
-				scenario.setExpectedSecretVersion(jobName1, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret2, "version-j1", "replica-name-j2")
 				initFunc := func(secretHandler *SecretHandler) {
 					//map[componentName]map[azureKeyVaultName]secretProviderClassAndSecret
 					componentAzKeyVaultSecretProviderClassNameMap := map[string]map[string]secretProviderClassAndSecret{
@@ -1711,7 +1708,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 		},
 	}
 	envNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	_, _ = radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+	rd, _ := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 	if scenario.init != nil {
 		(*scenario.init)(&secretHandler) //scenario optional custom init function
 	}
@@ -1725,7 +1722,70 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 			Data: secret.secretData,
 		}, metav1.CreateOptions{})
 	}
+	for _, component := range rd.Spec.Components {
+		s.createExpectedReplicas(scenario, &component, userAccount, appName, envNamespace, false)
+	}
+	for _, jobComponent := range rd.Spec.Jobs {
+		s.createExpectedReplicas(scenario, &jobComponent, userAccount, appName, envNamespace, true)
+	}
 	return secretHandler, deployHandler
+}
+
+func (s *secretHandlerTestSuite) createExpectedReplicas(scenario *getSecretScenario, component v1.RadixCommonDeployComponent, userAccount *models.Account, appName, envNamespace string, isJobComponent bool) {
+	//map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	if azureKeyVaultNameMap, ok := scenario.expectedSecretVersions[component.GetName()]; ok {
+		replicaNameMap := make(map[string]bool)
+		for _, secretIdMap := range azureKeyVaultNameMap {
+			for _, versionMap := range secretIdMap {
+				for _, replicaMap := range versionMap {
+					for replicaName := range replicaMap {
+						replicaNameMap[replicaName] = true
+					}
+				}
+			}
+		}
+		for replicaName, _ := range replicaNameMap {
+			s.createPodForRadixComponent(userAccount, appName, envNamespace, component.GetName(), replicaName, isJobComponent)
+			if isJobComponent {
+				s.createJobForRadixJobComponent(userAccount, appName, envNamespace, component.GetName())
+			}
+		}
+	}
+}
+
+func (s *secretHandlerTestSuite) createPodForRadixComponent(userAccount *models.Account, appName, envNamespace, componentName, replicaName string, isJobComponent bool) {
+	labels := map[string]string{
+		kube.RadixAppLabel:       appName,
+		kube.RadixComponentLabel: componentName,
+	}
+	if isJobComponent {
+		labels[k8sJobNameLabel] = componentName
+		labels[kube.RadixJobTypeLabel] = kube.RadixJobTypeJobSchedule
+	}
+	_, _ = userAccount.Client.CoreV1().Pods(envNamespace).Create(context.Background(), &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              replicaName,
+			Namespace:         envNamespace,
+			Labels:            labels,
+			CreationTimestamp: metav1.Now(),
+		},
+	}, metav1.CreateOptions{})
+}
+
+func (s *secretHandlerTestSuite) createJobForRadixJobComponent(userAccount *models.Account, appName, envNamespace, componentName string) {
+	labels := map[string]string{
+		kube.RadixAppLabel:       appName,
+		kube.RadixComponentLabel: componentName,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+	}
+	_, _ = userAccount.Client.BatchV1().Jobs(envNamespace).Create(context.Background(), &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              componentName,
+			Namespace:         envNamespace,
+			Labels:            labels,
+			CreationTimestamp: metav1.Now(),
+		},
+	}, metav1.CreateOptions{})
 }
 
 func getRadixComponents(components []v1.RadixDeployComponent, envName string) []v1.RadixComponent {
