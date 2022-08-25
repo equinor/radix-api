@@ -1744,7 +1744,7 @@ func (s *secretHandlerTestSuite) createExpectedReplicas(scenario *getSecretScena
 				}
 			}
 		}
-		for replicaName, _ := range replicaNameMap {
+		for replicaName := range replicaNameMap {
 			s.createPodForRadixComponent(userAccount, appName, envNamespace, component.GetName(), replicaName, isJobComponent)
 			if isJobComponent {
 				s.createJobForRadixJobComponent(userAccount, appName, envNamespace, component.GetName())

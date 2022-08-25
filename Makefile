@@ -113,3 +113,6 @@ endif
 
 .PHONY: bootstrap
 bootstrap: vendor
+
+staticcheck:
+	staticcheck ./...
