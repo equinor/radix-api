@@ -59,6 +59,11 @@ If you are using VSCode, there is a convenient launch configuration in `.vscode`
 
   **Solution**: `make swagger`
 
+#### Validate code
+
+- `go install honnef.co/go/tools/cmd/staticcheck@v0.3.3`
+- run `make staticcheck`
+
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
 `radix-api` has three places to set version
