@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,10 +12,8 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/go-openapi/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -30,35 +27,6 @@ const (
 	workerImage              = "radix-pipeline"
 	tektonRealNameAnnotation = "radix.equinor.com/tekton-pipeline-name"
 )
-
-func stepNotFoundError(stepName string) error {
-	return radixhttp.NotFoundError(fmt.Sprintf("step %s not found", stepName))
-}
-
-func stepScanOutputNotDefined(stepName string) error {
-	return radixhttp.NotFoundError(fmt.Sprintf("scan output for step %s not defined", stepName))
-}
-
-func stepScanOutputInvalidConfig(stepName string) error {
-	return &radixhttp.Error{
-		Type:    radixhttp.Server,
-		Message: fmt.Sprintf("scan output configuration for step %s is invalid", stepName),
-	}
-}
-
-func stepScanOutputMissingKeyInConfigMap(stepName string) error {
-	return &radixhttp.Error{
-		Type:    radixhttp.Server,
-		Message: fmt.Sprintf("scan output data for step %s not found", stepName),
-	}
-}
-
-func stepScanOutputInvalidConfigMapData(stepName string) error {
-	return &radixhttp.Error{
-		Type:    radixhttp.Server,
-		Message: fmt.Sprintf("scan output data for step %s is invalid", stepName),
-	}
-}
 
 // JobHandler Instance variables
 type JobHandler struct {
@@ -120,46 +88,6 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 	}
 
 	return jobModels.GetJobFromRadixJob(job, jobDeployments, jobComponents), nil
-}
-
-// GetPipelineJobStepScanOutput Get vulnerability scan output from scan step
-func (jh JobHandler) GetPipelineJobStepScanOutput(appName, jobName, stepName string) ([]jobModels.Vulnerability, error) {
-	namespace := crdUtils.GetAppNamespace(appName)
-	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	step := getStepFromRadixJob(job, stepName)
-	if step == nil {
-		return nil, stepNotFoundError(stepName)
-	}
-
-	if step.Output == nil || step.Output.Scan == nil {
-		return nil, stepScanOutputNotDefined(stepName)
-	}
-
-	scanOutputName, scanOutputKey := strings.TrimSpace(step.Output.Scan.VulnerabilityListConfigMap), strings.TrimSpace(step.Output.Scan.VulnerabilityListKey)
-	if scanOutputName == "" || scanOutputKey == "" {
-		return nil, stepScanOutputInvalidConfig(stepName)
-	}
-
-	scanOutputConfigMap, err := jh.userAccount.Client.CoreV1().ConfigMaps(namespace).Get(context.TODO(), scanOutputName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	scanOutput, found := scanOutputConfigMap.Data[scanOutputKey]
-	if !found {
-		return nil, stepScanOutputMissingKeyInConfigMap(stepName)
-	}
-
-	var vulnerabilities []jobModels.Vulnerability
-	if err := json.Unmarshal([]byte(scanOutput), &vulnerabilities); err != nil {
-		return nil, stepScanOutputInvalidConfigMapData(stepName)
-	}
-
-	return vulnerabilities, nil
 }
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
@@ -367,16 +295,6 @@ func sortPipelineTasks(tasks []jobModels.PipelineRunTask) []jobModels.PipelineRu
 		return tasks[i].Started < tasks[j].Started
 	})
 	return tasks
-}
-
-func getStepFromRadixJob(job *v1.RadixJob, stepName string) *v1.RadixJobStep {
-	for _, step := range job.Status.Steps {
-		if step.Name == stepName {
-			return &step
-		}
-	}
-
-	return nil
 }
 
 func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
