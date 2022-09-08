@@ -23,13 +23,6 @@ const (
 	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
 )
 
-// Server Holds instance variables
-type Server struct {
-	Middleware  *negroni.Negroni
-	clusterName string
-	controllers []models.Controller
-}
-
 // NewServer Constructor function
 func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
@@ -77,17 +70,11 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	)
 	n.UseHandler(serveMux)
 
-	server := &Server{
-		n,
-		clusterName,
-		controllers,
-	}
-
 	useOutClusterClient := kubeUtil.IsUseOutClusterClient()
-	return getCORSHandler(server, useOutClusterClient)
+	return getCORSHandler(clusterName, n, useOutClusterClient)
 }
 
-func getCORSHandler(apiRouter *Server, useOutClusterClient bool) http.Handler {
+func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClient bool) http.Handler {
 	radixDNSZone := os.Getenv(radixDNSZoneEnvironmentVariable)
 
 	corsOptions := cors.Options{
@@ -101,9 +88,9 @@ func getCORSHandler(apiRouter *Server, useOutClusterClient bool) http.Handler {
 			// 1. "https://*.radix.equinor.com"
 			// 2. Keep cors rules in ingresses
 			fmt.Sprintf("https://console.%s", radixDNSZone),
-			getHostName("web", "radix-web-console-qa", apiRouter.clusterName, radixDNSZone),
-			getHostName("web", "radix-web-console-prod", apiRouter.clusterName, radixDNSZone),
-			getHostName("web", "radix-web-console-dev", apiRouter.clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-qa", clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-prod", clusterName, radixDNSZone),
+			getHostName("web", "radix-web-console-dev", clusterName, radixDNSZone),
 			// Due to active-cluster
 			getActiveClusterHostName("web", "radix-web-console-qa", radixDNSZone),
 			getActiveClusterHostName("web", "radix-web-console-prod", radixDNSZone),
@@ -123,7 +110,7 @@ func getCORSHandler(apiRouter *Server, useOutClusterClient bool) http.Handler {
 	}
 
 	c := cors.New(corsOptions)
-	return c.Handler(apiRouter.Middleware)
+	return c.Handler(handler)
 }
 
 func getActiveClusterHostName(componentName, namespace, radixDNSZone string) string {
