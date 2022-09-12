@@ -315,6 +315,18 @@ func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
 	return jh.getJobsInNamespace(corev1.NamespaceAll)
 }
 
+func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary, error) {
+	var summaries []*jobModels.JobSummary
+	for _, appName := range appNames {
+		summary, err := jh.getJobs(appName)
+		if err != nil {
+			return nil, err
+		}
+		summaries = append(summaries, summary...)
+	}
+	return summaries, nil
+}
+
 func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
 	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
 }
@@ -335,24 +347,31 @@ func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSumma
 
 func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	// Primarily use Radix Jobs
-	allJobs, err := jh.getAllJobs()
+	var apps []string
+	for name, shouldAdd := range forApplications {
+		if shouldAdd {
+			apps = append(apps, name)
+		}
+	}
+
+	someJobs, err := jh.getDefinedJobs(apps)
 	if err != nil {
 		return nil, err
 	}
 
-	sort.Slice(allJobs, func(i, j int) bool {
-		switch strings.Compare(allJobs[i].AppName, allJobs[j].AppName) {
+	sort.Slice(someJobs, func(i, j int) bool {
+		switch strings.Compare(someJobs[i].AppName, someJobs[j].AppName) {
 		case -1:
 			return true
 		case 1:
 			return false
 		}
 
-		return utils.IsBefore(allJobs[j], allJobs[i])
+		return utils.IsBefore(someJobs[j], someJobs[i])
 	})
 
 	applicationJob := make(map[string]*jobModels.JobSummary)
-	for _, job := range allJobs {
+	for _, job := range someJobs {
 		if applicationJob[job.AppName] != nil {
 			continue
 		}
