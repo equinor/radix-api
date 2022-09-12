@@ -17,6 +17,7 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/go-openapi/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -316,15 +317,32 @@ func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
 }
 
 func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary, error) {
-	var summaries []*jobModels.JobSummary
+	var g errgroup.Group
+	g.SetLimit(25)
+
+	jobsCh := make(chan []*jobModels.JobSummary, len(appNames))
 	for _, appName := range appNames {
-		summary, err := jh.getJobs(appName)
-		if err != nil {
-			return nil, err
-		}
-		summaries = append(summaries, summary...)
+		name := appName // locally scope appName to avoid race condition in go routines
+		g.Go(func() error {
+			jobs, err := jh.getJobs(name)
+			if err == nil {
+				jobsCh <- jobs
+			}
+			return err
+		})
 	}
-	return summaries, nil
+
+	err := g.Wait()
+	close(jobsCh)
+	if err != nil {
+		return nil, err
+	}
+
+	var jobSummaries []*jobModels.JobSummary
+	for jobs := range jobsCh {
+		jobSummaries = append(jobSummaries, jobs...)
+	}
+	return jobSummaries, nil
 }
 
 func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
