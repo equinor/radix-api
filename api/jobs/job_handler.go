@@ -312,10 +312,6 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	return jobs, nil
 }
 
-func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(corev1.NamespaceAll)
-}
-
 func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary, error) {
 	var g errgroup.Group
 	g.SetLimit(25)
