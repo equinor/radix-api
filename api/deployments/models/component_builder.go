@@ -122,7 +122,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientIdSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
 			for _, item := range azureKeyVault.Items {
-				b.secrets = append(b.secrets, secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item))
+				b.secrets = append(b.secrets, secret.GetSecretNameForAzureKeyVaultItem(component.GetName(), azureKeyVault.Name, &item))
 			}
 		}
 	}

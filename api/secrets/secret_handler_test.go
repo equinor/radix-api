@@ -447,7 +447,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
-					Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
+					Name:        "AzureKeyVaultItem-component1--keyVault1--secret--secret1",
 					DisplayName: "secret secret1",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault1",
@@ -474,7 +474,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					ID:          secretModels.SecretIdClientSecret,
 				},
 				{
-					Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
+					Name:        "AzureKeyVaultItem-job1--keyVault2--secret--secret2",
 					DisplayName: "secret secret2",
 					Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 					Resource:    "keyVault2",
@@ -1957,7 +1957,7 @@ func createScenarioWithComponentAndJobWithCredSecretsAndOneSecretPerComponent(na
 				ID:          secretModels.SecretIdClientSecret,
 			},
 			{
-				Name:        "AzureKeyVaultItem-keyVault1--secret--secret1",
+				Name:        "AzureKeyVaultItem-component1--keyVault1--secret--secret1",
 				DisplayName: "secret secret1",
 				Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    keyVaultName1,
@@ -1984,7 +1984,7 @@ func createScenarioWithComponentAndJobWithCredSecretsAndOneSecretPerComponent(na
 				ID:          secretModels.SecretIdClientSecret,
 			},
 			{
-				Name:        "AzureKeyVaultItem-keyVault2--secret--secret2",
+				Name:        "AzureKeyVaultItem-job1--keyVault2--secret--secret2",
 				DisplayName: "secret secret2",
 				Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    keyVaultName2,
