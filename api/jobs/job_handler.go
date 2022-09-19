@@ -17,6 +17,7 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/go-openapi/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -311,8 +312,33 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	return jobs, nil
 }
 
-func (jh JobHandler) getAllJobs() ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(corev1.NamespaceAll)
+func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary, error) {
+	var g errgroup.Group
+	g.SetLimit(25)
+
+	jobsCh := make(chan []*jobModels.JobSummary, len(appNames))
+	for _, appName := range appNames {
+		name := appName // locally scope appName to avoid race condition in go routines
+		g.Go(func() error {
+			jobs, err := jh.getJobs(name)
+			if err == nil {
+				jobsCh <- jobs
+			}
+			return err
+		})
+	}
+
+	err := g.Wait()
+	close(jobsCh)
+	if err != nil {
+		return nil, err
+	}
+
+	var jobSummaries []*jobModels.JobSummary
+	for jobs := range jobsCh {
+		jobSummaries = append(jobSummaries, jobs...)
+	}
+	return jobSummaries, nil
 }
 
 func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
@@ -335,24 +361,31 @@ func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSumma
 
 func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	// Primarily use Radix Jobs
-	allJobs, err := jh.getAllJobs()
+	var apps []string
+	for name, shouldAdd := range forApplications {
+		if shouldAdd {
+			apps = append(apps, name)
+		}
+	}
+
+	someJobs, err := jh.getDefinedJobs(apps)
 	if err != nil {
 		return nil, err
 	}
 
-	sort.Slice(allJobs, func(i, j int) bool {
-		switch strings.Compare(allJobs[i].AppName, allJobs[j].AppName) {
+	sort.Slice(someJobs, func(i, j int) bool {
+		switch strings.Compare(someJobs[i].AppName, someJobs[j].AppName) {
 		case -1:
 			return true
 		case 1:
 			return false
 		}
 
-		return utils.IsBefore(allJobs[j], allJobs[i])
+		return utils.IsBefore(someJobs[j], someJobs[i])
 	})
 
 	applicationJob := make(map[string]*jobModels.JobSummary)
-	for _, job := range allJobs {
+	for _, job := range someJobs {
 		if applicationJob[job.AppName] != nil {
 			continue
 		}

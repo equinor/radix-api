@@ -24,6 +24,7 @@ require (
 	github.com/tektoncd/pipeline v0.36.0
 	github.com/urfave/negroni/v2 v2.0.2
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
 	k8s.io/client-go v0.23.9
@@ -87,7 +88,6 @@ require (
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect

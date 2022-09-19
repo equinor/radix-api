@@ -8,4 +8,16 @@ type ApplicationsSearchRequest struct {
 	// required: true
 	// example: ["app1", "app2"]
 	Names []string `json:"names"`
+
+	// List of application names to be returned
+	//
+	// required: false
+	// example: { jobSummary: true }
+	IncludeFields ApplicationSearchIncludeFields `json:"includeFields,omitempty"`
+}
+
+// ApplicationSearchIncludeFields specifies additional fields to include in the response of an ApplicationsSearchRequest
+// swagger:model ApplicationSearchIncludeFields
+type ApplicationSearchIncludeFields struct {
+	JobSummary bool `json:"jobSummary,omitempty"`
 }

@@ -170,7 +170,7 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	}
 
 	handler := Init(accounts)
-	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR)
+	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR, GetApplicationsOptions{})
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -234,8 +234,12 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 
 	handler := Init(accounts)
 	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
-	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR)
 
+	appRegistrations, err := handler.GetApplications(
+		matcher,
+		ac.hasAccessToRR,
+		GetApplicationsOptions{IncludeJobSummary: appNamesRequest.IncludeFields.JobSummary},
+	)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

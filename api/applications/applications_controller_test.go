@@ -6,9 +6,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	strings "strings"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -24,15 +29,11 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -149,28 +150,35 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 }
 
 func TestSearchApplications(t *testing.T) {
+	// Setup
 	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+	appNames := []string{"app-1", "app-2"}
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app1"))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("app2"))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[0]))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[1]))
+
+	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
+
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 			return true
 		}))
 
-	t.Run("search for app1", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1"}}
+	// Tests
+	t.Run("search for "+appNames[0], func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 1, len(applications))
-		assert.Equal(t, "app1", applications[0].Name)
+		assert.Equal(t, appNames[0], applications[0].Name)
 	})
 
 	t.Run("search for both apps", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1", "app2"}}
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: appNames}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel
 
@@ -189,12 +197,29 @@ func TestSearchApplications(t *testing.T) {
 		assert.Equal(t, 0, len(applications))
 	})
 
-	t.Run("search for app1 - no access", func(t *testing.T) {
+	t.Run("search for "+appNames[1]+" - with includeFields", func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{
+			Names: []string{appNames[1]},
+			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
+				JobSummary: true,
+			},
+		}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, appNames[1], applications[0].Name)
+		assert.NotNil(t, applications[0].LatestJob)
+	})
+
+	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 				return false
 			}))
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{"app1"}}
+		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel
 
@@ -202,7 +227,58 @@ func TestSearchApplications(t *testing.T) {
 		controllertest.GetResponseBody(response, &applications)
 		assert.Equal(t, 0, len(applications))
 	})
+}
 
+func TestSearchApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
+	appNames := []string{"app-1", "app-2", "app-3"}
+
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName(appNames[0]))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName(appNames[1]))
+	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		WithName(appNames[2]))
+
+	commontest.CreateAppNamespace(kubeclient, appNames[0])
+	commontest.CreateAppNamespace(kubeclient, appNames[1])
+	commontest.CreateAppNamespace(kubeclient, appNames[2])
+
+	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
+	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	app2Job2Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
+	app2Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:01Z")
+
+	createRadixJob(commonTestUtils, appNames[0], "app-1-job-1", app1Job1Started)
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-2", app2Job2Started)
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-3", app2Job3Started)
+
+	// Test
+	searchParam := applicationModels.ApplicationsSearchRequest{
+		Names: appNames,
+		IncludeFields: applicationModels.ApplicationSearchIncludeFields{
+			JobSummary: true,
+		},
+	}
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+	response := <-responseChannel
+
+	applications := make([]*applicationModels.ApplicationSummary, 0)
+	controllertest.GetResponseBody(response, &applications)
+
+	for _, application := range applications {
+		if strings.EqualFold(application.Name, appNames[0]) {
+			assert.NotNil(t, application.LatestJob)
+			assert.Equal(t, "app-1-job-1", application.LatestJob.Name)
+		} else if strings.EqualFold(application.Name, appNames[1]) {
+			assert.NotNil(t, application.LatestJob)
+			assert.Equal(t, "app-2-job-3", application.LatestJob.Name)
+		} else if strings.EqualFold(application.Name, appNames[2]) {
+			assert.Nil(t, application.LatestJob)
+		}
+	}
 }
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
@@ -440,51 +516,6 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 }
 
-func TestGetApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-1"))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-2"))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("app-3"))
-
-	commontest.CreateAppNamespace(kubeclient, "app-1")
-	commontest.CreateAppNamespace(kubeclient, "app-2")
-	commontest.CreateAppNamespace(kubeclient, "app-3")
-
-	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
-	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
-	app2Job2Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
-	app2Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:01Z")
-
-	createRadixJob(commonTestUtils, "app-1", "app-1-job-1", app1Job1Started)
-	createRadixJob(commonTestUtils, "app-2", "app-2-job-1", app2Job1Started)
-	createRadixJob(commonTestUtils, "app-2", "app-2-job-2", app2Job2Started)
-	createRadixJob(commonTestUtils, "app-2", "app-2-job-3", app2Job3Started)
-
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
-	response := <-responseChannel
-
-	applications := make([]*applicationModels.ApplicationSummary, 0)
-	controllertest.GetResponseBody(response, &applications)
-
-	for _, application := range applications {
-		if strings.EqualFold(application.Name, "app-1") {
-			assert.NotNil(t, application.LatestJob)
-			assert.Equal(t, "app-1-job-1", application.LatestJob.Name)
-		} else if strings.EqualFold(application.Name, "app-2") {
-			assert.NotNil(t, application.LatestJob)
-			assert.Equal(t, "app-2-job-3", application.LatestJob.Name)
-		} else if strings.EqualFold(application.Name, "app-3") {
-			assert.Nil(t, application.LatestJob)
-		}
-	}
-}
-
 func TestGetApplication_WithJobs(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
@@ -567,7 +598,6 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 			assert.NotNil(t, environment.ActiveDeployment)
 		}
 	}
-
 }
 
 func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
@@ -1110,7 +1140,6 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 	pipelines := make([]string, 0)
 	controllertest.GetResponseBody(response, &pipelines)
 	assert.Equal(t, len(supportedPipelines), len(pipelines))
-
 }
 
 func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret(t *testing.T) {
