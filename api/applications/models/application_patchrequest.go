@@ -34,4 +34,9 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	ConfigBranch *string `json:"configBranch,omitempty"`
+
+	// AcknowledgeWarnings acknowledge all warnings
+	//
+	// required: false
+	AcknowledgeWarnings bool `json:"acknowledgeWarnings,omitempty"`
 }

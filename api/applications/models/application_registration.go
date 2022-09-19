@@ -61,4 +61,9 @@ type ApplicationRegistration struct {
 	//
 	// required: true
 	ConfigBranch string `json:"configBranch"`
+
+	// AcknowledgeWarnings acknowledge all warnings
+	//
+	// required: false
+	AcknowledgeWarnings bool `json:"acknowledgeWarnings,omitempty"`
 }

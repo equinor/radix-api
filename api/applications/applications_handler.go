@@ -135,7 +135,7 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 }
 
 // RegisterApplication handler for RegisterApplication
-func (ah ApplicationHandler) RegisterApplication(application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) RegisterApplication(application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistrationUpsertResult, error) {
 	// Only if repository is provided and deploykey is not set by user
 	// generate the key
 	var deployKey *utils.DeployKey
@@ -171,16 +171,30 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
+	if !application.AcknowledgeWarnings {
+		warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
+		if err != nil {
+			return nil, err
+		}
+		if len(warnings) != 0 {
+			return &applicationModels.ApplicationRegistrationUpsertResult{
+				Warnings: warnings,
+			}, nil
+		}
+	}
+
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(context.TODO(), radixRegistration, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResult{
+		ApplicationRegistration: &application,
+	}, nil
 }
 
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
-func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistrationUpsertResult, error) {
 	if appName != application.Name {
 		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
@@ -223,17 +237,29 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	if err != nil {
 		return nil, err
 	}
-
+	if !application.AcknowledgeWarnings {
+		warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
+		if err != nil {
+			return nil, err
+		}
+		if len(warnings) != 0 {
+			return &applicationModels.ApplicationRegistrationUpsertResult{
+				Warnings: warnings,
+			}, nil
+		}
+	}
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResult{
+		ApplicationRegistration: &application,
+	}, nil
 }
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
-func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResult, error) {
 	// Make check that this is an existing application
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -297,6 +323,17 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		if err != nil {
 			return nil, err
 		}
+		if !patchRequest.AcknowledgeWarnings {
+			warnings, err := ah.getRegistrationInsertWarnings(existingRegistration)
+			if err != nil {
+				return nil, err
+			}
+			if len(warnings) != 0 {
+				return &applicationModels.ApplicationRegistrationUpsertResult{
+					Warnings: warnings,
+				}, nil
+			}
+		}
 
 		payloadBytes, _ := json.Marshal(payload)
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(context.TODO(), existingRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
@@ -306,7 +343,9 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	}
 
 	application := NewBuilder().withRadixRegistration(existingRegistration).Build()
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResult{
+		ApplicationRegistration: &application,
+	}, nil
 }
 
 // DeleteApplication handler for DeleteApplication
@@ -469,7 +508,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
+	err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -477,10 +516,18 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 	return nil
 }
 
+func (ah ApplicationHandler) getRegistrationInsertWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+}
+
+func (ah ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+}
+
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.getServiceAccount().RadixClient, radixRegistration)
+	err := radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -567,6 +614,7 @@ type Builder interface {
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
+	withAcknowledgeWarnings() Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -574,18 +622,19 @@ type Builder interface {
 }
 
 type applicationBuilder struct {
-	name         string
-	owner        string
-	creator      string
-	repository   string
-	sharedSecret string
-	adGroups     []string
-	publicKey    string
-	privateKey   string
-	cloneURL     string
-	machineUser  bool
-	wbs          string
-	configBranch string
+	name                string
+	owner               string
+	creator             string
+	repository          string
+	sharedSecret        string
+	adGroups            []string
+	publicKey           string
+	privateKey          string
+	cloneURL            string
+	machineUser         bool
+	wbs                 string
+	configBranch        string
+	acknowledgeWarnings bool
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -686,6 +735,11 @@ func (rb *applicationBuilder) withConfigBranch(configBranch string) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withAcknowledgeWarnings() Builder {
+	rb.acknowledgeWarnings = true
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -693,17 +747,18 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:         rb.name,
-		Repository:   repository,
-		SharedSecret: rb.sharedSecret,
-		AdGroups:     rb.adGroups,
-		PublicKey:    rb.publicKey,
-		PrivateKey:   rb.privateKey,
-		Owner:        rb.owner,
-		Creator:      rb.creator,
-		MachineUser:  rb.machineUser,
-		WBS:          rb.wbs,
-		ConfigBranch: rb.configBranch,
+		Name:                rb.name,
+		Repository:          repository,
+		SharedSecret:        rb.sharedSecret,
+		AdGroups:            rb.adGroups,
+		PublicKey:           rb.publicKey,
+		PrivateKey:          rb.privateKey,
+		Owner:               rb.owner,
+		Creator:             rb.creator,
+		MachineUser:         rb.machineUser,
+		WBS:                 rb.wbs,
+		ConfigBranch:        rb.configBranch,
+		AcknowledgeWarnings: rb.acknowledgeWarnings,
 	}
 }
 
