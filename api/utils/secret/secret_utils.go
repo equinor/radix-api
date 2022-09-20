@@ -26,8 +26,8 @@ func FixedStringRunes(n int, character rune) string {
 }
 
 //GetSecretNameForAzureKeyVaultItem Get the name of the secret by Azure Key vault item properties
-func GetSecretNameForAzureKeyVaultItem(azureKeyVaultName string, item *radixv1.RadixAzureKeyVaultItem) string {
-	displayName := fmt.Sprintf("AzureKeyVaultItem-%s--%s--%s", azureKeyVaultName, getAzureKeyVaultItemType(item), item.Name)
+func GetSecretNameForAzureKeyVaultItem(componentName, azureKeyVaultName string, item *radixv1.RadixAzureKeyVaultItem) string {
+	displayName := fmt.Sprintf("AzureKeyVaultItem-%s--%s--%s--%s", componentName, azureKeyVaultName, getAzureKeyVaultItemType(item), item.Name)
 	return displayName
 }
 
