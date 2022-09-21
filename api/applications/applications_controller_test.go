@@ -631,7 +631,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 	}
 }
 
-func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
+func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
@@ -660,9 +660,47 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: repository is in use by any-name", errorResponse.Message)
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResult := applicationModels.ApplicationRegistrationUpsertResult{}
+	controllertest.GetResponseBody(response, &registrationUpsertResult)
+	assert.NotEmpty(t, registrationUpsertResult.Warnings)
+}
+
+func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _, _, _ := setupTest()
+
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		Build()
+
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withRepository("https://github.com/Equinor/any-other-repo").
+		Build()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	// Test
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withAcknowledgeWarnings().
+		withRepository("https://github.com/Equinor/any-repo").
+		Build()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResult := applicationModels.ApplicationRegistrationUpsertResult{}
+	controllertest.GetResponseBody(response, &registrationUpsertResult)
+	assert.Empty(t, registrationUpsertResult.Warnings)
+	assert.NotNil(t, registrationUpsertResult.ApplicationRegistration)
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
