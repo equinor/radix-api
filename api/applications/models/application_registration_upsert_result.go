@@ -5,7 +5,7 @@ package models
 type ApplicationRegistrationUpsertResult struct {
 	// ApplicationRegistration
 	//
-	// required: true
+	// required: false
 	ApplicationRegistration *ApplicationRegistration `json:"applicationRegistration"`
 
 	// Warnings of upsert operation

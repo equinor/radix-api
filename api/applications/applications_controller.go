@@ -472,7 +472,7 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: Successful application registration
+	//     description: Application registration operation details
 	//     schema:
 	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResult"
 	//   "400":
@@ -527,7 +527,7 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: Successful change registration details
+	//     description: Change registration operation result
 	//     schema:
 	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResult"
 	//   "400":
@@ -586,7 +586,7 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: Successful at modifying registration details
+	//     description: Modifying registration operation details
 	//     schema:
 	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResult"
 	//   "400":
