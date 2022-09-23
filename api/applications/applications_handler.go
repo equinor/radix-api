@@ -238,7 +238,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 	if !application.AcknowledgeWarnings {
-		warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
+		warnings, err := ah.getRegistrationUpdateWarnings(radixRegistration)
 		if err != nil {
 			return nil, err
 		}
@@ -324,7 +324,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 			return nil, err
 		}
 		if !patchRequest.AcknowledgeWarnings {
-			warnings, err := ah.getRegistrationInsertWarnings(existingRegistration)
+			warnings, err := ah.getRegistrationUpdateWarnings(existingRegistration)
 			if err != nil {
 				return nil, err
 			}
