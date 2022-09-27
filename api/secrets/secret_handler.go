@@ -486,10 +486,10 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 			return nil, err
 		}
 		secrets = append(secrets, credSecrets...)
-		secretStatus := getAzureKeyVaultSecretStatus(azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
+		secretStatus := getAzureKeyVaultSecretStatus(componentName, azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
 		for _, item := range azureKeyVault.Items {
 			secrets = append(secrets, models.Secret{
-				Name:        secret.GetSecretNameForAzureKeyVaultItem(azureKeyVault.Name, &item),
+				Name:        secret.GetSecretNameForAzureKeyVaultItem(componentName, azureKeyVault.Name, &item),
 				DisplayName: secret.GetSecretDisplayNameForAzureKeyVaultItem(&item),
 				Type:        models.SecretTypeCsiAzureKeyVaultItem,
 				Resource:    azureKeyVault.Name,
@@ -502,9 +502,9 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 	return secrets, nil
 }
 
-func getAzureKeyVaultSecretStatus(azureKeyVaultName string, secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
+func getAzureKeyVaultSecretStatus(componentName, azureKeyVaultName string, secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
 	secretStatus := models.NotAvailable.String()
-	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(secretProviderClassMap, azureKeyVaultName)
+	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(componentName, secretProviderClassMap, azureKeyVaultName)
 	if secretProviderClass != nil {
 		secretStatus = models.Consistent.String()
 		for _, secretObject := range secretProviderClass.Spec.SecretObjects {
@@ -517,9 +517,10 @@ func getAzureKeyVaultSecretStatus(azureKeyVaultName string, secretProviderClassM
 	return secretStatus
 }
 
-func getComponentSecretProviderClassMapForAzureKeyVault(componentSecretProviderClassMap map[string]secretsstorev1.SecretProviderClass, azureKeyVaultName string) *secretsstorev1.SecretProviderClass {
+func getComponentSecretProviderClassMapForAzureKeyVault(componentName string, componentSecretProviderClassMap map[string]secretsstorev1.SecretProviderClass, azureKeyVaultName string) *secretsstorev1.SecretProviderClass {
 	for _, secretProviderClass := range componentSecretProviderClassMap {
-		if refAzureKeyVaultName, ok := secretProviderClass.ObjectMeta.Labels[kube.RadixSecretRefNameLabel]; ok && strings.EqualFold(refAzureKeyVaultName, strings.ToLower(azureKeyVaultName)) {
+		if strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixComponentLabel], componentName) &&
+			strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixSecretRefNameLabel], azureKeyVaultName) {
 			return &secretProviderClass
 		}
 	}
