@@ -1,8 +1,8 @@
 package models
 
-// ApplicationPatchRequest contains fields that can be patched on a registration
-// swagger:model ApplicationPatchRequest
-type ApplicationPatchRequest struct {
+// ApplicationRegistrationPatch contains fields that can be patched on a registration
+// swagger:model ApplicationRegistrationPatch
+type ApplicationRegistrationPatch struct {
 	// AdGroups the groups that should be able to access the application
 	//
 	// required: false
@@ -34,9 +34,4 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	ConfigBranch *string `json:"configBranch,omitempty"`
-
-	// AcknowledgeWarnings acknowledge all warnings
-	//
-	// required: false
-	AcknowledgeWarnings bool `json:"acknowledgeWarnings,omitempty"`
 }

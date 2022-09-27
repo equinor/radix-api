@@ -47,7 +47,7 @@ type ApplicationRegistration struct {
 	// required: false
 	PrivateKey string `json:"privateKey,omitempty"`
 
-	// MachineUser is on/off toggler of machine user for the application
+	// MachineUser is on/off toggle of machine user for the application
 	//
 	// required: false
 	MachineUser bool `json:"machineUser"`
@@ -61,9 +61,4 @@ type ApplicationRegistration struct {
 	//
 	// required: true
 	ConfigBranch string `json:"configBranch"`
-
-	// AcknowledgeWarnings acknowledge all warnings
-	//
-	// required: false
-	AcknowledgeWarnings bool `json:"acknowledgeWarnings,omitempty"`
 }

@@ -1,8 +1,8 @@
 package models
 
-// ApplicationRegistrationUpsertResult describe an application upsert operation result
-// swagger:model ApplicationRegistrationUpsertResult
-type ApplicationRegistrationUpsertResult struct {
+// ApplicationRegistrationUpsertRespond describe an application upsert operation respond
+// swagger:model ApplicationRegistrationUpsertRespond
+type ApplicationRegistrationUpsertRespond struct {
 	// ApplicationRegistration
 	//
 	// required: false
