@@ -242,6 +242,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
+	currentCloneURL := existingRegistration.Spec.CloneURL //currently repository is not changed here, but maybe later
 	// Only these fields can change over time
 	existingRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
 	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
@@ -255,7 +256,9 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	if err != nil {
 		return nil, err
 	}
-	if !applicationRegistrationRequest.AcknowledgeWarnings {
+
+	needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
 		if upsertResult, err := ah.getRegistrationUpdateResultForWarnings(radixRegistration); upsertResult != nil || err != nil {
 			return upsertResult, err
 		}
@@ -299,6 +302,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 		runUpdate = true
 	}
 
+	currentCloneURL := existingRegistration.Spec.CloneURL
 	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
 		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
 		existingRegistration.Spec.CloneURL = cloneURL
@@ -336,7 +340,9 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 		if err != nil {
 			return nil, err
 		}
-		if !applicationRegistrationPatchRequest.AcknowledgeWarnings {
+
+		needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
 			if upsertResult, err := ah.getRegistrationUpdateResultForWarnings(existingRegistration); upsertResult != nil || err != nil {
 				return upsertResult, err
 			}

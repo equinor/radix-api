@@ -952,8 +952,10 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
-	patchRequest := applicationModels.ApplicationRegistrationPatch{
-		Repository: &anyNewRepo,
+	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			Repository: &anyNewRepo,
+		},
 	}
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", appName), patchRequest)
