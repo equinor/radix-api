@@ -173,8 +173,8 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 	}
 
 	if !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResult, err := ah.getRegistrationInsertResultForWarnings(radixRegistration); upsertResult != nil || err != nil {
-			return upsertResult, err
+		if upsertRespond, err := ah.getRegistrationInsertRespondForWarnings(radixRegistration); upsertRespond != nil || err != nil {
+			return upsertRespond, err
 		}
 	}
 
@@ -188,7 +188,7 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 	}, nil
 }
 
-func (ah ApplicationHandler) getRegistrationInsertResultForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertRespond, error) {
+func (ah ApplicationHandler) getRegistrationInsertRespondForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertRespond, error) {
 	warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func (ah ApplicationHandler) getRegistrationInsertResultForWarnings(radixRegistr
 	return nil, nil
 }
 
-func (ah ApplicationHandler) getRegistrationUpdateResultForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertRespond, error) {
+func (ah ApplicationHandler) getRegistrationUpdateRespondForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertRespond, error) {
 	warnings, err := ah.getRegistrationUpdateWarnings(radixRegistration)
 	if err != nil {
 		return nil, err
@@ -259,8 +259,8 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 
 	needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
 	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResult, err := ah.getRegistrationUpdateResultForWarnings(radixRegistration); upsertResult != nil || err != nil {
-			return upsertResult, err
+		if upsertRespond, err := ah.getRegistrationUpdateRespondForWarnings(radixRegistration); upsertRespond != nil || err != nil {
+			return upsertRespond, err
 		}
 	}
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
@@ -343,8 +343,8 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 
 		needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
 		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
-			if upsertResult, err := ah.getRegistrationUpdateResultForWarnings(existingRegistration); upsertResult != nil || err != nil {
-				return upsertResult, err
+			if upsertRespond, err := ah.getRegistrationUpdateRespondForWarnings(existingRegistration); upsertRespond != nil || err != nil {
+				return upsertRespond, err
 			}
 		}
 
