@@ -321,10 +321,10 @@ func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *te
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	applicationRegistrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.ApplicationRegistration)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.ApplicationRegistration.PublicKey)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 }
 
 func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testing.T) {
@@ -373,10 +373,10 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	applicationRegistrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.ApplicationRegistration)
-	assert.Equal(t, "Any public key", applicationRegistrationUpsertRespond.ApplicationRegistration.PublicKey)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.Equal(t, "Any public key", applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 }
 
 func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
@@ -481,10 +481,10 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	applicationRegistrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.Warnings)
-	assert.Contains(t, applicationRegistrationUpsertRespond.Warnings, "Repository is in use by any-name")
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.Warnings)
+	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is in use by any-name")
 }
 
 func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
@@ -508,10 +508,10 @@ func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	applicationRegistrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.Empty(t, applicationRegistrationUpsertRespond.Warnings)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.ApplicationRegistration)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Empty(t, applicationRegistrationUpsertResponse.Warnings)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
 }
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
@@ -661,9 +661,9 @@ func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	registrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &registrationUpsertRespond)
-	assert.NotEmpty(t, registrationUpsertRespond.Warnings)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.NotEmpty(t, registrationUpsertResponse.Warnings)
 }
 
 func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
@@ -697,10 +697,10 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	registrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &registrationUpsertRespond)
-	assert.Empty(t, registrationUpsertRespond.Warnings)
-	assert.NotNil(t, registrationUpsertRespond.ApplicationRegistration)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.Empty(t, registrationUpsertResponse.Warnings)
+	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
@@ -754,10 +754,10 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response := <-responseChannel
 
-	applicationRegistrationUpsertRespond := applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.NotEmpty(t, applicationRegistrationUpsertRespond.ApplicationRegistration)
-	assert.Equal(t, newRepository, applicationRegistrationUpsertRespond.ApplicationRegistration.Repository)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.Equal(t, newRepository, applicationRegistrationUpsertResponse.ApplicationRegistration.Repository)
 
 	// Test SharedSecret
 	newSharedSecret := "Any shared secret"
@@ -766,9 +766,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	applicationRegistrationUpsertRespond = applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.Equal(t, newSharedSecret, applicationRegistrationUpsertRespond.ApplicationRegistration.SharedSecret)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newSharedSecret, applicationRegistrationUpsertResponse.ApplicationRegistration.SharedSecret)
 
 	// Test PublicKey
 	newPublicKey := "Any public key"
@@ -777,9 +777,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	applicationRegistrationUpsertRespond = applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.Equal(t, newPublicKey, applicationRegistrationUpsertRespond.ApplicationRegistration.PublicKey)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newPublicKey, applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 
 	// Test WBS
 	newWbs := "new.wbs.code"
@@ -788,9 +788,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	applicationRegistrationUpsertRespond = applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.Equal(t, newWbs, applicationRegistrationUpsertRespond.ApplicationRegistration.WBS)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newWbs, applicationRegistrationUpsertResponse.ApplicationRegistration.WBS)
 
 	// Test ConfigBranch
 	newConfigBranch := "newcfgbranch"
@@ -799,9 +799,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	applicationRegistrationUpsertRespond = applicationModels.ApplicationRegistrationUpsertRespond{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertRespond)
-	assert.Equal(t, newConfigBranch, applicationRegistrationUpsertRespond.ApplicationRegistration.ConfigBranch)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newConfigBranch, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigBranch)
 }
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {

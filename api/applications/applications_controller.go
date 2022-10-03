@@ -474,7 +474,7 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//   "200":
 	//     description: Application registration operation details
 	//     schema:
-	//       "$ref": "#/definitions/ApplicationRegistrationUpsertRespond"
+	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResponse"
 	//   "400":
 	//     description: "Invalid application registration"
 	//   "401":
@@ -489,13 +489,13 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
-	appRegistrationUpsertRespond, err := handler.RegisterApplication(applicationRegistrationRequest)
+	appRegistrationUpsertResponse, err := handler.RegisterApplication(applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, &appRegistrationUpsertRespond)
+	radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // ChangeRegistrationDetails Updates application registration
@@ -529,7 +529,7 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	//   "200":
 	//     description: Change registration operation result
 	//     schema:
-	//       "$ref": "#/definitions/ApplicationRegistrationUpsertRespond"
+	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResponse"
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -548,13 +548,13 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
-	appRegistrationUpsertRespond, err := handler.ChangeRegistrationDetails(appName, applicationRegistrationRequest)
+	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(appName, applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, &appRegistrationUpsertRespond)
+	radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // ModifyRegistrationDetails Updates specific field(s) of an application registration
@@ -588,7 +588,7 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	//   "200":
 	//     description: Modifying registration operation details
 	//     schema:
-	//       "$ref": "#/definitions/ApplicationRegistrationUpsertRespond"
+	//       "$ref": "#/definitions/ApplicationRegistrationUpsertResponse"
 	//   "400":
 	//     description: "Invalid application"
 	//   "401":
@@ -607,13 +607,13 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := Init(accounts)
-	appRegistrationUpsertRespond, err := handler.ModifyRegistrationDetails(appName, applicationRegistrationPatchRequest)
+	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(appName, applicationRegistrationPatchRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, &appRegistrationUpsertRespond)
+	radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // DeleteApplication Deletes application
