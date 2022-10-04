@@ -61,4 +61,9 @@ type ApplicationRegistration struct {
 	//
 	// required: true
 	ConfigBranch string `json:"configBranch"`
+
+	// ConfigurationItem information
+	//
+	// required: false
+	ConfigurationItem string `json:"configurationItem"`
 }

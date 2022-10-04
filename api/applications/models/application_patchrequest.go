@@ -34,4 +34,9 @@ type ApplicationPatchRequest struct {
 	//
 	// required: false
 	ConfigBranch *string `json:"configBranch,omitempty"`
+
+	// ConfigurationItem information
+	//
+	// required: false
+	ConfigurationItem *string `json:"configurationItem"`
 }

@@ -25,13 +25,14 @@ func ValidateRegistrationChange(client kubernetes.Interface, radixclient radixcl
 	}
 	log.Infof("radix registration decoded")
 
-	isValid, err := radixvalidators.CanRadixRegistrationBeUpdated(radixclient, radixRegistration)
-	if isValid {
-		log.Infof("radix reg %s was admitted", radixRegistration.Name)
-	} else {
+	err = radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration)
+	if err != nil {
+
 		log.Warnf("radix reg %s was rejected", radixRegistration.Name)
+		return false, err
 	}
-	return isValid, err
+	log.Infof("radix reg %s was admitted", radixRegistration.Name)
+	return true, err
 }
 
 func decodeRadixRegistration(ar v1beta1.AdmissionReview) (*v1.RadixRegistration, error) {

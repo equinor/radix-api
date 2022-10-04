@@ -292,6 +292,12 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		runUpdate = true
 	}
 
+	if patchRequest.ConfigurationItem != nil {
+		existingRegistration.Spec.ConfigurationItem = *patchRequest.ConfigurationItem
+		payload = append(payload, patch{Op: "replace", Path: "/spec/configurationItem", Value: *patchRequest.ConfigurationItem})
+		runUpdate = true
+	}
+
 	if runUpdate {
 		err = ah.isValidUpdate(existingRegistration)
 		if err != nil {
@@ -469,7 +475,7 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
+	err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -480,7 +486,7 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	_, err := radixvalidators.CanRadixRegistrationBeUpdated(ah.getServiceAccount().RadixClient, radixRegistration)
+	err := radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration)
 	if err != nil {
 		return err
 	}
@@ -567,6 +573,7 @@ type Builder interface {
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
+	withConfigurationItem(string) Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
@@ -574,18 +581,19 @@ type Builder interface {
 }
 
 type applicationBuilder struct {
-	name         string
-	owner        string
-	creator      string
-	repository   string
-	sharedSecret string
-	adGroups     []string
-	publicKey    string
-	privateKey   string
-	cloneURL     string
-	machineUser  bool
-	wbs          string
-	configBranch string
+	name              string
+	owner             string
+	creator           string
+	repository        string
+	sharedSecret      string
+	adGroups          []string
+	publicKey         string
+	privateKey        string
+	cloneURL          string
+	machineUser       bool
+	wbs               string
+	configBranch      string
+	configurationItem string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -598,6 +606,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
 	rb.withConfigBranch(appRegistration.ConfigBranch)
+	rb.withConfigurationItem(appRegistration.ConfigurationItem)
 	return rb
 }
 
@@ -612,6 +621,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 	rb.withWBS(radixRegistration.Spec.WBS)
 	rb.withConfigBranch(radixRegistration.Spec.ConfigBranch)
+	rb.withConfigurationItem(radixRegistration.Spec.ConfigurationItem)
 
 	// Private part of key should never be returned
 	return rb
@@ -686,6 +696,11 @@ func (rb *applicationBuilder) withConfigBranch(configBranch string) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withConfigurationItem(ci string) Builder {
+	rb.configurationItem = ci
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -693,17 +708,18 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:         rb.name,
-		Repository:   repository,
-		SharedSecret: rb.sharedSecret,
-		AdGroups:     rb.adGroups,
-		PublicKey:    rb.publicKey,
-		PrivateKey:   rb.privateKey,
-		Owner:        rb.owner,
-		Creator:      rb.creator,
-		MachineUser:  rb.machineUser,
-		WBS:          rb.wbs,
-		ConfigBranch: rb.configBranch,
+		Name:              rb.name,
+		Repository:        repository,
+		SharedSecret:      rb.sharedSecret,
+		AdGroups:          rb.adGroups,
+		PublicKey:         rb.publicKey,
+		PrivateKey:        rb.privateKey,
+		Owner:             rb.owner,
+		Creator:           rb.creator,
+		MachineUser:       rb.machineUser,
+		WBS:               rb.wbs,
+		ConfigBranch:      rb.configBranch,
+		ConfigurationItem: rb.configurationItem,
 	}
 }
 
@@ -722,6 +738,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithMachineUser(rb.machineUser).
 		WithWBS(rb.wbs).
 		WithConfigBranch(rb.configBranch).
+		WithConfigurationItem(rb.configurationItem).
 		BuildRR()
 
 	return radixRegistration, nil
@@ -735,8 +752,9 @@ func NewBuilder() Builder {
 // AnApplicationRegistration Constructor for application builder with test values
 func AnApplicationRegistration() Builder {
 	return &applicationBuilder{
-		name:         "my-app",
-		repository:   "https://github.com/Equinor/my-app",
+		name:       "my-app",
+		repository: "https://github.com/Equinor/my-app",
+		// file deepcode ignore HardcodedPassword: only used by unit test
 		sharedSecret: "AnySharedSecret",
 		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
 		owner:        "a_test_user@equinor.com",

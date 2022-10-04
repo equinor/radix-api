@@ -136,28 +136,28 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 		WithJobComponents(
 			builders.NewDeployJobComponentBuilder().
 				WithName("job").
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
+				WithVolumeMounts(
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "jobvol",
 						Container: "jobcont",
 						Path:      "jobpath",
 					},
-				}),
+				),
 		).
 		WithComponents(
 			builders.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
+				WithVolumeMounts(
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "somevolumename",
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				})))
+				)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -196,20 +196,20 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
+				WithVolumeMounts(
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "somevolumename1",
 						Container: "some-container1",
 						Path:      "some-path1",
 					},
-					{
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "somevolumename2",
 						Container: "some-container2",
 						Path:      "some-path2",
 					},
-				})))
+				)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
