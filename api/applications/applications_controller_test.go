@@ -484,7 +484,7 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
 	assert.NotEmpty(t, applicationRegistrationUpsertResponse.Warnings)
-	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is in use by any-name")
+	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is used in other application(s)")
 }
 
 func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {

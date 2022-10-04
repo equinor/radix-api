@@ -11,6 +11,6 @@ type ApplicationRegistrationUpsertResponse struct {
 	// Warnings of upsert operation
 	//
 	// required: false
-	// example: ["Repository is in use by App1"]
+	// example: ["Repository is used in other application(s)"]
 	Warnings []string `json:"warnings,omitempty"`
 }
