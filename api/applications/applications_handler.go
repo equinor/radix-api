@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,7 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-const fileExtensionYaml = ".yaml"
+const (
+	fileExtensionYaml                      = ".yaml"
+	radixConfigFullNamePattern             = "^(\\/*[a-zA-Z0-9_\\.\\-]+)+$"
+	invalidRadixConfigFullNameErrorMessage = "invalid file name for radixconfig. See https://www.radix.equinor.com/references/reference-radix-config/ for more information"
+)
 
 type patch struct {
 	Op    string      `json:"op"`
@@ -390,14 +395,18 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 }
 
 func validateRadixConfigFullName(radixConfigFullName string) error {
-	if len(radixConfigFullName) <= len(fileExtensionYaml) || !strings.HasSuffix(radixConfigFullName, fileExtensionYaml) {
-		return errors.New(invalidRadixConfigFullNameErrorMessage())
+	if len(radixConfigFullName) <= len(fileExtensionYaml) ||
+		!strings.HasSuffix(radixConfigFullName, fileExtensionYaml) {
+		return errors.New(invalidRadixConfigFullNameErrorMessage)
+	}
+	matched, err := regexp.Match(radixConfigFullNamePattern, []byte(radixConfigFullName))
+	if err != nil {
+		return err
+	}
+	if !matched {
+		return errors.New(invalidRadixConfigFullNameErrorMessage)
 	}
 	return nil
-}
-
-func invalidRadixConfigFullNameErrorMessage() string {
-	return fmt.Sprintf("invalid RadixConfigFullName - it should consist of a name with an extension %s, with optional path from GitHub repository root", fileExtensionYaml)
 }
 
 func cleanFileFullName(fileFullName string) string {

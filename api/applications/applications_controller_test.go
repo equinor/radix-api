@@ -460,12 +460,37 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 		{radixConfigFullName: " /abc/a.yaml ", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
 		{radixConfigFullName: "/abc/de.f/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
 		{radixConfigFullName: "abc\\de.f\\a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
-		{radixConfigFullName: "abc/def/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/def/radixconfig.yaml"},
+		{radixConfigFullName: "abc/d-e_f/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/d-e_f/radixconfig.yaml"},
+		{radixConfigFullName: "abc/12.3abc/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/12.3abc/radixconfig.yaml"},
 		{radixConfigFullName: ".yaml", expectedError: true},
 		{radixConfigFullName: "radixconfig.yml", expectedError: true},
 		{radixConfigFullName: "abc", expectedError: true},
 		{radixConfigFullName: "ac", expectedError: true},
 		{radixConfigFullName: "a", expectedError: true},
+		{radixConfigFullName: "#radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "$radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "%radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "^radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "&radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "*radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "(radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: ")radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "+radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "=radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "'radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "]radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "[radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "{radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "}radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: ",radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "§radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "±radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "*radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "~radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "`radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: ">radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "<radixconfig.yaml", expectedError: true},
+		{radixConfigFullName: "@radixconfig.yaml", expectedError: true},
 	}
 	for _, scenario := range scenarios {
 		t.Run(fmt.Sprintf("Test for radixConfigFullName: '%s'", scenario.radixConfigFullName), func(t *testing.T) {
@@ -488,7 +513,7 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 			if scenario.expectedError {
 				require.Equal(t, http.StatusBadRequest, response.Code)
 				errorResponse, _ := controllertest.GetErrorResponse(response)
-				assert.Equal(t, fmt.Sprintf("Error: %v", invalidRadixConfigFullNameErrorMessage()), errorResponse.Message)
+				assert.Equal(t, fmt.Sprintf("Error: %v", invalidRadixConfigFullNameErrorMessage), errorResponse.Message)
 			} else {
 				require.Equal(t, http.StatusOK, response.Code)
 				registrationResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
