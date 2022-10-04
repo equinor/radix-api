@@ -1,8 +1,11 @@
 package applications
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/url"
 	"os"
@@ -443,6 +446,62 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
+func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
+	scenarios := []struct {
+		radixConfigFullName                   string
+		expectedError                         bool
+		expectedRegisteredRadixConfigFullName string
+	}{
+		{radixConfigFullName: "", expectedError: false, expectedRegisteredRadixConfigFullName: ""},
+		{radixConfigFullName: "radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "radixconfig.yaml"},
+		{radixConfigFullName: "a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "a.yaml"},
+		{radixConfigFullName: "abc/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
+		{radixConfigFullName: "/abc/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
+		{radixConfigFullName: " /abc/a.yaml ", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
+		{radixConfigFullName: "/abc/de.f/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
+		{radixConfigFullName: "abc\\de.f\\a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
+		{radixConfigFullName: "abc/def/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/def/radixconfig.yaml"},
+		{radixConfigFullName: ".yaml", expectedError: true},
+		{radixConfigFullName: "radixconfig.yml", expectedError: true},
+		{radixConfigFullName: "abc", expectedError: true},
+		{radixConfigFullName: "ac", expectedError: true},
+		{radixConfigFullName: "a", expectedError: true},
+	}
+	for _, scenario := range scenarios {
+		t.Run(fmt.Sprintf("Test for radixConfigFullName: '%s'", scenario.radixConfigFullName), func(t *testing.T) {
+			// Setup
+			_, controllerTestUtils, _, _, _, _ := setupTest()
+
+			// Test
+			configBranch := "main"
+			parameters := AnApplicationRegistration().
+				withName("any-name").
+				withRepository("https://github.com/Equinor/any-repo").
+				withPublicKey("Any public key").
+				withPrivateKey("Any private key").
+				withConfigBranch(configBranch).
+				withRadixConfigFullName(scenario.radixConfigFullName).
+				BuildApplicationRegistrationRequest()
+			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+			response := <-responseChannel
+
+			if scenario.expectedError {
+				require.Equal(t, http.StatusBadRequest, response.Code)
+				errorResponse, _ := controllertest.GetErrorResponse(response)
+				assert.Equal(t, fmt.Sprintf("Error: %v", invalidRadixConfigFullNameErrorMessage()), errorResponse.Message)
+			} else {
+				require.Equal(t, http.StatusOK, response.Code)
+				registrationResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+				if err := json.NewDecoder(bytes.NewReader(response.Body.Bytes())).Decode(&registrationResponse); err != nil {
+					assert.Fail(t, err.Error())
+				} else {
+					assert.Equal(t, scenario.expectedRegisteredRadixConfigFullName, registrationResponse.ApplicationRegistration.RadixConfigFullName)
+				}
+			}
+		})
+	}
+}
+
 func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
@@ -526,6 +585,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withOwner("AN_OWNER@equinor.com").
 		withWBS("A.BCD.00.999").
 		withConfigBranch("abranch").
+		withRadixConfigFullName("a/custom-radixconfig.yaml").
 		BuildApplicationRegistrationRequest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -545,6 +605,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
+	assert.Equal(t, "a/custom-radixconfig.yaml", application.Registration.RadixConfigFullName)
 }
 
 func TestGetApplication_WithJobs(t *testing.T) {

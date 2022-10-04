@@ -3,6 +3,7 @@ package applications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -31,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+const fileExtensionYaml = ".yaml"
 
 type patch struct {
 	Op    string      `json:"op"`
@@ -162,7 +165,20 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 		return nil, err
 	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(application).withDeployKey(deployKey).withCreator(creator).BuildRR()
+	application.RadixConfigFullName = cleanFileFullName(application.RadixConfigFullName)
+	if len(application.RadixConfigFullName) > 0 {
+		err = validateRadixConfigFullName(application.RadixConfigFullName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	radixRegistration, err := NewBuilder().
+		withAppRegistration(application).
+		withDeployKey(deployKey).
+		withCreator(creator).
+		withRadixConfigFullName(application.RadixConfigFullName).
+		BuildRR()
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +267,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
 	existingRegistration.Spec.WBS = radixRegistration.Spec.WBS
 	existingRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
+	existingRegistration.Spec.RadixConfigFullName = radixRegistration.Spec.RadixConfigFullName
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -335,6 +352,17 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 		runUpdate = true
 	}
 
+	radixConfigFullName := cleanFileFullName(patchRequest.RadixConfigFullName)
+	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, existingRegistration.Spec.RadixConfigFullName) {
+		err := validateRadixConfigFullName(radixConfigFullName)
+		if err != nil {
+			return nil, err
+		}
+		existingRegistration.Spec.RadixConfigFullName = radixConfigFullName
+		payload = append(payload, patch{Op: "replace", Path: "/spec/radixConfigFullName", Value: radixConfigFullName})
+		runUpdate = true
+	}
+
 	if runUpdate {
 		err = ah.isValidUpdate(existingRegistration)
 		if err != nil {
@@ -359,6 +387,21 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &application,
 	}, nil
+}
+
+func validateRadixConfigFullName(radixConfigFullName string) error {
+	if len(radixConfigFullName) <= len(fileExtensionYaml) || !strings.HasSuffix(radixConfigFullName, fileExtensionYaml) {
+		return errors.New(invalidRadixConfigFullNameErrorMessage())
+	}
+	return nil
+}
+
+func invalidRadixConfigFullNameErrorMessage() string {
+	return fmt.Sprintf("invalid RadixConfigFullName - it should consist of a name with an extension %s, with optional path from GitHub repository root", fileExtensionYaml)
+}
+
+func cleanFileFullName(fileFullName string) string {
+	return strings.TrimPrefix(strings.ReplaceAll(strings.TrimSpace(fileFullName), "\\", "/"), "/")
 }
 
 // DeleteApplication handler for DeleteApplication
@@ -627,6 +670,7 @@ type Builder interface {
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
+	withRadixConfigFullName(string) Builder
 	withAcknowledgeWarnings() Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
@@ -649,6 +693,7 @@ type applicationBuilder struct {
 	wbs                 string
 	configBranch        string
 	acknowledgeWarnings bool
+	radixConfigFullName string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -661,6 +706,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
 	rb.withConfigBranch(appRegistration.ConfigBranch)
+	rb.withRadixConfigFullName(appRegistration.RadixConfigFullName)
 	return rb
 }
 
@@ -675,6 +721,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 	rb.withWBS(radixRegistration.Spec.WBS)
 	rb.withConfigBranch(radixRegistration.Spec.ConfigBranch)
+	rb.withRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName)
 
 	// Private part of key should never be returned
 	return rb
@@ -754,6 +801,11 @@ func (rb *applicationBuilder) withAcknowledgeWarnings() Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withRadixConfigFullName(fullName string) Builder {
+	rb.radixConfigFullName = fullName
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -761,17 +813,18 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:         rb.name,
-		Repository:   repository,
-		SharedSecret: rb.sharedSecret,
-		AdGroups:     rb.adGroups,
-		PublicKey:    rb.publicKey,
-		PrivateKey:   rb.privateKey,
-		Owner:        rb.owner,
-		Creator:      rb.creator,
-		MachineUser:  rb.machineUser,
-		WBS:          rb.wbs,
-		ConfigBranch: rb.configBranch,
+		Name:                rb.name,
+		Repository:          repository,
+		SharedSecret:        rb.sharedSecret,
+		AdGroups:            rb.adGroups,
+		PublicKey:           rb.publicKey,
+		PrivateKey:          rb.privateKey,
+		Owner:               rb.owner,
+		Creator:             rb.creator,
+		MachineUser:         rb.machineUser,
+		WBS:                 rb.wbs,
+		ConfigBranch:        rb.configBranch,
+		RadixConfigFullName: rb.radixConfigFullName,
 	}
 }
 
@@ -790,6 +843,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithMachineUser(rb.machineUser).
 		WithWBS(rb.wbs).
 		WithConfigBranch(rb.configBranch).
+		WithRadixConfigFullName(rb.radixConfigFullName).
 		BuildRR()
 
 	return radixRegistration, nil

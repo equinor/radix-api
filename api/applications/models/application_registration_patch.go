@@ -34,4 +34,9 @@ type ApplicationRegistrationPatch struct {
 	//
 	// required: false
 	ConfigBranch *string `json:"configBranch,omitempty"`
+
+	// radixconfig.yaml file name and path, starting from the GitHub repository root (without leading slash)
+	//
+	// required: false
+	RadixConfigFullName string `json:"radixConfigFullName,omitempty"`
 }
