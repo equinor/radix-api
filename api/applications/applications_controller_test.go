@@ -13,11 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
-	kubefake "k8s.io/client-go/kubernetes/fake"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -32,11 +27,15 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -782,6 +781,48 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
 
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.NotEmpty(t, registrationUpsertResponse.Warnings)
+	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
+}
+
+func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _, _, _ := setupTest()
+
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withRepository("https://github.com/Equinor/any-other-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	// Test
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withAcknowledgeWarnings().
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.Empty(t, registrationUpsertResponse.Warnings)
+	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 	assert.Equal(t, http.StatusOK, response.Code)
 	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &registrationUpsertResponse)
