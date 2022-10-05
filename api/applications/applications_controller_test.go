@@ -526,6 +526,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withOwner("AN_OWNER@equinor.com").
 		withWBS("A.BCD.00.999").
 		withConfigBranch("abranch").
+		withConfigurationItem("ci").
 		BuildApplicationRegistrationRequest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -545,6 +546,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
+	assert.Equal(t, "ci", application.Registration.ConfigurationItem)
 }
 
 func TestGetApplication_WithJobs(t *testing.T) {
@@ -802,6 +804,17 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
 	assert.Equal(t, newConfigBranch, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigBranch)
+
+	// Test ConfigurationItem
+	newConfigurationItem := "newci"
+	builder = builder.
+		withConfigurationItem(newConfigurationItem)
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	response = <-responseChannel
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newConfigurationItem, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigurationItem)
 }
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {
@@ -816,7 +829,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
 		withOwner("AN_OWNER@equinor.com").
 		withWBS("T.O123A.AZ.45678").
-		withConfigBranch("main1")
+		withConfigBranch("main1").
+		withConfigurationItem("ci-initial")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
 	<-responseChannel
 
@@ -840,6 +854,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
 	assert.Equal(t, "main1", application.Registration.ConfigBranch)
+	assert.Equal(t, "ci-initial", application.Registration.ConfigurationItem)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
@@ -910,6 +925,23 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewConfigBranch, application.Registration.ConfigBranch)
+
+	// Test ConfigurationItem
+	anyNewConfigurationItem := "ci-patch"
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			ConfigurationItem: &anyNewConfigurationItem,
+		},
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewConfigurationItem, application.Registration.ConfigurationItem)
 }
 
 func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {

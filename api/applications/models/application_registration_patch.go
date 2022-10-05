@@ -34,4 +34,11 @@ type ApplicationRegistrationPatch struct {
 	//
 	// required: false
 	ConfigBranch *string `json:"configBranch,omitempty"`
+
+	// ConfigurationItem is an identifier for an entity in a configuration management solution such as a CMDB.
+	// ITIL defines a CI as any component that needs to be managed in order to deliver an IT Service
+	// Ref: https://en.wikipedia.org/wiki/Configuration_item
+	//
+	// required: false
+	ConfigurationItem *string `json:"configurationItem"`
 }
