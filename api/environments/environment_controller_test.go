@@ -562,7 +562,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	})
 }
 
-//secret tests
+// secret tests
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	anyComponent := "frontend"
 
@@ -624,14 +624,14 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 				WithName(anyComponentName).
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
+				WithVolumeMounts(
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "somevolumename",
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				}...)))
+				)))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
@@ -664,14 +664,14 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 		WithJobComponents(
 			operatorutils.NewDeployJobComponentBuilder().
 				WithName(anyJobName).
-				WithVolumeMounts([]v1.RadixVolumeMount{
-					{
+				WithVolumeMounts(
+					v1.RadixVolumeMount{
 						Type:      v1.MountTypeBlob,
 						Name:      "somevolumename",
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				}...)))
+				)))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))

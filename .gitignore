@@ -21,6 +21,7 @@ swaggerui/statik.go
 swaggerui_src/swagger.json
 
 __debug_bin
+.dccache
 
 # binary created by goland with default settings
 main
