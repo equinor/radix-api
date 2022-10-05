@@ -789,10 +789,6 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 	assert.Empty(t, registrationUpsertResponse.Warnings)
 	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 	assert.Equal(t, http.StatusOK, response.Code)
-	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &registrationUpsertResponse)
-	assert.Empty(t, registrationUpsertResponse.Warnings)
-	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {

@@ -25,6 +25,7 @@ type Builder interface {
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
 	withConfigurationItem(string) Builder
+	withRadixConfigFullName(string) Builder
 	withAcknowledgeWarnings() Builder
 	withAppRegistration(*applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
@@ -48,6 +49,7 @@ type applicationBuilder struct {
 	configBranch        string
 	configurationItem   string
 	acknowledgeWarnings bool
+	radixConfigFullName string
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -60,6 +62,7 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
 	rb.withConfigBranch(appRegistration.ConfigBranch)
+	rb.withRadixConfigFullName(appRegistration.RadixConfigFullName)
 	rb.withConfigurationItem(appRegistration.ConfigurationItem)
 	return rb
 }
@@ -75,6 +78,7 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
 	rb.withWBS(radixRegistration.Spec.WBS)
 	rb.withConfigBranch(radixRegistration.Spec.ConfigBranch)
+	rb.withRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName)
 	rb.withConfigurationItem(radixRegistration.Spec.ConfigurationItem)
 
 	// Private part of key should never be returned
@@ -160,6 +164,11 @@ func (rb *applicationBuilder) withAcknowledgeWarnings() Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withRadixConfigFullName(fullName string) Builder {
+	rb.radixConfigFullName = fullName
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -167,18 +176,19 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 	}
 
 	return applicationModels.ApplicationRegistration{
-		Name:              rb.name,
-		Repository:        repository,
-		SharedSecret:      rb.sharedSecret,
-		AdGroups:          rb.adGroups,
-		PublicKey:         rb.publicKey,
-		PrivateKey:        rb.privateKey,
-		Owner:             rb.owner,
-		Creator:           rb.creator,
-		MachineUser:       rb.machineUser,
-		WBS:               rb.wbs,
-		ConfigBranch:      rb.configBranch,
-		ConfigurationItem: rb.configurationItem,
+		Name:                rb.name,
+		Repository:          repository,
+		SharedSecret:        rb.sharedSecret,
+		AdGroups:            rb.adGroups,
+		PublicKey:           rb.publicKey,
+		PrivateKey:          rb.privateKey,
+		Owner:               rb.owner,
+		Creator:             rb.creator,
+		MachineUser:         rb.machineUser,
+		WBS:                 rb.wbs,
+		ConfigBranch:        rb.configBranch,
+		RadixConfigFullName: rb.radixConfigFullName,
+		ConfigurationItem:   rb.configurationItem,
 	}
 }
 
@@ -197,6 +207,7 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithMachineUser(rb.machineUser).
 		WithWBS(rb.wbs).
 		WithConfigBranch(rb.configBranch).
+		WithRadixConfigFullName(rb.radixConfigFullName).
 		WithConfigurationItem(rb.configurationItem).
 		BuildRR()
 

@@ -3,8 +3,10 @@ package applications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -227,6 +229,25 @@ func (ah ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegis
 		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
 	}
 	return nil, nil
+}
+
+func validateRadixConfigFullName(radixConfigFullName string) error {
+	if len(radixConfigFullName) <= len(fileExtensionYaml) ||
+		!strings.HasSuffix(radixConfigFullName, fileExtensionYaml) {
+		return errors.New(invalidRadixConfigFullNameErrorMessage)
+	}
+	matched, err := regexp.Match(radixConfigFullNamePattern, []byte(radixConfigFullName))
+	if err != nil {
+		return err
+	}
+	if !matched {
+		return errors.New(invalidRadixConfigFullNameErrorMessage)
+	}
+	return nil
+}
+
+func cleanFileFullName(fileFullName string) string {
+	return strings.TrimPrefix(strings.ReplaceAll(strings.TrimSpace(fileFullName), "\\", "/"), "/")
 }
 
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
