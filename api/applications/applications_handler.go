@@ -135,12 +135,13 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 }
 
 // RegisterApplication handler for RegisterApplication
-func (ah ApplicationHandler) RegisterApplication(application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	// Only if repository is provided and deploykey is not set by user
 	// generate the key
 	var deployKey *utils.DeployKey
 	var err error
 
+	application := applicationRegistrationRequest.ApplicationRegistration
 	if (strings.TrimSpace(application.PublicKey) == "" && strings.TrimSpace(application.PrivateKey) != "") ||
 		(strings.TrimSpace(application.PublicKey) != "" && strings.TrimSpace(application.PrivateKey) == "") {
 		return nil, applicationModels.OnePartOfDeployKeyIsNotAllowed()
@@ -161,7 +162,7 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(&application).withDeployKey(deployKey).withCreator(creator).BuildRR()
+	radixRegistration, err := NewBuilder().withAppRegistration(application).withDeployKey(deployKey).withCreator(creator).BuildRR()
 	if err != nil {
 		return nil, err
 	}
@@ -171,16 +172,47 @@ func (ah ApplicationHandler) RegisterApplication(application applicationModels.A
 		return nil, err
 	}
 
+	if !applicationRegistrationRequest.AcknowledgeWarnings {
+		if upsertResponse, err := ah.getRegistrationInsertResponseForWarnings(radixRegistration); upsertResponse != nil || err != nil {
+			return upsertResponse, err
+		}
+	}
+
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(context.TODO(), radixRegistration, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResponse{
+		ApplicationRegistration: application,
+	}, nil
+}
+
+func (ah ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
+	if err != nil {
+		return nil, err
+	}
+	if len(warnings) != 0 {
+		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
+	}
+	return nil, nil
+}
+
+func (ah ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	warnings, err := ah.getRegistrationUpdateWarnings(radixRegistration)
+	if err != nil {
+		return nil, err
+	}
+	if len(warnings) != 0 {
+		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
+	}
+	return nil, nil
 }
 
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
-func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, application applicationModels.ApplicationRegistration) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	application := applicationRegistrationRequest.ApplicationRegistration
 	if appName != application.Name {
 		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
@@ -205,11 +237,12 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		application.PublicKey = deployKey.PublicKey
 	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(&application).withDeployKey(deployKey).BuildRR()
+	radixRegistration, err := NewBuilder().withAppRegistration(application).withDeployKey(deployKey).BuildRR()
 	if err != nil {
 		return nil, err
 	}
 
+	currentCloneURL := existingRegistration.Spec.CloneURL //currently repository is not changed here, but maybe later
 	// Only these fields can change over time
 	existingRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
 	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
@@ -224,16 +257,24 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 		return nil, err
 	}
 
+	needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
+		if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(radixRegistration); upsertResponse != nil || err != nil {
+			return upsertResponse, err
+		}
+	}
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResponse{
+		ApplicationRegistration: application,
+	}, nil
 }
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
-func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequest applicationModels.ApplicationPatchRequest) (*applicationModels.ApplicationRegistration, error) {
+func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	// Make check that this is an existing application
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -244,6 +285,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 
 	runUpdate := false
 	// Only these fields can change over time
+	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !radixutils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
@@ -260,6 +302,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 		runUpdate = true
 	}
 
+	currentCloneURL := existingRegistration.Spec.CloneURL
 	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
 		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
 		existingRegistration.Spec.CloneURL = cloneURL
@@ -304,6 +347,13 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 			return nil, err
 		}
 
+		needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
+			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(existingRegistration); upsertResponse != nil || err != nil {
+				return upsertResponse, err
+			}
+		}
+
 		payloadBytes, _ := json.Marshal(payload)
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(context.TODO(), existingRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
 		if err != nil {
@@ -312,7 +362,9 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, patchRequ
 	}
 
 	application := NewBuilder().withRadixRegistration(existingRegistration).Build()
-	return &application, nil
+	return &applicationModels.ApplicationRegistrationUpsertResponse{
+		ApplicationRegistration: &application,
+	}, nil
 }
 
 // DeleteApplication handler for DeleteApplication
@@ -483,6 +535,14 @@ func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegi
 	return nil
 }
 
+func (ah ApplicationHandler) getRegistrationInsertWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+}
+
+func (ah ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+}
+
 func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
@@ -574,26 +634,29 @@ type Builder interface {
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
 	withConfigurationItem(string) Builder
+	withAcknowledgeWarnings() Builder
 	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
+	BuildApplicationRegistrationRequest() *applicationModels.ApplicationRegistrationRequest
 }
 
 type applicationBuilder struct {
-	name              string
-	owner             string
-	creator           string
-	repository        string
-	sharedSecret      string
-	adGroups          []string
-	publicKey         string
-	privateKey        string
-	cloneURL          string
-	machineUser       bool
-	wbs               string
-	configBranch      string
-	configurationItem string
+	name                string
+	owner               string
+	creator             string
+	repository          string
+	sharedSecret        string
+	adGroups            []string
+	publicKey           string
+	privateKey          string
+	cloneURL            string
+	machineUser         bool
+	wbs                 string
+	configBranch        string
+	configurationItem   string
+	acknowledgeWarnings bool
 }
 
 func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder {
@@ -701,6 +764,11 @@ func (rb *applicationBuilder) withConfigurationItem(ci string) Builder {
 	return rb
 }
 
+func (rb *applicationBuilder) withAcknowledgeWarnings() Builder {
+	rb.acknowledgeWarnings = true
+	return rb
+}
+
 func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration {
 	repository := rb.repository
 	if repository == "" {
@@ -742,6 +810,14 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		BuildRR()
 
 	return radixRegistration, nil
+}
+
+func (rb *applicationBuilder) BuildApplicationRegistrationRequest() *applicationModels.ApplicationRegistrationRequest {
+	applicationRegistration := rb.Build()
+	return &applicationModels.ApplicationRegistrationRequest{
+		ApplicationRegistration: &applicationRegistration,
+		AcknowledgeWarnings:     rb.acknowledgeWarnings,
+	}
 }
 
 // NewBuilder Constructor for application builder

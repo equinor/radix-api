@@ -286,7 +286,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
-	parameters := AnApplicationRegistration().withName("").Build()
+	parameters := AnApplicationRegistration().withName("").BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -300,7 +300,7 @@ func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T)
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	// Test
-	parameters := AnApplicationRegistration().withRepository("").Build()
+	parameters := AnApplicationRegistration().withRepository("").BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -317,13 +317,14 @@ func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *te
 	parameters := AnApplicationRegistration().
 		withName("any-name-1").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	application := applicationModels.ApplicationRegistration{}
-	controllertest.GetResponseBody(response, &application)
-	assert.NotEmpty(t, application.PublicKey)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 }
 
 func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testing.T) {
@@ -335,7 +336,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 		withName("any-name-2").
 		withRepository("https://github.com/Equinor/any-repo").
 		withPublicKey("Any public key").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -348,7 +349,7 @@ func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testin
 		withName("any-name-2").
 		withRepository("https://github.com/Equinor/any-repo").
 		withPrivateKey("Any private key").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response = <-responseChannel
 
@@ -368,13 +369,14 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 		withRepository("https://github.com/Equinor/any-repo").
 		withPublicKey("Any public key").
 		withPrivateKey("Any private key").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	application := applicationModels.ApplicationRegistration{}
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, "Any public key", application.PublicKey)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.Equal(t, "Any public key", applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 }
 
 func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
@@ -388,7 +390,7 @@ func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
 		withPublicKey("Any public key").
 		withPrivateKey("Any private key").
 		withOwner("").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -409,7 +411,7 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 		withPublicKey("Any public key").
 		withPrivateKey("Any private key").
 		withConfigBranch("").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -431,7 +433,7 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 		withPublicKey("Any public key").
 		withPrivateKey("Any private key").
 		withConfigBranch(configBranch).
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -459,14 +461,14 @@ func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
 	assert.Equal(t, "", application.Registration.PrivateKey)
 }
 
-func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
+func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
@@ -474,13 +476,42 @@ func TestCreateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	parameters = AnApplicationRegistration().
 		withName("any-other-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: repository is in use by any-name", errorResponse.Message)
+	assert.Equal(t, http.StatusOK, response.Code)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.Warnings)
+	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is used in other application(s)")
+}
+
+func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _, _, _ := setupTest()
+
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	// Test
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withAcknowledgeWarnings().
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Empty(t, applicationRegistrationUpsertResponse.Warnings)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
 }
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
@@ -496,7 +527,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withWBS("A.BCD.00.999").
 		withConfigBranch("abranch").
 		withConfigurationItem("ci").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -602,14 +633,14 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 	}
 }
 
-func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation(t *testing.T) {
+func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -617,7 +648,7 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	parameters = AnApplicationRegistration().
 		withName("any-other-name").
 		withRepository("https://github.com/Equinor/any-other-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -626,26 +657,64 @@ func TestUpdateApplication_DuplicateRepo_ShouldFailAsWeCannotHandleThatSituation
 	parameters = AnApplicationRegistration().
 		withName("any-other-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: repository is in use by any-name", errorResponse.Message)
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.NotEmpty(t, registrationUpsertResponse.Warnings)
+}
+
+func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
+	// Setup
+	_, controllerTestUtils, _, _, _, _ := setupTest()
+
+	parameters := AnApplicationRegistration().
+		withName("any-name").
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withRepository("https://github.com/Equinor/any-other-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-responseChannel
+
+	// Test
+	parameters = AnApplicationRegistration().
+		withName("any-other-name").
+		withAcknowledgeWarnings().
+		withRepository("https://github.com/Equinor/any-repo").
+		BuildApplicationRegistrationRequest()
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
+	response := <-responseChannel
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	assert.Empty(t, registrationUpsertResponse.Warnings)
+	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 }
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
-	parameters := AnApplicationRegistration().withName("any-name").Build()
+	parameters := AnApplicationRegistration().withName("any-name").BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().withName("any-name").Build()
+	parameters = AnApplicationRegistration().withName("any-name").BuildApplicationRegistrationRequest()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
 	response := <-responseChannel
 
@@ -653,7 +722,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, controllertest.AppNotFoundErrorMsg("another-name"), errorResponse.Message)
 
-	parameters = AnApplicationRegistration().withName("another-name").Build()
+	parameters = AnApplicationRegistration().withName("another-name").BuildApplicationRegistrationRequest()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), parameters)
 	response = <-responseChannel
 
@@ -661,7 +730,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name any-name does not correspond with application name another-name", errorResponse.Message)
 
-	parameters = AnApplicationRegistration().withName("another-name").Build()
+	parameters = AnApplicationRegistration().withName("another-name").BuildApplicationRegistrationRequest()
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusNotFound, response.Code)
@@ -676,7 +745,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 		withRepository("https://github.com/Equinor/a-repo").
 		withSharedSecret("").
 		withPublicKey("")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
 	<-responseChannel
 
 	// Test Repository
@@ -684,62 +753,68 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	builder = builder.
 		withRepository(newRepository)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response := <-responseChannel
 
-	application := applicationModels.ApplicationRegistration{}
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newRepository, application.Repository)
+	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
+	assert.Equal(t, newRepository, applicationRegistrationUpsertResponse.ApplicationRegistration.Repository)
 
 	// Test SharedSecret
 	newSharedSecret := "Any shared secret"
 	builder = builder.
 		withSharedSecret(newSharedSecret)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newSharedSecret, application.SharedSecret)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newSharedSecret, applicationRegistrationUpsertResponse.ApplicationRegistration.SharedSecret)
 
 	// Test PublicKey
 	newPublicKey := "Any public key"
 	builder = builder.
 		withPublicKey(newPublicKey)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newPublicKey, application.PublicKey)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newPublicKey, applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 
 	// Test WBS
 	newWbs := "new.wbs.code"
 	builder = builder.
 		withWBS(newWbs)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newWbs, application.WBS)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newWbs, applicationRegistrationUpsertResponse.ApplicationRegistration.WBS)
 
 	// Test ConfigBranch
 	newConfigBranch := "newcfgbranch"
 	builder = builder.
 		withConfigBranch(newConfigBranch)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newConfigBranch, application.ConfigBranch)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newConfigBranch, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigBranch)
 
-	// Test ConfigBranch
+	// Test ConfigurationItem
 	newConfigurationItem := "newci"
 	builder = builder.
 		withConfigurationItem(newConfigurationItem)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.Build())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
 	response = <-responseChannel
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, newConfigurationItem, application.ConfigurationItem)
+	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
+	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.Equal(t, newConfigurationItem, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigurationItem)
 }
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {
@@ -756,13 +831,15 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withWBS("T.O123A.AZ.45678").
 		withConfigBranch("main1").
 		withConfigurationItem("ci-initial")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
 	<-responseChannel
 
 	// Test
 	anyNewAdGroup := []string{"98765432-dc00-4a28-9ad9-9e7f1e56919d"}
-	patchRequest := applicationModels.ApplicationPatchRequest{
-		AdGroups: &anyNewAdGroup,
+	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			AdGroups: &anyNewAdGroup,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -781,8 +858,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
-	patchRequest = applicationModels.ApplicationPatchRequest{
-		Owner: &anyNewOwner,
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			Owner: &anyNewOwner,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -797,8 +876,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	// Test
 	anyNewAdGroup = []string{}
-	patchRequest = applicationModels.ApplicationPatchRequest{
-		AdGroups: &anyNewAdGroup,
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			AdGroups: &anyNewAdGroup,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -813,8 +894,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	// Test
 	anyNewWBS := "A.BCD.00.999"
-	patchRequest = applicationModels.ApplicationPatchRequest{
-		WBS: &anyNewWBS,
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			WBS: &anyNewWBS,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -828,8 +911,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	// Test ConfigBranch
 	anyNewConfigBranch := "main2"
-	patchRequest = applicationModels.ApplicationPatchRequest{
-		ConfigBranch: &anyNewConfigBranch,
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			ConfigBranch: &anyNewConfigBranch,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -843,8 +928,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	// Test ConfigurationItem
 	anyNewConfigurationItem := "ci-patch"
-	patchRequest = applicationModels.ApplicationPatchRequest{
-		ConfigurationItem: &anyNewConfigurationItem,
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			ConfigurationItem: &anyNewConfigurationItem,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -864,13 +951,15 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	builder := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/a-repo")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.Build())
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
 	<-responseChannel
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
-	patchRequest := applicationModels.ApplicationPatchRequest{
-		Repository: &anyNewRepo,
+	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			Repository: &anyNewRepo,
+		},
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
@@ -895,8 +984,10 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
-	patchRequest := applicationModels.ApplicationPatchRequest{
-		Repository: &anyNewRepo,
+	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			Repository: &anyNewRepo,
+		},
 	}
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", appName), patchRequest)
@@ -957,7 +1048,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().
-		withName("any-app").withConfigBranch("maincfg").Build())
+		withName("any-app").withConfigBranch("maincfg").BuildApplicationRegistrationRequest())
 	<-responseChannel
 
 	// Test
@@ -1001,7 +1092,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 		ToEnvironment: "target",
 	}
 
-	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).Build())
+	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), parameters)
 	<-responseChannel
 
@@ -1022,7 +1113,7 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 		DeploymentName:  "a-deployment",
 	}
 
-	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).Build())
+	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Promote), parameters)
 	<-responseChannel
 
@@ -1104,7 +1195,7 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
 	parameters := AnApplicationRegistration().
-		withName("any-name").Build()
+		withName("any-name").BuildApplicationRegistrationRequest()
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -1185,7 +1276,7 @@ func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret
 		withSharedSecret(origSharedSecret).
 		withPrivateKey(origDeployPublicKey).
 		withPublicKey("Orig private key").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-appResponseChannel
@@ -1217,7 +1308,7 @@ func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
 		withSharedSecret("Orig shared secret").
 		withPrivateKey("Orig public key").
 		withPublicKey("Orig private key").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-appResponseChannel
@@ -1244,7 +1335,7 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	parameters := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		Build()
+		BuildApplicationRegistrationRequest()
 
 	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-appResponseChannel

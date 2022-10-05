@@ -47,7 +47,7 @@ type ApplicationRegistration struct {
 	// required: false
 	PrivateKey string `json:"privateKey,omitempty"`
 
-	// MachineUser is on/off toggler of machine user for the application
+	// MachineUser is on/off toggle of machine user for the application
 	//
 	// required: false
 	MachineUser bool `json:"machineUser"`
