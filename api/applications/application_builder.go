@@ -26,7 +26,7 @@ type Builder interface {
 	withConfigBranch(string) Builder
 	withConfigurationItem(string) Builder
 	withAcknowledgeWarnings() Builder
-	withAppRegistration(appRegistration *applicationModels.ApplicationRegistration) Builder
+	withAppRegistration(*applicationModels.ApplicationRegistration) Builder
 	withRadixRegistration(*v1.RadixRegistration) Builder
 	Build() applicationModels.ApplicationRegistration
 	BuildRR() (*v1.RadixRegistration, error)
