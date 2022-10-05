@@ -143,7 +143,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 						Container: "jobcont",
 						Path:      "jobpath",
 					},
-				}),
+				}...),
 		).
 		WithComponents(
 			builders.NewDeployComponentBuilder().
@@ -157,7 +157,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				})))
+				}...)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -209,7 +209,7 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 						Container: "some-container2",
 						Path:      "some-path2",
 					},
-				})))
+				}...)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)

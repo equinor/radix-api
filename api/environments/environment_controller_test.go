@@ -631,7 +631,7 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				})))
+				}...)))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
@@ -671,7 +671,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 						Container: "some-container",
 						Path:      "some-path",
 					},
-				})))
+				}...)))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))

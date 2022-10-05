@@ -1,8 +1,8 @@
 package models
 
-// ApplicationPatchRequest contains fields that can be patched on a registration
-// swagger:model ApplicationPatchRequest
-type ApplicationPatchRequest struct {
+// ApplicationRegistrationPatch contains fields that can be patched on a registration
+// swagger:model ApplicationRegistrationPatch
+type ApplicationRegistrationPatch struct {
 	// AdGroups the groups that should be able to access the application
 	//
 	// required: false
