@@ -336,9 +336,11 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 	}
 
 	if patchRequest.ConfigurationItem != nil {
-		existingRegistration.Spec.ConfigurationItem = *patchRequest.ConfigurationItem
-		payload = append(payload, patch{Op: "replace", Path: "/spec/configurationItem", Value: *patchRequest.ConfigurationItem})
-		runUpdate = true
+		if trimmedConfigurationItem := strings.TrimSpace(*patchRequest.ConfigurationItem); trimmedConfigurationItem != "" {
+			existingRegistration.Spec.ConfigurationItem = *patchRequest.ConfigurationItem
+			payload = append(payload, patch{Op: "replace", Path: "/spec/configurationItem", Value: trimmedConfigurationItem})
+			runUpdate = true
+		}
 	}
 
 	if runUpdate {
