@@ -3,10 +3,8 @@ package applications
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -32,12 +30,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-)
-
-const (
-	fileExtensionYaml                      = ".yaml"
-	radixConfigFullNamePattern             = "^(\\/*[a-zA-Z0-9_\\.\\-]+)+$"
-	invalidRadixConfigFullNameErrorMessage = "invalid file name for radixconfig. See https://www.radix.equinor.com/references/reference-radix-config/ for more information"
 )
 
 type patch struct {
@@ -172,7 +164,7 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 
 	application.RadixConfigFullName = cleanFileFullName(application.RadixConfigFullName)
 	if len(application.RadixConfigFullName) > 0 {
-		err = validateRadixConfigFullName(application.RadixConfigFullName)
+		err = radixvalidators.ValidateRadixConfigFullName(application.RadixConfigFullName)
 		if err != nil {
 			return nil, err
 		}
@@ -229,21 +221,6 @@ func (ah ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegis
 		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
 	}
 	return nil, nil
-}
-
-func validateRadixConfigFullName(radixConfigFullName string) error {
-	if len(radixConfigFullName) <= len(fileExtensionYaml) ||
-		!strings.HasSuffix(radixConfigFullName, fileExtensionYaml) {
-		return errors.New(invalidRadixConfigFullNameErrorMessage)
-	}
-	matched, err := regexp.Match(radixConfigFullNamePattern, []byte(radixConfigFullName))
-	if err != nil {
-		return err
-	}
-	if !matched {
-		return errors.New(invalidRadixConfigFullNameErrorMessage)
-	}
-	return nil
 }
 
 func cleanFileFullName(fileFullName string) string {
@@ -378,7 +355,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 
 	radixConfigFullName := cleanFileFullName(patchRequest.RadixConfigFullName)
 	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, existingRegistration.Spec.RadixConfigFullName) {
-		err := validateRadixConfigFullName(radixConfigFullName)
+		err := radixvalidators.ValidateRadixConfigFullName(radixConfigFullName)
 		if err != nil {
 			return nil, err
 		}

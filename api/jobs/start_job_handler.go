@@ -2,6 +2,9 @@ package jobs
 
 import (
 	"context"
+	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	"os"
 	"strings"
 	"time"
@@ -24,13 +27,18 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistation, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 
-	job := jh.createPipelineJob(appName, radixRegistation.Spec.CloneURL, pipeline, jobSpec)
+	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
+	if err != nil {
+		return nil, err
+	}
+
+	job := jh.createPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobSpec)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err := jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +49,17 @@ func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJo
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, error) {
+	if len(radixRegistration.Spec.RadixConfigFullName) == 0 {
+		return defaults.DefaultRadixConfigFileName, nil
+	}
+	if err := radixvalidators.ValidateRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName); err != nil {
+		return "", err
+	}
+	return radixRegistration.Spec.RadixConfigFullName, nil
+}
+
+func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
 	jobName, imageTag := getUniqueJobName(workerImage)
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -71,7 +89,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipel
 			//TODO - add in updated radix-operator
 			//ImageRepository: jobSpec.ImageRepository,
 			//ImageName:       jobSpec.ImageName,
-			RadixFileName: "/workspace/radixconfig.yaml",
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
@@ -96,15 +113,16 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL string, pipeline *pipel
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:        appName,
-			CloneURL:       cloneURL,
-			PipeLineType:   pipeline.Type,
-			PipelineImage:  getPipelineTag(),
-			DockerRegistry: dockerRegistry,
-			Build:          buildSpec,
-			Promote:        promoteSpec,
-			Deploy:         deploySpec,
-			TriggeredBy:    triggeredBy,
+			AppName:             appName,
+			CloneURL:            cloneURL,
+			PipeLineType:        pipeline.Type,
+			PipelineImage:       getPipelineTag(),
+			DockerRegistry:      dockerRegistry,
+			Build:               buildSpec,
+			Promote:             promoteSpec,
+			Deploy:              deploySpec,
+			TriggeredBy:         triggeredBy,
+			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
 		},
 	}
 
