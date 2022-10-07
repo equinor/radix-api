@@ -47,7 +47,7 @@ type ApplicationRegistration struct {
 	// required: false
 	PrivateKey string `json:"privateKey,omitempty"`
 
-	// MachineUser is on/off toggler of machine user for the application
+	// MachineUser is on/off toggle of machine user for the application
 	//
 	// required: false
 	MachineUser bool `json:"machineUser"`
@@ -61,4 +61,11 @@ type ApplicationRegistration struct {
 	//
 	// required: true
 	ConfigBranch string `json:"configBranch"`
+
+	// ConfigurationItem is an identifier for an entity in a configuration management solution such as a CMDB.
+	// ITIL defines a CI as any component that needs to be managed in order to deliver an IT Service
+	// Ref: https://en.wikipedia.org/wiki/Configuration_item
+	//
+	// required: false
+	ConfigurationItem string `json:"configurationItem"`
 }
