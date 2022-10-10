@@ -162,7 +162,20 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 		return nil, err
 	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(application).withDeployKey(deployKey).withCreator(creator).BuildRR()
+	application.RadixConfigFullName = cleanFileFullName(application.RadixConfigFullName)
+	if len(application.RadixConfigFullName) > 0 {
+		err = radixvalidators.ValidateRadixConfigFullName(application.RadixConfigFullName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	radixRegistration, err := NewBuilder().
+		withAppRegistration(application).
+		withDeployKey(deployKey).
+		withCreator(creator).
+		withRadixConfigFullName(application.RadixConfigFullName).
+		BuildRR()
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +223,10 @@ func (ah ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegis
 	return nil, nil
 }
 
+func cleanFileFullName(fileFullName string) string {
+	return strings.TrimPrefix(strings.ReplaceAll(strings.TrimSpace(fileFullName), "\\", "/"), "/")
+}
+
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
 func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	application := applicationRegistrationRequest.ApplicationRegistration
@@ -251,6 +268,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
 	existingRegistration.Spec.WBS = radixRegistration.Spec.WBS
 	existingRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
+	existingRegistration.Spec.RadixConfigFullName = radixRegistration.Spec.RadixConfigFullName
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
@@ -332,6 +350,17 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 
 	if setConfigBranchToFallbackWhenEmpty(existingRegistration) {
 		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
+		runUpdate = true
+	}
+
+	radixConfigFullName := cleanFileFullName(patchRequest.RadixConfigFullName)
+	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, existingRegistration.Spec.RadixConfigFullName) {
+		err := radixvalidators.ValidateRadixConfigFullName(radixConfigFullName)
+		if err != nil {
+			return nil, err
+		}
+		existingRegistration.Spec.RadixConfigFullName = radixConfigFullName
+		payload = append(payload, patch{Op: "replace", Path: "/spec/radixConfigFullName", Value: radixConfigFullName})
 		runUpdate = true
 	}
 
