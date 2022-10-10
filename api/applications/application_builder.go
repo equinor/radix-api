@@ -233,11 +233,10 @@ func AnApplicationRegistration() Builder {
 		name:       "my-app",
 		repository: "https://github.com/Equinor/my-app",
 		// file deepcode ignore HardcodedPassword: only used by unit test
-		sharedSecret: "AnySharedSecret",
-		adGroups:     []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
-		owner:        "a_test_user@equinor.com",
-		creator:      "a_test_user@equinor.com",
-		wbs:          "T.O123A.AZ.45678",
-		configBranch: "main",
+		sharedSecret:      "AnySharedSecret",
+		adGroups:          []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"},
+		creator:           "a_test_user@equinor.com",
+		configurationItem: "2b0781a7db131784551ea1ea4b9619c9",
+		configBranch:      "main",
 	}
 }

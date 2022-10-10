@@ -157,8 +157,8 @@ github.com/equinor/radix-common v1.2.1 h1:wGTQ8rGDlBRmj6bO+GcRjthYKIO44bKfRZzSi3
 github.com/equinor/radix-common v1.2.1/go.mod h1:0fEaqgUki0eF9xyoY3Ei9euB5dzSI4mk/5fk6ER3U/Q=
 github.com/equinor/radix-job-scheduler v1.6.3 h1:9Bg4YOuMR0VbVxa7Z3/iB6SdcivuSc9TdR12QTWZkgQ=
 github.com/equinor/radix-job-scheduler v1.6.3/go.mod h1:PvqJXVVlR/s1KmqG6G6YXHktidsBezJg0p8afxcy08k=
-github.com/equinor/radix-operator v1.27.0 h1:gMB6LTqulnr7UhMETYTr1qLV1hRVh3OaZRc8RLF7AbE=
-github.com/equinor/radix-operator v1.27.0/go.mod h1:05Aqd0ph1yJMT8dwvlP9pGlMB7xYs2gs6UZEp4sqPpM=
+github.com/equinor/radix-operator v1.27.3 h1:JKeXIrNfnVniIp9NiBX4BTPf6qBJTYTLszGz84o/9rA=
+github.com/equinor/radix-operator v1.27.3/go.mod h1:05Aqd0ph1yJMT8dwvlP9pGlMB7xYs2gs6UZEp4sqPpM=
 github.com/evanphx/json-patch v0.5.2/go.mod h1:ZWS5hhDbVDyob71nXKNL0+PWn6ToqBHMikGIFbs31qQ=
 github.com/evanphx/json-patch v4.12.0+incompatible h1:4onqiflcdA9EOZ4RxV643DvftH5pOlLGNtQ5lPWQu84=
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
