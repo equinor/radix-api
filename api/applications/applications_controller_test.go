@@ -203,7 +203,7 @@ func TestSearchApplications(t *testing.T) {
 		searchParam := applicationModels.ApplicationsSearchRequest{
 			Names: []string{appNames[1]},
 			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
-				JobSummary: true,
+				LatestJobSummary: true,
 			},
 		}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
@@ -261,7 +261,7 @@ func TestSearchApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	searchParam := applicationModels.ApplicationsSearchRequest{
 		Names: appNames,
 		IncludeFields: applicationModels.ApplicationSearchIncludeFields{
-			JobSummary: true,
+			LatestJobSummary: true,
 		},
 	}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)

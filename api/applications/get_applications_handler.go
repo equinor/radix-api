@@ -19,7 +19,8 @@ import (
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
 type GetApplicationsOptions struct {
-	IncludeJobSummary bool // include JobSummary
+	IncludeLatestJobSummary  bool // include LatestJobSummary
+	IncludeActiveDeployments bool // include ActiveDeployments
 }
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
@@ -36,21 +37,26 @@ func (ah ApplicationHandler) GetApplications(matcher applicationModels.Applicati
 		}
 	}
 
-	radixRegistations := ah.filterRadixRegByAccess(filteredRegistrations, hasAccess)
+	radixRegistrations := ah.filterRadixRegByAccess(filteredRegistrations, hasAccess)
 
-	var applicationJobs map[string]*jobModels.JobSummary
-	if options.IncludeJobSummary {
-		if applicationJobs, err = ah.getJobsForApplication(radixRegistations); err != nil {
+	var latestApplicationJobs map[string]*jobModels.JobSummary
+	if options.IncludeLatestJobSummary {
+		if latestApplicationJobs, err = ah.getJobsForApplication(radixRegistrations); err != nil {
 			return nil, err
 		}
 	}
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
-	for _, rr := range radixRegistations {
-		jobSummary := applicationJobs[rr.Name]
-		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
+	for _, rr := range radixRegistrations {
+		appName := rr.GetName()
+		applications = append(
+			applications,
+			&applicationModels.ApplicationSummary{
+				Name:      appName,
+				LatestJob: latestApplicationJobs[appName],
+			},
+		)
 	}
-
 	return applications, nil
 }
 

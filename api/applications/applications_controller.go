@@ -238,7 +238,10 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	appRegistrations, err := handler.GetApplications(
 		matcher,
 		ac.hasAccessToRR,
-		GetApplicationsOptions{IncludeJobSummary: appNamesRequest.IncludeFields.JobSummary},
+		GetApplicationsOptions{
+			IncludeLatestJobSummary:  appNamesRequest.IncludeFields.LatestJobSummary,
+			IncludeActiveDeployments: appNamesRequest.IncludeFields.ActiveDeployments,
+		},
 	)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
