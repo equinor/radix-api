@@ -49,6 +49,16 @@ type Secret struct {
 	// required: false
 	// example: Consistent
 	Status string `json:"status,omitempty"`
+
+	// StatusMessages contains a list of messages related to the Status
+	//
+	// required: false
+	StatusMessages []string `json:"statusMessages,omitempty"`
+
+	// TLS certificate information
+	//
+	// required: false
+	TLSCertificate *TLSCertificate `json:"tlsCertificate,omitempty"`
 }
 
 type SecretType string
