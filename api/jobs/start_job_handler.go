@@ -3,11 +3,12 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
@@ -143,11 +144,8 @@ func getPipelineTag() string {
 func getUniqueJobName(image string) (string, string) {
 	var jobName []string
 	randomStr := strings.ToLower(radixutils.RandString(5))
-	jobName = append(jobName, image)
-	jobName = append(jobName, "-")
-	jobName = append(jobName, getCurrentTimestamp())
-	jobName = append(jobName, "-")
-	jobName = append(jobName, randomStr)
+	jobName = append(jobName, image, "-", getCurrentTimestamp(), "-", randomStr)
+
 	return strings.Join(jobName, ""), randomStr
 }
 

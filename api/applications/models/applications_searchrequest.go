@@ -19,6 +19,6 @@ type ApplicationsSearchRequest struct {
 // ApplicationSearchIncludeFields specifies additional fields to include in the response of an ApplicationsSearchRequest
 // swagger:model ApplicationSearchIncludeFields
 type ApplicationSearchIncludeFields struct {
-	LatestJobSummary  bool `json:"latestJobSummary,omitempty"`
-	ActiveDeployments bool `json:"activeDeployments,omitempty"`
+	LatestJobSummary           bool `json:"jobSummary,omitempty"`
+	ActiveDeploymentComponents bool `json:"activeDeploymentComponents,omitempty"`
 }

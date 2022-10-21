@@ -239,8 +239,8 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		matcher,
 		ac.hasAccessToRR,
 		GetApplicationsOptions{
-			IncludeLatestJobSummary:  appNamesRequest.IncludeFields.LatestJobSummary,
-			IncludeActiveDeployments: appNamesRequest.IncludeFields.ActiveDeployments,
+			IncludeLatestJobSummary:           appNamesRequest.IncludeFields.LatestJobSummary,
+			IncludeActiveDeploymentComponents: appNamesRequest.IncludeFields.ActiveDeploymentComponents,
 		},
 	)
 	if err != nil {

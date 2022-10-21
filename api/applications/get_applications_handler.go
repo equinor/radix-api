@@ -6,8 +6,11 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	deployment "github.com/equinor/radix-api/api/deployments"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,8 +22,8 @@ import (
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
 type GetApplicationsOptions struct {
-	IncludeLatestJobSummary  bool // include LatestJobSummary
-	IncludeActiveDeployments bool // include ActiveDeployments
+	IncludeLatestJobSummary           bool // include LatestJobSummary
+	IncludeActiveDeploymentComponents bool // include ActiveDeployment components
 }
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
@@ -46,18 +49,68 @@ func (ah ApplicationHandler) GetApplications(matcher applicationModels.Applicati
 		}
 	}
 
+	var activeDeploymentComponents map[string][]*deploymentModels.Component
+	if options.IncludeActiveDeploymentComponents {
+		if activeDeploymentComponents, err = ah.getActiveComponentsForApplications(radixRegistrations); err != nil {
+			return nil, err
+		}
+	}
+
 	applications := make([]*applicationModels.ApplicationSummary, 0)
 	for _, rr := range radixRegistrations {
 		appName := rr.GetName()
 		applications = append(
 			applications,
 			&applicationModels.ApplicationSummary{
-				Name:      appName,
-				LatestJob: latestApplicationJobs[appName],
+				Name:                       appName,
+				LatestJob:                  latestApplicationJobs[appName],
+				ActiveDeploymentComponents: activeDeploymentComponents[appName],
 			},
 		)
 	}
 	return applications, nil
+}
+
+func (ah ApplicationHandler) getActiveComponentsForApplications(radixRegistrations []v1.RadixRegistration) (map[string][]*deploymentModels.Component, error) {
+	// channels didn't seem to like maps (panic: concurrent map write), so we'll work around it
+	type ActiveDeploymentComponents struct {
+		app        string
+		components []*deploymentModels.Component
+	}
+
+	var g errgroup.Group
+	g.SetLimit(10)
+	subRoutineLimit := 5
+
+	deploy := deployment.Init(ah.accounts)
+	activeDeploymentsComponentsChan := make(chan *ActiveDeploymentComponents, len(radixRegistrations))
+	for _, rr := range radixRegistrations {
+		appName := rr.GetName()
+		g.Go(func() error {
+			environments, err := ah.environmentHandler.GetEnvironmentSummary(appName)
+			if err != nil {
+				return err
+			}
+
+			components, err := deploy.GetComponentsForActiveDeploymentsInEnvironments(appName, environments, subRoutineLimit)
+			if err == nil {
+				activeDeploymentsComponentsChan <- &ActiveDeploymentComponents{app: appName, components: components}
+			}
+			return err
+		})
+	}
+
+	err := g.Wait()
+	close(activeDeploymentsComponentsChan)
+	if err != nil {
+		return nil, err
+	}
+
+	components := make(map[string][]*deploymentModels.Component)
+	for activeDeploymentComponents := range activeDeploymentsComponentsChan {
+		components[activeDeploymentComponents.app] = activeDeploymentComponents.components
+	}
+	return components, nil
 }
 
 func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {

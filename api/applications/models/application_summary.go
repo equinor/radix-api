@@ -19,8 +19,8 @@ type ApplicationSummary struct {
 	// required: false
 	LatestJob *jobModels.JobSummary `json:"latestJob,omitempty"`
 
-	// ComponentsSummary All component summaries (has Component Status and ReplicaList [has ReplicaStatus per element])
+	// ActiveDeploymentComponents All component summaries of the active deployments
 	//
 	// required: false
-	ActiveDeployments []*deploymentModels.Deployment `json:"activeDeployments,omitempty"`
+	ActiveDeploymentComponents []*deploymentModels.Component `json:"activeDeploymentComponents,omitempty"`
 }
