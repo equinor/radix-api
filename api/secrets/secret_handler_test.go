@@ -1717,12 +1717,14 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() 
 			Status:   secretModels.Consistent.String(),
 			Resource: s.alias,
 			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
-			TLSCertificate: &secretModels.TLSCertificate{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: &notBefore,
-				NotAfter:  &notAfter,
-				DNSNames:  dnsNames,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
 			},
 		},
 	}
@@ -1766,12 +1768,14 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyDat
 			Status:   secretModels.Consistent.String(),
 			Resource: s.alias,
 			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
-			TLSCertificate: &secretModels.TLSCertificate{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: &notBefore,
-				NotAfter:  &notAfter,
-				DNSNames:  dnsNames,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
 			},
 		},
 	}
@@ -1818,12 +1822,14 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValida
 			Status:   secretModels.Consistent.String(),
 			Resource: s.alias,
 			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
-			TLSCertificate: &secretModels.TLSCertificate{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: &notBefore,
-				NotAfter:  &notAfter,
-				DNSNames:  dnsNames,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
 			},
 		},
 	}
@@ -1947,12 +1953,14 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValid
 			StatusMessages: []string{certValidationMsg},
 			Resource:       s.alias,
 			Type:           secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
-			TLSCertificate: &secretModels.TLSCertificate{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: &notBefore,
-				NotAfter:  &notAfter,
-				DNSNames:  dnsNames,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
 			},
 		},
 	}

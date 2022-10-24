@@ -685,11 +685,11 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 				}
 			}
 
-			var tlsCert *models.TLSCertificate
+			var tlsCerts []models.TLSCertificate
 			var certStatusMessages []string
 			if certStatus == models.Consistent {
-				if tmpCert, err := models.ParseTLSCertificateFromPEM(certData); err == nil {
-					tlsCert = tmpCert
+				if tmpCerts, err := models.ParseTLSCertificatesFromPEM(certData); err == nil {
+					tlsCerts = tmpCerts
 				}
 
 				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
@@ -708,15 +708,15 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 
 			secrets = append(secrets,
 				models.Secret{
-					Name:           externalAlias + suffix.ExternalDNSTLSCert,
-					DisplayName:    "Certificate",
-					Resource:       externalAlias,
-					Type:           models.SecretTypeClientCert,
-					Component:      component.GetName(),
-					Status:         certStatus.String(),
-					ID:             models.SecretIdCert,
-					StatusMessages: certStatusMessages,
-					TLSCertificate: tlsCert,
+					Name:            externalAlias + suffix.ExternalDNSTLSCert,
+					DisplayName:     "Certificate",
+					Resource:        externalAlias,
+					Type:            models.SecretTypeClientCert,
+					Component:       component.GetName(),
+					Status:          certStatus.String(),
+					ID:              models.SecretIdCert,
+					StatusMessages:  certStatusMessages,
+					TLSCertificates: tlsCerts,
 				},
 				models.Secret{
 					Name:           externalAlias + suffix.ExternalDNSTLSKey,

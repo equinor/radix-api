@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 )
 
 // TLSSecretValidator defines methods to validate certificate and private key for TLS
@@ -69,9 +68,9 @@ func (v *tlsSecretValidator) ValidateTLSCertificate(certBytes, keyBytes []byte, 
 		// Users often upload the certificate without the full chain of intermediate certificates
 		// but browsers are still able to verify the entire chain. How, I don't know.
 		// TODO: should we add unknown authority errors to a warning list?
-		if !errors.As(err, &x509.UnknownAuthorityError{}) {
-			failedValidationMessages = append(failedValidationMessages, err.Error())
-		}
+		// if !errors.As(err, &x509.UnknownAuthorityError{}) {
+		failedValidationMessages = append(failedValidationMessages, err.Error())
+		// }
 	}
 
 	return
