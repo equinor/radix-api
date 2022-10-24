@@ -36,7 +36,8 @@ type TLSCertificate struct {
 	DNSNames []string `json:"dnsNames,omitempty"`
 }
 
-func ParseTLSCertificate(certBytes []byte) (*TLSCertificate, error) {
+// ParseTLSCertificateFromPEM builds a TLSCertificate from a PEM encoded certificate
+func ParseTLSCertificateFromPEM(certBytes []byte) (*TLSCertificate, error) {
 	certblock, _ := pem.Decode(certBytes)
 	if certblock == nil || certblock.Type != "CERTIFICATE" {
 		return nil, errors.New("x509: missing PEM block for certificate")

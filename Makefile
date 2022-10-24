@@ -25,9 +25,9 @@ test:
 mocks:
 	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
 	mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
-	mockgen -source ./api/secrets/secret_handler.go -destination ./api/secrets/mock/secret_handler_mock.go -package mock
 	mockgen -source ./api/environments/job_handler.go -destination ./api/environments/mock/job_handler_mock.go -package mock
 	mockgen -source ./api/environments/environment_handler.go -destination ./api/environments/mock/environment_handler_mock.go -package mock
+	mockgen -source ./api/secrets/tls_secret_validator.go -destination ./api/secrets/mock/tls_secret_validator_mock.go -package mock
 
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:v0.7.0 --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true

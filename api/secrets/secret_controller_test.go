@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	_ "github.com/equinor/radix-api/api/events"
-	"github.com/equinor/radix-api/api/secrets/models"
+	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	apiModels "github.com/equinor/radix-api/models"
@@ -106,7 +106,7 @@ func configureApplicationJobSecret(builder *operatorutils.ApplicationBuilder) {
 func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *operatorutils.ApplicationBuilder)) *httptest.ResponseRecorder {
 
 	// Setup
-	parameters := models.SecretParameters{
+	parameters := secretModels.SecretParameters{
 		SecretValue: updateSecretValue,
 	}
 
@@ -312,7 +312,7 @@ func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubern
 	}
 }
 
-func assertSecretObject(t *testing.T, secretObject models.Secret, name, component, status, testname string) {
+func assertSecretObject(t *testing.T, secretObject secretModels.Secret, name, component, status, testname string) {
 	assert.Equal(t, name, secretObject.Name, testname, fmt.Sprintf("%s: incorrect secret name", testname))
 	assert.Equal(t, component, secretObject.Component, fmt.Sprintf("%s: incorrect component name", testname))
 	assert.Equal(t, status, secretObject.Status, fmt.Sprintf("%s: incorrect secret status", testname))
@@ -725,65 +725,6 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 	}
 }
 
-func TestGetSecretsForDeploymentForExternalAlias(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
-	handler := initHandler(kubeclient, radixclient, secretproviderclient)
-
-	appName := "any-app"
-	componentName := "backend"
-	environmentName := "dev"
-	buildFrom := "master"
-	alias := "cdn.myalias.com"
-
-	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
-		ARadixDeployment().
-		WithAppName(appName).
-		WithEnvironment(environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithDNSExternalAlias(alias)).
-		WithImageTag(buildFrom))
-
-	commonTestUtils.ApplyApplication(operatorutils.
-		ARadixApplication().
-		WithAppName(appName).
-		WithEnvironment(environmentName, buildFrom).
-		WithComponents(operatorutils.
-			AnApplicationComponent().
-			WithName(componentName)))
-
-	secrets, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
-
-	assert.NoError(t, err)
-	expectedSecrets := []models.Secret{
-		{Name: alias + "-key", DisplayName: "Key",
-			Status:   models.Pending.String(),
-			Resource: alias,
-			Type:     models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdKey},
-		{Name: alias + "-cert", DisplayName: "Certificate", Status: models.Pending.String(), Resource: alias,
-			Type: models.SecretTypeClientCert, Component: componentName, ID: models.SecretIdCert},
-	}
-	assert.ElementsMatch(t, expectedSecrets, secrets)
-	for _, s := range secrets {
-		if s.Name == alias+"-key" {
-			assert.Equal(t, "Pending", s.Status)
-		} else if s.Name == alias+"-cert" {
-			assert.Equal(t, "Pending", s.Status)
-		}
-	}
-
-	kubeclient.CoreV1().Secrets(appName+"-"+environmentName).Create(context.TODO(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: alias,
-		},
-	}, metav1.CreateOptions{})
-
-	secrets, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
-
-	assert.NoError(t, err)
-	expectedSecrets[0].Status = models.Consistent.String()
-	expectedSecrets[1].Status = models.Consistent.String()
-	assert.ElementsMatch(t, expectedSecrets, secrets)
-}
-
 func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
 	handler := initHandler(kubeclient, radixclient, secretproviderclient)
@@ -821,12 +762,12 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	// No secret objects exist
 	secretDtos, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
-	expected := []models.Secret{
-		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
-		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+	expected := []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
 	}
 	assert.ElementsMatch(t, expected, secretDtos)
 
@@ -849,12 +790,12 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	)
 	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
-	expected = []models.Secret{
-		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Consistent.String()},
-		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
-		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
+	expected = []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
 	}
 	assert.ElementsMatch(t, expected, secretDtos)
 
@@ -863,12 +804,12 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	kubeclient.CoreV1().Secrets(envNs).Update(context.Background(), comp2Secret, metav1.UpdateOptions{})
 	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
-	expected = []models.Secret{
-		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Consistent.String()},
-		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component1Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Pending.String()},
-		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
-		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: models.SecretTypeOAuth2Proxy, Component: component2Name, Status: models.Consistent.String()},
+	expected = []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
 	}
 	assert.ElementsMatch(t, expected, secretDtos)
 

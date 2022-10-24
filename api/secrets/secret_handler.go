@@ -2,10 +2,6 @@ package secrets
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -38,6 +34,10 @@ const (
 	k8sJobNameLabel            = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
 
+var (
+	defaultTlsSecretValidator = tlsSecretValidator{}
+)
+
 type podNameToSecretVersionMap map[string]string
 type secretIdToPodNameToSecretVersionMap map[string]podNameToSecretVersionMap
 
@@ -55,9 +55,10 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 
 // SecretHandler Instance variables
 type SecretHandler struct {
-	userAccount    apiModels.Account
-	serviceAccount apiModels.Account
-	deployHandler  deployments.DeployHandler
+	userAccount        apiModels.Account
+	serviceAccount     apiModels.Account
+	deployHandler      deployments.DeployHandler
+	tlsSecretValidator TLSSecretValidator
 }
 
 // Init Constructor.
@@ -654,6 +655,10 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component ra
 
 func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeployment, envNamespace string) []models.Secret {
 	var secrets []models.Secret
+	tlsValidator := eh.tlsSecretValidator
+	if tlsValidator == nil {
+		tlsValidator = &defaultTlsSecretValidator
+	}
 
 	for _, component := range rd.Spec.Components {
 		for _, externalAlias := range component.DNSExternalAlias {
@@ -683,11 +688,11 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 			var tlsCert *models.TLSCertificate
 			var certStatusMessages []string
 			if certStatus == models.Consistent {
-				if tmpCert, err := models.ParseTLSCertificate(certData); err == nil {
+				if tmpCert, err := models.ParseTLSCertificateFromPEM(certData); err == nil {
 					tlsCert = tmpCert
 				}
 
-				if certIsValid, messages := validateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
+				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
 					certStatus = models.Invalid
 					certStatusMessages = append(certStatusMessages, messages...)
 				}
@@ -695,7 +700,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 
 			var keyStatusMessages []string
 			if keyStatus == models.Consistent {
-				if keyIsValid, messages := validateTLSKey(keyData); !keyIsValid {
+				if keyIsValid, messages := tlsValidator.ValidateTLSKey(keyData); !keyIsValid {
 					keyStatus = models.Invalid
 					keyStatusMessages = append(keyStatusMessages, messages...)
 				}
@@ -824,59 +829,4 @@ func (eh SecretHandler) getCsiSecretStoreSecretMap(namespace string) (map[string
 		secretMap[secretItem.GetName()] = secretItem
 	}
 	return secretMap, nil
-}
-
-func validateTLSKey(keyBytes []byte) (valid bool, failedValidationMessages []string) {
-	defer func() {
-		valid = len(failedValidationMessages) == 0
-	}()
-	keyBlock, _ := pem.Decode(keyBytes)
-	if keyBlock == nil {
-		failedValidationMessages = append(failedValidationMessages, "tls: failed to find any PEM data in key input")
-		return
-	}
-
-	_, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
-	if err != nil {
-		failedValidationMessages = append(failedValidationMessages, err.Error())
-	}
-
-	return
-}
-
-func validateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (valid bool, failedValidationMessages []string) {
-	defer func() {
-		valid = len(failedValidationMessages) == 0
-	}()
-
-	certblock, intermediatBytes := pem.Decode(certBytes)
-	if certblock == nil || certblock.Type != "CERTIFICATE" {
-		failedValidationMessages = append(failedValidationMessages, "x509: missing PEM block for certificate")
-		return
-	}
-
-	cert, err := x509.ParseCertificate(certblock.Bytes)
-	if err != nil {
-		failedValidationMessages = append(failedValidationMessages, err.Error())
-		return
-	}
-
-	_, err = tls.X509KeyPair(certBytes, keyBytes)
-	if err != nil {
-		failedValidationMessages = append(failedValidationMessages, err.Error())
-	}
-
-	intermediatePool := x509.NewCertPool()
-	intermediatePool.AppendCertsFromPEM(intermediatBytes)
-	_, err = cert.Verify(x509.VerifyOptions{DNSName: dnsName, Intermediates: intermediatePool})
-	if err != nil {
-		// Users often upload the certificate without the full chain of intermediate certificates
-		// but browsers are still able to verify the entire chain. How, I don't know.
-		// TODO: should we add unknown authority errors to a warning list?
-		if !errors.As(err, &x509.UnknownAuthorityError{}) {
-			failedValidationMessages = append(failedValidationMessages, err.Error())
-		}
-	}
-
-	return
 }
