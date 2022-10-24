@@ -13,7 +13,7 @@ const (
 	// NotAvailable In external secret configuration but in cluster
 	NotAvailable
 
-	// Invalid value. The vaulue is set, but the format is incorrect
+	// Invalid when secret value is set, but the format of the value is invalid
 	Invalid
 
 	numStatuses

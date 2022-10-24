@@ -56,7 +56,7 @@ type Secret struct {
 	StatusMessages []string `json:"statusMessages,omitempty"`
 
 	// TLSCertificates holds the TLS certificate and certificate authorities (CA)
-	// The first certificate in the list should the TLS certificate and the rest should be CAs
+	// The first certificate in the list should be the TLS certificate and the rest should be CA certificates
 	//
 	// required: false
 	TLSCertificates []TLSCertificate `json:"tlsCertificates,omitempty"`

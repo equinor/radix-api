@@ -10,7 +10,7 @@ import (
 type TLSSecretValidator interface {
 	// ValidateTLSKey validates the private key
 	// keyBytes must be in PEM format
-	// Returns false is keyBytes is invalid along with a list of validation error messages
+	// Returns false is keyBytes is invalid, along with a list of validation error messages
 	ValidateTLSKey(keyBytes []byte) (bool, []string)
 
 	// ValidateTLSCertificate validates the certificate, dnsName and private key
@@ -65,12 +65,7 @@ func (v *tlsSecretValidator) ValidateTLSCertificate(certBytes, keyBytes []byte, 
 	intermediatePool.AppendCertsFromPEM(intermediatBytes)
 	_, err = cert.Verify(x509.VerifyOptions{DNSName: dnsName, Intermediates: intermediatePool})
 	if err != nil {
-		// Users often upload the certificate without the full chain of intermediate certificates
-		// but browsers are still able to verify the entire chain. How, I don't know.
-		// TODO: should we add unknown authority errors to a warning list?
-		// if !errors.As(err, &x509.UnknownAuthorityError{}) {
 		failedValidationMessages = append(failedValidationMessages, err.Error())
-		// }
 	}
 
 	return
