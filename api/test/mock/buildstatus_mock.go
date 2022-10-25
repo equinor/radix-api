@@ -5,35 +5,36 @@
 package mock
 
 import (
+	reflect "reflect"
+
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
-// MockPipelineBadge is a mock of PipelineBadge interface
+// MockPipelineBadge is a mock of PipelineBadge interface.
 type MockPipelineBadge struct {
 	ctrl     *gomock.Controller
 	recorder *MockPipelineBadgeMockRecorder
 }
 
-// MockPipelineBadgeMockRecorder is the mock recorder for MockPipelineBadge
+// MockPipelineBadgeMockRecorder is the mock recorder for MockPipelineBadge.
 type MockPipelineBadgeMockRecorder struct {
 	mock *MockPipelineBadge
 }
 
-// NewMockPipelineBadge creates a new mock instance
+// NewMockPipelineBadge creates a new mock instance.
 func NewMockPipelineBadge(ctrl *gomock.Controller) *MockPipelineBadge {
 	mock := &MockPipelineBadge{ctrl: ctrl}
 	mock.recorder = &MockPipelineBadgeMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPipelineBadge) EXPECT() *MockPipelineBadgeMockRecorder {
 	return m.recorder
 }
 
-// GetBadge mocks base method
+// GetBadge mocks base method.
 func (m *MockPipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBadge", condition, pipeline)
@@ -42,7 +43,7 @@ func (m *MockPipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1
 	return ret0, ret1
 }
 
-// GetBadge indicates an expected call of GetBadge
+// GetBadge indicates an expected call of GetBadge.
 func (mr *MockPipelineBadgeMockRecorder) GetBadge(condition, pipeline interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBadge", reflect.TypeOf((*MockPipelineBadge)(nil).GetBadge), condition, pipeline)
