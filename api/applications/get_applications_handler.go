@@ -72,9 +72,8 @@ func (ah ApplicationHandler) GetApplications(matcher applicationModels.Applicati
 }
 
 func (ah ApplicationHandler) getActiveComponentsForApplications(radixRegistrations []v1.RadixRegistration) (map[string][]*deploymentModels.Component, error) {
-	// channels didn't seem to like maps (panic: concurrent map write), so we'll work around it
-	type ActiveDeploymentComponents struct {
-		app        string
+	type ChannelData struct {
+		key        string
 		components []*deploymentModels.Component
 	}
 
@@ -83,7 +82,7 @@ func (ah ApplicationHandler) getActiveComponentsForApplications(radixRegistratio
 	subRoutineLimit := 5
 
 	deploy := deployment.Init(ah.accounts)
-	activeDeploymentsComponentsChan := make(chan *ActiveDeploymentComponents, len(radixRegistrations))
+	chanData := make(chan *ChannelData, len(radixRegistrations))
 	for _, rr := range radixRegistrations {
 		appName := rr.GetName()
 		g.Go(func() error {
@@ -94,21 +93,21 @@ func (ah ApplicationHandler) getActiveComponentsForApplications(radixRegistratio
 
 			components, err := deploy.GetComponentsForActiveDeploymentsInEnvironments(appName, environments, subRoutineLimit)
 			if err == nil {
-				activeDeploymentsComponentsChan <- &ActiveDeploymentComponents{app: appName, components: components}
+				chanData <- &ChannelData{key: appName, components: components}
 			}
 			return err
 		})
 	}
 
 	err := g.Wait()
-	close(activeDeploymentsComponentsChan)
+	close(chanData)
 	if err != nil {
 		return nil, err
 	}
 
 	components := make(map[string][]*deploymentModels.Component)
-	for activeDeploymentComponents := range activeDeploymentsComponentsChan {
-		components[activeDeploymentComponents.app] = activeDeploymentComponents.components
+	for data := range chanData {
+		components[data.key] = data.components
 	}
 	return components, nil
 }
