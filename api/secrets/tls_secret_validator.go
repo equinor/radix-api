@@ -26,17 +26,25 @@ func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failed
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()
-	keyBlock, _ := pem.Decode(keyBytes)
-	if keyBlock == nil {
-		failedValidationMessages = append(failedValidationMessages, "tls: failed to find any PEM data in key input")
-		return
-	}
-	if !strings.HasSuffix(keyBlock.Type, "PRIVATE KEY") {
-		failedValidationMessages = append(failedValidationMessages, "tls: failed to find PEM block with type ending in \"PRIVATE KEY\" in key input")
-		return
+	var skippedBlockTypes []string
+	var keyDERBlock *pem.Block
+	for {
+		keyDERBlock, keyBytes = pem.Decode(keyBytes)
+		if keyDERBlock == nil {
+			if len(skippedBlockTypes) == 0 {
+				failedValidationMessages = append(failedValidationMessages, "tls: failed to find any PEM data in key input")
+				return
+			}
+			failedValidationMessages = append(failedValidationMessages, "tls: failed to find PEM block with type ending in \"PRIVATE KEY\" in key input")
+			return
+		}
+		if keyDERBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyDERBlock.Type, " PRIVATE KEY") {
+			break
+		}
+		skippedBlockTypes = append(skippedBlockTypes, keyDERBlock.Type)
 	}
 
-	_, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	_, err := x509.ParsePKCS1PrivateKey(keyDERBlock.Bytes)
 	if err != nil {
 		failedValidationMessages = append(failedValidationMessages, err.Error())
 	}
