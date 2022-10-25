@@ -1627,7 +1627,7 @@ type externalDnsAliasSecretTestSuite struct {
 	alias                string
 }
 
-func (s externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN string, dnsNames []string, notBefore, notAfter time.Time) []byte {
+func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN string, dnsNames []string, notBefore, notAfter time.Time) []byte {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(1111),
 		Subject:      pkix.Name{CommonName: issuerCN},
