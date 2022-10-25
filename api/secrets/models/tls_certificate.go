@@ -3,7 +3,6 @@ package models
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"time"
 )
 
@@ -37,18 +36,21 @@ type TLSCertificate struct {
 }
 
 // ParseTLSCertificatesFromPEM builds an array TLSCertificate from PEM encoded data
-func ParseTLSCertificatesFromPEM(certBytes []byte) ([]TLSCertificate, error) {
+func ParseTLSCertificatesFromPEM(certBytes []byte) []TLSCertificate {
 	var certs []TLSCertificate
 	for len(certBytes) > 0 {
-		certblock, rest := pem.Decode(certBytes)
-		certBytes = rest
-		if certblock == nil || certblock.Type != "CERTIFICATE" {
-			return nil, errors.New("x509: missing PEM block for certificate")
+		var block *pem.Block
+		block, certBytes = pem.Decode(certBytes)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
 		}
 
-		cert, err := x509.ParseCertificate(certblock.Bytes)
+		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		certs = append(certs, TLSCertificate{
@@ -60,5 +62,5 @@ func ParseTLSCertificatesFromPEM(certBytes []byte) ([]TLSCertificate, error) {
 		})
 	}
 
-	return certs, nil
+	return certs
 }

@@ -39,14 +39,12 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_ValidPEM() {
 		{Subject: "CN=" + cn1, Issuer: "CN=" + ca1, NotBefore: notBefore1, NotAfter: notAfter1, DNSNames: dns1},
 		{Subject: "CN=" + cn2, Issuer: "CN=" + ca2, NotBefore: notBefore2, NotAfter: notAfter2, DNSNames: dns2},
 	}
-	certs, err := ParseTLSCertificatesFromPEM(b.Bytes())
-	s.Require().NoError(err)
+	certs := ParseTLSCertificatesFromPEM(b.Bytes())
 	s.Equal(expected, certs)
 }
 
 func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_EmptyPEM() {
-	certs, err := ParseTLSCertificatesFromPEM(nil)
-	s.Require().NoError(err)
+	certs := ParseTLSCertificatesFromPEM(nil)
 	s.Empty(certs)
 }
 
@@ -67,9 +65,11 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_NonCertificat
 	b := bytes.NewBuffer(cert1)
 	b.Write(certBuf.Bytes())
 
-	certs, err := ParseTLSCertificatesFromPEM(b.Bytes())
-	s.Error(err)
-	s.Empty(certs)
+	expected := []TLSCertificate{
+		{Subject: "CN=" + cn1, Issuer: "CN=" + ca1, NotBefore: notBefore1, NotAfter: notAfter1, DNSNames: dns1},
+	}
+	certs := ParseTLSCertificatesFromPEM(b.Bytes())
+	s.Equal(expected, certs)
 }
 
 func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_InvalidPEMData() {
@@ -89,9 +89,11 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_InvalidPEMDat
 	b := bytes.NewBuffer(cert1)
 	b.Write(certBuf.Bytes())
 
-	certs, err := ParseTLSCertificatesFromPEM(b.Bytes())
-	s.Error(err)
-	s.Empty(certs)
+	expected := []TLSCertificate{
+		{Subject: "CN=" + cn1, Issuer: "CN=" + ca1, NotBefore: notBefore1, NotAfter: notAfter1, DNSNames: dns1},
+	}
+	certs := ParseTLSCertificatesFromPEM(b.Bytes())
+	s.Equal(expected, certs)
 }
 
 func (s *tlsCertificateTestSuite) buildCert(certCN, issuerCN string, notBefore, notAfter time.Time, dnsNames []string) []byte {

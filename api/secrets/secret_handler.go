@@ -688,9 +688,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeploymen
 			var tlsCerts []models.TLSCertificate
 			var certStatusMessages []string
 			if certStatus == models.Consistent {
-				if tmpCerts, err := models.ParseTLSCertificatesFromPEM(certData); err == nil {
-					tlsCerts = tmpCerts
-				}
+				tlsCerts = append(tlsCerts, models.ParseTLSCertificatesFromPEM(certData)...)
 
 				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
 					certStatus = models.Invalid
