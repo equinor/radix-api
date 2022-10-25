@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"strings"
 )
 
 // TLSSecretValidator defines methods to validate certificate and private key for TLS
@@ -28,6 +29,10 @@ func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failed
 	keyBlock, _ := pem.Decode(keyBytes)
 	if keyBlock == nil {
 		failedValidationMessages = append(failedValidationMessages, "tls: failed to find any PEM data in key input")
+		return
+	}
+	if !strings.HasSuffix(keyBlock.Type, "PRIVATE KEY") {
+		failedValidationMessages = append(failedValidationMessages, "tls: failed to find PEM block with type ending in \"PRIVATE KEY\" in key input")
 		return
 	}
 
