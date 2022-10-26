@@ -1,9 +1,13 @@
 package secrets
 
 import (
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"strings"
 )
 
@@ -26,6 +30,26 @@ func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failed
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()
+
+	validatePrivateKey := func(der []byte) error {
+		if _, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+			return nil
+		}
+		if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+			switch key.(type) {
+			case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey:
+				return nil
+			default:
+				return errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+			}
+		}
+		if _, err := x509.ParseECPrivateKey(der); err == nil {
+			return nil
+		}
+
+		return errors.New("tls: failed to parse private key")
+	}
+
 	var skippedBlockTypes []string
 	var keyDERBlock *pem.Block
 	for {
@@ -44,8 +68,7 @@ func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failed
 		skippedBlockTypes = append(skippedBlockTypes, keyDERBlock.Type)
 	}
 
-	_, err := x509.ParsePKCS1PrivateKey(keyDERBlock.Bytes)
-	if err != nil {
+	if err := validatePrivateKey(keyDERBlock.Bytes); err != nil {
 		failedValidationMessages = append(failedValidationMessages, err.Error())
 	}
 
