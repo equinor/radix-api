@@ -2,7 +2,7 @@ package buildstatus
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -99,7 +99,7 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		actual, _ := ioutil.ReadAll(response.Body)
+		actual, _ := io.ReadAll(response.Body)
 		assert.Equal(t, string(expected), string(actual))
 
 	})
