@@ -64,7 +64,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "POST",
 			HandlerFunc: ac.SearchApplications,
 			KubeApiConfig: models.KubeApiConfig{
-				QPS:   50,
+				QPS:   100,
 				Burst: 100,
 			},
 		},

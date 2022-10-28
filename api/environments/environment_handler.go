@@ -23,6 +23,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -88,12 +89,25 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		return []*environmentModels.EnvironmentSummary{}, nil
 	}
 
-	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
-	for i, environment := range radixApplication.Spec.Environments {
-		environments[i], err = eh.getEnvironmentSummary(radixApplication, environment)
-		if err != nil {
-			return nil, err
-		}
+	var g errgroup.Group
+	g.SetLimit(10)
+
+	envChan := make(chan *environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
+	for _, environment := range radixApplication.Spec.Environments {
+		env := environment
+		g.Go(func() error {
+			environmentSummary, err := eh.getEnvironmentSummary(radixApplication, env)
+			if err == nil {
+				envChan <- environmentSummary
+			}
+			return err
+		})
+	}
+
+	err = g.Wait()
+	close(envChan)
+	if err != nil {
+		return nil, err
 	}
 
 	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
@@ -101,6 +115,10 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		return nil, err
 	}
 
+	var environments []*environmentModels.EnvironmentSummary
+	for environmentSummary := range envChan {
+		environments = append(environments, environmentSummary)
+	}
 	environments = append(environments, orphanedEnvironments...)
 	return environments, nil
 }
