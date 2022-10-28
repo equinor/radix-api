@@ -8,7 +8,6 @@ import (
 	"time"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -16,7 +15,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +26,6 @@ import (
 type DeployHandler interface {
 	GetLogs(appName, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error)
 	GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error)
-	GetComponentsForActiveDeploymentsInEnvironments(appName string, environments []*environmentModels.EnvironmentSummary, maxSubRoutines int) ([]*deploymentModels.Component, error)
 	GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error)
 	GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error)
@@ -166,40 +163,6 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		BuildDeployment()
 
 	return dep, nil
-}
-
-// GetComponentsForActiveDeploymentsInEnvironments Gets all components in active deployments in application environments
-func (deploy *deployHandler) GetComponentsForActiveDeploymentsInEnvironments(appName string, environments []*environmentModels.EnvironmentSummary, maxSubRoutines int) ([]*deploymentModels.Component, error) {
-	var g errgroup.Group
-	g.SetLimit(maxSubRoutines)
-
-	componentsChan := make(chan []*deploymentModels.Component, len(environments))
-	for _, env := range environments {
-		deployment := env.ActiveDeployment
-		if deployment == nil || deployment.ActiveTo != "" {
-			continue
-		}
-
-		g.Go(func() error {
-			componentModels, err := deploy.GetComponentsForDeployment(appName, deployment)
-			if err == nil {
-				componentsChan <- componentModels
-			}
-			return err
-		})
-	}
-
-	err := g.Wait()
-	close(componentsChan)
-	if err != nil {
-		return nil, err
-	}
-
-	var components []*deploymentModels.Component
-	for componentModels := range componentsChan {
-		components = append(components, componentModels...)
-	}
-	return components, nil
 }
 
 func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {

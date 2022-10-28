@@ -10,7 +10,6 @@ import (
 	time "time"
 
 	models "github.com/equinor/radix-api/api/deployments/models"
-	models0 "github.com/equinor/radix-api/api/environments/models"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -35,21 +34,6 @@ func NewMockDeployHandler(ctrl *gomock.Controller) *MockDeployHandler {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDeployHandler) EXPECT() *MockDeployHandlerMockRecorder {
 	return m.recorder
-}
-
-// GetComponentsForActiveDeploymentsInEnvironments mocks base method.
-func (m *MockDeployHandler) GetComponentsForActiveDeploymentsInEnvironments(appName string, environments []*models0.EnvironmentSummary, maxSubRoutines int) ([]*models.Component, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetComponentsForActiveDeploymentsInEnvironments", appName, environments, maxSubRoutines)
-	ret0, _ := ret[0].([]*models.Component)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetComponentsForActiveDeploymentsInEnvironments indicates an expected call of GetComponentsForActiveDeploymentsInEnvironments.
-func (mr *MockDeployHandlerMockRecorder) GetComponentsForActiveDeploymentsInEnvironments(appName, environments, maxSubRoutines interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentsForActiveDeploymentsInEnvironments", reflect.TypeOf((*MockDeployHandler)(nil).GetComponentsForActiveDeploymentsInEnvironments), appName, environments, maxSubRoutines)
 }
 
 // GetComponentsForDeployment mocks base method.

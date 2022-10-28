@@ -223,14 +223,14 @@ func TestSearchApplications(t *testing.T) {
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.NotNil(t, applications[0].LatestJob)
-		assert.Nil(t, applications[0].ActiveDeploymentComponents)
+		assert.Nil(t, applications[0].EnvironmentActiveComponents)
 	})
 
-	t.Run("search for "+appNames[1]+" - with includeFields 'ActiveDeploymentComponents'", func(t *testing.T) {
+	t.Run("search for "+appNames[1]+" - with includeFields 'EnvironmentActiveComponents'", func(t *testing.T) {
 		searchParam := applicationModels.ApplicationsSearchRequest{
 			Names: []string{appNames[1]},
 			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
-				ActiveDeploymentComponents: true,
+				EnvironmentActiveComponents: true,
 			},
 		}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
@@ -241,7 +241,7 @@ func TestSearchApplications(t *testing.T) {
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.Nil(t, applications[0].LatestJob)
-		assert.NotNil(t, applications[0].ActiveDeploymentComponents)
+		assert.NotNil(t, applications[0].EnvironmentActiveComponents)
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {

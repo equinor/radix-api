@@ -19,8 +19,8 @@ type ApplicationSummary struct {
 	// required: false
 	LatestJob *jobModels.JobSummary `json:"latestJob,omitempty"`
 
-	// ActiveDeploymentComponents All component summaries of the active deployments
+	// EnvironmentActiveComponents All component summaries of the active deployments in the environments
 	//
 	// required: false
-	ActiveDeploymentComponents []*deploymentModels.Component `json:"activeDeploymentComponents,omitempty"`
+	EnvironmentActiveComponents map[string][]*deploymentModels.Component `json:"environmentActiveComponents,omitempty"`
 }
