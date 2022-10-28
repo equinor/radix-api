@@ -30,10 +30,12 @@ import (
 
 const (
 	secretDefaultData          = "xx"
-	tlsCertPart                = "tls.crt"
-	tlsKeyPart                 = "tls.key"
 	secretStoreCsiManagedLabel = "secrets-store.csi.k8s.io/managed"
 	k8sJobNameLabel            = "job-name" // A label that k8s automatically adds to a Pod created by a Job
+)
+
+var (
+	defaultTlsSecretValidator = tlsSecretValidator{}
 )
 
 type podNameToSecretVersionMap map[string]string
@@ -53,9 +55,10 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 
 // SecretHandler Instance variables
 type SecretHandler struct {
-	userAccount    apiModels.Account
-	serviceAccount apiModels.Account
-	deployHandler  deployments.DeployHandler
+	userAccount        apiModels.Account
+	serviceAccount     apiModels.Account
+	deployHandler      deployments.DeployHandler
+	tlsSecretValidator TLSSecretValidator
 }
 
 // Init Constructor.
@@ -85,12 +88,12 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 	if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
 		// This is the cert part of the TLS secret
 		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
-		partName = tlsCertPart
+		partName = corev1.TLSCertKey
 
 	} else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
 		// This is the key part of the TLS secret
 		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
-		partName = tlsKeyPart
+		partName = corev1.TLSPrivateKeyKey
 
 	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
 		// This is the account key part of the blobfuse cred secret
@@ -168,50 +171,39 @@ func (eh SecretHandler) ChangeComponentSecret(appName, envName, componentName, s
 // GetSecretsForDeployment Lists environment secrets for application
 func (eh SecretHandler) GetSecretsForDeployment(appName, envName, deploymentName string) ([]models.Secret, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
+	var secrets []models.Secret
 
 	rd, err := eh.userAccount.RadixClient.RadixV1().RadixDeployments(envNamespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
-		return []models.Secret{}, nil
+		return nil, err
 	}
 
 	secretsFromLatestDeployment, err := eh.getSecretsFromLatestDeployment(rd, envNamespace)
 	if err != nil {
-		return []models.Secret{}, nil
-	}
-
-	secretsFromTLSCertificates, err := eh.getSecretsFromTLSCertificates(rd, envNamespace)
-	if err != nil {
 		return nil, err
 	}
+	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
+		secrets = append(secrets, secretFromLatestDeployment)
+	}
+
+	secrets = append(secrets, eh.getSecretsFromTLSCertificates(rd, envNamespace)...)
 
 	secretsFromVolumeMounts, err := eh.getSecretsFromVolumeMounts(rd, envNamespace)
 	if err != nil {
 		return nil, err
 	}
+	secrets = append(secrets, secretsFromVolumeMounts...)
 
 	secretsFromAuthentication, err := eh.getSecretsFromAuthentication(rd, envNamespace)
 	if err != nil {
 		return nil, err
 	}
+	secrets = append(secrets, secretsFromAuthentication...)
 
 	secretRefsSecrets, err := eh.getSecretRefsSecrets(appName, rd, envNamespace)
 	if err != nil {
 		return nil, err
 	}
-
-	secrets := make([]models.Secret, 0)
-	secrets = append(secrets, secretsFromVolumeMounts...)
-
-	for _, secretFromTLSCertificate := range secretsFromTLSCertificates {
-		secrets = append(secrets, secretFromTLSCertificate)
-	}
-
-	for _, secretFromLatestDeployment := range secretsFromLatestDeployment {
-		secrets = append(secrets, secretFromLatestDeployment)
-	}
-
-	secrets = append(secrets, secretsFromAuthentication...)
-
 	secrets = append(secrets, secretRefsSecrets...)
 
 	return secrets, nil
@@ -661,60 +653,87 @@ func (eh SecretHandler) getSecretsFromComponentAuthenticationOAuth2(component ra
 	return secrets, nil
 }
 
-func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeployment, envNamespace string) (map[string]models.Secret, error) {
-	secretDTOsMap := make(map[string]models.Secret)
+func (eh SecretHandler) getSecretsFromTLSCertificates(rd *radixv1.RadixDeployment, envNamespace string) []models.Secret {
+	var secrets []models.Secret
+	tlsValidator := eh.tlsSecretValidator
+	if tlsValidator == nil {
+		tlsValidator = &defaultTlsSecretValidator
+	}
 
 	for _, component := range rd.Spec.Components {
 		for _, externalAlias := range component.DNSExternalAlias {
-
-			certStatus := models.Consistent.String()
-			keyStatus := models.Consistent.String()
+			var certData, keyData []byte
+			certStatus := models.Consistent
+			keyStatus := models.Consistent
 
 			secretValue, err := eh.userAccount.Client.CoreV1().Secrets(envNamespace).Get(context.TODO(), externalAlias, metav1.GetOptions{})
 			if err != nil {
 				log.Warnf("Error on retrieving secret %s. Message: %s", externalAlias, err.Error())
-				certStatus = models.Pending.String()
-				keyStatus = models.Pending.String()
+				certStatus = models.Pending
+				keyStatus = models.Pending
 			} else {
-				certValue := strings.TrimSpace(string(secretValue.Data[tlsCertPart]))
-				if strings.EqualFold(certValue, secretDefaultData) {
-					certStatus = models.Pending.String()
+				certData = secretValue.Data[corev1.TLSCertKey]
+				if certValue := strings.TrimSpace(string(certData)); len(certValue) == 0 || strings.EqualFold(certValue, secretDefaultData) {
+					certStatus = models.Pending
+					certData = nil
 				}
 
-				keyValue := strings.TrimSpace(string(secretValue.Data[tlsKeyPart]))
-				if strings.EqualFold(keyValue, secretDefaultData) {
-					keyStatus = models.Pending.String()
+				keyData = secretValue.Data[corev1.TLSPrivateKeyKey]
+				if keyValue := strings.TrimSpace(string(keyData)); len(keyValue) == 0 || strings.EqualFold(keyValue, secretDefaultData) {
+					keyStatus = models.Pending
+					keyData = nil
 				}
 			}
 
-			tlsCertSecretDTO := models.Secret{
-				Name:        externalAlias + suffix.ExternalDNSTLSCert,
-				DisplayName: "Certificate",
-				Resource:    externalAlias,
-				Type:        models.SecretTypeClientCert,
-				Component:   component.GetName(),
-				Status:      certStatus,
-				ID:          models.SecretIdCert,
-			}
-			secretDTOsMap[tlsCertSecretDTO.Name] = tlsCertSecretDTO
+			var tlsCerts []models.TLSCertificate
+			var certStatusMessages []string
+			if certStatus == models.Consistent {
+				tlsCerts = append(tlsCerts, models.ParseTLSCertificatesFromPEM(certData)...)
 
-			tlsKeySecretDTO := models.Secret{
-				Name:        externalAlias + suffix.ExternalDNSTLSKey,
-				DisplayName: "Key",
-				Resource:    externalAlias,
-				Type:        models.SecretTypeClientCert,
-				Component:   component.GetName(),
-				Status:      keyStatus,
-				ID:          models.SecretIdKey,
+				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
+					certStatus = models.Invalid
+					certStatusMessages = append(certStatusMessages, messages...)
+				}
 			}
-			secretDTOsMap[tlsKeySecretDTO.Name] = tlsKeySecretDTO
+
+			var keyStatusMessages []string
+			if keyStatus == models.Consistent {
+				if keyIsValid, messages := tlsValidator.ValidateTLSKey(keyData); !keyIsValid {
+					keyStatus = models.Invalid
+					keyStatusMessages = append(keyStatusMessages, messages...)
+				}
+			}
+
+			secrets = append(secrets,
+				models.Secret{
+					Name:            externalAlias + suffix.ExternalDNSTLSCert,
+					DisplayName:     "Certificate",
+					Resource:        externalAlias,
+					Type:            models.SecretTypeClientCert,
+					Component:       component.GetName(),
+					Status:          certStatus.String(),
+					ID:              models.SecretIdCert,
+					StatusMessages:  certStatusMessages,
+					TLSCertificates: tlsCerts,
+				},
+				models.Secret{
+					Name:           externalAlias + suffix.ExternalDNSTLSKey,
+					DisplayName:    "Key",
+					Resource:       externalAlias,
+					Type:           models.SecretTypeClientCert,
+					Component:      component.GetName(),
+					Status:         keyStatus.String(),
+					StatusMessages: keyStatusMessages,
+					ID:             models.SecretIdKey,
+				},
+			)
 		}
 	}
 
-	return secretDTOsMap, nil
+	return secrets
 }
 
-//GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
+// GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
 func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName)
