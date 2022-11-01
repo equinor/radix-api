@@ -64,7 +64,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "POST",
 			HandlerFunc: ac.SearchApplications,
 			KubeApiConfig: models.KubeApiConfig{
-				QPS:   50,
+				QPS:   100,
 				Burst: 100,
 			},
 		},
@@ -238,7 +238,10 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	appRegistrations, err := handler.GetApplications(
 		matcher,
 		ac.hasAccessToRR,
-		GetApplicationsOptions{IncludeJobSummary: appNamesRequest.IncludeFields.JobSummary},
+		GetApplicationsOptions{
+			IncludeLatestJobSummary:            appNamesRequest.IncludeFields.LatestJobSummary,
+			IncludeEnvironmentActiveComponents: appNamesRequest.IncludeFields.EnvironmentActiveComponents,
+		},
 	)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
