@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -120,6 +121,16 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		environments = append(environments, environmentSummary)
 	}
 	environments = append(environments, orphanedEnvironments...)
+
+	if len(environments) > 0 {
+		// sort environments by spec order
+		envSpecSize := len(radixApplication.Spec.Environments)
+		sort.Slice(environments, func(i, j int) bool {
+			return (sliceIndex(envSpecSize, func(pos int) bool { return environments[i].Name == radixApplication.Spec.Environments[pos].Name }) <
+				sliceIndex(envSpecSize, func(pos int) bool { return environments[j].Name == radixApplication.Spec.Environments[pos].Name }))
+		})
+	}
+
 	return environments, nil
 }
 
@@ -583,4 +594,14 @@ func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, c
 		return err
 	}
 	return nil
+}
+
+// find the index of a slice element (generic)
+func sliceIndex(limit int, predicate func(i int) bool) int {
+	for i := 0; i < limit; i++ {
+		if predicate(i) {
+			return i
+		}
+	}
+	return -1
 }
