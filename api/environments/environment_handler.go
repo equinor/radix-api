@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"sort"
 	"strings"
 	"time"
 
@@ -121,15 +120,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		environments = append(environments, environmentSummary)
 	}
 	environments = append(environments, orphanedEnvironments...)
-
-	if len(environments) > 0 {
-		// sort environments by spec order
-		envSpecSize := len(radixApplication.Spec.Environments)
-		sort.Slice(environments, func(i, j int) bool {
-			return (sliceIndex(envSpecSize, func(pos int) bool { return environments[i].Name == radixApplication.Spec.Environments[pos].Name }) <
-				sliceIndex(envSpecSize, func(pos int) bool { return environments[j].Name == radixApplication.Spec.Environments[pos].Name }))
-		})
-	}
+	environments = getSortedEnvironments(environments, radixApplication.Spec)
 
 	return environments, nil
 }
@@ -596,12 +587,17 @@ func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, c
 	return nil
 }
 
-// find the index of a slice element (generic)
-func sliceIndex(limit int, predicate func(i int) bool) int {
-	for i := 0; i < limit; i++ {
-		if predicate(i) {
-			return i
+func getSortedEnvironments(environments []*environmentModels.EnvironmentSummary, spec v1.RadixApplicationSpec) []*environmentModels.EnvironmentSummary {
+	envMap := map[string]*environmentModels.EnvironmentSummary{}
+	for _, v := range environments {
+		envMap[v.Name] = v
+	}
+
+	var sortedEnvironments []*environmentModels.EnvironmentSummary
+	for _, v := range spec.Environments {
+		if val, ok := envMap[v.Name]; ok {
+			sortedEnvironments = append(sortedEnvironments, val)
 		}
 	}
-	return -1
+	return sortedEnvironments
 }
