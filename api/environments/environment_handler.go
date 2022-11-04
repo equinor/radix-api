@@ -119,8 +119,8 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 	for environmentSummary := range envChan {
 		environments = append(environments, environmentSummary)
 	}
-	environments = append(environments, orphanedEnvironments...)
 	environments = getSortedEnvironments(environments, radixApplication.Spec)
+	environments = append(environments, orphanedEnvironments...)
 
 	return environments, nil
 }
