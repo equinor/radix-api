@@ -83,6 +83,11 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
+	type ChannelData struct {
+		position int
+		summary  *environmentModels.EnvironmentSummary
+	}
+
 	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
 	if err != nil {
 		// This is no error, as the application may only have been just registered
@@ -92,13 +97,15 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 	var g errgroup.Group
 	g.SetLimit(10)
 
-	envChan := make(chan *environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
-	for _, environment := range radixApplication.Spec.Environments {
-		env := environment
+	envSize := len(radixApplication.Spec.Environments)
+	envChan := make(chan *ChannelData, envSize)
+	for i, environment := range radixApplication.Spec.Environments {
+		environment := environment
+		i := i
 		g.Go(func() error {
-			environmentSummary, err := eh.getEnvironmentSummary(radixApplication, env)
+			summary, err := eh.getEnvironmentSummary(radixApplication, environment)
 			if err == nil {
-				envChan <- environmentSummary
+				envChan <- &ChannelData{position: i, summary: summary}
 			}
 			return err
 		})
@@ -115,11 +122,10 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		return nil, err
 	}
 
-	var environments []*environmentModels.EnvironmentSummary
-	for environmentSummary := range envChan {
-		environments = append(environments, environmentSummary)
+	environments := make([]*environmentModels.EnvironmentSummary, envSize)
+	for env := range envChan {
+		environments[env.position] = env.summary
 	}
-	environments = getSortedEnvironments(environments, radixApplication.Spec)
 	environments = append(environments, orphanedEnvironments...)
 
 	return environments, nil
@@ -187,7 +193,6 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 
 // CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist
 func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.RadixEnvironment, error) {
-
 	// ensure application exists
 	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -213,7 +218,6 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
-
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
 	re, err := eh.getRadixEnvironments(uniqueName)
 	if err != nil {
@@ -256,7 +260,6 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*e
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
-
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
 	re, err := eh.getRadixEnvironments(uniqueName)
@@ -283,7 +286,6 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 }
 
 func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
-
 	environmentSummary := &environmentModels.EnvironmentSummary{
 		Name:          env.Name,
 		BranchMapping: env.Build.From,
@@ -305,7 +307,6 @@ func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env
 }
 
 func (eh EnvironmentHandler) getOrphanEnvironmentSummary(appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
-
 	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, latestDeployment)
 	if err != nil {
 		return nil, err
@@ -585,19 +586,4 @@ func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, c
 		return err
 	}
 	return nil
-}
-
-func getSortedEnvironments(environments []*environmentModels.EnvironmentSummary, spec v1.RadixApplicationSpec) []*environmentModels.EnvironmentSummary {
-	envMap := map[string]*environmentModels.EnvironmentSummary{}
-	for _, v := range environments {
-		envMap[v.Name] = v
-	}
-
-	var sortedEnvironments []*environmentModels.EnvironmentSummary
-	for _, v := range spec.Environments {
-		if val, ok := envMap[v.Name]; ok {
-			sortedEnvironments = append(sortedEnvironments, val)
-		}
-	}
-	return sortedEnvironments
 }
