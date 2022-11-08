@@ -169,7 +169,7 @@ func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.N
 	appNameLabel, _ := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
 	envLabel, _ := labels.NewRequirement(kube.RadixEnvLabel, selection.Exists, nil)
 
-	labelSelector := labels.NewSelector().Add(*appNameLabel).Add(*envLabel)
+	labelSelector := labels.NewSelector().Add(*appNameLabel, *envLabel)
 
 	return deploy.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 }

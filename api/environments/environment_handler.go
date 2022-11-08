@@ -23,6 +23,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -82,18 +83,38 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environmentModels.EnvironmentSummary, error) {
+	type ChannelData struct {
+		position int
+		summary  *environmentModels.EnvironmentSummary
+	}
+
 	radixApplication, err := eh.getRadixApplicationInAppNamespace(appName)
 	if err != nil {
 		// This is no error, as the application may only have been just registered
 		return []*environmentModels.EnvironmentSummary{}, nil
 	}
 
-	environments := make([]*environmentModels.EnvironmentSummary, len(radixApplication.Spec.Environments))
+	var g errgroup.Group
+	g.SetLimit(10)
+
+	envSize := len(radixApplication.Spec.Environments)
+	envChan := make(chan *ChannelData, envSize)
 	for i, environment := range radixApplication.Spec.Environments {
-		environments[i], err = eh.getEnvironmentSummary(radixApplication, environment)
-		if err != nil {
-			return nil, err
-		}
+		environment := environment
+		i := i
+		g.Go(func() error {
+			summary, err := eh.getEnvironmentSummary(radixApplication, environment)
+			if err == nil {
+				envChan <- &ChannelData{position: i, summary: summary}
+			}
+			return err
+		})
+	}
+
+	err = g.Wait()
+	close(envChan)
+	if err != nil {
+		return nil, err
 	}
 
 	orphanedEnvironments, err := eh.getOrphanedEnvironments(appName, radixApplication)
@@ -101,7 +122,12 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(appName string) ([]*environme
 		return nil, err
 	}
 
+	environments := make([]*environmentModels.EnvironmentSummary, envSize)
+	for env := range envChan {
+		environments[env.position] = env.summary
+	}
 	environments = append(environments, orphanedEnvironments...)
+
 	return environments, nil
 }
 
@@ -167,7 +193,6 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 
 // CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist
 func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.RadixEnvironment, error) {
-
 	// ensure application exists
 	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -193,7 +218,6 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
-
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
 	re, err := eh.getRadixEnvironments(uniqueName)
 	if err != nil {
@@ -236,7 +260,6 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*e
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
-
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
 	re, err := eh.getRadixEnvironments(uniqueName)
@@ -263,7 +286,6 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 }
 
 func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
-
 	environmentSummary := &environmentModels.EnvironmentSummary{
 		Name:          env.Name,
 		BranchMapping: env.Build.From,
@@ -285,7 +307,6 @@ func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env
 }
 
 func (eh EnvironmentHandler) getOrphanEnvironmentSummary(appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
-
 	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, latestDeployment)
 	if err != nil {
 		return nil, err

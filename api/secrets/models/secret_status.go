@@ -13,6 +13,9 @@ const (
 	// NotAvailable In external secret configuration but in cluster
 	NotAvailable
 
+	// Invalid when secret value is set, but the format of the value is invalid
+	Invalid
+
 	numStatuses
 )
 
@@ -20,5 +23,5 @@ func (p SecretStatus) String() string {
 	if p >= numStatuses {
 		return "Unsupported"
 	}
-	return [...]string{"Pending", "Consistent", "NotAvailable"}[p]
+	return [...]string{"Pending", "Consistent", "NotAvailable", "Invalid"}[p]
 }

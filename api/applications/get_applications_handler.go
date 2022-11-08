@@ -6,8 +6,12 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	deployment "github.com/equinor/radix-api/api/deployments"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,7 +23,8 @@ import (
 type hasAccessToRR func(client kubernetes.Interface, rr v1.RadixRegistration) bool
 
 type GetApplicationsOptions struct {
-	IncludeJobSummary bool // include JobSummary
+	IncludeLatestJobSummary            bool // include LatestJobSummary
+	IncludeEnvironmentActiveComponents bool // include Environment ActiveDeployment components
 }
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
@@ -36,22 +41,114 @@ func (ah ApplicationHandler) GetApplications(matcher applicationModels.Applicati
 		}
 	}
 
-	radixRegistations := ah.filterRadixRegByAccess(filteredRegistrations, hasAccess)
+	radixRegistrations := ah.filterRadixRegByAccess(filteredRegistrations, hasAccess)
 
-	var applicationJobs map[string]*jobModels.JobSummary
-	if options.IncludeJobSummary {
-		if applicationJobs, err = ah.getJobsForApplication(radixRegistations); err != nil {
+	var latestApplicationJobs map[string]*jobModels.JobSummary
+	if options.IncludeLatestJobSummary {
+		if latestApplicationJobs, err = ah.getJobsForApplication(radixRegistrations); err != nil {
+			return nil, err
+		}
+	}
+
+	var environmentActiveComponents map[string]map[string][]*deploymentModels.Component
+	if options.IncludeEnvironmentActiveComponents {
+		if environmentActiveComponents, err = ah.getEnvironmentActiveComponentsForApplications(radixRegistrations); err != nil {
 			return nil, err
 		}
 	}
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
-	for _, rr := range radixRegistations {
-		jobSummary := applicationJobs[rr.Name]
-		applications = append(applications, &applicationModels.ApplicationSummary{Name: rr.Name, LatestJob: jobSummary})
+	for _, rr := range radixRegistrations {
+		appName := rr.GetName()
+		applications = append(
+			applications,
+			&applicationModels.ApplicationSummary{
+				Name:                        appName,
+				LatestJob:                   latestApplicationJobs[appName],
+				EnvironmentActiveComponents: environmentActiveComponents[appName],
+			},
+		)
+	}
+	return applications, nil
+}
+
+func (ah ApplicationHandler) getEnvironmentActiveComponentsForApplications(radixRegistrations []v1.RadixRegistration) (map[string]map[string][]*deploymentModels.Component, error) {
+	type ChannelData struct {
+		key           string
+		envComponents map[string][]*deploymentModels.Component
 	}
 
-	return applications, nil
+	var g errgroup.Group
+	g.SetLimit(10)
+
+	deploy := deployment.Init(ah.accounts)
+	chanData := make(chan *ChannelData, len(radixRegistrations))
+	for _, rr := range radixRegistrations {
+		appName := rr.GetName()
+		g.Go(func() error {
+			environments, err := ah.environmentHandler.GetEnvironmentSummary(appName)
+			if err != nil {
+				return err
+			}
+
+			envComponents, err := getComponentsForActiveDeploymentsInEnvironments(deploy, appName, environments)
+			if err == nil {
+				chanData <- &ChannelData{key: appName, envComponents: envComponents}
+			}
+			return err
+		})
+	}
+
+	err := g.Wait()
+	close(chanData)
+	if err != nil {
+		return nil, err
+	}
+
+	envComponents := make(map[string]map[string][]*deploymentModels.Component)
+	for data := range chanData {
+		envComponents[data.key] = data.envComponents
+	}
+	return envComponents, nil
+}
+
+func getComponentsForActiveDeploymentsInEnvironments(deploy deployment.DeployHandler, appName string, environments []*environmentModels.EnvironmentSummary) (map[string][]*deploymentModels.Component, error) {
+	type ChannelData struct {
+		key        string
+		components []*deploymentModels.Component
+	}
+
+	var g errgroup.Group
+	g.SetLimit(5)
+
+	chanData := make(chan *ChannelData, len(environments))
+	for _, env := range environments {
+		deployment := env.ActiveDeployment
+		if deployment == nil || deployment.ActiveTo != "" {
+			continue
+		}
+
+		envName := env.Name
+		g.Go(func() error {
+			componentModels, err := deploy.GetComponentsForDeployment(appName, deployment)
+			if err == nil {
+				chanData <- &ChannelData{key: envName, components: componentModels}
+			}
+			return err
+		})
+	}
+
+	err := g.Wait()
+	close(chanData)
+	if err != nil {
+		return nil, err
+	}
+
+	components := make(map[string][]*deploymentModels.Component)
+	for data := range chanData {
+		components[data.key] = data.components
+	}
+	return components, nil
 }
 
 func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {

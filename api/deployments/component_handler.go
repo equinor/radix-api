@@ -27,27 +27,6 @@ const (
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
 func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
-	return deploy.getComponents(appName, deployment)
-}
-
-// GetComponentsForDeploymentName handler for GetDeployments
-func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
-	deployments, err := deploy.GetDeploymentsForApplication(appName, false)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, depl := range deployments {
-		if depl.Name != deploymentID {
-			continue
-		}
-		return deploy.getComponents(appName, depl)
-	}
-
-	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
-}
-
-func (deploy *deployHandler) getComponents(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 	if err != nil {
@@ -76,17 +55,34 @@ func (deploy *deployHandler) getComponents(appName string, deployment *deploymen
 	return components, nil
 }
 
+// GetComponentsForDeploymentName handler for GetDeployments
+func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
+	deployments, err := deploy.GetDeploymentsForApplication(appName, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, depl := range deployments {
+		if depl.Name != deploymentID {
+			continue
+		}
+		return deploy.GetComponentsForDeployment(appName, depl)
+	}
+
+	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
+}
+
 func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
 
 	// TODO: Add interface for RA + EnvConfig
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
 
-	deploymentComponent, err :=
-		GetComponentStateFromSpec(deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
+	deploymentComponent, err := GetComponentStateFromSpec(deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
 	if err != nil {
 		return nil, err
 	}
+
 	if component.GetType() == v1.RadixComponentTypeComponent {
 		hpaSummary, err := deploy.getHpaSummary(component, envNs)
 		if err != nil {
@@ -137,13 +133,12 @@ func GetComponentStateFromSpec(
 	environmentConfig v1.RadixCommonEnvironmentConfig,
 	component v1.RadixCommonDeployComponent) (*deploymentModels.Component, error) {
 
-	var environmentVariables map[string]string
-
-	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	var componentPodNames []string
-
+	var environmentVariables map[string]string
 	var replicaSummaryList []deploymentModels.ReplicaSummary
 	var auxResource deploymentModels.AuxiliaryResource
+
+	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	status := deploymentModels.ConsistentComponent
 
 	if deployment.ActiveTo == "" {
@@ -183,7 +178,6 @@ func GetComponentStateFromSpec(
 		WithRadixEnvironmentVariables(environmentVariables).
 		WithAuxiliaryResource(auxResource).
 		BuildComponent()
-
 }
 
 func getPodNames(pods []corev1.Pod) []string {
@@ -310,7 +304,6 @@ func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, compon
 	}
 
 	return &oauth2Resource, nil
-
 }
 
 func getAuxiliaryResourceDeployment(kubeClient kubernetes.Interface, appName, componentName, envNamespace, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {

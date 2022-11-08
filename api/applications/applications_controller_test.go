@@ -158,6 +158,15 @@ func TestSearchApplications(t *testing.T) {
 
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[0]))
 	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[1]))
+	commonTestUtils.ApplyDeployment(
+		builders.
+			ARadixDeployment().
+			WithAppName(appNames[1]).
+			WithComponent(
+				builders.
+					NewDeployComponentBuilder(),
+			),
+	)
 
 	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
 	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
@@ -199,11 +208,11 @@ func TestSearchApplications(t *testing.T) {
 		assert.Equal(t, 0, len(applications))
 	})
 
-	t.Run("search for "+appNames[1]+" - with includeFields", func(t *testing.T) {
+	t.Run("search for "+appNames[1]+" - with includeFields 'LatestJobSummary'", func(t *testing.T) {
 		searchParam := applicationModels.ApplicationsSearchRequest{
 			Names: []string{appNames[1]},
 			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
-				JobSummary: true,
+				LatestJobSummary: true,
 			},
 		}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
@@ -214,6 +223,25 @@ func TestSearchApplications(t *testing.T) {
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.NotNil(t, applications[0].LatestJob)
+		assert.Nil(t, applications[0].EnvironmentActiveComponents)
+	})
+
+	t.Run("search for "+appNames[1]+" - with includeFields 'EnvironmentActiveComponents'", func(t *testing.T) {
+		searchParam := applicationModels.ApplicationsSearchRequest{
+			Names: []string{appNames[1]},
+			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
+				EnvironmentActiveComponents: true,
+			},
+		}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, appNames[1], applications[0].Name)
+		assert.Nil(t, applications[0].LatestJob)
+		assert.NotNil(t, applications[0].EnvironmentActiveComponents)
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
@@ -261,7 +289,7 @@ func TestSearchApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	searchParam := applicationModels.ApplicationsSearchRequest{
 		Names: appNames,
 		IncludeFields: applicationModels.ApplicationSearchIncludeFields{
-			JobSummary: true,
+			LatestJobSummary: true,
 		},
 	}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
