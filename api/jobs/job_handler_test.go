@@ -236,6 +236,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 		{scenarioName: "status is set to condition when stop is false", jobName: "job1", condition: v1.JobFailed, stop: false, expectedStatus: jobModels.Failed.String()},
 		{scenarioName: "status is Stopping when stop is true and condition is not Stopped", jobName: "job2", condition: v1.JobRunning, stop: true, expectedStatus: jobModels.Stopping.String()},
 		{scenarioName: "status is Stopped when stop is true and condition is Stopped", jobName: "job3", condition: v1.JobStopped, stop: true, expectedStatus: jobModels.Stopped.String()},
+		{scenarioName: "status is Stopped when there is no changes", jobName: "job3", condition: v1.JobStoppedNoChanges, stop: true, expectedStatus: jobModels.StoppedNoChanges.String()},
 		{scenarioName: "status is Waiting when condition is empty", jobName: "job4", expectedStatus: jobModels.Waiting.String()},
 	}
 

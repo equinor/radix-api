@@ -26,6 +26,9 @@ const (
 	// Stopped job
 	Stopped
 
+	// StoppedNoChanges The job is stopped due to no changes in build components
+	StoppedNoChanges
+
 	numStatuses
 )
 
