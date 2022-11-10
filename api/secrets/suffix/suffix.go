@@ -1,3 +1,4 @@
+// file deepcode ignore HardcodedPassword: does not contain a secret value
 package suffix
 
 const (

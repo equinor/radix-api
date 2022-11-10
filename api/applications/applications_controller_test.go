@@ -409,7 +409,7 @@ func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.
 	assert.Equal(t, "Any public key", applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
 }
 
-func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
+func TestCreateApplication_WhenConfigurationItemIsNotSet_ReturnError(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest()
 
@@ -419,14 +419,14 @@ func TestCreateApplication_WhenOwnerIsNotSet_ReturnError(t *testing.T) {
 		withRepository("https://github.com/Equinor/any-repo").
 		withPublicKey("Any public key").
 		withPrivateKey("Any private key").
-		withOwner("").
+		withConfigurationItem("").
 		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.InvalidEmailError("owner", "")
+	expectedError := radixvalidators.ResourceNameCannotBeEmptyError("configuration item")
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
@@ -609,8 +609,6 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 		withRepository("https://github.com/Equinor/any-repo").
 		withSharedSecret("Any secret").
 		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
-		withOwner("AN_OWNER@equinor.com").
-		withWBS("A.BCD.00.999").
 		withConfigBranch("abranch").
 		withRadixConfigFullName("a/custom-radixconfig.yaml").
 		withConfigurationItem("ci").
@@ -629,9 +627,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Registration.Repository)
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
 	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
-	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
-	assert.Equal(t, "A.BCD.00.999", application.Registration.WBS)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 	assert.Equal(t, "a/custom-radixconfig.yaml", application.Registration.RadixConfigFullName)
 	assert.Equal(t, "ci", application.Registration.ConfigurationItem)
@@ -1068,6 +1064,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 	_, controllerTestUtils, _, radixClient, _, _ := setupTest()
 	rr := builders.ARadixRegistration().
 		WithName(appName).
+		WithConfigurationItem("any").
 		WithConfigBranch("")
 	radixClient.RadixV1().RadixRegistrations().Create(context.TODO(), rr.BuildRR(), metav1.CreateOptions{})
 
