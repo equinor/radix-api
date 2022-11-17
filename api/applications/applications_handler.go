@@ -40,31 +40,40 @@ type patch struct {
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler         job.JobHandler
-	environmentHandler environments.EnvironmentHandler
-	accounts           models.Accounts
+	jobHandler                  job.JobHandler
+	environmentHandler          environments.EnvironmentHandler
+	accounts                    models.Accounts
+	requireAppConfigurationItem bool
 }
 
-// Init Constructor
-func Init(accounts models.Accounts) ApplicationHandler {
-	jobHandler := job.Init(accounts, deployments.Init(accounts))
-	return ApplicationHandler{
-		accounts:           accounts,
-		jobHandler:         jobHandler,
-		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
+type ApplicationHandlerFactory func(accounts models.Accounts) ApplicationHandler
+
+func NewApplicationHandlerFactory(requireAppConfigurationItem bool) ApplicationHandlerFactory {
+	return func(accounts models.Accounts) ApplicationHandler {
+		return NewApplicationHandler(accounts, requireAppConfigurationItem)
 	}
 }
 
-func (ah ApplicationHandler) getUserAccount() models.Account {
+// Init Constructor
+func NewApplicationHandler(accounts models.Accounts, requireAppConfigurationItem bool) ApplicationHandler {
+	return ApplicationHandler{
+		accounts:                    accounts,
+		jobHandler:                  job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler:          environments.Init(environments.WithAccounts(accounts)),
+		requireAppConfigurationItem: requireAppConfigurationItem,
+	}
+}
+
+func (ah *ApplicationHandler) getUserAccount() models.Account {
 	return ah.accounts.UserAccount
 }
 
-func (ah ApplicationHandler) getServiceAccount() models.Account {
+func (ah *ApplicationHandler) getServiceAccount() models.Account {
 	return ah.accounts.ServiceAccount
 }
 
 // GetApplication handler for GetApplication
-func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
+func (ah *ApplicationHandler) GetApplication(appName string) (*applicationModels.Application, error) {
 	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -101,7 +110,7 @@ func (ah ApplicationHandler) GetApplication(appName string) (*applicationModels.
 }
 
 // RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
-func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
+func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
 	log.Debugf("regenerate machine user token for app: %s", appName)
 	namespace := crdUtils.GetAppNamespace(appName)
 	machineUserSA, err := ah.getMachineUserServiceAccount(appName, namespace)
@@ -135,7 +144,7 @@ func (ah ApplicationHandler) RegenerateMachineUserToken(appName string) (*applic
 }
 
 // RegisterApplication handler for RegisterApplication
-func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	// Only if repository is provided and deploykey is not set by user
 	// generate the key
 	var deployKey *utils.DeployKey
@@ -201,7 +210,7 @@ func (ah ApplicationHandler) RegisterApplication(applicationRegistrationRequest 
 	}, nil
 }
 
-func (ah ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+func (ah *ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
 	if err != nil {
 		return nil, err
@@ -212,7 +221,7 @@ func (ah ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegis
 	return nil, nil
 }
 
-func (ah ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+func (ah *ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	warnings, err := ah.getRegistrationUpdateWarnings(radixRegistration)
 	if err != nil {
 		return nil, err
@@ -228,7 +237,7 @@ func cleanFileFullName(fileFullName string) string {
 }
 
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
-func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+func (ah *ApplicationHandler) ChangeRegistrationDetails(appName string, applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	application := applicationRegistrationRequest.ApplicationRegistration
 	if appName != application.Name {
 		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
@@ -292,7 +301,7 @@ func (ah ApplicationHandler) ChangeRegistrationDetails(appName string, applicati
 }
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
-func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+func (ah *ApplicationHandler) ModifyRegistrationDetails(appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	// Make check that this is an existing application
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -399,7 +408,7 @@ func (ah ApplicationHandler) ModifyRegistrationDetails(appName string, applicati
 }
 
 // DeleteApplication handler for DeleteApplication
-func (ah ApplicationHandler) DeleteApplication(appName string) error {
+func (ah *ApplicationHandler) DeleteApplication(appName string) error {
 	// Make check that this is an existing application
 	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -415,7 +424,7 @@ func (ah ApplicationHandler) DeleteApplication(appName string) error {
 }
 
 // GetSupportedPipelines handler for GetSupportedPipelines
-func (ah ApplicationHandler) GetSupportedPipelines() []string {
+func (ah *ApplicationHandler) GetSupportedPipelines() []string {
 	supportedPipelines := make([]string, 0)
 	pipelines := jobPipeline.GetSupportedPipelines()
 	for _, pipeline := range pipelines {
@@ -426,7 +435,7 @@ func (ah ApplicationHandler) GetSupportedPipelines() []string {
 }
 
 // TriggerPipelineBuild Triggers build pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineBuild(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) TriggerPipelineBuild(appName string, r *http.Request) (*jobModels.JobSummary, error) {
 	pipelineName := "build"
 	jobSummary, err := ah.triggerPipelineBuildOrBuildDeploy(appName, pipelineName, r)
 	if err != nil {
@@ -436,7 +445,7 @@ func (ah ApplicationHandler) TriggerPipelineBuild(appName string, r *http.Reques
 }
 
 // TriggerPipelineBuildDeploy Triggers build-deploy pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
 	pipelineName := "build-deploy"
 	jobSummary, err := ah.triggerPipelineBuildOrBuildDeploy(appName, pipelineName, r)
 	if err != nil {
@@ -446,7 +455,7 @@ func (ah ApplicationHandler) TriggerPipelineBuildDeploy(appName string, r *http.
 }
 
 // TriggerPipelinePromote Triggers promote pipeline for an application
-func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersPromote
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
@@ -478,7 +487,7 @@ func (ah ApplicationHandler) TriggerPipelinePromote(appName string, r *http.Requ
 }
 
 // TriggerPipelineDeploy Triggers deploy pipeline for an application
-func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersDeploy
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
@@ -507,7 +516,7 @@ func (ah ApplicationHandler) TriggerPipelineDeploy(appName string, r *http.Reque
 	return jobSummary, nil
 }
 
-func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
@@ -555,37 +564,35 @@ func (ah ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipeline
 	return jobSummary, nil
 }
 
-func (ah ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
-	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
-	// to run a full validation
-	err := radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (ah ApplicationHandler) getRegistrationInsertWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+func (ah *ApplicationHandler) getRegistrationInsertWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
 	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
 }
 
-func (ah ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
+func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
 	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
 }
 
-func (ah ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
+func (ah *ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	err := radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationValidators()...)
 }
 
-func (ah ApplicationHandler) getAppAlias(appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
+func (ah *ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
+	return radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration, ah.getAdditionalRadixRegistrationValidators()...)
+}
+
+func (ah *ApplicationHandler) getAdditionalRadixRegistrationValidators() []radixvalidators.RadixRegistrationValidator {
+	var validators []radixvalidators.RadixRegistrationValidator
+
+	if ah.requireAppConfigurationItem {
+		validators = append(validators, radixvalidators.RequireConfigurationItem)
+	}
+
+	return validators
+}
+
+func (ah *ApplicationHandler) getAppAlias(appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
 	for _, environment := range environments {
 		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
 
@@ -609,7 +616,7 @@ func (ah ApplicationHandler) getAppAlias(appName string, environments []*environ
 	return nil, nil
 }
 
-func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationModels.MachineUser, error) {
+func (ah *ApplicationHandler) getMachineUserForApp(appName string) (*applicationModels.MachineUser, error) {
 	namespace := crdUtils.GetAppNamespace(appName)
 
 	log.Debugf("get service account for machine user in app %s of namespace %s", appName, namespace)
@@ -638,7 +645,7 @@ func (ah ApplicationHandler) getMachineUserForApp(appName string) (*applicationM
 	}, nil
 }
 
-func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
+func (ah *ApplicationHandler) getMachineUserServiceAccount(appName, namespace string) (*corev1.ServiceAccount, error) {
 	machineUserName := defaults.GetMachineUserRoleName(appName)
 	log.Debugf("get service account for app %s in namespace %s and machine user: %s", appName, namespace, machineUserName)
 	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), machineUserName, metav1.GetOptions{})
@@ -650,7 +657,7 @@ func (ah ApplicationHandler) getMachineUserServiceAccount(appName, namespace str
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
-func (ah ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
+func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
 	// Make check that this is an existing application and user has access to it
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {

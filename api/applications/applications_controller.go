@@ -19,16 +19,18 @@ const appPath = rootPath + "/applications/{appName}"
 type applicationController struct {
 	*models.DefaultController
 	hasAccessToRR
+	applicationHandlerFactory ApplicationHandlerFactory
 }
 
 // NewApplicationController Constructor
-func NewApplicationController(hasAccessTo hasAccessToRR) models.Controller {
+func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory) models.Controller {
 	if hasAccessTo == nil {
 		hasAccessTo = hasAccess
 	}
 
 	return &applicationController{
-		hasAccessToRR: hasAccessTo,
+		hasAccessToRR:             hasAccessTo,
+		applicationHandlerFactory: applicationHandlerFactory,
 	}
 }
 
@@ -38,17 +40,17 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/applications",
 			Method:      "POST",
-			HandlerFunc: RegisterApplication,
+			HandlerFunc: ac.RegisterApplication,
 		},
 		models.Route{
 			Path:        appPath,
 			Method:      "PUT",
-			HandlerFunc: ChangeRegistrationDetails,
+			HandlerFunc: ac.ChangeRegistrationDetails,
 		},
 		models.Route{
 			Path:        appPath,
 			Method:      "PATCH",
-			HandlerFunc: ModifyRegistrationDetails,
+			HandlerFunc: ac.ModifyRegistrationDetails,
 		},
 		models.Route{
 			Path:        rootPath + "/applications",
@@ -71,52 +73,52 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        appPath,
 			Method:      "GET",
-			HandlerFunc: GetApplication,
+			HandlerFunc: ac.GetApplication,
 		},
 		models.Route{
 			Path:        appPath,
 			Method:      "DELETE",
-			HandlerFunc: DeleteApplication,
+			HandlerFunc: ac.DeleteApplication,
 		},
 		models.Route{
 			Path:        appPath + "/pipelines",
 			Method:      "GET",
-			HandlerFunc: ListPipelines,
+			HandlerFunc: ac.ListPipelines,
 		},
 		models.Route{
 			Path:        appPath + "/pipelines/build",
 			Method:      "POST",
-			HandlerFunc: TriggerPipelineBuild,
+			HandlerFunc: ac.TriggerPipelineBuild,
 		},
 		models.Route{
 			Path:        appPath + "/pipelines/build-deploy",
 			Method:      "POST",
-			HandlerFunc: TriggerPipelineBuildDeploy,
+			HandlerFunc: ac.TriggerPipelineBuildDeploy,
 		},
 		models.Route{
 			Path:        appPath + "/pipelines/promote",
 			Method:      "POST",
-			HandlerFunc: TriggerPipelinePromote,
+			HandlerFunc: ac.TriggerPipelinePromote,
 		},
 		models.Route{
 			Path:        appPath + "/pipelines/deploy",
 			Method:      "POST",
-			HandlerFunc: TriggerPipelineDeploy,
+			HandlerFunc: ac.TriggerPipelineDeploy,
 		},
 		models.Route{
 			Path:        appPath + "/deploykey-valid",
 			Method:      "GET",
-			HandlerFunc: IsDeployKeyValidHandler,
+			HandlerFunc: ac.IsDeployKeyValidHandler,
 		},
 		models.Route{
 			Path:        appPath + "/regenerate-machine-user-token",
 			Method:      "POST",
-			HandlerFunc: RegenerateMachineUserTokenHandler,
+			HandlerFunc: ac.RegenerateMachineUserTokenHandler,
 		},
 		models.Route{
 			Path:        appPath + "/regenerate-deploy-key",
 			Method:      "POST",
-			HandlerFunc: RegenerateDeployKeyHandler,
+			HandlerFunc: ac.RegenerateDeployKeyHandler,
 		},
 	}
 
@@ -169,7 +171,7 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 		matcher = applicationModels.MatchBySSHRepoFunc(sshRepo)
 	}
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR, GetApplicationsOptions{})
 
 	if err != nil {
@@ -232,7 +234,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		return
 	}
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
 
 	appRegistrations, err := handler.GetApplications(
@@ -252,7 +254,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 }
 
 // GetApplication Gets application by application name
-func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName} application getApplication
 	// ---
 	// summary: Gets the application by name
@@ -290,7 +292,7 @@ func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	application, err := handler.GetApplication(appName)
 
 	if err != nil {
@@ -302,7 +304,7 @@ func GetApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name
-func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deploykey-valid application isDeployKeyValid
 	// ---
 	// summary: Checks if the deploy key is correctly setup for application by cloning the repository
@@ -348,7 +350,7 @@ func IsDeployKeyValidHandler(accounts models.Accounts, w http.ResponseWriter, r 
 }
 
 // RegenerateMachineUserTokenHandler Deletes the secret holding the token to force refresh and returns the new token
-func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/regenerate-machine-user-token application regenerateMachineUserToken
 	// ---
 	// summary: Regenerates machine user token
@@ -385,7 +387,7 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 	//     description: "Internal server error"
 
 	appName := mux.Vars(r)["appName"]
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	machineUser, err := handler.RegenerateMachineUserToken(appName)
 
 	if err != nil {
@@ -399,7 +401,7 @@ func RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.Response
 }
 
 // RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key
-func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/regenerate-deploy-key application regenerateDeployKey
 	// ---
 	// summary: Regenerates deploy key
@@ -435,7 +437,7 @@ func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter,
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	var sharedSecret applicationModels.RegenerateDeployKeyAndSecretData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -452,7 +454,7 @@ func RegenerateDeployKeyHandler(accounts models.Accounts, w http.ResponseWriter,
 }
 
 // RegisterApplication Creates new application registration
-func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications platform registerApplication
 	// ---
 	// summary: Create an application registration
@@ -491,7 +493,7 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	appRegistrationUpsertResponse, err := handler.RegisterApplication(applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -502,7 +504,7 @@ func RegisterApplication(accounts models.Accounts, w http.ResponseWriter, r *htt
 }
 
 // ChangeRegistrationDetails Updates application registration
-func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName} application changeRegistrationDetails
 	// ---
 	// summary: Update application registration
@@ -550,7 +552,7 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(appName, applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -561,7 +563,7 @@ func ChangeRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 }
 
 // ModifyRegistrationDetails Updates specific field(s) of an application registration
-func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PATCH /applications/{appName} application modifyRegistrationDetails
 	// ---
 	// summary: Updates specific field(s) of an application registration
@@ -609,7 +611,7 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(appName, applicationRegistrationPatchRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -620,7 +622,7 @@ func ModifyRegistrationDetails(accounts models.Accounts, w http.ResponseWriter, 
 }
 
 // DeleteApplication Deletes application
-func DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName} application deleteApplication
 	// ---
 	// summary: Delete application
@@ -649,7 +651,7 @@ func DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	err := handler.DeleteApplication(appName)
 
 	if err != nil {
@@ -661,7 +663,7 @@ func DeleteApplication(accounts models.Accounts, w http.ResponseWriter, r *http.
 }
 
 // ListPipelines Lists supported pipelines
-func ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/pipelines application listPipelines
 	// ---
 	// summary: Lists the supported pipelines
@@ -680,13 +682,13 @@ func ListPipelines(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	//           type: string
 
 	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	supportedPipelines := handler.GetSupportedPipelines()
 	radixhttp.JSONResponse(w, r, supportedPipelines)
 }
 
 // TriggerPipelineBuild creates a build pipeline job for the application
-func TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/build application triggerPipelineBuild
 	// ---
 	// summary: Run a build pipeline for a given application and branch
@@ -721,7 +723,7 @@ func TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *ht
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	jobSummary, err := handler.TriggerPipelineBuild(appName, r)
 
 	if err != nil {
@@ -733,7 +735,7 @@ func TriggerPipelineBuild(accounts models.Accounts, w http.ResponseWriter, r *ht
 }
 
 // TriggerPipelineBuildDeploy creates a build-deploy pipeline job for the application
-func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/build-deploy application triggerPipelineBuildDeploy
 	// ---
 	// summary: Run a build-deploy pipeline for a given application and branch
@@ -768,7 +770,7 @@ func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter,
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	jobSummary, err := handler.TriggerPipelineBuildDeploy(appName, r)
 
 	if err != nil {
@@ -780,7 +782,7 @@ func TriggerPipelineBuildDeploy(accounts models.Accounts, w http.ResponseWriter,
 }
 
 // TriggerPipelineDeploy creates a deploy pipeline job for the application
-func TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/deploy application triggerPipelineDeploy
 	// ---
 	// summary: Run a deploy pipeline for a given application and environment
@@ -815,7 +817,7 @@ func TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *h
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	jobSummary, err := handler.TriggerPipelineDeploy(appName, r)
 
 	if err != nil {
@@ -827,7 +829,7 @@ func TriggerPipelineDeploy(accounts models.Accounts, w http.ResponseWriter, r *h
 }
 
 // TriggerPipelinePromote creates a promote pipeline job for the application
-func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/promote application triggerPipelinePromote
 	// ---
 	// summary: Run a promote pipeline for a given application and branch
@@ -862,7 +864,7 @@ func TriggerPipelinePromote(accounts models.Accounts, w http.ResponseWriter, r *
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts)
+	handler := ac.applicationHandlerFactory(accounts)
 	jobSummary, err := handler.TriggerPipelinePromote(appName, r)
 
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/equinor/radix-api/api/secrets"
 
@@ -35,11 +36,15 @@ import (
 	_ "github.com/equinor/radix-api/docs"
 )
 
-const clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
+const (
+	clusternameEnvironmentVariable                = "RADIX_CLUSTERNAME"
+	requireAppConfigrationItemEnvironmentVariable = "REQUIRE_APP_CONFIGURATION_ITEM"
+	logLevelEnvironmentVariable                   = "LOG_LEVEL"
+)
 
 //go:generate swagger generate spec
 func main() {
-	switch os.Getenv("LOG_LEVEL") {
+	switch os.Getenv(logLevelEnvironmentVariable) {
 	case "DEBUG":
 		log.SetLevel(log.DebugLevel)
 	default:
@@ -59,33 +64,42 @@ func main() {
 
 	parseFlagsFromArgs(fs)
 
+	controllers, err := getControllers()
+	if err != nil {
+		log.Fatalf("Failed to get controllers: %v", err)
+	}
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...)))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...)))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
 			errs <- err
 		}()
 	} else {
 		log.Info("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
 	}
 
-	err := <-errs
+	err = <-errs
 	if err != nil {
 		log.Fatalf("Web api server crashed: %v", err)
 	}
 }
 
-func getControllers() []models.Controller {
+func getControllers() ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
+	applicationHandlerFactory, err := getApplicationHandlerFactory()
+	if err != nil {
+		return nil, err
+	}
+
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
-		applications.NewApplicationController(nil),
+		applications.NewApplicationController(nil, applicationHandlerFactory),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(),
@@ -95,7 +109,20 @@ func getControllers() []models.Controller {
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(),
+	}, nil
+}
+
+func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, error) {
+	var err error
+	requireAppConfigurationItem := true
+
+	if value, exist := os.LookupEnv(requireAppConfigrationItemEnvironmentVariable); exist {
+		if requireAppConfigurationItem, err = strconv.ParseBool(value); err != nil {
+			return nil, fmt.Errorf("failed to parse variable %s: %w", requireAppConfigrationItemEnvironmentVariable, err)
+		}
 	}
+
+	return applications.NewApplicationHandlerFactory(requireAppConfigurationItem), nil
 }
 
 func initializeFlagSet() *pflag.FlagSet {
