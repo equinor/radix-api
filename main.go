@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/equinor/radix-api/api/secrets"
 
@@ -37,9 +36,9 @@ import (
 )
 
 const (
-	clusternameEnvironmentVariable                = "RADIX_CLUSTERNAME"
-	requireAppConfigrationItemEnvironmentVariable = "REQUIRE_APP_CONFIGURATION_ITEM"
-	logLevelEnvironmentVariable                   = "LOG_LEVEL"
+	clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
+	// requireAppConfigrationItemEnvironmentVariable = "REQUIRE_APP_CONFIGURATION_ITEM"
+	logLevelEnvironmentVariable = "LOG_LEVEL"
 )
 
 //go:generate swagger generate spec
@@ -113,16 +112,11 @@ func getControllers() ([]models.Controller, error) {
 }
 
 func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, error) {
-	var err error
-	requireAppConfigurationItem := true
-
-	if value, exist := os.LookupEnv(requireAppConfigrationItemEnvironmentVariable); exist {
-		if requireAppConfigurationItem, err = strconv.ParseBool(value); err != nil {
-			return nil, fmt.Errorf("failed to parse variable %s: %w", requireAppConfigrationItemEnvironmentVariable, err)
-		}
+	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
+	if err != nil {
+		return nil, err
 	}
-
-	return applications.NewApplicationHandlerFactory(requireAppConfigurationItem), nil
+	return applications.NewApplicationHandlerFactory(cfg), nil
 }
 
 func initializeFlagSet() *pflag.FlagSet {

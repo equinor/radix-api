@@ -46,6 +46,14 @@ const (
 	egressIps         = "0.0.0.0"
 )
 
+type testApplicationConfig struct {
+	requireAppConfigurationItem bool
+}
+
+func (c testApplicationConfig) GetRequireAppConfigurationItem() bool {
+	return c.requireAppConfigurationItem
+}
+
 func setupTest(requireAppConfigurationItem bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -59,7 +67,7 @@ func setupTest(requireAppConfigurationItem bool) (*commontest.Utils, *controller
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }, NewApplicationHandlerFactory(requireAppConfigurationItem)))
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true }, NewApplicationHandlerFactory(testApplicationConfig{requireAppConfigurationItem})))
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -80,7 +88,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			NewApplicationController(
 				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 					return false
-				}, NewApplicationHandlerFactory(true)))
+				}, NewApplicationHandlerFactory(testApplicationConfig{true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -93,7 +101,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 				return rr.GetName() == "my-second-app"
-			}, NewApplicationHandlerFactory(true)))
+			}, NewApplicationHandlerFactory(testApplicationConfig{true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -106,7 +114,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 				return true
-			}, NewApplicationHandlerFactory(true)))
+			}, NewApplicationHandlerFactory(testApplicationConfig{true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -174,7 +182,7 @@ func TestSearchApplications(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 			return true
-		}, NewApplicationHandlerFactory(true)))
+		}, NewApplicationHandlerFactory(testApplicationConfig{true})))
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
@@ -248,7 +256,7 @@ func TestSearchApplications(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
 				return false
-			}, NewApplicationHandlerFactory(true)))
+			}, NewApplicationHandlerFactory(testApplicationConfig{true})))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel

@@ -40,27 +40,19 @@ type patch struct {
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler                  job.JobHandler
-	environmentHandler          environments.EnvironmentHandler
-	accounts                    models.Accounts
-	requireAppConfigurationItem bool
+	jobHandler         job.JobHandler
+	environmentHandler environments.EnvironmentHandler
+	accounts           models.Accounts
+	config             ApplicationHandlerConfig
 }
 
-type ApplicationHandlerFactory func(accounts models.Accounts) ApplicationHandler
-
-func NewApplicationHandlerFactory(requireAppConfigurationItem bool) ApplicationHandlerFactory {
-	return func(accounts models.Accounts) ApplicationHandler {
-		return NewApplicationHandler(accounts, requireAppConfigurationItem)
-	}
-}
-
-// Init Constructor
-func NewApplicationHandler(accounts models.Accounts, requireAppConfigurationItem bool) ApplicationHandler {
+// NewApplicationHandler Constructor
+func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:                    accounts,
-		jobHandler:                  job.Init(accounts, deployments.Init(accounts)),
-		environmentHandler:          environments.Init(environments.WithAccounts(accounts)),
-		requireAppConfigurationItem: requireAppConfigurationItem,
+		accounts:           accounts,
+		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
+		config:             config,
 	}
 }
 
@@ -585,7 +577,7 @@ func (ah *ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistrat
 func (ah *ApplicationHandler) getAdditionalRadixRegistrationValidators() []radixvalidators.RadixRegistrationValidator {
 	var validators []radixvalidators.RadixRegistrationValidator
 
-	if ah.requireAppConfigurationItem {
+	if ah.config.GetRequireAppConfigurationItem() {
 		validators = append(validators, radixvalidators.RequireConfigurationItem)
 	}
 
