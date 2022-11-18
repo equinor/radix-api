@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 
@@ -35,11 +36,13 @@ import (
 	_ "github.com/equinor/radix-api/docs"
 )
 
-const clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
+const (
+	logLevelEnvironmentVariable = "LOG_LEVEL"
+)
 
 //go:generate swagger generate spec
 func main() {
-	switch os.Getenv("LOG_LEVEL") {
+	switch os.Getenv(logLevelEnvironmentVariable) {
 	case "DEBUG":
 		log.SetLevel(log.DebugLevel)
 	default:
@@ -51,7 +54,7 @@ func main() {
 	var (
 		port                = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
 		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
-		clusterName         = os.Getenv(clusternameEnvironmentVariable)
+		clusterName         = os.Getenv(defaults.ClusternameEnvironmentVariable)
 		certPath            = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
 		keyPath             = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
 		httpsPort           = "3003"
@@ -59,33 +62,42 @@ func main() {
 
 	parseFlagsFromArgs(fs)
 
+	controllers, err := getControllers()
+	if err != nil {
+		log.Fatalf("Failed to get controllers: %v", err)
+	}
 	errs := make(chan error)
 	go func() {
 		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...)))
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...)))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
 			log.Infof("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), getControllers()...))
+			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
 			errs <- err
 		}()
 	} else {
 		log.Info("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
 	}
 
-	err := <-errs
+	err = <-errs
 	if err != nil {
 		log.Fatalf("Web api server crashed: %v", err)
 	}
 }
 
-func getControllers() []models.Controller {
+func getControllers() ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
+	applicationHandlerFactory, err := getApplicationHandlerFactory()
+	if err != nil {
+		return nil, err
+	}
+
 	return []models.Controller{
 		admissioncontrollers.NewAdmissionController(),
-		applications.NewApplicationController(nil),
+		applications.NewApplicationController(nil, applicationHandlerFactory),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(),
@@ -95,7 +107,15 @@ func getControllers() []models.Controller {
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(),
+	}, nil
+}
+
+func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, error) {
+	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
+	if err != nil {
+		return nil, err
 	}
+	return applications.NewApplicationHandlerFactory(cfg), nil
 }
 
 func initializeFlagSet() *pflag.FlagSet {
