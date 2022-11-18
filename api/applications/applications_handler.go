@@ -577,7 +577,7 @@ func (ah *ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistrat
 func (ah *ApplicationHandler) getAdditionalRadixRegistrationValidators() []radixvalidators.RadixRegistrationValidator {
 	var validators []radixvalidators.RadixRegistrationValidator
 
-	if ah.config.GetRequireAppConfigurationItem() {
+	if ah.config.RequireAppConfigurationItem {
 		validators = append(validators, radixvalidators.RequireConfigurationItem)
 	}
 

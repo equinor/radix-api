@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 
@@ -36,8 +37,6 @@ import (
 )
 
 const (
-	clusternameEnvironmentVariable = "RADIX_CLUSTERNAME"
-	// requireAppConfigrationItemEnvironmentVariable = "REQUIRE_APP_CONFIGURATION_ITEM"
 	logLevelEnvironmentVariable = "LOG_LEVEL"
 )
 
@@ -55,7 +54,7 @@ func main() {
 	var (
 		port                = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
 		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
-		clusterName         = os.Getenv(clusternameEnvironmentVariable)
+		clusterName         = os.Getenv(defaults.ClusternameEnvironmentVariable)
 		certPath            = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
 		keyPath             = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
 		httpsPort           = "3003"

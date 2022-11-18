@@ -7,34 +7,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ApplicationHandlerConfig interface {
-	GetRequireAppConfigurationItem() bool
-}
-
 func LoadApplicationHandlerConfig(args []string) (ApplicationHandlerConfig, error) {
+	var cfg ApplicationHandlerConfig
+
 	flagset := ApplicationHandlerConfigFlagSet()
 	if err := flagset.Parse(args); err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	v := viper.New()
 	v.AutomaticEnv()
 
-	var cfg applicationHandlerConfig
 	if err := flags.Register(v, "", flagset, &cfg); err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	err := v.UnmarshalExact(&cfg, func(dc *mapstructure.DecoderConfig) { dc.TagName = "cfg" })
-	return &cfg, err
+	return cfg, err
 }
 
-type applicationHandlerConfig struct {
+type ApplicationHandlerConfig struct {
 	RequireAppConfigurationItem bool `cfg:"require_app_configuration_item" flag:"require-app-configuration-item"`
-}
-
-func (c applicationHandlerConfig) GetRequireAppConfigurationItem() bool {
-	return c.RequireAppConfigurationItem
 }
 
 func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
