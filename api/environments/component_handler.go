@@ -30,6 +30,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	if err != nil {
 		return err
 	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
 		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
@@ -47,6 +48,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	if err != nil {
 		return err
 	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
 		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
@@ -54,6 +56,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
 		return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
 	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	return eh.patchRadixDeploymentWithReplicasFromConfig(updater)
 }
 
@@ -64,10 +67,12 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	if err != nil {
 		return err
 	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
 		return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
 	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	return eh.patchRadixDeploymentWithTimestampInEnvVar(updater, defaults.RadixRestartEnvironmentVariable)
 }
 
@@ -113,7 +118,11 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 	if !canDeploymentBeRestarted(&deploymentList.Items[0]) {
 		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
-
+	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 	return eh.patchDeploymentForRestart(&deploymentList.Items[0])
 }
 

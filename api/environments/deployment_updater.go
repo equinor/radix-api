@@ -12,6 +12,7 @@ type radixDeployCommonComponentUpdater interface {
 	getRadixDeployment() *v1.RadixDeployment
 	getEnvironmentConfig() v1.RadixCommonEnvironmentConfig
 	setReplicasToComponent(replicas *int)
+	setUserMutationTimestampAnnotation(timestamp string)
 }
 
 type baseComponentUpdater struct {
@@ -45,6 +46,10 @@ func (updater *radixDeployComponentUpdater) setReplicasToComponent(replicas *int
 	updater.base.radixDeployment.Spec.Components[updater.base.componentIndex].Replicas = replicas
 }
 
+func (updater *radixDeployComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
+	updater.base.radixDeployment.Annotations["last-user-state-mutation-or-something"] = timestamp
+}
+
 func (updater *radixDeployComponentUpdater) getComponentStatus() string {
 	return updater.base.componentState.Status
 }
@@ -63,6 +68,10 @@ func (updater *radixDeployJobComponentUpdater) getComponentToPatch() v1.RadixCom
 
 func (updater *radixDeployJobComponentUpdater) setEnvironmentVariablesToComponent(envVars v1.EnvVarsMap) {
 	updater.base.radixDeployment.Spec.Jobs[updater.base.componentIndex].SetEnvironmentVariables(envVars)
+}
+
+func (updater *radixDeployJobComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
+	updater.base.radixDeployment.Annotations["last-user-state-mutation-or-something"] = timestamp
 }
 
 func (updater *radixDeployJobComponentUpdater) setReplicasToComponent(replicas *int) {
