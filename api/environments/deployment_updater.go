@@ -5,6 +5,8 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
+const lastUserMutationAnnotation = "radix.equinor.com/last-user-mutation"
+
 type radixDeployCommonComponentUpdater interface {
 	getComponentToPatch() v1.RadixCommonDeployComponent
 	setEnvironmentVariablesToComponent(envVars v1.EnvVarsMap)
@@ -47,7 +49,7 @@ func (updater *radixDeployComponentUpdater) setReplicasToComponent(replicas *int
 }
 
 func (updater *radixDeployComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
-	updater.base.radixDeployment.Annotations["last-user-state-mutation-or-something"] = timestamp
+	updater.base.radixDeployment.Annotations[lastUserMutationAnnotation] = timestamp
 }
 
 func (updater *radixDeployComponentUpdater) getComponentStatus() string {
@@ -71,7 +73,7 @@ func (updater *radixDeployJobComponentUpdater) setEnvironmentVariablesToComponen
 }
 
 func (updater *radixDeployJobComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
-	updater.base.radixDeployment.Annotations["last-user-state-mutation-or-something"] = timestamp
+	updater.base.radixDeployment.Annotations[lastUserMutationAnnotation] = timestamp
 }
 
 func (updater *radixDeployJobComponentUpdater) setReplicasToComponent(replicas *int) {
