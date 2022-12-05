@@ -113,6 +113,7 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 	if !canDeploymentBeRestarted(&deploymentList.Items[0]) {
 		return environmentModels.CannotRestartAuxiliaryResource(appName, componentName)
 	}
+
 	return eh.patchDeploymentForRestart(&deploymentList.Items[0])
 }
 
@@ -137,7 +138,6 @@ func (eh EnvironmentHandler) patchDeploymentForRestart(deployment *appsv1.Deploy
 		}
 
 		deployToPatch.Spec.Template.Annotations[restartedAtAnnotation] = radixutils.FormatTimestamp(time.Now())
-
 		_, err = deployClient.Update(context.TODO(), deployToPatch, metav1.UpdateOptions{})
 		return err
 	})
