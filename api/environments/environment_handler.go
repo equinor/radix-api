@@ -542,6 +542,7 @@ func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(updater r
 		}
 		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
 		updater.setEnvironmentVariablesToComponent(environmentVariables)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 		return nil
 	})
 }
@@ -557,6 +558,7 @@ func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(updater 
 			newReplica = *replicas
 		}
 		updater.setReplicasToComponent(&newReplica)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 		return nil
 	})
 }
@@ -565,6 +567,7 @@ func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(updater radixD
 	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
 		newReplica := 0
 		updater.setReplicasToComponent(&newReplica)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 		return nil
 	})
 }
