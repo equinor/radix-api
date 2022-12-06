@@ -5,6 +5,8 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
+const lastUserMutationAnnotation = "radix.equinor.com/last-user-mutation"
+
 type radixDeployCommonComponentUpdater interface {
 	getComponentToPatch() v1.RadixCommonDeployComponent
 	setEnvironmentVariablesToComponent(envVars v1.EnvVarsMap)
@@ -12,6 +14,7 @@ type radixDeployCommonComponentUpdater interface {
 	getRadixDeployment() *v1.RadixDeployment
 	getEnvironmentConfig() v1.RadixCommonEnvironmentConfig
 	setReplicasToComponent(replicas *int)
+	setUserMutationTimestampAnnotation(timestamp string)
 }
 
 type baseComponentUpdater struct {
@@ -45,6 +48,10 @@ func (updater *radixDeployComponentUpdater) setReplicasToComponent(replicas *int
 	updater.base.radixDeployment.Spec.Components[updater.base.componentIndex].Replicas = replicas
 }
 
+func (updater *radixDeployComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
+	updater.base.radixDeployment.Annotations[lastUserMutationAnnotation] = timestamp
+}
+
 func (updater *radixDeployComponentUpdater) getComponentStatus() string {
 	return updater.base.componentState.Status
 }
@@ -63,6 +70,10 @@ func (updater *radixDeployJobComponentUpdater) getComponentToPatch() v1.RadixCom
 
 func (updater *radixDeployJobComponentUpdater) setEnvironmentVariablesToComponent(envVars v1.EnvVarsMap) {
 	updater.base.radixDeployment.Spec.Jobs[updater.base.componentIndex].SetEnvironmentVariables(envVars)
+}
+
+func (updater *radixDeployJobComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
+	updater.base.radixDeployment.Annotations[lastUserMutationAnnotation] = timestamp
 }
 
 func (updater *radixDeployJobComponentUpdater) setReplicasToComponent(replicas *int) {
