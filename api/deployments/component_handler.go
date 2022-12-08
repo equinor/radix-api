@@ -333,7 +333,7 @@ func runningReplicaIsOutdated(component v1.RadixCommonDeployComponent, actualPod
 	switch component.GetType() {
 	case v1.RadixComponentTypeComponent:
 		return runningComponentReplicaIsOutdated(component, actualPods)
-	case v1.RadixComponentTypeJobScheduler:
+	case v1.RadixComponentTypeJob:
 		return false
 	default:
 		return false
@@ -374,7 +374,7 @@ func getStatusOfActiveDeployment(
 		if runningReplicaDiffersFromSpec(component, pods) {
 			return deploymentModels.ComponentReconciling, nil
 		}
-	} else if component.GetType() == v1.RadixComponentTypeJobScheduler {
+	} else if component.GetType() == v1.RadixComponentTypeJob {
 		if len(pods) == 0 {
 			return deploymentModels.StoppedComponent, nil
 		}

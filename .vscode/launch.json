@@ -21,7 +21,7 @@
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true"
             },
             "args": [
-                "--useOutClusterClient=true"
+                "--useOutClusterClient=false"
             ]
         }
     ]
