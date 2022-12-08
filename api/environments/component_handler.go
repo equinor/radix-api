@@ -30,7 +30,7 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	if err != nil {
 		return err
 	}
-	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
 		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
 	componentStatus := updater.getComponentStatus()
@@ -47,7 +47,7 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	if err != nil {
 		return err
 	}
-	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJobScheduler {
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
 		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
 	componentStatus := updater.getComponentStatus()
