@@ -3,9 +3,9 @@ module github.com/equinor/radix-api
 go 1.18
 
 require (
-	github.com/equinor/radix-common v1.2.3
-	github.com/equinor/radix-job-scheduler v1.6.4
-	github.com/equinor/radix-operator v1.30.4
+	github.com/equinor/radix-common v1.2.4
+	github.com/equinor/radix-job-scheduler v1.7.0
+	github.com/equinor/radix-operator v1.31.0
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/go-openapi/errors v0.20.2
 	github.com/go-openapi/strfmt v0.21.3
