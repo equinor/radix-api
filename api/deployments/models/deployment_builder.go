@@ -1,8 +1,9 @@
 package models
 
 import (
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"time"
+
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	errorutils "github.com/equinor/radix-common/utils/errors"
@@ -20,6 +21,7 @@ type DeploymentBuilder interface {
 	WithJobName(string) DeploymentBuilder
 	WithPipelineJob(*v1.RadixJob) DeploymentBuilder
 	WithComponents(components []*Component) DeploymentBuilder
+	WithComponentSummaries(componentSummaries []*ComponentSummary) DeploymentBuilder
 	BuildDeploymentSummary() (*DeploymentSummary, error)
 	BuildDeployment() (*Deployment, error)
 	WithGitCommitHash(string) DeploymentBuilder
@@ -28,36 +30,45 @@ type DeploymentBuilder interface {
 }
 
 type deploymentBuilder struct {
-	name          string
-	environment   string
-	activeFrom    time.Time
-	activeTo      time.Time
-	jobName       string
-	pipelineJob   *v1.RadixJob
-	components    []*Component
-	errors        []error
-	gitCommitHash string
-	gitTags       string
-	repository    string
+	name               string
+	environment        string
+	activeFrom         time.Time
+	activeTo           time.Time
+	jobName            string
+	pipelineJob        *v1.RadixJob
+	components         []*Component
+	componentSummaries []*ComponentSummary
+	errors             []error
+	gitCommitHash      string
+	gitTags            string
+	repository         string
 }
 
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
 
-	components := make([]*Component, len(rd.Spec.Components))
-	for i, component := range rd.Spec.Components {
-		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponent()
+	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Components))
+	for _, component := range rd.Spec.Components {
+		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
 		if err != nil {
 			b.errors = append(b.errors, err)
 			continue
 		}
-		components[i] = componentDto
+		components = append(components, componentDto)
+	}
+	for _, component := range rd.Spec.Jobs {
+		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
+		if err != nil {
+			b.errors = append(b.errors, err)
+			continue
+		}
+		components = append(components, componentDto)
 	}
 
 	b.WithName(rd.GetName()).
 		WithEnvironment(rd.Spec.Environment).
+		WithComponentSummaries(components).
 		WithJobName(jobName).
-		WithComponents(components).
 		WithActiveFrom(rd.Status.ActiveFrom.Time).
 		WithActiveTo(rd.Status.ActiveTo.Time).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
@@ -82,6 +93,11 @@ func (b *deploymentBuilder) WithPipelineJob(job *v1.RadixJob) DeploymentBuilder 
 
 func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBuilder {
 	b.components = components
+	return b
+}
+
+func (b *deploymentBuilder) WithComponentSummaries(componentSummaries []*ComponentSummary) DeploymentBuilder {
+	b.componentSummaries = componentSummaries
 	return b
 }
 
@@ -132,6 +148,7 @@ func (b *deploymentBuilder) buildError() error {
 func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error) {
 	return &DeploymentSummary{
 		Name:                             b.name,
+		Components:                       b.componentSummaries,
 		Environment:                      b.environment,
 		ActiveFrom:                       radixutils.FormatTimestamp(b.activeFrom),
 		ActiveTo:                         radixutils.FormatTimestamp(b.activeTo),

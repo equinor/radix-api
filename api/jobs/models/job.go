@@ -81,6 +81,7 @@ type Job struct {
 	//    "$ref": "#/definitions/DeploymentSummary"
 	Deployments []*deploymentModels.DeploymentSummary `json:"deployments,omitempty"`
 
+	// Deprecated: Use deployments to get list of components
 	// Components (array of ComponentSummary) created by the job
 	//
 	// required: false
