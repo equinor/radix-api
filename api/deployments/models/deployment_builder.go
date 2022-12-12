@@ -21,7 +21,6 @@ type DeploymentBuilder interface {
 	WithJobName(string) DeploymentBuilder
 	WithPipelineJob(*v1.RadixJob) DeploymentBuilder
 	WithComponents(components []*Component) DeploymentBuilder
-	WithComponentSummaries(componentSummaries []*ComponentSummary) DeploymentBuilder
 	BuildDeploymentSummary() (*DeploymentSummary, error)
 	BuildDeployment() (*Deployment, error)
 	WithGitCommitHash(string) DeploymentBuilder
@@ -47,27 +46,9 @@ type deploymentBuilder struct {
 func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
 
-	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Components))
-	for _, component := range rd.Spec.Components {
-		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
-		if err != nil {
-			b.errors = append(b.errors, err)
-			continue
-		}
-		components = append(components, componentDto)
-	}
-	for _, component := range rd.Spec.Jobs {
-		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
-		if err != nil {
-			b.errors = append(b.errors, err)
-			continue
-		}
-		components = append(components, componentDto)
-	}
-
-	b.WithName(rd.GetName()).
+	b.withComponentSummariesFromRadixDeployment(&rd).
+		WithName(rd.GetName()).
 		WithEnvironment(rd.Spec.Environment).
-		WithComponentSummaries(components).
 		WithJobName(jobName).
 		WithActiveFrom(rd.Status.ActiveFrom.Time).
 		WithActiveTo(rd.Status.ActiveTo.Time).
@@ -96,8 +77,25 @@ func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBu
 	return b
 }
 
-func (b *deploymentBuilder) WithComponentSummaries(componentSummaries []*ComponentSummary) DeploymentBuilder {
-	b.componentSummaries = componentSummaries
+func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
+	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Components))
+	for _, component := range rd.Spec.Components {
+		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
+		if err != nil {
+			b.errors = append(b.errors, err)
+			continue
+		}
+		components = append(components, componentDto)
+	}
+	for _, component := range rd.Spec.Jobs {
+		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
+		if err != nil {
+			b.errors = append(b.errors, err)
+			continue
+		}
+		components = append(components, componentDto)
+	}
+	b.componentSummaries = components
 	return b
 }
 
