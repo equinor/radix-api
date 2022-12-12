@@ -17,7 +17,6 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	batchSchedulerApi "github.com/equinor/radix-job-scheduler/api/batches"
 	jobSchedulerApi "github.com/equinor/radix-job-scheduler/api/jobs"
-	"github.com/equinor/radix-job-scheduler/defaults"
 	jobSchedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -150,7 +149,7 @@ func (eh EnvironmentHandler) GetJobPayload(appName, envName, jobComponentName, j
 	if len(payloadSecrets) > 1 {
 		return nil, models.ScheduledJobPayloadUnexpectedError(appName, jobName, "unexpected multiple payloads found")
 	}
-	payload := payloadSecrets[0].Data[defaults.JobPayloadPropertyName]
+	payload := payloadSecrets[0].Data[jobSchedulerDefaults.JobPayloadPropertyName]
 	return io.NopCloser(bytes.NewReader(payload)), nil
 }
 
