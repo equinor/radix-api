@@ -1,15 +1,16 @@
 package environments
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -19,6 +20,7 @@ import (
 	jobSchedulerDefaults "github.com/equinor/radix-job-scheduler/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -132,6 +134,32 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 	}
 	summary.JobList = batchJobSummaryList
 	return summary, nil
+}
+
+// GetJobPayload Gets job payload
+func (eh EnvironmentHandler) GetJobPayload(appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	payloadSecrets, err := eh.kubeUtil.ListSecretsWithSelector(namespace, getJobsSchedulerPayloadSecretSelector(appName, jobComponentName, jobName))
+	if err != nil {
+		return nil, err
+	}
+	if len(payloadSecrets) == 0 {
+		return nil, models.ScheduledJobPayloadNotFoundError(appName, jobName)
+	}
+	if len(payloadSecrets) > 1 {
+		return nil, models.ScheduledJobPayloadUnexpectedError(appName, jobName, "unexpected multiple payloads found")
+	}
+	payload := payloadSecrets[0].Data[jobSchedulerDefaults.JobPayloadPropertyName]
+	return io.NopCloser(bytes.NewReader(payload)), nil
+}
+
+func getJobsSchedulerPayloadSecretSelector(appName, jobComponentName, jobName string) string {
+	return labels.SelectorFromSet(map[string]string{
+		kube.RadixAppLabel:       appName,
+		kube.RadixComponentLabel: jobComponentName,
+		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
+		kube.RadixJobNameLabel:   jobName,
+	}).String()
 }
 
 func (eh EnvironmentHandler) getBatchJobSummaryList(kubeClient kubernetes.Interface, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
