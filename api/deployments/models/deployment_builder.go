@@ -78,7 +78,7 @@ func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBu
 }
 
 func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
-	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Components))
+	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Jobs))
 	for _, component := range rd.Spec.Components {
 		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
 		if err != nil {
