@@ -93,22 +93,19 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 	s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
 
 	deploymentName := "a_deployment"
+	comp1Name, comp1Type, comp1Image := "comp1", "type1", "image1"
+	comp2Name, comp2Type, comp2Image := "comp2", "type2", "image2"
 	deploySummary := deploymentModels.DeploymentSummary{
 		Name:        deploymentName,
 		Environment: "any_env",
 		ActiveFrom:  "any_from",
 		ActiveTo:    "any_to",
+		Components: []*deploymentModels.ComponentSummary{
+			{Name: comp1Name, Image: comp1Image, Type: comp1Type},
+			{Name: comp2Name, Image: comp2Image, Type: comp2Type},
+		},
 		DeploymentSummaryPipelineJobInfo: deploymentModels.DeploymentSummaryPipelineJobInfo{
 			CreatedByJob: "any_job",
-		},
-	}
-
-	comp1Name, comp1Type, comp1Image := "comp1", "type1", "image1"
-	comp2Name, comp2Type, comp2Image := "comp2", "type2", "image2"
-	deployment := deploymentModels.Deployment{
-		Components: []*deploymentModels.Component{
-			{Name: comp1Name, Type: comp1Type, Image: comp1Image},
-			{Name: comp2Name, Type: comp2Type, Image: comp2Image},
 		},
 	}
 
@@ -128,42 +125,11 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 
 		dh := deployMock.NewMockDeployHandler(ctrl)
 		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(nil, assert.AnError).Times(1)
-		dh.EXPECT().GetDeploymentWithName(gomock.Any(), gomock.Any()).Times(0)
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
 		s.Equal(assert.AnError, actualErr)
 		s.Nil(actualJob)
-	})
-
-	s.Run("empty deploymentSummary list should not call GetDeploymentWithName", func() {
-		ctrl := gomock.NewController(s.T())
-		defer ctrl.Finish()
-
-		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(nil, nil).Times(1)
-		dh.EXPECT().GetDeploymentWithName(gomock.Any(), gomock.Any()).Times(0)
-		h := Init(s.accounts, dh)
-
-		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		s.NoError(actualErr)
-		s.NotNil(actualJob)
-	})
-
-	s.Run("deployHandle.GetDeploymentWithName return error", func() {
-		ctrl := gomock.NewController(s.T())
-		defer ctrl.Finish()
-
-		deployList := []*deploymentModels.DeploymentSummary{&deploySummary}
-		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(deployList, nil).Times(1)
-		dh.EXPECT().GetDeploymentWithName(appName, deploymentName).Return(nil, assert.AnError).Times(1)
-		h := Init(s.accounts, dh)
-
-		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
-		s.Equal(assert.AnError, actualErr)
-		s.Nil(actualJob)
-
 	})
 
 	s.Run("valid jobSummary", func() {
@@ -173,7 +139,6 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		deployList := []*deploymentModels.DeploymentSummary{&deploySummary}
 		dh := deployMock.NewMockDeployHandler(ctrl)
 		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(deployList, nil).Times(1)
-		dh.EXPECT().GetDeploymentWithName(appName, deploymentName).Return(&deployment, nil).Times(1)
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
@@ -192,6 +157,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 			{Name: comp2Name, Type: comp2Type, Image: comp2Image},
 		}
 
+		//lint:ignore SA1019 we want to make sure that Components is populated for backward compatibility (at least for a while)
 		s.ElementsMatch(slice.PointersOf(expectedComponents), actualJob.Components)
 		expectedSteps := []jobModels.Step{
 			{Name: step1Name, PodName: step1Pod, Status: string(step1Condition), Started: radixutils.FormatTime(&step1Started), Ended: radixutils.FormatTime(&step1Ended), Components: step1Components},

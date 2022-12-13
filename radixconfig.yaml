@@ -18,6 +18,8 @@ spec:
         - name: http
           port: 3002
       public: true
+      variables:
+        REQUIRE_APP_CONFIGURATION_ITEM: "true"
       environmentConfig:
         - environment: qa
           runAsNonRoot: true

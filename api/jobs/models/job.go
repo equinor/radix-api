@@ -83,6 +83,8 @@ type Job struct {
 
 	// Components (array of ComponentSummary) created by the job
 	//
+	// Deprecated: Inspect each deployment to get list of components created by the job
+	//
 	// required: false
 	// type: "array"
 	// items:
@@ -91,7 +93,7 @@ type Job struct {
 }
 
 // GetJobFromRadixJob Gets job from a radix job
-func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, jobComponents []*deploymentModels.ComponentSummary) *Job {
+func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
 	steps := GetJobStepsFromRadixJob(job)
 
 	created := radixutils.FormatTime(&job.CreationTimestamp)
@@ -99,6 +101,11 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		// Use this instead, because in a migration this may be more correct
 		// as migrated jobs will have the same creation timestamp in the new cluster
 		created = radixutils.FormatTime(job.Status.Created)
+	}
+
+	var jobComponents []*deploymentModels.ComponentSummary
+	if len(jobDeployments) > 0 {
+		jobComponents = jobDeployments[0].Components
 	}
 
 	return &Job{

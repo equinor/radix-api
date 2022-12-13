@@ -28,7 +28,7 @@ type GetApplicationsOptions struct {
 }
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
-func (ah ApplicationHandler) GetApplications(matcher applicationModels.ApplicationMatch, hasAccess hasAccessToRR, options GetApplicationsOptions) ([]*applicationModels.ApplicationSummary, error) {
+func (ah *ApplicationHandler) GetApplications(matcher applicationModels.ApplicationMatch, hasAccess hasAccessToRR, options GetApplicationsOptions) ([]*applicationModels.ApplicationSummary, error) {
 	radixRegistationList, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (ah ApplicationHandler) GetApplications(matcher applicationModels.Applicati
 	return applications, nil
 }
 
-func (ah ApplicationHandler) getEnvironmentActiveComponentsForApplications(radixRegistrations []v1.RadixRegistration) (map[string]map[string][]*deploymentModels.Component, error) {
+func (ah *ApplicationHandler) getEnvironmentActiveComponentsForApplications(radixRegistrations []v1.RadixRegistration) (map[string]map[string][]*deploymentModels.Component, error) {
 	type ChannelData struct {
 		key           string
 		envComponents map[string][]*deploymentModels.Component
@@ -151,7 +151,7 @@ func getComponentsForActiveDeploymentsInEnvironments(deploy deployment.DeployHan
 	return components, nil
 }
 
-func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {
+func (ah *ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {
 	forApplications := map[string]bool{}
 	for _, app := range radixRegistations {
 		forApplications[app.GetName()] = true
@@ -164,7 +164,7 @@ func (ah ApplicationHandler) getJobsForApplication(radixRegistations []v1.RadixR
 	return applicationJobs, nil
 }
 
-func (ah ApplicationHandler) filterRadixRegByAccess(radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) []v1.RadixRegistration {
+func (ah *ApplicationHandler) filterRadixRegByAccess(radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) []v1.RadixRegistration {
 	result := []v1.RadixRegistration{}
 
 	limit := 25

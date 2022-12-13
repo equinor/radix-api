@@ -1,9 +1,10 @@
 package models
 
 import (
-	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -28,6 +29,14 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				},
 				Spec: v1.RadixDeploymentSpec{
 					Environment: envName,
+					Components: []v1.RadixDeployComponent{
+						{Name: "comp1", Image: "comp_image1"},
+						{Name: "comp2", Image: "comp_image2"},
+					},
+					Jobs: []v1.RadixDeployJobComponent{
+						{Name: "job1", Image: "job_image1"},
+						{Name: "job2", Image: "job_image2"},
+					},
 				},
 				Status: v1.RadixDeployStatus{
 					ActiveFrom: metav1.NewTime(activeFrom),
@@ -45,6 +54,12 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 			ActiveTo:    radixutils.FormatTimestamp(activeTo),
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob: jobName,
+			},
+			Components: []*ComponentSummary{
+				{Name: "comp1", Image: "comp_image1", Type: string(v1.RadixComponentTypeComponent)},
+				{Name: "comp2", Image: "comp_image2", Type: string(v1.RadixComponentTypeComponent)},
+				{Name: "job1", Image: "job_image1", Type: string(v1.RadixComponentTypeJob)},
+				{Name: "job2", Image: "job_image2", Type: string(v1.RadixComponentTypeJob)},
 			},
 		}
 		assert.Equal(t, expected, actual)
@@ -116,7 +131,6 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		assert.NoError(t, err)
 		expected := &Deployment{
 			Name:         deploymentName,
-			Components:   []*Component{},
 			CreatedByJob: jobName,
 			Environment:  envName,
 			ActiveFrom:   radixutils.FormatTimestamp(activeFrom),

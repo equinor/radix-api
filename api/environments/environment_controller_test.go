@@ -420,6 +420,7 @@ func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsiste
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master")).
 		WithAppName(anyAppName).
+		WithAnnotations(make(map[string]string)).
 		WithEnvironment(anyEnvironment))
 
 	componentName := rd.Spec.Components[0].Name
