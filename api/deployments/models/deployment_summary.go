@@ -37,6 +37,11 @@ type DeploymentSummary struct {
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
 
+	// Array of component summaries
+	//
+	// required: false
+	Components []*ComponentSummary `json:"components,omitempty"`
+
 	// Environment the environment this Radix application deployment runs in
 	//
 	// required: true

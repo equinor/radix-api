@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/tekton"
@@ -83,12 +82,7 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 		return nil, err
 	}
 
-	jobComponents, err := jh.getJobComponents(appName, jobDeployments)
-	if err != nil {
-		return nil, err
-	}
-
-	return jobModels.GetJobFromRadixJob(job, jobDeployments, jobComponents), nil
+	return jobModels.GetJobFromRadixJob(job, jobDeployments), nil
 }
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
@@ -409,28 +403,4 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 	}
 
 	return applicationJob, nil
-}
-
-func (jh JobHandler) getJobComponents(appName string, jobDeployments []*deploymentModels.DeploymentSummary) ([]*deploymentModels.ComponentSummary, error) {
-	var jobComponents []*deploymentModels.ComponentSummary
-
-	if len(jobDeployments) > 0 {
-		// All deployments for a job should have the same components, so we extract the components from the first one
-
-		firstDeployment, err := jh.deploy.GetDeploymentWithName(appName, jobDeployments[0].Name)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, component := range firstDeployment.Components {
-			componentSummary := deploymentModels.ComponentSummary{
-				Name:  component.Name,
-				Type:  component.Type,
-				Image: component.Image,
-			}
-			jobComponents = append(jobComponents, &componentSummary)
-		}
-	}
-
-	return jobComponents, nil
 }
