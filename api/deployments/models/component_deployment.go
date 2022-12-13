@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 
 	radixutils "github.com/equinor/radix-common/utils"
@@ -372,6 +374,11 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
 
 	if len(pod.Status.ContainerStatuses) <= 0 {
+		condition := getLastReadyCondition(pod.Status.Conditions)
+		if condition != nil {
+			replicaSummary.Status = ReplicaStatus{Status: getReplicaStatusByPodStatus(pod.Status.Phase)}
+			replicaSummary.StatusMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
+		}
 		return replicaSummary
 	}
 	// We assume one component container per component pod
@@ -399,6 +406,47 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.Image = containerStatus.Image
 	replicaSummary.ImageId = containerStatus.ImageID
 	return replicaSummary
+}
+
+func getReplicaStatusByPodStatus(podPhase corev1.PodPhase) string {
+	switch podPhase {
+	case corev1.PodPending:
+		return Pending.String()
+	case corev1.PodRunning:
+		return Running.String()
+	case corev1.PodFailed:
+		return Failing.String()
+	case corev1.PodSucceeded:
+		return Terminated.String()
+	default:
+		return ""
+	}
+}
+
+func getLastReadyCondition(conditions []corev1.PodCondition) *corev1.PodCondition {
+	if len(conditions) == 1 {
+		return &conditions[0]
+	}
+	conditions = sortStatusConditionsDesc(conditions)
+	for _, condition := range conditions {
+		if condition.Status == corev1.ConditionTrue {
+			return &condition
+		}
+	}
+	if len(conditions) > 0 {
+		return &conditions[0]
+	}
+	return nil
+}
+
+func sortStatusConditionsDesc(conditions []corev1.PodCondition) []corev1.PodCondition {
+	sort.Slice(conditions, func(i, j int) bool {
+		if conditions[i].LastTransitionTime.Time.IsZero() || conditions[j].LastTransitionTime.Time.IsZero() {
+			return false
+		}
+		return conditions[j].LastTransitionTime.Time.Before(conditions[i].LastTransitionTime.Time)
+	})
+	return conditions
 }
 
 func (job *ScheduledJobSummary) GetCreated() string {
