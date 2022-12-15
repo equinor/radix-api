@@ -43,7 +43,7 @@ spec:
           monitoring: true
           resources:
             requests:
-              memory: "400M"
+              memory: "700M"
               cpu: "250m"
             limits:
               memory: "1Gi"
