@@ -48,4 +48,9 @@ type Application struct {
 	//
 	// required: false
 	AppAlias *ApplicationAlias `json:"appAlias,omitempty"`
+
+	// MachineUserTokenExpiration the expiration timestamp of the active machine user token
+	//
+	// required: false
+	MachineUserTokenExpiration string `json:"machineUserTokenExpiration,omitempty"`
 }

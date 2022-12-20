@@ -370,6 +370,12 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
+	// - name: daysUntilExpiry
+	//   in: body
+	//   description: Number of days before machine user token expires
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/RegenerateMachineUserToken"
 	// responses:
 	//   "200":
 	//     description: Successful regenerate machine-user token
@@ -388,7 +394,17 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory(accounts)
-	machineUser, err := handler.RegenerateMachineUserToken(appName)
+
+	var regenerateMachineUserToken applicationModels.RegenerateMachineUserToken
+	if err := json.NewDecoder(r.Body).Decode(&regenerateMachineUserToken); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+	if regenerateMachineUserToken.DaysUntilExpiry < 0 || regenerateMachineUserToken.DaysUntilExpiry > 365 {
+		radixhttp.ErrorResponse(w, r, radixhttp.ValidationError("Secret", "DaysUntilExpiry must be between 0 and 365"))
+	}
+
+	machineUser, err := handler.RegenerateMachineUserToken(appName, regenerateMachineUserToken.DaysUntilExpiry)
 
 	if err != nil {
 		log.Errorf("failed to re-generate machine user token for app %s. Error: %v", appName, err)

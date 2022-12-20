@@ -7,4 +7,10 @@ type MachineUser struct {
 	//
 	// required: true
 	Token string `json:"token"`
+
+	// ExpirationTimestamp the expiration timestamp of the token
+	//
+	// required: false
+	ExpirationTimestamp string `json:"expirationTimestamp"`
+	// Not required because of backward compatibility
 }

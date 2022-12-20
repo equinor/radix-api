@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +29,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,15 +48,18 @@ type ApplicationHandler struct {
 	environmentHandler environments.EnvironmentHandler
 	accounts           models.Accounts
 	config             ApplicationHandlerConfig
+	kubeUtil           *kube.Kube
 }
 
 // NewApplicationHandler Constructor
 func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
+	kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 	return ApplicationHandler{
 		accounts:           accounts,
 		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
 		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
 		config:             config,
+		kubeUtil:           kubeUtil,
 	}
 }
 
@@ -91,31 +98,36 @@ func (ah *ApplicationHandler) GetApplication(appName string) (*applicationModels
 		return nil, err
 	}
 
+	machineUserTokenExpiration, err := ah.getMachineUserTokenExpiration(appName)
+	if err != nil {
+		return nil, err
+	}
+
 	return &applicationModels.Application{
-		Name:         applicationRegistration.Name,
-		Registration: applicationRegistration,
-		Jobs:         jobs,
-		Environments: environments,
-		AppAlias:     appAlias,
-		Owner:        applicationRegistration.Owner,
-		Creator:      applicationRegistration.Creator}, nil
+		Name:                       applicationRegistration.Name,
+		Registration:               applicationRegistration,
+		Jobs:                       jobs,
+		Environments:               environments,
+		AppAlias:                   appAlias,
+		Owner:                      applicationRegistration.Owner,
+		Creator:                    applicationRegistration.Creator,
+		MachineUserTokenExpiration: machineUserTokenExpiration}, nil
 }
 
 // RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
-func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string) (*applicationModels.MachineUser, error) {
+func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string, expiryDays int) (*applicationModels.MachineUser, error) {
 	log.Debugf("regenerate machine user token for app: %s", appName)
 	namespace := crdUtils.GetAppNamespace(appName)
 	machineUserSA, err := ah.getMachineUserServiceAccount(appName, namespace)
 	if err != nil {
 		return nil, err
 	}
-	if len(machineUserSA.Secrets) == 0 {
-		return nil, fmt.Errorf("unable to get secrets on machine user service account")
-	}
 
-	tokenName := machineUserSA.Secrets[0].Name
-	log.Debugf("delete service account for app %s and machine user token: %s", appName, tokenName)
-	if err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(context.TODO(), tokenName, metav1.DeleteOptions{}); err != nil {
+	secretConfig := getMachineUserTokenSecretConfig(appName, machineUserSA.Name, expiryDays)
+	err = ah.deleteExistingMachineUserTokenSecrets(namespace)
+
+	_, err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Create(context.TODO(), secretConfig, metav1.CreateOptions{})
+	if err != nil {
 		return nil, err
 	}
 
@@ -124,14 +136,32 @@ func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string) (*appli
 	for {
 		select {
 		case <-queryInterval.C:
-			machineUser, err := ah.getMachineUserForApp(appName)
+			secret, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(context.TODO(), secretConfig.Name, metav1.GetOptions{})
 			if err == nil {
-				return machineUser, nil
+				return &applicationModels.MachineUser{
+					Token:               string(secret.Data[corev1.ServiceAccountTokenKey]),
+					ExpirationTimestamp: secret.Annotations[defaults.ExpirationTimestampAnnotation],
+				}, nil
 			}
 			log.Debugf("waiting to get machine user for app %s of namespace %s, error: %v", appName, namespace, err)
 		case <-queryTimeout.C:
 			return nil, fmt.Errorf("timeout getting user machine token secret")
 		}
+	}
+}
+
+func getMachineUserTokenSecretConfig(appName, machineUserServiceAccountName string, expiryDays int) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-%s", crdUtils.GetServiceAccountSecretNamePrefix(machineUserServiceAccountName), uuid.New()),
+			Annotations: map[string]string{
+				corev1.ServiceAccountNameKey:                  machineUserServiceAccountName,
+				defaults.ImmutableCreationTimestampAnnotation: time.Now().Format(time.RFC3339),
+				defaults.ExpirationTimestampAnnotation:        time.Now().Add(time.Duration(expiryDays*24) * time.Hour).Format(time.RFC3339),
+			},
+			Labels: getMachineUserTokenSecretLabels(appName),
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
 
@@ -685,6 +715,44 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 	}, nil
 }
 
+func (ah *ApplicationHandler) deleteExistingMachineUserTokenSecrets(appName string) error {
+	namespace := crdUtils.GetAppNamespace(appName)
+	existingSecrets, err := ah.kubeUtil.ListSecretsWithSelector(namespace, labels.Set(getMachineUserTokenSecretLabels(appName)).String())
+	if err != nil {
+		return err
+	}
+	for _, existingSecret := range existingSecrets {
+		err = ah.kubeUtil.DeleteSecret(namespace, existingSecret.Name)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ah *ApplicationHandler) getMachineUserTokenExpiration(appName string) (string, error) {
+	existingSecrets, err := ah.kubeUtil.ListSecretsWithSelector(crdUtils.GetAppNamespace(appName), labels.Set(getMachineUserTokenSecretLabels(appName)).String())
+	if err != nil {
+		return "", err
+	}
+	if len(existingSecrets) == 0 {
+		return "", nil
+	}
+	if len(existingSecrets) == 1 {
+		return existingSecrets[0].ObjectMeta.Annotations[defaults.ExpirationTimestampAnnotation], nil
+	}
+	log.Warnf("more than one machine user token secret found for app %s", appName)
+	existingSecretsSortedDesc := sortSecretsByCreatedDesc(existingSecrets)
+	return existingSecretsSortedDesc[0].ObjectMeta.Annotations[defaults.ExpirationTimestampAnnotation], nil
+}
+
+func getMachineUserTokenSecretLabels(appName string) map[string]string {
+	return map[string]string{
+		defaults.RadixMachineUserTokenSecretAnnotation: strconv.FormatBool(true),
+		kube.RadixAppLabel: appName,
+	}
+}
+
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
 	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
 	if len(strings.TrimSpace(existingRegistration.Spec.ConfigBranch)) > 0 {
@@ -692,4 +760,29 @@ func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistrati
 	}
 	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
 	return true
+}
+
+func sortSecretsByCreatedDesc(secrets []*corev1.Secret) []*corev1.Secret {
+	sort.Slice(secrets, func(i, j int) bool {
+		return isCreatedBefore(secrets[j], secrets[i])
+	})
+	return secrets
+}
+
+func isCreatedAfter(secret1 *corev1.Secret, secret2 *corev1.Secret) bool {
+	secret1CreatedStr := secret1.ObjectMeta.Annotations[defaults.ImmutableCreationTimestampAnnotation]
+	secret1TimeStamp, err := time.Parse(time.RFC3339, secret1CreatedStr)
+	if err != nil {
+		return true
+	}
+	secret2CreatedStr := secret2.ObjectMeta.Annotations[defaults.ImmutableCreationTimestampAnnotation]
+	secret2TimeStamp, err := time.Parse(time.RFC3339, secret2CreatedStr)
+	if err != nil {
+		return false
+	}
+	return secret1TimeStamp.After(secret2TimeStamp)
+}
+
+func isCreatedBefore(secret1 *corev1.Secret, secret2 *corev1.Secret) bool {
+	return !isCreatedAfter(secret1, secret2)
 }
