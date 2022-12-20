@@ -124,7 +124,7 @@ func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string, expiryD
 	}
 
 	secretConfig := getMachineUserTokenSecretConfig(appName, machineUserSA.Name, expiryDays)
-	err = ah.deleteExistingMachineUserTokenSecrets(namespace)
+	err = ah.deleteExistingMachineUserTokenSecrets(appName)
 
 	_, err = ah.getUserAccount().Client.CoreV1().Secrets(namespace).Create(context.TODO(), secretConfig, metav1.CreateOptions{})
 	if err != nil {
@@ -731,7 +731,8 @@ func (ah *ApplicationHandler) deleteExistingMachineUserTokenSecrets(appName stri
 }
 
 func (ah *ApplicationHandler) getMachineUserTokenExpiration(appName string) (string, error) {
-	existingSecrets, err := ah.kubeUtil.ListSecretsWithSelector(crdUtils.GetAppNamespace(appName), labels.Set(getMachineUserTokenSecretLabels(appName)).String())
+	namespace := crdUtils.GetAppNamespace(appName)
+	existingSecrets, err := ah.kubeUtil.ListSecretsWithSelector(namespace, labels.Set(getMachineUserTokenSecretLabels(appName)).String())
 	if err != nil {
 		return "", err
 	}

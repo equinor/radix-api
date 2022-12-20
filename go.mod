@@ -121,5 +121,3 @@ require (
 )
 
 replace github.com/equinor/radix-operator v1.31.2 => /private/mlon/GoLandProjects/radix-operator
-
-replace github.com/equinor/radix-job-scheduler v1.7.1 => /private/mlon/GoLandProjects/radix-job-scheduler
