@@ -397,11 +397,11 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 
 	var regenerateMachineUserToken applicationModels.RegenerateMachineUserToken
 	if err := json.NewDecoder(r.Body).Decode(&regenerateMachineUserToken); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
-		return
+		// TODO: throw error on lacking request body after web console update
+		regenerateMachineUserToken.DaysUntilExpiry = 365
 	}
 	if regenerateMachineUserToken.DaysUntilExpiry < 0 || regenerateMachineUserToken.DaysUntilExpiry > 365 {
-		radixhttp.ErrorResponse(w, r, radixhttp.ValidationError("Secret", "DaysUntilExpiry must be between 0 and 365"))
+		radixhttp.ErrorResponse(w, r, radixhttp.ValidationError("Secret", "daysUntilExpiry must be between 0 and 365"))
 	}
 
 	machineUser, err := handler.RegenerateMachineUserToken(appName, regenerateMachineUserToken.DaysUntilExpiry)
