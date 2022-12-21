@@ -46,6 +46,8 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.accounts = accounts
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
+		kubeUtilsForServiceAccount, _ := kube.New(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, accounts.ServiceAccount.SecretProviderClient)
+		eh.kubeUtilForServiceAccount = kubeUtilsForServiceAccount
 	}
 }
 
@@ -58,14 +60,15 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client          kubernetes.Interface
-	radixclient     radixclient.Interface
-	inClusterClient kubernetes.Interface
-	deployHandler   deployments.DeployHandler
-	secretHandler   secrets.SecretHandler
-	eventHandler    events.EventHandler
-	accounts        models.Accounts
-	kubeUtil        *kube.Kube
+	client                    kubernetes.Interface
+	radixclient               radixclient.Interface
+	inClusterClient           kubernetes.Interface
+	deployHandler             deployments.DeployHandler
+	secretHandler             secrets.SecretHandler
+	eventHandler              events.EventHandler
+	accounts                  models.Accounts
+	kubeUtil                  *kube.Kube
+	kubeUtilForServiceAccount *kube.Kube
 }
 
 // Init Constructor.
