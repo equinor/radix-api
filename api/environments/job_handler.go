@@ -139,7 +139,7 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 // GetJobPayload Gets job payload
 func (eh EnvironmentHandler) GetJobPayload(appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	payloadSecrets, err := eh.kubeUtil.ListSecretsWithSelector(namespace, getJobsSchedulerPayloadSecretSelector(appName, jobComponentName, jobName))
+	payloadSecrets, err := eh.kubeUtilForServiceAccount.ListSecretsWithSelector(namespace, getJobsSchedulerPayloadSecretSelector(appName, jobComponentName, jobName))
 	if err != nil {
 		return nil, err
 	}
