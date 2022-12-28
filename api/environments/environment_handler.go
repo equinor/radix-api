@@ -29,8 +29,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const latestDeployment = true
-
 // EnvironmentHandlerOptions defines a configuration function
 type EnvironmentHandlerOptions func(*EnvironmentHandler)
 
@@ -222,7 +220,7 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(appName, envName string) error {
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	re, err := eh.getRadixEnvironments(uniqueName)
+	re, err := eh.getRadixEnvironment(uniqueName)
 	if err != nil {
 		return err
 	}
@@ -265,7 +263,7 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*e
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
-	re, err := eh.getRadixEnvironments(uniqueName)
+	re, err := eh.getRadixEnvironment(uniqueName)
 	exists := err == nil
 
 	if !exists {
@@ -294,7 +292,7 @@ func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env
 		BranchMapping: env.Build.From,
 	}
 
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(app.Name, env.Name, latestDeployment)
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(app.Name, env.Name, true)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +308,7 @@ func (eh EnvironmentHandler) getEnvironmentSummary(app *v1.RadixApplication, env
 }
 
 func (eh EnvironmentHandler) getOrphanEnvironmentSummary(appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, latestDeployment)
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(appName, envName, true)
 	if err != nil {
 		return nil, err
 	}
