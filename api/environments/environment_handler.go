@@ -201,7 +201,7 @@ func (eh EnvironmentHandler) CreateEnvironment(appName, envName string) (*v1.Rad
 	}
 
 	// idempotent creation of RadixEnvironment
-	re, err := eh.radixclient.RadixV1().RadixEnvironments().Create(context.TODO(), k8sObjectUtils.
+	re, err := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Create(context.TODO(), k8sObjectUtils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(appName).
@@ -268,7 +268,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 
 	if !exists {
 		// does not exist in radix regardless of config
-		return 0, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
+		return environmentModels.Pending, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
 	}
 
 	if re.Status.Orphaned {
@@ -276,9 +276,8 @@ func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplica
 		return environmentModels.Orphan, nil
 	}
 
-	_, err = eh.client.CoreV1().Namespaces().Get(context.TODO(), uniqueName, metav1.GetOptions{})
+	_, err = eh.inClusterClient.CoreV1().Namespaces().Get(context.TODO(), uniqueName, metav1.GetOptions{})
 	if err != nil {
-		// exists but does not have underlying resources
 		return environmentModels.Pending, nil
 	}
 

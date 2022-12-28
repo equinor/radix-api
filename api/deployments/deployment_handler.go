@@ -36,6 +36,7 @@ type DeployHandler interface {
 
 // DeployHandler Instance variables
 type deployHandler struct {
+	accounts    models.Accounts
 	kubeClient  kubernetes.Interface
 	radixClient radixclient.Interface
 }
@@ -43,6 +44,7 @@ type deployHandler struct {
 // Init Constructor
 func Init(accounts models.Accounts) DeployHandler {
 	return &deployHandler{
+		accounts:    accounts,
 		kubeClient:  accounts.UserAccount.Client,
 		radixClient: accounts.UserAccount.RadixClient,
 	}
@@ -182,7 +184,7 @@ func (deploy *deployHandler) getEnvironmentNames(appName string) ([]string, erro
 	radixlabels.ForApplicationName(appName).AsSelector()
 	labelSelector := radixlabels.ForApplicationName(appName).AsSelector()
 
-	reList, err := deploy.radixClient.RadixV1().RadixEnvironments().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	reList, err := deploy.accounts.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
 		return nil, err
 	}

@@ -28,5 +28,5 @@ func (eh EnvironmentHandler) getRadixApplicationInAppNamespace(appName string) (
 }
 
 func (eh EnvironmentHandler) getRadixEnvironment(name string) (*v1.RadixEnvironment, error) {
-	return eh.radixclient.RadixV1().RadixEnvironments().Get(context.TODO(), name, metav1.GetOptions{})
+	return eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), name, metav1.GetOptions{})
 }
