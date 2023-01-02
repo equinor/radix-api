@@ -566,6 +566,44 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	assert.Equal(t, int32(80), components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
 }
 
+func TestGetComponents_WithIdentity(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents(
+			builders.NewDeployJobComponentBuilder().
+				WithName("job1").
+				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "job-clientid"}}),
+			builders.NewDeployJobComponentBuilder().WithName("job2"),
+		).
+		WithComponents(
+			builders.NewDeployComponentBuilder().
+				WithName("comp1").
+				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "comp-clientid"}}),
+			builders.NewDeployComponentBuilder().WithName("comp2"),
+		))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid"}}, getComponentByName("job1", components).Identity)
+	assert.Nil(t, getComponentByName("job2", components).Identity)
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "comp-clientid"}}, getComponentByName("comp1", components).Identity)
+	assert.Nil(t, getComponentByName("comp2", components).Identity)
+}
+
 func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) {
 	podSpec := getPodSpec(podName, radixComponentLabel)
 	containerState := getContainerState(message, status)
