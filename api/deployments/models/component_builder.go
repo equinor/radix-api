@@ -151,6 +151,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		if azure := identity.Azure; azure != nil {
 			b.identity.Azure = &AzureIdentity{}
 			b.identity.Azure.ClientId = azure.ClientId
+			b.identity.Azure.ServiceAccountName = utils.GetComponentServiceAccountName(component.GetName())
 		}
 	}
 

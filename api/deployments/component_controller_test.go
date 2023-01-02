@@ -15,6 +15,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -598,9 +599,9 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
-	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid"}}, getComponentByName("job1", components).Identity)
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("job1")}}, getComponentByName("job1", components).Identity)
 	assert.Nil(t, getComponentByName("job2", components).Identity)
-	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "comp-clientid"}}, getComponentByName("comp1", components).Identity)
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "comp-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("comp1")}}, getComponentByName("comp1", components).Identity)
 	assert.Nil(t, getComponentByName("comp2", components).Identity)
 }
 

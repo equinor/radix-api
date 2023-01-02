@@ -111,6 +111,11 @@ type AzureIdentity struct {
 	//
 	// required: true
 	ClientId string `json:"clientId,omitempty"`
+
+	// The Service Account name to use when configuring Kubernetes Federation Credentials for the identity
+	//
+	// required: true
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component
