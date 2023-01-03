@@ -56,20 +56,19 @@ func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployme
 }
 
 // GetComponentsForDeploymentName handler for GetDeployments
-func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentID string) ([]*deploymentModels.Component, error) {
-	deployments, err := deploy.GetDeploymentsForApplication(appName, false)
+func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentName string) ([]*deploymentModels.Component, error) {
+	deployments, err := deploy.GetDeploymentsForApplication(appName)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, depl := range deployments {
-		if depl.Name != deploymentID {
-			continue
+		if strings.EqualFold(depl.Name, deploymentName) {
+			return deploy.GetComponentsForDeployment(appName, depl)
 		}
-		return deploy.GetComponentsForDeployment(appName, depl)
 	}
 
-	return nil, deploymentModels.NonExistingDeployment(nil, deploymentID)
+	return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
 }
 
 func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
