@@ -13,23 +13,19 @@ import (
 
 // DeploymentBuilder Builds DTOs
 type DeploymentBuilder interface {
-	WithRadixDeployment(v1.RadixDeployment) DeploymentBuilder
-	WithName(string) DeploymentBuilder
-	WithEnvironment(string) DeploymentBuilder
-	WithActiveFrom(time.Time) DeploymentBuilder
-	WithActiveTo(time.Time) DeploymentBuilder
-	WithJobName(string) DeploymentBuilder
+	WithRadixDeployment(*v1.RadixDeployment) DeploymentBuilder
 	WithPipelineJob(*v1.RadixJob) DeploymentBuilder
 	WithComponents(components []*Component) DeploymentBuilder
-	BuildDeploymentSummary() (*DeploymentSummary, error)
-	BuildDeployment() (*Deployment, error)
 	WithGitCommitHash(string) DeploymentBuilder
 	WithGitTags(string) DeploymentBuilder
 	WithRadixRegistration(*v1.RadixRegistration) DeploymentBuilder
+	BuildDeploymentSummary() (*DeploymentSummary, error)
+	BuildDeployment() (*Deployment, error)
 }
 
 type deploymentBuilder struct {
 	name               string
+	namespace          string
 	environment        string
 	activeFrom         time.Time
 	activeTo           time.Time
@@ -43,29 +39,30 @@ type deploymentBuilder struct {
 	repository         string
 }
 
-func (b *deploymentBuilder) WithRadixDeployment(rd v1.RadixDeployment) DeploymentBuilder {
+// NewDeploymentBuilder Constructor for application deploymentBuilder
+func NewDeploymentBuilder() DeploymentBuilder {
+	return &deploymentBuilder{}
+}
+
+func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
 
-	b.withComponentSummariesFromRadixDeployment(&rd).
-		WithName(rd.GetName()).
-		WithEnvironment(rd.Spec.Environment).
-		WithJobName(jobName).
-		WithActiveFrom(rd.Status.ActiveFrom.Time).
-		WithActiveTo(rd.Status.ActiveTo.Time).
+	b.withComponentSummariesFromRadixDeployment(rd).
+		withEnvironment(rd.Spec.Environment).
+		withNamespace(rd.GetNamespace()).
+		withName(rd.GetName()).
+		withActiveFrom(rd.Status.ActiveFrom.Time).
+		withJobName(jobName).
+		withActiveTo(rd.Status.ActiveTo.Time).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation])
 
 	return b
 }
 
-func (b *deploymentBuilder) WithJobName(jobName string) DeploymentBuilder {
-	b.jobName = jobName
-	return b
-}
-
 func (b *deploymentBuilder) WithPipelineJob(job *v1.RadixJob) DeploymentBuilder {
 	if job != nil {
-		b.WithJobName(job.Name)
+		b.withJobName(job.Name)
 	}
 
 	b.pipelineJob = job
@@ -77,7 +74,43 @@ func (b *deploymentBuilder) WithComponents(components []*Component) DeploymentBu
 	return b
 }
 
-func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
+func (b *deploymentBuilder) WithGitCommitHash(gitCommitHash string) DeploymentBuilder {
+	b.gitCommitHash = gitCommitHash
+	return b
+}
+
+func (b *deploymentBuilder) WithGitTags(gitTags string) DeploymentBuilder {
+	b.gitTags = gitTags
+	return b
+}
+
+func (b *deploymentBuilder) WithRadixRegistration(rr *v1.RadixRegistration) DeploymentBuilder {
+	gitCloneUrl := rr.Spec.CloneURL
+	b.repository = crdUtils.GetGithubRepositoryURLFromCloneURL(gitCloneUrl)
+	return b
+}
+
+func (b *deploymentBuilder) withName(name string) *deploymentBuilder {
+	b.name = name
+	return b
+}
+
+func (b *deploymentBuilder) withJobName(jobName string) *deploymentBuilder {
+	b.jobName = jobName
+	return b
+}
+
+func (b *deploymentBuilder) withActiveFrom(activeFrom time.Time) *deploymentBuilder {
+	b.activeFrom = activeFrom
+	return b
+}
+
+func (b *deploymentBuilder) withActiveTo(activeTo time.Time) *deploymentBuilder {
+	b.activeTo = activeTo
+	return b
+}
+
+func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) *deploymentBuilder {
 	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Jobs))
 	for _, component := range rd.Spec.Components {
 		componentDto, err := NewComponentBuilder().WithComponent(&component).BuildComponentSummary()
@@ -99,39 +132,13 @@ func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.Rad
 	return b
 }
 
-func (b *deploymentBuilder) WithName(name string) DeploymentBuilder {
-	b.name = name
-	return b
-}
-
-func (b *deploymentBuilder) WithEnvironment(environment string) DeploymentBuilder {
+func (b *deploymentBuilder) withEnvironment(environment string) *deploymentBuilder {
 	b.environment = environment
 	return b
 }
 
-func (b *deploymentBuilder) WithActiveFrom(activeFrom time.Time) DeploymentBuilder {
-	b.activeFrom = activeFrom
-	return b
-}
-
-func (b *deploymentBuilder) WithActiveTo(activeTo time.Time) DeploymentBuilder {
-	b.activeTo = activeTo
-	return b
-}
-
-func (b *deploymentBuilder) WithGitCommitHash(gitCommitHash string) DeploymentBuilder {
-	b.gitCommitHash = gitCommitHash
-	return b
-}
-
-func (b *deploymentBuilder) WithGitTags(gitTags string) DeploymentBuilder {
-	b.gitTags = gitTags
-	return b
-}
-
-func (b *deploymentBuilder) WithRadixRegistration(rr *v1.RadixRegistration) DeploymentBuilder {
-	gitCloneUrl := rr.Spec.CloneURL
-	b.repository = crdUtils.GetGithubRepositoryURLFromCloneURL(gitCloneUrl)
+func (b *deploymentBuilder) withNamespace(namespace string) *deploymentBuilder {
+	b.namespace = namespace
 	return b
 }
 
@@ -173,6 +180,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 	return &Deployment{
 		Name:          b.name,
+		Namespace:     b.namespace,
 		Environment:   b.environment,
 		ActiveFrom:    radixutils.FormatTimestamp(b.activeFrom),
 		ActiveTo:      radixutils.FormatTimestamp(b.activeTo),
@@ -182,9 +190,4 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		GitTags:       b.gitTags,
 		Repository:    b.repository,
 	}, b.buildError()
-}
-
-// NewDeploymentBuilder Constructor for application deploymentBuilder
-func NewDeploymentBuilder() DeploymentBuilder {
-	return &deploymentBuilder{}
 }

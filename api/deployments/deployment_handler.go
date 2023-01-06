@@ -10,7 +10,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -149,14 +148,6 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, err
 	}
 
-	var activeTo time.Time
-	if !strings.EqualFold(deploymentSummary.ActiveTo, "") {
-		activeTo, err = radixutils.ParseTimestamp(deploymentSummary.ActiveTo)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	components, err := deploy.GetComponentsForDeployment(appName, deploymentSummary)
 	if err != nil {
 		return nil, err
@@ -169,8 +160,7 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 	}
 
 	dep, _ := deploymentModels.NewDeploymentBuilder().
-		WithRadixDeployment(*rd).
-		WithActiveTo(activeTo).
+		WithRadixDeployment(rd).
 		WithComponents(components).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation]).
@@ -254,7 +244,7 @@ func (deploy *deployHandler) getDeployments(appName string, environments []strin
 
 		deploySummary, err := deploymentModels.
 			NewDeploymentBuilder().
-			WithRadixDeployment(rd).
+			WithRadixDeployment(&rd).
 			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]]).
 			WithRadixRegistration(rr).
 			BuildDeploymentSummary()

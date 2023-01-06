@@ -22,7 +22,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		t.Parallel()
 
 		b := NewDeploymentBuilder().WithRadixDeployment(
-			v1.RadixDeployment{
+			&v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   deploymentName,
 					Labels: map[string]string{kube.RadixJobNameLabel: jobName},
@@ -98,8 +98,8 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 }
 
 func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
-	appName, deploymentName, envName, jobName, activeFrom, activeTo, cloneUrl, repoUrl :=
-		"app-name", "deployment-name", "env-name", "job-name", time.Now().Add(-10*time.Second).Truncate(1*time.Second),
+	appName, deploymentName, deploymentNamespace, envName, jobName, activeFrom, activeTo, cloneUrl, repoUrl :=
+		"app-name", "deployment-name", "deployment-namespace", "env-name", "job-name", time.Now().Add(-10*time.Second).Truncate(1*time.Second),
 		time.Now().Truncate(1*time.Second), "git@github.com:equinor/radix-canary-golang.git",
 		"https://github.com/equinor/radix-canary-golang"
 
@@ -112,10 +112,11 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		t.Parallel()
 
 		b := NewDeploymentBuilder().WithRadixDeployment(
-			v1.RadixDeployment{
+			&v1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   deploymentName,
-					Labels: map[string]string{kube.RadixJobNameLabel: jobName},
+					Name:      deploymentName,
+					Namespace: deploymentNamespace,
+					Labels:    map[string]string{kube.RadixJobNameLabel: jobName},
 				},
 				Spec: v1.RadixDeploymentSpec{
 					Environment: envName,
@@ -131,6 +132,7 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		assert.NoError(t, err)
 		expected := &Deployment{
 			Name:         deploymentName,
+			Namespace:    deploymentNamespace,
 			CreatedByJob: jobName,
 			Environment:  envName,
 			ActiveFrom:   radixutils.FormatTimestamp(activeFrom),
