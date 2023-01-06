@@ -14,7 +14,6 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +41,7 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 
 func TestGetComponents_non_existing_deployment(t *testing.T) {
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	commonTestUtils.ApplyApplication(builders.
+	commonTestUtils.ApplyApplication(operatorUtils.
 		ARadixApplication().
 		WithAppName(anyAppName))
 
@@ -61,19 +60,19 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 func TestGetComponents_active_deployment(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job")).
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job")).
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app")).
+			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName))
 
-	createComponentPod(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod3", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -95,13 +94,13 @@ func TestGetComponents_active_deployment(t *testing.T) {
 func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents().
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorUtils.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -130,12 +129,12 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().
+			operatorUtils.NewDeployJobComponentBuilder().
 				WithName("job").
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
@@ -147,7 +146,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 				),
 		).
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorUtils.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -187,13 +186,13 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents().
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorUtils.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -234,16 +233,16 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 func TestGetComponents_OAuth2(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents().
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("c1").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
-			builders.NewDeployComponentBuilder().WithName("c2").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
-			builders.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
-			builders.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorUtils.NewDeployComponentBuilder().WithName("c1").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorUtils.NewDeployComponentBuilder().WithName("c2").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+			operatorUtils.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
+			operatorUtils.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
 		))
 
 	// Test
@@ -281,39 +280,39 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	initialDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
 	activeDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-14T11:45:26Z")
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("initial-deployment").
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app"),
+			operatorUtils.NewDeployComponentBuilder().WithName("app"),
 		).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job"),
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job"),
 		).
 		WithCreated(initialDeploymentCreated).
 		WithCondition(v1.DeploymentInactive).
 		WithActiveFrom(initialDeploymentCreated).
 		WithActiveTo(activeDeploymentCreated))
 
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName("active-deployment").
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app"),
+			operatorUtils.NewDeployComponentBuilder().WithName("app"),
 		).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job"),
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job"),
 		).
 		WithCreated(activeDeploymentCreated).
 		WithCondition(v1.DeploymentActive).
 		WithActiveFrom(activeDeploymentCreated))
 
-	createComponentPod(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
 
 	endpoint := createGetComponentsEndpoint(anyAppName, "initial-deployment")
 
@@ -351,7 +350,7 @@ func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
 func TestGetComponents_success(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployName))
@@ -374,21 +373,21 @@ func TestGetComponents_success(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName).
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app")).
+			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job")))
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
 
 	message1 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
-	createComponentPodWithContainerState(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
 	message2 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/job"
-	createComponentPodWithContainerState(kubeclient, "pod3", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
+	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -415,20 +414,20 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName).
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app")).
+			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job")))
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
-	createComponentPodWithContainerState(kubeclient, "pod3", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
+	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -455,20 +454,20 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName).
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app")).
+			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job")))
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
-	createComponentPodWithContainerState(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
-	createComponentPodWithContainerState(kubeclient, "pod3", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
+	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -495,20 +494,20 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(builders.
+	commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName).
 		WithComponents(
-			builders.NewDeployComponentBuilder().WithName("app")).
+			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job")))
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", builders.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
-	createComponentPodWithContainerState(kubeclient, "pod3", builders.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
+	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -537,13 +536,13 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
 	minReplicas := int32(2)
 	maxReplicas := int32(6)
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents().
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorUtils.NewDeployComponentBuilder().
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
@@ -571,21 +570,21 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
 
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, builders.ARadixDeployment().
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
 		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().
+			operatorUtils.NewDeployJobComponentBuilder().
 				WithName("job1").
 				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "job-clientid"}}),
-			builders.NewDeployJobComponentBuilder().WithName("job2"),
+			operatorUtils.NewDeployJobComponentBuilder().WithName("job2"),
 		).
 		WithComponents(
-			builders.NewDeployComponentBuilder().
+			operatorUtils.NewDeployComponentBuilder().
 				WithName("comp1").
 				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "comp-clientid"}}),
-			builders.NewDeployComponentBuilder().WithName("comp2"),
+			operatorUtils.NewDeployComponentBuilder().WithName("comp2"),
 		))
 
 	// Test
