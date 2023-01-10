@@ -2,11 +2,12 @@ package environments
 
 import (
 	"fmt"
-	"github.com/equinor/radix-api/api/utils/logs"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/utils/logs"
 
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/models"
@@ -356,7 +357,6 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	// Need in cluster client in order to delete namespace using sufficient privileges
 	environmentHandler := Init(WithAccounts(accounts))
 	err := environmentHandler.DeleteEnvironment(appName, envName)
 

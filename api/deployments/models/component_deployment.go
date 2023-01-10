@@ -88,7 +88,34 @@ type Component struct {
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 
+	// External identity information
+	//
+	// required: false
+	Identity *Identity `json:"identity,omitempty"`
+
 	AuxiliaryResource `json:",inline"`
+}
+
+// Identity describes external identities
+type Identity struct {
+	// Azure identity
+	//
+	// required: false
+	Azure *AzureIdentity `json:"azure,omitempty"`
+}
+
+// AzureIdentity describes an identity in Azure
+type AzureIdentity struct {
+	// ClientId is the client ID of an Azure User Assigned Managed Identity
+	// or the application ID of an Azure AD Application Registration
+	//
+	// required: true
+	ClientId string `json:"clientId,omitempty"`
+
+	// The Service Account name to use when configuring Kubernetes Federation Credentials for the identity
+	//
+	// required: true
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component

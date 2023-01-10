@@ -81,7 +81,7 @@ func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHa
 		envName := mux.Vars(r)["envName"]
 		envNamespace := crdutils.GetEnvironmentNamespace(appName, envName)
 
-		if _, err := a.UserAccount.RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), envNamespace, v1.GetOptions{}); err != nil {
+		if _, err := a.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), envNamespace, v1.GetOptions{}); err != nil {
 			radixhttp.ErrorResponse(rw, r, err)
 			return
 		}
