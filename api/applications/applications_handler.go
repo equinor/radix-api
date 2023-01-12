@@ -170,6 +170,10 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 			return nil, err
 		}
 	}
+	if len(application.SharedSecret) == 0 {
+		application.SharedSecret = radixutils.RandString(20)
+		log.Debugf("There is no a Shared Secret specified for the registering application - generate a random Shared Secret")
+	}
 
 	radixRegistration, err := NewBuilder().
 		withAppRegistration(application).
