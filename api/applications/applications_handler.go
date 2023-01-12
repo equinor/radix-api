@@ -521,7 +521,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelin
 		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	}
 
-	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Infof("Requested build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
 	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
@@ -535,9 +535,9 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelin
 			return nil, err
 		}
 		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
-
 		if !isThereAnythingToDeploy {
-			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
+			log.Infof("There is environments for %s, matching to the branch %s. Skip the pipeline job creation", appName, branch)
+			return nil, nil
 		}
 	}
 
@@ -547,6 +547,8 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelin
 	if err != nil {
 		return nil, err
 	}
+
+	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
 	if err != nil {
