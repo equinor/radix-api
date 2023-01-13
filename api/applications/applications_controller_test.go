@@ -1127,7 +1127,10 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", anyAppName, v1.BuildDeploy), parameters)
 	response := <-responseChannel
 
-	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	expectedError := applicationModels.UnmatchedBranchToEnvironment(unmappedBranch)
+	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Mapped branch should start job
 	parameters = applicationModels.PipelineParametersBuild{Branch: "dev"}
