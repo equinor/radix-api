@@ -334,6 +334,9 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(appName string, applicat
 	}
 
 	if patchRequest.MachineUser != nil && *patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
+		if *patchRequest.MachineUser {
+			return nil, fmt.Errorf("machine user token is deprecated. Please use AD Service principal access token https://radix.equinor.com/guides/deploy-only/#ad-service-principal-access-token")
+		}
 		existingRegistration.Spec.MachineUser = *patchRequest.MachineUser
 		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
 		runUpdate = true
