@@ -170,6 +170,10 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 			return nil, err
 		}
 	}
+	if len(application.SharedSecret) == 0 {
+		application.SharedSecret = radixutils.RandString(20)
+		log.Debugf("There is no Shared Secret specified for the registering application - a random Shared Secret has been generated")
+	}
 
 	radixRegistration, err := NewBuilder().
 		withAppRegistration(application).
@@ -330,6 +334,9 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(appName string, applicat
 	}
 
 	if patchRequest.MachineUser != nil && *patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
+		if *patchRequest.MachineUser {
+			return nil, fmt.Errorf("machine user token is deprecated. Please use AD Service principal access token https://radix.equinor.com/guides/deploy-only/#ad-service-principal-access-token")
+		}
 		existingRegistration.Spec.MachineUser = *patchRequest.MachineUser
 		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
 		runUpdate = true
@@ -547,6 +554,8 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(appName, pipelin
 	if err != nil {
 		return nil, err
 	}
+
+	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(appName, pipeline, jobParameters)
 	if err != nil {
