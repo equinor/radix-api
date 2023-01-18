@@ -332,6 +332,29 @@ type ScheduledJobSummary struct {
 	// required: false
 	// example: "batch-abc"
 	BatchName string `json:"batchName,omitempty"`
+
+	// TimeLimitSeconds How long the job supposed to run at maximum
+	//
+	// required: false
+	// example: "3600"
+	TimeLimitSeconds string `json:"timeLimitSeconds,omitempty"`
+
+	// Resources Resource requirements for the job
+	//
+	// required: false
+	Resources ResourceRequirements `json:"resources,omitempty"`
+}
+
+//Resources Required for pods
+type Resources struct {
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
+}
+
+//ResourceRequirements Requirements of resources for pods
+type ResourceRequirements struct {
+	Limits   Resources `json:"limits,omitempty"`
+	Requests Resources `json:"requests,omitempty"`
 }
 
 // ScheduledBatchSummary holds information about scheduled batch
