@@ -23,7 +23,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -201,14 +200,13 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 		BatchName: batchName,
 		JobId:     job.ObjectMeta.Labels[kube.RadixJobIdLabel],
 	}
-	if job.Spec.Template.Spec.ActiveDeadlineSeconds != nil {
-		summary.TimeLimitSeconds = strconv.FormatInt(*job.Spec.Template.Spec.ActiveDeadlineSeconds, 10)
-	}
+	summary.TimeLimitSeconds = job.Spec.Template.Spec.ActiveDeadlineSeconds
 	jobPods := jobPodsMap[job.Name]
 	if len(jobPods) > 0 {
 		summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 	}
 	summary.Resources = getJobResourceRequirements(job, jobPods)
+	summary.BackoffLimit = getJobBackoffLimit(job)
 	jobStatus := jobSchedulerApi.GetJobStatusFromJob(eh.kubeUtil.KubeClient(), job, jobPodsMap[job.Name])
 	summary.Status = jobStatus.Status
 	summary.Message = jobStatus.Message
@@ -216,35 +214,20 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 	return &summary
 }
 
+func getJobBackoffLimit(job *batchv1.Job) int32 {
+	if job.Spec.BackoffLimit == nil {
+		return 0
+	}
+	return *job.Spec.BackoffLimit
+}
+
 func getJobResourceRequirements(job *batchv1.Job, jobPods []corev1.Pod) deploymentModels.ResourceRequirements {
 	if len(jobPods) > 0 && len(jobPods[0].Spec.Containers) > 0 {
-		return convertResourceRequirements(jobPods[0].Spec.Containers[0].Resources)
+		return deploymentModels.ConvertResourceRequirements(jobPods[0].Spec.Containers[0].Resources)
 	} else if len(job.Spec.Template.Spec.Containers) > 0 {
-		return convertResourceRequirements(job.Spec.Template.Spec.Containers[0].Resources)
+		return deploymentModels.ConvertResourceRequirements(job.Spec.Template.Spec.Containers[0].Resources)
 	}
 	return deploymentModels.ResourceRequirements{}
-}
-
-func convertResourceRequirements(resources corev1.ResourceRequirements) deploymentModels.ResourceRequirements {
-	return deploymentModels.ResourceRequirements{
-		Limits:   getResources(resources.Limits),
-		Requests: getResources(resources.Requests),
-	}
-}
-
-func getResources(resources corev1.ResourceList) deploymentModels.Resources {
-	resourceList := deploymentModels.Resources{
-		CPU:    getResource(resources.Cpu()),
-		Memory: getResource(resources.Memory()),
-	}
-	return resourceList
-}
-
-func getResource(resource *resource.Quantity) string {
-	if resource == nil {
-		return ""
-	}
-	return resource.String()
 }
 
 func (eh EnvironmentHandler) getScheduledBatchSummaryList(batches []batchv1.Job) ([]deploymentModels.ScheduledBatchSummary, error) {
