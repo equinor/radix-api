@@ -9,6 +9,12 @@ type Deployment struct {
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
 
+	// Namespace where the deployment is stored
+	//
+	// required: true
+	// example: radix-canary-golang-dev
+	Namespace string `json:"namespace"`
+
 	// Array of components
 	//
 	// required: false

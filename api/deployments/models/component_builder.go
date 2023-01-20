@@ -38,6 +38,7 @@ type componentBuilder struct {
 	schedulerPort             *int32
 	scheduledJobPayloadPath   string
 	auxResource               AuxiliaryResource
+	identity                  *Identity
 	errors                    []error
 }
 
@@ -145,6 +146,15 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		}
 	}
 
+	if identity := component.GetIdentity(); identity != nil {
+		b.identity = &Identity{}
+		if azure := identity.Azure; azure != nil {
+			b.identity.Azure = &AzureIdentity{}
+			b.identity.Azure.ClientId = azure.ClientId
+			b.identity.Azure.ServiceAccountName = utils.GetComponentServiceAccountName(component.GetName())
+		}
+	}
+
 	b.environmentVariables = component.GetEnvironmentVariables()
 	return b
 }
@@ -188,6 +198,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		SchedulerPort:           b.schedulerPort,
 		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
 		AuxiliaryResource:       b.auxResource,
+		Identity:                b.identity,
 	}, b.buildError()
 }
 

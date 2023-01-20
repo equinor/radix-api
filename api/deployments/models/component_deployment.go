@@ -88,7 +88,34 @@ type Component struct {
 	// required: false
 	HorizontalScalingSummary *HorizontalScalingSummary `json:"horizontalScalingSummary"`
 
+	// External identity information
+	//
+	// required: false
+	Identity *Identity `json:"identity,omitempty"`
+
 	AuxiliaryResource `json:",inline"`
+}
+
+// Identity describes external identities
+type Identity struct {
+	// Azure identity
+	//
+	// required: false
+	Azure *AzureIdentity `json:"azure,omitempty"`
+}
+
+// AzureIdentity describes an identity in Azure
+type AzureIdentity struct {
+	// ClientId is the client ID of an Azure User Assigned Managed Identity
+	// or the application ID of an Azure AD Application Registration
+	//
+	// required: true
+	ClientId string `json:"clientId,omitempty"`
+
+	// The Service Account name to use when configuring Kubernetes Federation Credentials for the identity
+	//
+	// required: true
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component
@@ -204,6 +231,11 @@ type ReplicaSummary struct {
 	// required: false
 	// example: radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f
 	ImageId string `json:"imageId"`
+
+	// Resources Resource requirements for the pod
+	//
+	// required: false
+	Resources ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
@@ -305,6 +337,48 @@ type ScheduledJobSummary struct {
 	// required: false
 	// example: "batch-abc"
 	BatchName string `json:"batchName,omitempty"`
+
+	// TimeLimitSeconds How long the job supposed to run at maximum
+	//
+	// required: false
+	// example: 3600
+	TimeLimitSeconds *int64 `json:"timeLimitSeconds,omitempty"`
+
+	// BackoffLimit Amount of retries due to a logical error in configuration etc.
+	//
+	// required: true
+	// example: 1
+	BackoffLimit int32 `json:"backoffLimit"`
+
+	// Resources Resource requirements for the job
+	//
+	// required: false
+	Resources ResourceRequirements `json:"resources,omitempty"`
+
+	// Node Defines node attributes, where pod should be scheduled
+	//
+	// required: false
+	Node *Node `json:"node,omitempty"`
+}
+
+//Node Defines node attributes, where pod should be scheduled
+type Node struct {
+	// Gpu Holds lists of node GPU types, with dashed types to exclude
+	Gpu string `json:"gpu,omitempty"`
+	// GpuCount Holds minimum count of GPU on node
+	GpuCount string `json:"gpuCount,omitempty"`
+}
+
+//Resources Required for pods
+type Resources struct {
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
+}
+
+//ResourceRequirements Requirements of resources for pods
+type ResourceRequirements struct {
+	Limits   Resources `json:"limits,omitempty"`
+	Requests Resources `json:"requests,omitempty"`
 }
 
 // ScheduledBatchSummary holds information about scheduled batch
@@ -405,6 +479,9 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.RestartCount = containerStatus.RestartCount
 	replicaSummary.Image = containerStatus.Image
 	replicaSummary.ImageId = containerStatus.ImageID
+	if len(pod.Spec.Containers) > 0 {
+		replicaSummary.Resources = ConvertResourceRequirements(pod.Spec.Containers[0].Resources)
+	}
 	return replicaSummary
 }
 

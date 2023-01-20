@@ -198,16 +198,36 @@ func (eh EnvironmentHandler) getScheduledJobSummary(job *batchv1.Job,
 		Created:   radixutils.FormatTimestamp(creationTimestamp.Time),
 		Started:   radixutils.FormatTime(job.Status.StartTime),
 		BatchName: batchName,
+		JobId:     job.ObjectMeta.Labels[kube.RadixJobIdLabel],
 	}
-
-	if jobPods, ok := jobPodsMap[job.Name]; ok {
+	summary.TimeLimitSeconds = job.Spec.Template.Spec.ActiveDeadlineSeconds
+	jobPods := jobPodsMap[job.Name]
+	if len(jobPods) > 0 {
 		summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 	}
+	summary.Resources = getJobResourceRequirements(job, jobPods)
+	summary.BackoffLimit = getJobBackoffLimit(job)
 	jobStatus := jobSchedulerApi.GetJobStatusFromJob(eh.kubeUtil.KubeClient(), job, jobPodsMap[job.Name])
 	summary.Status = jobStatus.Status
 	summary.Message = jobStatus.Message
 	summary.Ended = jobStatus.Ended
 	return &summary
+}
+
+func getJobBackoffLimit(job *batchv1.Job) int32 {
+	if job.Spec.BackoffLimit == nil {
+		return 0
+	}
+	return *job.Spec.BackoffLimit
+}
+
+func getJobResourceRequirements(job *batchv1.Job, jobPods []corev1.Pod) deploymentModels.ResourceRequirements {
+	if len(jobPods) > 0 && len(jobPods[0].Spec.Containers) > 0 {
+		return deploymentModels.ConvertResourceRequirements(jobPods[0].Spec.Containers[0].Resources)
+	} else if len(job.Spec.Template.Spec.Containers) > 0 {
+		return deploymentModels.ConvertResourceRequirements(job.Spec.Template.Spec.Containers[0].Resources)
+	}
+	return deploymentModels.ResourceRequirements{}
 }
 
 func (eh EnvironmentHandler) getScheduledBatchSummaryList(batches []batchv1.Job) ([]deploymentModels.ScheduledBatchSummary, error) {

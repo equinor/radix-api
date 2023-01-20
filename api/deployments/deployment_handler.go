@@ -10,12 +10,12 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
-	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -35,6 +35,7 @@ type DeployHandler interface {
 
 // DeployHandler Instance variables
 type deployHandler struct {
+	accounts    models.Accounts
 	kubeClient  kubernetes.Interface
 	radixClient radixclient.Interface
 }
@@ -42,6 +43,7 @@ type deployHandler struct {
 // Init Constructor
 func Init(accounts models.Accounts) DeployHandler {
 	return &deployHandler{
+		accounts:    accounts,
 		kubeClient:  accounts.UserAccount.Client,
 		radixClient: accounts.UserAccount.RadixClient,
 	}
@@ -70,9 +72,12 @@ func (deploy *deployHandler) GetLogs(appName, podName string, sinceTime *time.Ti
 }
 
 // GetDeploymentsForApplication Lists deployments across environments
-func (deploy *deployHandler) GetDeploymentsForApplication(appName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	namespace := corev1.NamespaceAll
-	return deploy.getDeployments(namespace, appName, "", latest)
+func (deploy *deployHandler) GetDeploymentsForApplication(appName string) ([]*deploymentModels.DeploymentSummary, error) {
+	environments, err := deploy.getEnvironmentNames(appName)
+	if err != nil {
+		return nil, err
+	}
+	return deploy.getDeployments(appName, environments, "", false)
 }
 
 // GetLatestDeploymentForApplicationEnvironment Gets latest, active, deployment in environment
@@ -81,8 +86,7 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(appNam
 		return nil, deploymentModels.IllegalEmptyEnvironment()
 	}
 
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, environment)
-	deploymentSummaries, err := deploy.getDeployments(namespace, appName, "", true)
+	deploymentSummaries, err := deploy.getDeployments(appName, []string{environment}, "", true)
 	if err == nil && len(deploymentSummaries) == 1 {
 		return deploymentSummaries[0], nil
 	}
@@ -92,25 +96,35 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(appNam
 
 // GetDeploymentsForApplicationEnvironment Lists deployments inside environment
 func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	var namespace = corev1.NamespaceAll
+	var environments []string
 	if strings.TrimSpace(environment) != "" {
-		namespace = operatorUtils.GetEnvironmentNamespace(appName, environment)
+		environments = append(environments, environment)
+	} else {
+		envs, err := deploy.getEnvironmentNames(appName)
+		if err != nil {
+			return nil, err
+		}
+		environments = append(environments, envs...)
 	}
 
-	deployments, err := deploy.getDeployments(namespace, appName, "", latest)
+	deployments, err := deploy.getDeployments(appName, environments, "", latest)
 	return deployments, err
 }
 
 // GetDeploymentsForJob Lists deployments for job name
 func (deploy *deployHandler) GetDeploymentsForJob(appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
-	namespace := corev1.NamespaceAll
-	return deploy.getDeployments(namespace, appName, jobName, false)
+	environments, err := deploy.getEnvironmentNames(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	return deploy.getDeployments(appName, environments, jobName, false)
 }
 
 // GetDeploymentWithName Handler for GetDeploymentWithName
 func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName string) (*deploymentModels.Deployment, error) {
 	// Need to list all deployments to find active to of deployment
-	allDeployments, err := deploy.GetDeploymentsForApplication(appName, false)
+	allDeployments, err := deploy.GetDeploymentsForApplication(appName)
 	if err != nil {
 		return nil, err
 	}
@@ -134,14 +148,6 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 		return nil, err
 	}
 
-	var activeTo time.Time
-	if !strings.EqualFold(deploymentSummary.ActiveTo, "") {
-		activeTo, err = radixutils.ParseTimestamp(deploymentSummary.ActiveTo)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	components, err := deploy.GetComponentsForDeployment(appName, deploymentSummary)
 	if err != nil {
 		return nil, err
@@ -154,8 +160,7 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 	}
 
 	dep, _ := deploymentModels.NewDeploymentBuilder().
-		WithRadixDeployment(*rd).
-		WithActiveTo(activeTo).
+		WithRadixDeployment(rd).
 		WithComponents(components).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation]).
@@ -165,16 +170,21 @@ func (deploy *deployHandler) GetDeploymentWithName(appName, deploymentName strin
 	return dep, nil
 }
 
-func (deploy *deployHandler) getEnvironmentNamespaces(appName string) (*corev1.NamespaceList, error) {
-	appNameLabel, _ := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
-	envLabel, _ := labels.NewRequirement(kube.RadixEnvLabel, selection.Exists, nil)
+func (deploy *deployHandler) getEnvironmentNames(appName string) ([]string, error) {
+	radixlabels.ForApplicationName(appName).AsSelector()
+	labelSelector := radixlabels.ForApplicationName(appName).AsSelector()
 
-	labelSelector := labels.NewSelector().Add(*appNameLabel, *envLabel)
+	reList, err := deploy.accounts.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	if err != nil {
+		return nil, err
+	}
 
-	return deploy.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	return slice.Map(reList.Items, func(re v1.RadixEnvironment) string {
+		return re.Spec.EnvName
+	}), nil
 }
 
-func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
+func (deploy *deployHandler) getDeployments(appName string, environments []string, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
 	appNameLabel, err := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
 	if err != nil {
 		return nil, err
@@ -189,22 +199,9 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 		rdLabelSelector = rdLabelSelector.Add(*jobNameLabel)
 	}
 
-	var environmentNamespaces []string
-
-	if namespace == corev1.NamespaceAll {
-		namespaceList, err := deploy.getEnvironmentNamespaces(appName)
-		if err != nil {
-			return nil, err
-		}
-		for _, ns := range namespaceList.Items {
-			environmentNamespaces = append(environmentNamespaces, ns.Name)
-		}
-	} else {
-		environmentNamespaces = append(environmentNamespaces, namespace)
-	}
 	var radixDeploymentList []v1.RadixDeployment
-
-	for _, ns := range environmentNamespaces {
+	namespaces := slice.Map(environments, func(env string) string { return operatorUtils.GetEnvironmentNamespace(appName, env) })
+	for _, ns := range namespaces {
 		rdlist, err := deploy.radixClient.RadixV1().RadixDeployments(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
 		if err != nil {
 			return nil, err
@@ -239,7 +236,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 	}
 
 	rds := sortRdsByActiveFromDesc(radixDeploymentList)
-	radixDeployments := make([]*deploymentModels.DeploymentSummary, 0)
+	var deploymentSummaries []*deploymentModels.DeploymentSummary
 	for _, rd := range rds {
 		if latest && rd.Status.Condition == v1.DeploymentInactive {
 			continue
@@ -247,7 +244,7 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 
 		deploySummary, err := deploymentModels.
 			NewDeploymentBuilder().
-			WithRadixDeployment(rd).
+			WithRadixDeployment(&rd).
 			WithPipelineJob(radixJobMap[rd.Labels[kube.RadixJobNameLabel]]).
 			WithRadixRegistration(rr).
 			BuildDeploymentSummary()
@@ -255,10 +252,10 @@ func (deploy *deployHandler) getDeployments(namespace, appName, jobName string, 
 			return nil, err
 		}
 
-		radixDeployments = append(radixDeployments, deploySummary)
+		deploymentSummaries = append(deploymentSummaries, deploySummary)
 	}
 
-	return radixDeployments, nil
+	return deploymentSummaries, nil
 }
 
 func sortRdsByActiveFromDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
