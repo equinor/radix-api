@@ -26,6 +26,9 @@ const (
 	// Stopped job
 	Stopped
 
+	// StoppedNoChanges The job is stopped due to no changes in build components
+	StoppedNoChanges
+
 	numStatuses
 )
 
@@ -33,7 +36,7 @@ func (p ProgressStatus) String() string {
 	if p >= numStatuses {
 		return "Unsupported"
 	}
-	return [...]string{"Running", "Succeeded", "Failed", "Waiting", "Stopping", "Stopped"}[p]
+	return [...]string{"Running", "Succeeded", "Failed", "Waiting", "Stopping", "Stopped", "StoppedNoChanges"}[p]
 }
 
 // GetStatusFromRadixJobStatus Returns job status as string
