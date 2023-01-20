@@ -355,7 +355,9 @@ type ScheduledJobSummary struct {
 	// required: false
 	Resources ResourceRequirements `json:"resources,omitempty"`
 
-	//Node Defines node attributes, where pod should be scheduled
+	// Node Defines node attributes, where pod should be scheduled
+	//
+	// required: false
 	Node *Node `json:"node,omitempty"`
 }
 
