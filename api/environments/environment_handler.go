@@ -402,7 +402,7 @@ func (eh EnvironmentHandler) StopEnvironment(appName, envName string) error {
 
 	log.Infof("Stopping components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		err := eh.StopComponent(appName, envName, deployComponent.GetName())
+		err := eh.StopComponent(appName, envName, deployComponent.GetName(), true)
 		if err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ func (eh EnvironmentHandler) StartEnvironment(appName, envName string) error {
 
 	log.Infof("Starting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		err := eh.StartComponent(appName, envName, deployComponent.GetName())
+		err := eh.StartComponent(appName, envName, deployComponent.GetName(), true)
 		if err != nil {
 			return err
 		}
@@ -436,7 +436,7 @@ func (eh EnvironmentHandler) RestartEnvironment(appName, envName string) error {
 
 	log.Infof("Restarting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		err := eh.RestartComponent(appName, envName, deployComponent.GetName())
+		err := eh.RestartComponent(appName, envName, deployComponent.GetName(), true)
 		if err != nil {
 			return err
 		}

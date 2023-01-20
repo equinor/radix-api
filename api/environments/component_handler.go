@@ -24,7 +24,7 @@ import (
 const restartedAtAnnotation = "radixapi/restartedAt"
 
 // StopComponent Stops a component
-func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string) error {
+func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string, ignoreComponentStatusError bool) error {
 	log.Infof("Stopping component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
 	if err != nil {
@@ -35,13 +35,17 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	}
 	componentStatus := updater.getComponentStatus()
 	if strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
+		if !ignoreComponentStatusError {
+			return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
+		} else {
+			return nil
+		}
 	}
 	return eh.patchRadixDeploymentWithZeroReplicas(updater)
 }
 
 // StartComponent Starts a component
-func (eh EnvironmentHandler) StartComponent(appName, envName, componentName string) error {
+func (eh EnvironmentHandler) StartComponent(appName, envName, componentName string, ignoreComponentStatusError bool) error {
 	log.Infof("Starting component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
 	if err != nil {
@@ -52,13 +56,17 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	}
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
+		if !ignoreComponentStatusError {
+			return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
+		} else {
+			return nil
+		}
 	}
 	return eh.patchRadixDeploymentWithReplicasFromConfig(updater)
 }
 
 // RestartComponent Restarts a component
-func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName string) error {
+func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName string, ignoreComponentStatusError bool) error {
 	log.Infof("Restarting component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
 	if err != nil {
@@ -66,7 +74,11 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	}
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
-		return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
+		if !ignoreComponentStatusError {
+			return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
+		} else {
+			return nil
+		}
 	}
 	return eh.patchRadixDeploymentWithTimestampInEnvVar(updater, defaults.RadixRestartEnvironmentVariable)
 }
