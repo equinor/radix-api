@@ -534,6 +534,63 @@ func TestStopComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testin
 	})
 }
 
+func TestStopEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
+	appName := anyAppName
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+
+	// Test
+	t.Run("Stop Environment", func(t *testing.T) {
+		envName := "fullyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, appName, envName, []ComponentCreatorStruct{
+			{name: "runningComponent1", number: 3},
+			{name: "runningComponent2", number: 7},
+		})
+		for _, comp := range rd.Spec.Components {
+			assert.True(t, *comp.Replicas > zeroReplicas)
+		}
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", appName, envName))
+		response := <-responseChannel
+		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+		// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas == zeroReplicas)
+		}
+	})
+
+	t.Run("Stop Environment with stopped component", func(t *testing.T) {
+		envName := "partiallyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, appName, envName, []ComponentCreatorStruct{
+			{name: "stoppedComponent", number: 0},
+			{name: "runningComponent", number: 7},
+		})
+		replicaCount := 0
+		for _, comp := range rd.Spec.Components {
+			replicaCount += *comp.Replicas
+		}
+		assert.True(t, replicaCount > zeroReplicas)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", appName, envName))
+		response := <-responseChannel
+		// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Nil(t, errorResponse)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas == zeroReplicas)
+		}
+	})
+}
+
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
