@@ -507,7 +507,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StopComponent(appName, envName, componentName)
+	err := environmentHandler.StopComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -560,7 +560,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StartComponent(appName, envName, componentName)
+	err := environmentHandler.StartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -617,7 +617,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartComponent(appName, envName, componentName)
+	err := environmentHandler.RestartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
