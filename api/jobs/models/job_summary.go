@@ -59,7 +59,7 @@ type JobSummary struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
+	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,StoppedNoChanges
 	// example: Waiting
 	Status string `json:"status"`
 
