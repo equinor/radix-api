@@ -35,11 +35,10 @@ func (eh EnvironmentHandler) StopComponent(appName, envName, componentName strin
 	}
 	componentStatus := updater.getComponentStatus()
 	if strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		if !ignoreComponentStatusError {
-			return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
-		} else {
+		if ignoreComponentStatusError {
 			return nil
 		}
+		return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
 	}
 	return eh.patchRadixDeploymentWithZeroReplicas(updater)
 }
@@ -56,11 +55,10 @@ func (eh EnvironmentHandler) StartComponent(appName, envName, componentName stri
 	}
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		if !ignoreComponentStatusError {
-			return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
-		} else {
+		if ignoreComponentStatusError {
 			return nil
 		}
+		return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
 	}
 	return eh.patchRadixDeploymentWithReplicasFromConfig(updater)
 }
@@ -74,11 +72,10 @@ func (eh EnvironmentHandler) RestartComponent(appName, envName, componentName st
 	}
 	componentStatus := updater.getComponentStatus()
 	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
-		if !ignoreComponentStatusError {
-			return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
-		} else {
+		if ignoreComponentStatusError {
 			return nil
 		}
+		return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
 	}
 	return eh.patchRadixDeploymentWithTimestampInEnvVar(updater, defaults.RadixRestartEnvironmentVariable)
 }
