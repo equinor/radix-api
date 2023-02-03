@@ -198,7 +198,7 @@ func (h legacyJobHandler) getScheduledJobSummary(job *batchv1.Job,
 	summary.TimeLimitSeconds = job.Spec.Template.Spec.ActiveDeadlineSeconds
 	jobPods := jobPodsMap[job.Name]
 	if len(jobPods) > 0 {
-		summary.ReplicaList = h.getReplicaSummariesForPods(jobPods)
+		summary.ReplicaList = getReplicaSummariesForPods(jobPods)
 	}
 	summary.Resources = h.getJobResourceRequirements(job, jobPods)
 	summary.BackoffLimit = h.getJobBackoffLimit(job)
@@ -342,12 +342,4 @@ func (h legacyJobHandler) getJob(namespace, componentName, name, jobType string)
 		return job, nil
 	}
 	return nil, jobNotFoundError(name)
-}
-
-func (h legacyJobHandler) getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	var replicaSummaries []deploymentModels.ReplicaSummary
-	for _, pod := range jobPods {
-		replicaSummaries = append(replicaSummaries, deploymentModels.GetReplicaSummary(pod))
-	}
-	return replicaSummaries
 }

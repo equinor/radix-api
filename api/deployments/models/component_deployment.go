@@ -432,6 +432,12 @@ type ScheduledBatchSummary struct {
 	// example: 5
 	TotalJobCount int `json:"totalJobCount"`
 
+	// TotalJobCount count of jobs, requested to be scheduled by a batch
+	//
+	// required: true
+	// example: 5
+	JobStatusSummary map[string]int `json:"jobStatusSummary,omitempty"`
+
 	// Jobs within the batch of ScheduledJobSummary
 	//
 	// required: false
