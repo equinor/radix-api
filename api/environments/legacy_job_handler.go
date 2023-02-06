@@ -193,7 +193,7 @@ func (h legacyJobHandler) getScheduledJobSummary(job *batchv1.Job,
 		Created:   radixutils.FormatTimestamp(creationTimestamp.Time),
 		Started:   radixutils.FormatTime(job.Status.StartTime),
 		BatchName: batchName,
-		JobId:     "", // TODO: was job.ObjectMeta.Labels[kube.RadixJobIdLabel],
+		JobId:     job.ObjectMeta.Labels["radix-job-id"],
 	}
 	summary.TimeLimitSeconds = job.Spec.Template.Spec.ActiveDeadlineSeconds
 	jobPods := jobPodsMap[job.Name]
