@@ -32,6 +32,7 @@ import (
 const (
 	legacyRadixBatchJobCountAnnotation = "radix.equinor.com/batch-job-count"
 	legacyJobPayloadPropertyName       = "payload"
+	k8sJobNameLabel                    = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
 
 type legacyJobHandler struct {

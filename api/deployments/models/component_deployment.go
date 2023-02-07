@@ -359,6 +359,11 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	Node *Node `json:"node,omitempty"`
+
+	// DeploymentName name of RadixDeployment for the job
+	//
+	// required: false
+	DeploymentName string `json:"deploymentName,omitempty"`
 }
 
 // Node Defines node attributes, where pod should be scheduled
@@ -436,6 +441,11 @@ type ScheduledBatchSummary struct {
 	//
 	// required: false
 	JobList []ScheduledJobSummary `json:"jobList,omitempty"`
+
+	// DeploymentName name of RadixDeployment for the batch
+	//
+	// required: true
+	DeploymentName string `json:"deploymentName,omitempty"`
 }
 
 func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
