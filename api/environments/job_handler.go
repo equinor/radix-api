@@ -63,8 +63,10 @@ func (eh EnvironmentHandler) GetJob(appName, envName, jobComponentName, jobName 
 		return jobSummary, nil
 	}
 
-	// Backward compatibility: Get job not handled by RadixBatch
+	// TODO: Return error from getJob when legacy handler is removed
 	// TODO: Remove when there are no legacy jobs left
+
+	// Backward compatibility: Get job not handled by RadixBatch
 	jh := legacyJobHandler{accounts: eh.accounts}
 	return jh.GetJob(appName, envName, jobComponentName, jobName)
 }
@@ -141,8 +143,10 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 		return batchSummary, nil
 	}
 
+	// TODO: Return error from getBatch when legacy handler is removed
+	// TODO: Remove legacy handler when there are no legacy jobs left
+
 	// Backward compatibility: Get batch not handled by RadixBatch
-	// TODO: Remove when there are no legacy jobs left
 	jh := legacyJobHandler{accounts: eh.accounts}
 	return jh.GetBatch(appName, envName, jobComponentName, batchName)
 }
