@@ -359,9 +359,14 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	Node *Node `json:"node,omitempty"`
+
+	// DeploymentName name of RadixDeployment for the job
+	//
+	// required: false
+	DeploymentName string `json:"deploymentName,omitempty"`
 }
 
-//Node Defines node attributes, where pod should be scheduled
+// Node Defines node attributes, where pod should be scheduled
 type Node struct {
 	// Gpu Holds lists of node GPU types, with dashed types to exclude
 	Gpu string `json:"gpu,omitempty"`
@@ -369,13 +374,13 @@ type Node struct {
 	GpuCount string `json:"gpuCount,omitempty"`
 }
 
-//Resources Required for pods
+// Resources Required for pods
 type Resources struct {
 	CPU    string `json:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty"`
 }
 
-//ResourceRequirements Requirements of resources for pods
+// ResourceRequirements Requirements of resources for pods
 type ResourceRequirements struct {
 	Limits   Resources `json:"limits,omitempty"`
 	Requests Resources `json:"requests,omitempty"`
@@ -411,17 +416,17 @@ type ScheduledBatchSummary struct {
 	// Status of the job
 	//
 	// required: true
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
+	// Enum: Waiting,Running,Succeeded,Failed
 	// example: Waiting
 	Status string `json:"status"`
 
-	// Message of a status, if any, of the job
+	// Deprecated: Message of a status, if any, of the job
 	//
 	// required: false
 	// example: "Error occurred"
 	Message string `json:"message,omitempty"`
 
-	// ReplicaSummary
+	// Deprecated: ReplicaSummary
 	//
 	// required: false
 	Replica *ReplicaSummary `json:"replica,omitempty"`
@@ -436,6 +441,11 @@ type ScheduledBatchSummary struct {
 	//
 	// required: false
 	JobList []ScheduledJobSummary `json:"jobList,omitempty"`
+
+	// DeploymentName name of RadixDeployment for the batch
+	//
+	// required: true
+	DeploymentName string `json:"deploymentName,omitempty"`
 }
 
 func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
