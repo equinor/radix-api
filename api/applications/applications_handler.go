@@ -137,27 +137,10 @@ func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string) (*appli
 
 // RegisterApplication handler for RegisterApplication
 func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	// Only if repository is provided and deploykey is not set by user
-	// generate the key
-	var deployKey *utils.DeployKey
 	var err error
 
 	application := applicationRegistrationRequest.ApplicationRegistration
-	if (strings.TrimSpace(application.PublicKey) == "" && strings.TrimSpace(application.PrivateKey) != "") ||
-		(strings.TrimSpace(application.PublicKey) != "" && strings.TrimSpace(application.PrivateKey) == "") {
-		return nil, applicationModels.OnePartOfDeployKeyIsNotAllowed()
-	}
 
-	if strings.TrimSpace(application.Repository) != "" &&
-		strings.TrimSpace(application.PublicKey) == "" {
-		deployKey, err = utils.GenerateDeployKey()
-		if err != nil {
-			return nil, err
-		}
-
-		application.PublicKey = deployKey.PublicKey
-		application.PrivateKey = deployKey.PrivateKey
-	}
 	creator, err := ah.accounts.GetUserAccountUserPrincipleName()
 	if err != nil {
 		return nil, err
@@ -177,7 +160,6 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 
 	radixRegistration, err := NewBuilder().
 		withAppRegistration(application).
-		withDeployKey(deployKey).
 		withCreator(creator).
 		withRadixConfigFullName(application.RadixConfigFullName).
 		BuildRR()
@@ -245,21 +227,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(appName string, applicat
 		return nil, err
 	}
 
-	// Only if repository is provided and deploykey is not set by user
-	// generate the key
-	var deployKey *utils.DeployKey
-
-	if strings.TrimSpace(application.Repository) != "" &&
-		strings.TrimSpace(application.PublicKey) == "" {
-		deployKey, err = utils.GenerateDeployKey()
-		if err != nil {
-			return nil, err
-		}
-
-		application.PublicKey = deployKey.PublicKey
-	}
-
-	radixRegistration, err := NewBuilder().withAppRegistration(application).withDeployKey(deployKey).BuildRR()
+	radixRegistration, err := NewBuilder().withAppRegistration(application).BuildRR()
 	if err != nil {
 		return nil, err
 	}

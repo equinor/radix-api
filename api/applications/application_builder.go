@@ -17,10 +17,7 @@ type Builder interface {
 	withRepository(string) Builder
 	withSharedSecret(string) Builder
 	withAdGroups([]string) Builder
-	withPublicKey(string) Builder
-	withPrivateKey(string) Builder
 	withCloneURL(string) Builder
-	withDeployKey(*utils.DeployKey) Builder
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
@@ -57,8 +54,6 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withRepository(appRegistration.Repository)
 	rb.withSharedSecret(appRegistration.SharedSecret)
 	rb.withAdGroups(appRegistration.AdGroups)
-	rb.withPublicKey(appRegistration.PublicKey)
-	rb.withPrivateKey(appRegistration.PrivateKey)
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
 	rb.withConfigBranch(appRegistration.ConfigBranch)
@@ -180,8 +175,6 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		Repository:          repository,
 		SharedSecret:        rb.sharedSecret,
 		AdGroups:            rb.adGroups,
-		PublicKey:           rb.publicKey,
-		PrivateKey:          rb.privateKey,
 		Owner:               rb.owner,
 		Creator:             rb.creator,
 		MachineUser:         rb.machineUser,
