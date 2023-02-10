@@ -338,6 +338,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch radixv1.RadixBatch, jo
 		BatchName:      batchName,
 		JobId:          job.JobId,
 		ReplicaList:    getReplicaSummariesForPods(jobPods),
+		Status:         getScheduledJobStatus(job, "").String(),
 	}
 
 	if jobComponent != nil {

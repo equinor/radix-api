@@ -31,12 +31,14 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1236,6 +1238,62 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 
 	kubeDeploy, _ := kubeClient.AppsV1().Deployments(envNs).Get(context.Background(), "comp1-aux-resource", metav1.GetOptions{})
 	assert.NotEmpty(t, kubeDeploy.Spec.Template.Annotations[restartedAtAnnotation])
+}
+
+func Test_GetJobs_Status(t *testing.T) {
+	appName, envName := "anyapp", "anyenv"
+	jobComponentName := "anyjob"
+	namespace := operatorutils.GetEnvironmentNamespace(appName, envName)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(appName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(appName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(appName).
+		WithEnvironment(envName).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(jobComponentName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch1",
+				Labels: labels.Merge(labels.ForApplicationName(appName), labels.ForComponentName(jobComponentName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "no2"},
+					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
+					{Name: "no4", Phase: v1.BatchJobPhaseActive},
+					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", appName, envName, jobComponentName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual []deploymentModels.ScheduledJobSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Len(t, actual, 7)
+
 }
 
 func initHandler(client kubernetes.Interface,
