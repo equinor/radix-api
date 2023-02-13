@@ -233,7 +233,7 @@ func (eh EnvironmentHandler) getRadixBatches(appName, envName, jobComponentName 
 	return batches.Items, nil
 }
 
-func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (radixv1.RadixBatch, error) {
+func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	labelSelector := radixLabels.Merge(
 		radixLabels.ForApplicationName(appName),
@@ -247,18 +247,19 @@ func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, b
 		)
 	}
 
-	fieldSelector := labels.Set{"metadata.name": batchName}
-
-	batches, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String(), FieldSelector: fieldSelector.String()})
+	batch, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).Get(context.TODO(), batchName, metav1.GetOptions{})
 	if err != nil {
-		return radixv1.RadixBatch{}, err
+		if errors.IsNotFound(err) {
+			return nil, batchNotFoundError(batchName)
+		}
+		return nil, err
 	}
 
-	if len(batches.Items) == 0 {
-		return radixv1.RadixBatch{}, batchNotFoundError(batchName)
+	if !labelSelector.AsSelector().Matches(labels.Set(batch.GetLabels())) {
+		return nil, batchNotFoundError(batchName)
 	}
 
-	return batches.Items[0], nil
+	return batch, nil
 }
 
 func (eh EnvironmentHandler) getPodsForBatch(appName, envName, batchName string) ([]corev1.Pod, error) {
@@ -289,13 +290,13 @@ func (eh EnvironmentHandler) getPodsWithLabelSelector(namespace, labelSelector s
 
 func (eh EnvironmentHandler) getScheduledBatchSummaryList(batches []radixv1.RadixBatch) (summaries []deploymentModels.ScheduledBatchSummary) {
 	for _, batch := range batches {
-		summaries = append(summaries, eh.getScheduledBatchSummary(batch))
+		summaries = append(summaries, eh.getScheduledBatchSummary(&batch))
 	}
 
 	return
 }
 
-func (eh EnvironmentHandler) getScheduledBatchSummary(batch radixv1.RadixBatch) deploymentModels.ScheduledBatchSummary {
+func (eh EnvironmentHandler) getScheduledBatchSummary(batch *radixv1.RadixBatch) deploymentModels.ScheduledBatchSummary {
 	return deploymentModels.ScheduledBatchSummary{
 		Name:           batch.Name,
 		DeploymentName: batch.Spec.RadixDeploymentJobRef.Name,
@@ -309,13 +310,13 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch radixv1.RadixBatch) 
 
 func (eh EnvironmentHandler) getScheduledJobSummaryList(batches []radixv1.RadixBatch, pods []corev1.Pod) (summaries []deploymentModels.ScheduledJobSummary) {
 	for _, batch := range batches {
-		summaries = append(summaries, eh.getScheduledJobSummaries(batch, pods)...)
+		summaries = append(summaries, eh.getScheduledJobSummaries(&batch, pods)...)
 	}
 
 	return
 }
 
-func (eh EnvironmentHandler) getScheduledJobSummaries(batch radixv1.RadixBatch, pods []corev1.Pod) (summaries []deploymentModels.ScheduledJobSummary) {
+func (eh EnvironmentHandler) getScheduledJobSummaries(batch *radixv1.RadixBatch, pods []corev1.Pod) (summaries []deploymentModels.ScheduledJobSummary) {
 	for _, job := range batch.Spec.Jobs {
 		summaries = append(summaries, eh.getScheduledJobSummary(batch, job, pods, nil))
 	}
@@ -323,7 +324,7 @@ func (eh EnvironmentHandler) getScheduledJobSummaries(batch radixv1.RadixBatch, 
 	return
 }
 
-func (eh EnvironmentHandler) getScheduledJobSummary(batch radixv1.RadixBatch, job radixv1.RadixBatchJob, pods []corev1.Pod, jobComponent *radixv1.RadixDeployJobComponent) deploymentModels.ScheduledJobSummary {
+func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, job radixv1.RadixBatchJob, pods []corev1.Pod, jobComponent *radixv1.RadixDeployJobComponent) deploymentModels.ScheduledJobSummary {
 	var batchName string
 	if batch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeBatch) {
 		batchName = batch.GetName()
@@ -388,7 +389,7 @@ func isPodForBatchJob(pod *corev1.Pod, jobComponentName, batchName, batchJobName
 		Matches(labels.Set(pod.GetLabels()))
 }
 
-func getScheduledBatchStatus(batch radixv1.RadixBatch) (status jobSchedulerModels.ProgressStatus) {
+func getScheduledBatchStatus(batch *radixv1.RadixBatch) (status jobSchedulerModels.ProgressStatus) {
 	status = jobSchedulerModels.Waiting
 	switch {
 	case batch.Status.Condition.Type == radixv1.BatchConditionTypeActive:
