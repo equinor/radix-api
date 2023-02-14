@@ -2128,9 +2128,6 @@ func Test_StopJob(t *testing.T) {
 		response := <-responseChannel
 		assert.Equal(t, http.StatusNoContent, response.Code)
 		assert.Empty(t, response.Body.Bytes())
-		if response.Body != nil {
-			fmt.Println(response.Body.String())
-		}
 	}
 
 	// Test invalid jobs
@@ -2152,15 +2149,121 @@ func Test_StopJob(t *testing.T) {
 	// Check that stopped jobs are stopped
 	updatedBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batch1Name, metav1.GetOptions{})
 	require.Nil(t, err)
-	for _, v := range validJobs {
-		job := findJobInBatch(updatedBatch, v.name)
+	for _, job := range updatedBatch.Spec.Jobs {
 		isStopped := func(j *v1.RadixBatchJob) bool {
-			if j == nil && j.Stop == nil {
+			if j == nil || j.Stop == nil {
 				return false
 			}
 			return *j.Stop
 		}
-		assert.True(t, isStopped(job))
+
+		if slice.FindIndex(validJobs, func(vJob JobTestData) bool { return vJob.name == job.Name }) != -1 {
+			assert.True(t, isStopped(&job))
+		} else {
+			assert.False(t, isStopped(&job))
+		}
+	}
+}
+
+func Test_StopBatch(t *testing.T) {
+	type JobTestData struct {
+		name      string
+		jobStatus v1.RadixBatchJobStatus
+	}
+
+	appName, envName := "anyapp", "anyenv"
+	jobComponentName, batch1Name, batch2Name := "anyjob", "anyBatch1", "anyBatch2"
+	namespace := operatorutils.GetEnvironmentNamespace(appName, envName)
+
+	validJobs := []JobTestData{
+		{name: "validJob1"},
+		{name: "validJob2", jobStatus: v1.RadixBatchJobStatus{Name: "validJob2", Phase: ""}},
+		{name: "validJob3", jobStatus: v1.RadixBatchJobStatus{Name: "validJob3", Phase: v1.BatchJobPhaseWaiting}},
+		{name: "validJob4", jobStatus: v1.RadixBatchJobStatus{Name: "validJob4", Phase: v1.BatchJobPhaseActive}},
+	}
+	invalidJobs := []JobTestData{
+		{name: "invalidJob1", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob1", Phase: v1.BatchJobPhaseSucceeded}},
+		{name: "invalidJob2", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob2", Phase: v1.BatchJobPhaseFailed}},
+		{name: "invalidJob3", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob3", Phase: v1.BatchJobPhaseStopped}},
+	}
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(appName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(appName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(appName).
+		WithEnvironment(envName).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(jobComponentName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batch1Name,
+				Labels: labels.Merge(labels.ForApplicationName(appName), labels.ForComponentName(jobComponentName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "j1"}}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batch2Name,
+				Labels: labels.Merge(labels.ForApplicationName(appName), labels.ForComponentName(jobComponentName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
+					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
+				}},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
+					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test valid batch
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s/stop", appName, envName, jobComponentName, batch2Name))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+	assert.Empty(t, response.Body.Bytes())
+
+	// Test invalid batch type
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s/stop", appName, envName, jobComponentName, batch1Name))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.NotEmpty(t, response.Body.Bytes())
+
+	// Check that stopped jobs are stopped
+	updatedBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batch2Name, metav1.GetOptions{})
+	require.Nil(t, err)
+	for _, job := range updatedBatch.Spec.Jobs {
+		isStopped := func(j *v1.RadixBatchJob) bool {
+			if j == nil || j.Stop == nil {
+				return false
+			}
+			return *j.Stop
+		}
+
+		if slice.FindIndex(validJobs, func(vJob JobTestData) bool { return vJob.name == job.Name }) != -1 {
+			assert.True(t, isStopped(&job))
+		} else {
+			assert.False(t, isStopped(&job))
+		}
 	}
 }
 
@@ -2219,15 +2322,6 @@ func findComponentInDeployment(rd *v1.RadixDeployment, componentName string) *v1
 		}
 	}
 
-	return nil
-}
-
-func findJobInBatch(batch *v1.RadixBatch, jobName string) *v1.RadixBatchJob {
-	for _, v := range batch.Spec.Jobs {
-		if v.Name == jobName {
-			return &v
-		}
-	}
 	return nil
 }
 
