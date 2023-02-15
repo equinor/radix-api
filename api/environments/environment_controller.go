@@ -1258,7 +1258,7 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 
 // StopJob Stop a scheduled job
 func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop job stopJob
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop job stopJob
 	// ---
 	// summary: Stop scheduled job
 	// parameters:
