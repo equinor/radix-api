@@ -88,11 +88,9 @@ func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName
 		return jobNotFoundError(jobName)
 	}
 
-	jobStatus := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool {
-		return js.Name == batchJobName && js.Phase != radixv1.BatchJobPhaseActive && js.Phase != radixv1.BatchJobPhaseWaiting && js.Phase != ""
-	})
-	if len(jobStatus) > 0 {
-		return radixhttp.ValidationError(jobName, fmt.Sprintf("invalid job running state=%s", jobStatus[0].Phase))
+	nonStoppableJob := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == batchJobName && !isBatchJobStoppable(js) })
+	if len(nonStoppableJob) > 0 {
+		return radixhttp.ValidationError(jobName, fmt.Sprintf("invalid job running state=%s", nonStoppableJob[0].Phase))
 	}
 
 	batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
@@ -173,18 +171,14 @@ func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batch
 		return err
 	}
 
-	if batch.Status.Condition.Type != radixv1.BatchConditionTypeActive && batch.Status.Condition.Type != radixv1.BatchConditionTypeWaiting {
-		return nil // invalid batch status state
+	if !isBatchStoppable(batch.Status.Condition) {
+		return nil
 	}
 
-	// create filter for jobs not to be stopped
-	jobStatus := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool {
-		return js.Phase != radixv1.BatchJobPhaseActive && js.Phase != radixv1.BatchJobPhaseWaiting && js.Phase != ""
-	})
-
-	didChange := false
+	nonStoppableJobs := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool { return !isBatchJobStoppable(js) })
+	var didChange bool
 	for idx, job := range batch.Spec.Jobs {
-		if slice.FindIndex(jobStatus, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == job.Name }) == -1 {
+		if slice.FindIndex(nonStoppableJobs, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == job.Name }) == -1 {
 			batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
 			didChange = true
 		}
@@ -498,6 +492,16 @@ func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.Replica
 		replicaSummaries = append(replicaSummaries, deploymentModels.GetReplicaSummary(pod))
 	}
 	return replicaSummaries
+}
+
+// check if batch can be stopped
+func isBatchStoppable(condition radixv1.RadixBatchCondition) bool {
+	return condition.Type == "" || condition.Type == radixv1.BatchConditionTypeActive || condition.Type == radixv1.BatchConditionTypeWaiting
+}
+
+// check if batch job can be stopped
+func isBatchJobStoppable(status radixv1.RadixBatchJobStatus) bool {
+	return status.Phase == "" || status.Phase == radixv1.BatchJobPhaseActive || status.Phase == radixv1.BatchJobPhaseWaiting
 }
 
 func batchNotFoundError(batchName string) error {
