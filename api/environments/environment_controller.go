@@ -1295,6 +1295,8 @@ func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// responses:
 	//   "204":
 	//     description: "Success"
+	//   "400":
+	//     description: "Invalid job"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "403":
@@ -1470,6 +1472,8 @@ func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// responses:
 	//   "204":
 	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "403":
