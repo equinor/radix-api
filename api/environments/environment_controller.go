@@ -1433,7 +1433,7 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 
 // StopBatch Stop a scheduled batch
 func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop batch stopBatch
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop batch stopBatch
 	// ---
 	// summary: Stop scheduled batch
 	// parameters:
