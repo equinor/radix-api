@@ -73,8 +73,8 @@ func (ph PodHandler) getScheduledJobLog(namespace, scheduledJobName, containerNa
 	if err != nil {
 		return nil, err
 	}
-	if len(pods.Items) <= 0 {
-		return nil, nil
+	if len(pods.Items) == 0 {
+		return nil, PodNotFoundError(scheduledJobName)
 	}
 
 	pod := &pods.Items[0]
