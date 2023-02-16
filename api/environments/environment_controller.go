@@ -136,6 +136,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: GetJob,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
+			Method:      "POST",
+			HandlerFunc: StopJob,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload",
 			Method:      "GET",
 			HandlerFunc: GetJobPayload,
@@ -149,6 +154,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "GET",
 			HandlerFunc: GetBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
+			Method:      "POST",
+			HandlerFunc: StopBatch,
 		},
 	}
 
@@ -507,7 +517,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StopComponent(appName, envName, componentName)
+	err := environmentHandler.StopComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -560,7 +570,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StartComponent(appName, envName, componentName)
+	err := environmentHandler.StartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -617,7 +627,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartComponent(appName, envName, componentName)
+	err := environmentHandler.RestartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1246,6 +1256,69 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	radixhttp.JSONResponse(w, r, jobSummary)
 }
 
+// StopJob Stop a scheduled job
+func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop job stopJob
+	// ---
+	// summary: Stop scheduled job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid job"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	eh := Init(WithAccounts(accounts))
+	err := eh.StopJob(appName, envName, jobComponentName, jobName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // GetBatches Get list of scheduled batches
 func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches job getBatches
@@ -1358,6 +1431,69 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 	}
 
 	radixhttp.JSONResponse(w, r, jobSummary)
+}
+
+// StopBatch Stop a scheduled batch
+func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop job stopBatch
+	// ---
+	// summary: Stop scheduled batch
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+
+	eh := Init(WithAccounts(accounts))
+	err := eh.StopBatch(appName, envName, jobComponentName, batchName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod

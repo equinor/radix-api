@@ -1,15 +1,15 @@
 module github.com/equinor/radix-api
 
-go 1.18
+go 1.19
 
 require (
-	github.com/equinor/radix-common v1.2.5
-	github.com/equinor/radix-job-scheduler v1.7.0
-	github.com/equinor/radix-operator v1.31.0
-	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/go-openapi/errors v0.20.2
+	github.com/equinor/radix-common v1.2.9
+	github.com/equinor/radix-job-scheduler v1.7.2
+	github.com/equinor/radix-operator v1.32.1
+	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.3
-	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -26,7 +26,7 @@ require (
 	github.com/tektoncd/pipeline v0.36.0
 	github.com/urfave/negroni/v2 v2.0.2
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/sync v0.1.0
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
 	k8s.io/client-go v0.23.9
@@ -46,7 +46,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
-	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
+	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
@@ -97,7 +97,7 @@ require (
 	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect

@@ -25,17 +25,22 @@ import (
 	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/numbers"
+	"github.com/equinor/radix-common/utils/slice"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +54,8 @@ const (
 	anyAppName        = "any-app"
 	anyComponentName  = "app"
 	anyJobName        = "job"
+	anyBatchName      = "batch"
+	anyDeployment     = "deployment"
 	anyEnvironment    = "dev"
 	anySecretName     = "TEST_SECRET"
 	egressIps         = "0.0.0.0"
@@ -81,13 +88,12 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -115,13 +121,12 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -134,43 +139,41 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 }
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
+	envName1, envName2 := "dev", "master"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithRadixRegistration(operatorutils.ARadixRegistration()).
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(envName1, envName2))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
 	response := <-responseChannel
 	environments := make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
-
 	assert.Equal(t, 1, len(environments))
-	assert.Equal(t, "dev", environments[0].Name)
+
+	assert.Equal(t, envName1, environments[0].Name)
 	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
-	assert.Equal(t, "master", environments[0].BranchMapping)
+	assert.Equal(t, envName2, environments[0].BranchMapping)
 	assert.Nil(t, environments[0].ActiveDeployment)
 }
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithRadixApplication(operatorutils.
 			NewRadixApplicationBuilder().
 			WithRadixRegistration(operatorutils.ARadixRegistration()).
 			WithAppName(anyAppName).
-			WithEnvironment("dev", "master")).
+			WithEnvironment(anyEnvironment, "master")).
 		WithAppName(anyAppName).
-		WithEnvironment("dev"))
+		WithEnvironment(anyEnvironment))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -183,28 +186,24 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 }
 
 func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t *testing.T) {
+	envName1, envName2 := "dev", "master"
+	anyOrphanedEnvironment := "feature-1"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyOrphanedEnvironment := "feature"
-
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
+		WithEnvironment(envName1, envName2).
 		WithEnvironment(anyOrphanedEnvironment, "feature"))
-
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
+		WithEnvironment(envName1).
 		WithImageTag("someimageindev"))
-
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -215,7 +214,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	commonTestUtils.ApplyApplicationUpdate(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(envName1, envName2))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -232,21 +231,17 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 }
 
 func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIsListedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature-1"
 
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
+		WithEnvironment(anyEnvironment, "master"))
 	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
@@ -273,13 +268,11 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 }
 
 func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *testing.T) {
+	anyNonOrphanedEnvironment := "dev-1"
+	anyOrphanedEnvironment := "feature-1"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyNonOrphanedEnvironment := "dev"
-	anyOrphanedEnvironment := "feature"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
@@ -287,7 +280,6 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 		WithRadixRegistration(operatorutils.
 			NewRegistrationBuilder().
 			WithName(anyAppName)))
-
 	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
@@ -321,53 +313,45 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	environments = make([]*environmentModels.EnvironmentSummary, 0)
 	controllertest.GetResponseBody(response, &environments)
 	assert.Equal(t, 1, len(environments))
-
 }
 
 func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
+	anyNonExistingEnvironment := "non-existing-environment"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(anyEnvironment, "master"))
 
 	// Test
-	anyNonExistingEnvironment := "non-existing-environment"
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyNonExistingEnvironment))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusNotFound, response.Code)
+
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	expectedError := environmentModels.NonExistingEnvironment(nil, anyAppName, anyNonExistingEnvironment)
 	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-
 }
 
 func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(anyEnvironment, "master"))
 
 	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	environment := environmentModels.Environment{}
 	err := controllertest.GetResponseBody(response, &environment)
 	assert.Nil(t, err)
-	assert.Equal(t, "dev", environment.Name)
+	assert.Equal(t, anyEnvironment, environment.Name)
 	assert.Equal(t, environmentModels.Pending.String(), environment.Status)
 }
 
@@ -405,116 +389,335 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		WithActiveFrom(deploymentThreeCreated))
 }
 
-func TestStopStartRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
+	stoppedComponent, startedComponent := "stoppedComponent", "startedComponent"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest()
+	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
+		{name: stoppedComponent, number: 0},
+		{name: startedComponent, number: 1},
+	})
 
-	anyAppName := "any-app"
-	anyEnvironment := "dev"
+	t.Run("Component Restart Succeeds", func(t *testing.T) {
+		component := findComponentInDeployment(rd, startedComponent)
+		assert.True(t, *component.Replicas > zeroReplicas)
 
-	rd, _ := commonTestUtils.ApplyDeployment(operatorutils.
-		ARadixDeployment().
-		WithRadixApplication(operatorutils.
-			ARadixApplication().
-			WithRadixRegistration(operatorutils.ARadixRegistration()).
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master")).
-		WithAppName(anyAppName).
-		WithAnnotations(make(map[string]string)).
-		WithEnvironment(anyEnvironment))
+		// Emulate a started component
+		createComponentPod(client, rd.GetNamespace(), startedComponent)
 
-	componentName := rd.Spec.Components[0].Name
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, startedComponent))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, startedComponent)
+		assert.True(t, *component.Replicas > zeroReplicas)
+		assert.NotEmpty(t, component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+	})
+
+	t.Run("Component Restart Fails", func(t *testing.T) {
+		component := findComponentInDeployment(rd, stoppedComponent)
+		assert.True(t, *component.Replicas == zeroReplicas)
+
+		// Emulate a stopped component
+		deleteComponentPod(client, rd.GetNamespace(), stoppedComponent)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, stoppedComponent)
+		assert.True(t, *component.Replicas > zeroReplicas)
+
+		responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, stoppedComponent))
+		response = <-responseChannel
+		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+		// a reconciling state and cannot be restarted
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		expectedError := environmentModels.CannotRestartComponent(anyAppName, stoppedComponent, deploymentModels.ComponentReconciling.String())
+		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+	})
+}
+
+func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
+	stoppedComponent1, stoppedComponent2 := "stoppedComponent1", "stoppedComponent2"
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest()
+	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
+		{name: stoppedComponent1, number: 0},
+		{name: stoppedComponent2, number: 0},
+	})
+
+	t.Run("Component Start Succeeds", func(t *testing.T) {
+		component := findComponentInDeployment(rd, stoppedComponent1)
+		assert.True(t, *component.Replicas == zeroReplicas)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent1))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, stoppedComponent1)
+		assert.True(t, *component.Replicas > zeroReplicas)
+	})
+
+	t.Run("Component Start Fails", func(t *testing.T) {
+		component := findComponentInDeployment(rd, stoppedComponent2)
+		assert.True(t, *component.Replicas == zeroReplicas)
+
+		// Create pod
+		createComponentPod(client, rd.GetNamespace(), stoppedComponent2)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent2))
+		response := <-responseChannel
+		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+		// a reconciling state and cannot be started
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		expectedError := environmentModels.CannotStartComponent(anyAppName, stoppedComponent2, deploymentModels.ComponentReconciling.String())
+		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, stoppedComponent2)
+		assert.True(t, *component.Replicas == zeroReplicas)
+	})
+}
+
+func TestStopComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
+	runningComponent, stoppedComponent := "runningComp", "stoppedComponent"
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
+		{name: runningComponent, number: 3},
+		{name: stoppedComponent, number: 0},
+	})
 
 	// Test
+	t.Run("Stop Component Succeeds", func(t *testing.T) {
+		component := findComponentInDeployment(rd, runningComponent)
+		assert.True(t, *component.Replicas > zeroReplicas)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, runningComponent))
+		response := <-responseChannel
+		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
+		// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, runningComponent)
+		assert.True(t, *component.Replicas == zeroReplicas)
+	})
+
+	t.Run("Stop Component Fails", func(t *testing.T) {
+		component := findComponentInDeployment(rd, stoppedComponent)
+		assert.True(t, *component.Replicas == zeroReplicas)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, stoppedComponent))
+		response := <-responseChannel
+		// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		expectedError := environmentModels.CannotStopComponent(anyAppName, stoppedComponent, deploymentModels.StoppedComponent.String())
+		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		component = findComponentInDeployment(updatedRd, stoppedComponent)
+		assert.True(t, *component.Replicas == zeroReplicas)
+	})
+}
+
+func TestRestartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	zeroReplicas := 0
-	assert.True(t, *rd.Spec.Components[0].Replicas > zeroReplicas)
 
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
-	response := <-responseChannel
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
 
-	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-	// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
-	assert.Equal(t, http.StatusOK, response.Code)
+	// Test
+	t.Run("Restart Environment", func(t *testing.T) {
+		envName := "fullyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "runningComponent1", number: 1},
+			{name: "runningComponent2", number: 2},
+		})
+		for _, comp := range rd.Spec.Components {
+			assert.True(t, *comp.Replicas != zeroReplicas)
+		}
 
-	updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
-	assert.True(t, *updatedRd.Spec.Components[0].Replicas == zeroReplicas)
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/restart", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
 
-	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas > zeroReplicas)
+		}
+	})
 
-	// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := environmentModels.CannotStopComponent(anyAppName, anyComponentName, deploymentModels.StoppedComponent.String())
-	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+	t.Run("Restart Environment with stopped component", func(t *testing.T) {
+		envName := "partiallyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "stoppedComponent", number: 0},
+			{name: "runningComponent", number: 7},
+		})
+		replicaCount := 0
+		for _, comp := range rd.Spec.Components {
+			replicaCount += *comp.Replicas
+		}
+		assert.True(t, replicaCount > zeroReplicas)
 
-	// Create pod
-	createComponentPod(client, rd.GetNamespace(), componentName)
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/restart", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
 
-	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Nil(t, errorResponse)
 
-	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-	// a reconciling state and cannot be started
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ = controllertest.GetErrorResponse(response)
-	expectedError = environmentModels.CannotStartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
-	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		updatedReplicaCount := 0
+		for _, comp := range updatedRd.Spec.Components {
+			updatedReplicaCount += *comp.Replicas
+		}
+		assert.True(t, updatedReplicaCount == replicaCount)
+	})
+}
 
-	// Emulate a stopped component
-	deleteComponentPod(client, rd.GetNamespace(), componentName)
+func TestStartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
 
-	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
 
-	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
-	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
+	// Test
+	t.Run("Start Environment", func(t *testing.T) {
+		envName := "fullyStoppedEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "stoppedComponent1", number: 0},
+			{name: "stoppedComponent2", number: 0},
+		})
+		for _, comp := range rd.Spec.Components {
+			assert.True(t, *comp.Replicas == zeroReplicas)
+		}
 
-	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/start", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
 
-	// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-	// a reconciling state and cannot be restarted
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ = controllertest.GetErrorResponse(response)
-	expectedError = environmentModels.CannotRestartComponent(anyAppName, anyComponentName, deploymentModels.ComponentReconciling.String())
-	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas > zeroReplicas)
+		}
+	})
 
-	// Emulate a started component
-	createComponentPod(client, rd.GetNamespace(), componentName)
+	t.Run("Start Environment with running component", func(t *testing.T) {
+		envName := "partiallyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "stoppedComponent", number: 0},
+			{name: "runningComponent", number: 7},
+		})
+		replicaCount := 0
+		for _, comp := range rd.Spec.Components {
+			replicaCount += *comp.Replicas
+		}
+		assert.True(t, replicaCount > zeroReplicas)
 
-	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, componentName))
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/start", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
 
-	updatedRd, _ = radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
-	assert.True(t, *updatedRd.Spec.Components[0].Replicas != zeroReplicas)
-	assert.NotEmpty(t, updatedRd.Spec.Components[0].EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Nil(t, errorResponse)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		updatedReplicaCount := 0
+		for _, comp := range updatedRd.Spec.Components {
+			updatedReplicaCount += *comp.Replicas
+		}
+		assert.True(t, updatedReplicaCount > replicaCount)
+	})
+}
+
+func TestStopEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
+	zeroReplicas := 0
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+
+	// Test
+	t.Run("Stop Environment", func(t *testing.T) {
+		envName := "fullyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "runningComponent1", number: 3},
+			{name: "runningComponent2", number: 7},
+		})
+		for _, comp := range rd.Spec.Components {
+			assert.True(t, *comp.Replicas > zeroReplicas)
+		}
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas == zeroReplicas)
+		}
+	})
+
+	t.Run("Stop Environment with stopped component", func(t *testing.T) {
+		envName := "partiallyRunningEnv"
+		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
+			{name: "stoppedComponent", number: 0},
+			{name: "runningComponent", number: 7},
+		})
+		replicaCount := 0
+		for _, comp := range rd.Spec.Components {
+			replicaCount += *comp.Replicas
+		}
+		assert.True(t, replicaCount > zeroReplicas)
+
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", anyAppName, envName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusOK, response.Code)
+
+		errorResponse, _ := controllertest.GetErrorResponse(response)
+		assert.Nil(t, errorResponse)
+
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
+		for _, comp := range updatedRd.Spec.Components {
+			assert.True(t, *comp.Replicas == zeroReplicas)
+		}
+	})
 }
 
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	appName := "myApp"
-	envName := "myEnv"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
-		WithAppName(appName))
+		WithAppName(anyAppName))
 
 	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func Test_GetEnvironmentEvents_Controller(t *testing.T) {
+	envName := "dev"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest()
-	anyAppName := "any-app"
 	createEvent := func(namespace, eventName string) {
 		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
 			ObjectMeta: metav1.ObjectMeta{
@@ -522,15 +725,15 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 			},
 		})
 	}
-	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, "dev"), "ev1")
-	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, "dev"), "ev2")
+	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, envName), "ev1")
+	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, envName), "ev2")
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(envName, "master"))
 
 	t.Run("Get events for dev environment", func(t *testing.T) {
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "dev"))
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, envName))
 		response := <-responseChannel
 		assert.Equal(t, http.StatusOK, response.Code)
 		events := make([]eventModels.Event, 0)
@@ -551,7 +754,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	})
 
 	t.Run("Get events for non-existing application", func(t *testing.T) {
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", "noapp", "dev"))
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", "noapp", envName))
 		response := <-responseChannel
 		assert.Equal(t, http.StatusNotFound, response.Code)
 		errResponse, _ := controllertest.GetErrorResponse(response)
@@ -565,8 +768,6 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 
 // secret tests
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
-	anyComponent := "frontend"
-
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
 	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, operatorutils.ARadixDeployment().
@@ -575,11 +776,11 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 		WithRadixApplication(operatorutils.ARadixApplication().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponent).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponent)).
+			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponentName).
+			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponentName)).
 		WithComponents(
 			operatorutils.NewDeployComponentBuilder().
-				WithName(anyComponent).
+				WithName(anyComponentName).
 				WithPort("http", 8080).
 				WithPublicPort("http").
 				WithDNSExternalAlias("some.alias.com").
@@ -644,10 +845,7 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyComponentName)))
 	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyComponentName)))
 
-	parameters := secretModels.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
+	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -684,10 +882,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyJobName)))
 	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyJobName)))
 
-	parameters := secretModels.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
+	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -770,13 +965,12 @@ func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -804,13 +998,12 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 	deploymentOneCreated, _ := time.Parse(layout, "2018-11-12T11:45:26.371Z")
 	deploymentTwoCreated, _ := time.Parse(layout, "2018-11-12T12:30:14.000Z")
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
-	envName := "dev"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, envName)
+	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, anyEnvironment))
 	response := <-responseChannel
 
 	deployments := make([]*deploymentModels.DeploymentSummary, 0)
@@ -823,15 +1016,15 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 }
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *testing.T) {
+	envName1, envName2 := "dev", "master"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithRadixRegistration(operatorutils.ARadixRegistration()).
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(envName1, envName2))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -840,26 +1033,24 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 	controllertest.GetResponseBody(response, &environments)
 
 	assert.Equal(t, 1, len(environments))
-	assert.Equal(t, "dev", environments[0].Name)
+	assert.Equal(t, envName1, environments[0].Name)
 	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
-	assert.Equal(t, "master", environments[0].BranchMapping)
+	assert.Equal(t, envName2, environments[0].BranchMapping)
 	assert.Nil(t, environments[0].ActiveDeployment)
 }
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithRadixApplication(operatorutils.
 			NewRadixApplicationBuilder().
 			WithRadixRegistration(operatorutils.ARadixRegistration()).
 			WithAppName(anyAppName).
-			WithEnvironment("dev", "master")).
+			WithEnvironment(anyEnvironment, "master")).
 		WithAppName(anyAppName).
-		WithEnvironment("dev"))
+		WithEnvironment(anyEnvironment))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -872,28 +1063,24 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *tes
 }
 
 func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.T) {
+	envName1, envName2 := "dev", "master"
+	anyOrphanedSecret := "feature-1"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-	anyOrphanedSecret := "feature"
-
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
+		WithEnvironment(envName1, envName2).
 		WithEnvironment(anyOrphanedSecret, "feature"))
-
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev").
+		WithEnvironment(envName1).
 		WithImageTag("someimageindev"))
-
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -904,7 +1091,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 	commonTestUtils.ApplyApplicationUpdate(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(envName1, envName2))
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -921,21 +1108,17 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 }
 
 func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
 	anyOrphanedSecret := "feature-1"
 
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
 	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
-
+		WithEnvironment(anyEnvironment, "master"))
 	commonTestUtils.ApplyEnvironment(operatorutils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
@@ -964,81 +1147,68 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	anyAppName := "any-app"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
-		WithEnvironment("dev", "master"))
+		WithEnvironment(anyEnvironment, "master"))
 
 	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, "dev"))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	environment := environmentModels.Environment{}
 	err := controllertest.GetResponseBody(response, &environment)
 	assert.Nil(t, err)
-	assert.Equal(t, "dev", environment.Name)
+	assert.Equal(t, anyEnvironment, environment.Name)
 	assert.Equal(t, environmentModels.Pending.String(), environment.Status)
 }
 
 func TestCreateSecret(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-
-	appName := "myApp"
-	envName := "myEnv"
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
-		WithAppName(appName))
+		WithAppName(anyAppName))
 
 	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
-	appName, envName := "app", "dev"
 	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
 	handler := initHandler(kubeclient, radixclient, secretproviderclient, WithEventHandler(eventHandler))
-	raBuilder := operatorutils.ARadixApplication().WithAppName(appName).WithEnvironment(envName, "master")
+	raBuilder := operatorutils.ARadixApplication().WithAppName(anyAppName).WithEnvironment(anyEnvironment, "master")
 	commonTestUtils.ApplyApplication(raBuilder)
-	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), envName)
+	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), anyEnvironment)
 	eventHandler.EXPECT().
 		GetEvents(controllertest.EqualsNamespaceFunc(nsFunc)).
 		Return(make([]*eventModels.Event, 0), fmt.Errorf("err")).
 		Return([]*eventModels.Event{{}, {}}, nil).
 		Times(1)
 
-	events, err := handler.GetEnvironmentEvents(appName, envName)
+	events, err := handler.GetEnvironmentEvents(anyAppName, anyEnvironment)
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
 }
 
 func TestRestartAuxiliaryResource(t *testing.T) {
+	auxType := "oauth"
+
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest()
-	anyAppName, auxType := "any-app", "oauth"
-	envNs := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
-
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
-
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment, "master"))
-
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -1049,6 +1219,7 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 			WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}})).
 		WithActiveFrom(time.Now()))
 
+	envNs := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 	kubeClient.AppsV1().Deployments(envNs).Create(context.Background(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "comp1-aux-resource",
@@ -1061,10 +1232,1021 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/aux/%s/restart", anyAppName, anyEnvironment, anyComponentName, auxType))
 	response := <-responseChannel
-
 	assert.Equal(t, http.StatusOK, response.Code)
+
 	kubeDeploy, _ := kubeClient.AppsV1().Deployments(envNs).Get(context.Background(), "comp1-aux-resource", metav1.GetOptions{})
 	assert.NotEmpty(t, kubeDeploy.Spec.Template.Annotations[restartedAtAnnotation])
+}
+
+func Test_GetJobs(t *testing.T) {
+	batch1Name, batch2Name := "batch1", "batch2"
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batch1Name,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batch2Name,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job1"}}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "otherjobbatch",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName("othercomponent"), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "anyjob"}}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "anybatch",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job1"}}},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual []deploymentModels.ScheduledJobSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Len(t, actual, 3)
+	actualMapped := slice.Map(actual, func(job deploymentModels.ScheduledJobSummary) string {
+		return job.Name
+	})
+	expected := []string{batch1Name + "-no1", batch1Name + "-no2", batch2Name + "-job1"}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetJobs_Status(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   anyBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "no2"},
+					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
+					{Name: "no4", Phase: v1.BatchJobPhaseActive},
+					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{Name: "not-defined"},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual []deploymentModels.ScheduledJobSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Len(t, actual, 7)
+	type assertMapped struct {
+		Name   string
+		Status string
+	}
+	actualMapped := slice.Map(actual, func(job deploymentModels.ScheduledJobSummary) assertMapped {
+		return assertMapped{Name: job.Name, Status: job.Status}
+	})
+	expected := []assertMapped{
+		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Running.String()},
+		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
+		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+	}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   anyBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "no1", Stop: radixutils.BoolPtr(true)}, {Name: "no2", Stop: radixutils.BoolPtr(true)}, {Name: "no3", Stop: radixutils.BoolPtr(true)}, {Name: "no4", Stop: radixutils.BoolPtr(true)}, {Name: "no5", Stop: radixutils.BoolPtr(true)}, {Name: "no6", Stop: radixutils.BoolPtr(true)}, {Name: "no7", Stop: radixutils.BoolPtr(true)}}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "no2"},
+					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
+					{Name: "no4", Phase: v1.BatchJobPhaseActive},
+					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{Name: "not-defined"},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual []deploymentModels.ScheduledJobSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Len(t, actual, 7)
+	type assertMapped struct {
+		Name   string
+		Status string
+	}
+	actualMapped := slice.Map(actual, func(job deploymentModels.ScheduledJobSummary) assertMapped {
+		return assertMapped{Name: job.Name, Status: job.Status}
+	})
+	expected := []assertMapped{
+		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
+		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+	}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetJob(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "job-batch1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "job1"}, {Name: "job2"}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "job-batch2",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "job1"}, {Name: "job2"}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "other-batch1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName("other-component"), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "job1"}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "other-batch2",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName("other-component"), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "job1"}},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	type scenarioSpec struct {
+		Name    string
+		JobName string
+		Success bool
+	}
+
+	scenarions := []scenarioSpec{
+		{Name: "get existing job1 from existing batch of type job", JobName: "job-batch1-job1", Success: true},
+		{Name: "get existing job2 from existing batch of type job", JobName: "job-batch1-job2", Success: true},
+		{Name: "get non-existing job3 from existing batch of type job", JobName: "job-batch1-job3", Success: false},
+		{Name: "get existing job from existing batch of type job for other jobcomponent", JobName: "other-batch1-job1", Success: false},
+		{Name: "get existing job1 from existing batch of type batch", JobName: "job-batch2-job1", Success: true},
+		{Name: "get existing job2 from existing batch of type batch", JobName: "job-batch2-job2", Success: true},
+		{Name: "get non-existing job3 from existing batch of type batch", JobName: "job-batch2-job3", Success: false},
+		{Name: "get existing job from existing batch of type batch for other jobcomponent", JobName: "other-batch2-job1", Success: false},
+		{Name: "get job from non-existing batch", JobName: "non-existing-batch-anyjob", Success: false},
+	}
+
+	for _, scenario := range scenarions {
+		scenario := scenario
+		t.Run(scenario.JobName, func(t *testing.T) {
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName, scenario.JobName))
+			response := <-responseChannel
+			assert.Equal(t, scenario.Success, response.Code == http.StatusOK)
+			// TODO: Check error response when legacy job handler is removed
+		})
+	}
+}
+
+func Test_GetJob_AllProps(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+	creationTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 5, 0, time.UTC))
+	startTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 10, 0, time.UTC))
+	endTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 15, 0, time.UTC))
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithDeploymentName(anyDeployment).
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.
+			NewDeployJobComponentBuilder().
+			WithName(anyJobName).
+			WithTimeLimitSeconds(numbers.Int64Ptr(123)).
+			WithNodeGpu("gpu1").
+			WithNodeGpuCount("2").
+			WithResource(map[string]string{"cpu": "50Mi", "memory": "250M"}, map[string]string{"cpu": "100Mi", "memory": "500M"})).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "job-batch1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{
+						Name: "job1",
+					},
+					{
+						Name:             "job2",
+						JobId:            "anyjobid",
+						BackoffLimit:     numbers.Int32Ptr(5),
+						TimeLimitSeconds: numbers.Int64Ptr(999),
+						Resources: &v1.ResourceRequirements{
+							Limits:   v1.ResourceList{"cpu": "101Mi", "memory": "501M"},
+							Requests: v1.ResourceList{"cpu": "51Mi", "memory": "251M"},
+						},
+						Node: &v1.RadixNode{
+							Gpu:      "gpu2",
+							GpuCount: "3",
+						},
+					},
+				},
+				RadixDeploymentJobRef: v1.RadixDeploymentJobComponentSelector{
+					Job:                  anyJobName,
+					LocalObjectReference: v1.LocalObjectReference{Name: anyDeployment},
+				},
+			},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "job1", Phase: v1.BatchJobPhaseSucceeded, Message: "anymessage", CreationTime: &creationTime, StartTime: &startTime, EndTime: &endTime},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test job1 props - props from RD jobComponent
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName, "job-batch1-job1"))
+	response := <-responseChannel
+	var actual deploymentModels.ScheduledJobSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Equal(t, deploymentModels.ScheduledJobSummary{
+		Name:             "job-batch1-job1",
+		Created:          radixutils.FormatTime(&creationTime),
+		Started:          radixutils.FormatTime(&startTime),
+		Ended:            radixutils.FormatTime(&endTime),
+		Status:           jobSchedulerModels.Succeeded.String(),
+		Message:          "anymessage",
+		TimeLimitSeconds: numbers.Int64Ptr(123),
+		Resources: deploymentModels.ResourceRequirements{
+			Limits:   deploymentModels.Resources{CPU: "100Mi", Memory: "500M"},
+			Requests: deploymentModels.Resources{CPU: "50Mi", Memory: "250M"},
+		},
+		Node:           &deploymentModels.Node{Gpu: "gpu1", GpuCount: "2"},
+		DeploymentName: anyDeployment,
+	}, actual)
+
+	// Test job2 props - override props from RD jobComponent
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName, "job-batch1-job2"))
+	response = <-responseChannel
+	actual = deploymentModels.ScheduledJobSummary{}
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	assert.Equal(t, deploymentModels.ScheduledJobSummary{
+		Name:             "job-batch1-job2",
+		JobId:            "anyjobid",
+		Status:           jobSchedulerModels.Waiting.String(),
+		BackoffLimit:     5,
+		TimeLimitSeconds: numbers.Int64Ptr(999),
+		Resources: deploymentModels.ResourceRequirements{
+			Limits:   deploymentModels.Resources{CPU: "101Mi", Memory: "501M"},
+			Requests: deploymentModels.Resources{CPU: "51Mi", Memory: "251M"},
+		},
+		Node:           &deploymentModels.Node{Gpu: "gpu2", GpuCount: "3"},
+		DeploymentName: anyDeployment,
+	}, actual)
+}
+
+func Test_GetJobPayload(t *testing.T) {
+	secretName := "payload-secret"
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, kubeClient, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.
+			NewDeployJobComponentBuilder().
+			WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	rb := v1.RadixBatch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "job-batch1",
+			Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+		},
+		Spec: v1.RadixBatchSpec{
+			Jobs: []v1.RadixBatchJob{
+				{Name: "job1"},
+				{Name: "job2", PayloadSecretRef: &v1.PayloadSecretKeySelector{
+					Key:                  "payload1",
+					LocalObjectReference: v1.LocalObjectReference{Name: secretName},
+				}},
+				{Name: "job3", PayloadSecretRef: &v1.PayloadSecretKeySelector{
+					Key:                  "missingpayloadkey",
+					LocalObjectReference: v1.LocalObjectReference{Name: secretName},
+				}},
+				{Name: "job4", PayloadSecretRef: &v1.PayloadSecretKeySelector{
+					Key:                  "payload1",
+					LocalObjectReference: v1.LocalObjectReference{Name: "otherSecret"},
+				}},
+			},
+		}}
+	_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: secretName},
+		Data: map[string][]byte{
+			"payload1": []byte("job1payload"),
+		},
+	}
+	_, err = kubeClient.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Test job1 payload
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/payload", anyAppName, anyEnvironment, anyJobName, "job-batch1-job1"))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Empty(t, response.Body.Bytes())
+
+	// Test job2 payload
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/payload", anyAppName, anyEnvironment, anyJobName, "job-batch1-job2"))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, "job1payload", response.Body.String())
+
+	// Test job3 payload
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/payload", anyAppName, anyEnvironment, anyJobName, "job-batch1-job3"))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	errorResponse, _ := controllertest.GetErrorResponse(response)
+	assert.Equal(t, environmentModels.ScheduledJobPayloadNotFoundError(anyAppName, "job-batch1-job3"), errorResponse)
+
+	// Test job4 payload
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/payload", anyAppName, anyEnvironment, anyJobName, "job-batch1-job4"))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	errorResponse, _ = controllertest.GetErrorResponse(response)
+	assert.Equal(t, environmentModels.ScheduledJobPayloadNotFoundError(anyAppName, "job-batch1-job4"), errorResponse)
+
+}
+
+func Test_GetBatch_JobList(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   anyBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "no2"},
+					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
+					{Name: "no4", Phase: v1.BatchJobPhaseActive},
+					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{Name: "not-defined"},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s", anyAppName, anyEnvironment, anyJobName, anyBatchName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual deploymentModels.ScheduledBatchSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	require.Len(t, actual.JobList, 7)
+	type assertMapped struct {
+		Name   string
+		Status string
+	}
+	actualMapped := slice.Map(actual.JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
+		return assertMapped{Name: job.Name, Status: job.Status}
+	})
+	expected := []assertMapped{
+		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Running.String()},
+		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
+		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+	}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetBatch_JobList_StopFlag(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   anyBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "no1", Stop: radixutils.BoolPtr(true)}, {Name: "no2", Stop: radixutils.BoolPtr(true)}, {Name: "no3", Stop: radixutils.BoolPtr(true)}, {Name: "no4", Stop: radixutils.BoolPtr(true)}, {Name: "no5", Stop: radixutils.BoolPtr(true)}, {Name: "no6", Stop: radixutils.BoolPtr(true)}, {Name: "no7", Stop: radixutils.BoolPtr(true)}}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "no2"},
+					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
+					{Name: "no4", Phase: v1.BatchJobPhaseActive},
+					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{Name: "not-defined"},
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test get jobs for jobComponent1Name
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s", anyAppName, anyEnvironment, anyJobName, anyBatchName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual deploymentModels.ScheduledBatchSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	require.Len(t, actual.JobList, 7)
+	type assertMapped struct {
+		Name   string
+		Status string
+	}
+	actualMapped := slice.Map(actual.JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
+		return assertMapped{Name: job.Name, Status: job.Status}
+	})
+	expected := []assertMapped{
+		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Stopping.String()},
+		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
+		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+	}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetBatches_Status(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job2",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeWaiting},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job3",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job4",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job5",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition:   v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+				JobStatuses: []v1.RadixBatchJobStatus{{Name: "j1"}, {Name: "j2", Phase: v1.BatchJobPhaseFailed}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-compute1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName("other-component"), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "jobtype-job1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches", anyAppName, anyEnvironment, anyJobName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	var actual []deploymentModels.ScheduledBatchSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	type assertMapped struct {
+		Name   string
+		Status string
+	}
+	actualMapped := slice.Map(actual, func(b deploymentModels.ScheduledBatchSummary) assertMapped {
+		return assertMapped{Name: b.Name, Status: b.Status}
+	})
+	expected := []assertMapped{
+		{Name: "batch-job1", Status: jobSchedulerModels.Waiting.String()},
+		{Name: "batch-job2", Status: jobSchedulerModels.Waiting.String()},
+		{Name: "batch-job3", Status: jobSchedulerModels.Running.String()},
+		{Name: "batch-job4", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: "batch-job5", Status: jobSchedulerModels.Failed.String()},
+	}
+	assert.ElementsMatch(t, expected, actualMapped)
+}
+
+func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{{Name: "j1"}},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches", anyAppName, anyEnvironment, anyJobName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+
+	var actual []deploymentModels.ScheduledBatchSummary
+	require.NoError(t, controllertest.GetResponseBody(response, &actual))
+	require.Len(t, actual, 1)
+	assert.Len(t, actual[0].JobList, 0)
+
+}
+
+func Test_StopJob(t *testing.T) {
+	type JobTestData struct {
+		name      string
+		jobStatus v1.RadixBatchJobStatus
+	}
+
+	batchTypeBatchName, batchTypeJobName := "batchBatch", "jobBatch"
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	validJobs := []JobTestData{
+		{name: "validJob1"},
+		{name: "validJob2", jobStatus: v1.RadixBatchJobStatus{Name: "validJob2", Phase: ""}},
+		{name: "validJob3", jobStatus: v1.RadixBatchJobStatus{Name: "validJob3", Phase: v1.BatchJobPhaseWaiting}},
+		{name: "validJob4", jobStatus: v1.RadixBatchJobStatus{Name: "validJob4", Phase: v1.BatchJobPhaseActive}},
+	}
+	invalidJobs := []JobTestData{
+		{name: "invalidJob1", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob1", Phase: v1.BatchJobPhaseSucceeded}},
+		{name: "invalidJob2", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob2", Phase: v1.BatchJobPhaseFailed}},
+		{name: "invalidJob3", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob3", Phase: v1.BatchJobPhaseStopped}},
+	}
+	nonExistentJobs := []JobTestData{
+		{name: "noJob"},
+	}
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
+					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
+				}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
+					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeJobName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
+					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
+				}},
+			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
+					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// jobs by name that can be stopped
+	validJobNames := slice.Reduce(validJobs, []string{}, func(obj []string, job JobTestData) []string { return append(obj, job.name) })
+
+	// Test both batches
+	for _, batchName := range []string{batchTypeBatchName, batchTypeJobName} {
+		// Test valid jobs
+		for _, v := range validJobs {
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/stop", anyAppName, anyEnvironment, anyJobName, batchName+"-"+v.name))
+			response := <-responseChannel
+			assert.Equal(t, http.StatusNoContent, response.Code)
+			assert.Empty(t, response.Body.Bytes())
+		}
+
+		// Test invalid jobs
+		for _, v := range invalidJobs {
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/stop", anyAppName, anyEnvironment, anyJobName, batchName+"-"+v.name))
+			response := <-responseChannel
+			assert.Equal(t, http.StatusBadRequest, response.Code)
+			assert.NotEmpty(t, response.Body.Bytes())
+		}
+
+		// Test non-existent jobs
+		for _, v := range nonExistentJobs {
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s/stop", anyAppName, anyEnvironment, anyJobName, batchName+"-"+v.name))
+			response := <-responseChannel
+			assert.Equal(t, http.StatusNotFound, response.Code)
+			assert.NotEmpty(t, response.Body.Bytes())
+		}
+
+		// Check that stoppable jobs are stopped
+		assertBatchJobStoppedStates(t, radixClient, namespace, batchName, validJobNames)
+	}
+}
+
+func Test_StopBatch(t *testing.T) {
+	type JobTestData struct {
+		name      string
+		jobStatus v1.RadixBatchJobStatus
+	}
+
+	batchTypeBatchName, batchTypeJobName, nonExistentBatch := "batchBatch", "jobBatch", "noBatch"
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	validJobs := []JobTestData{
+		{name: "validJob1"},
+		{name: "validJob2", jobStatus: v1.RadixBatchJobStatus{Name: "validJob2", Phase: ""}},
+		{name: "validJob3", jobStatus: v1.RadixBatchJobStatus{Name: "validJob3", Phase: v1.BatchJobPhaseWaiting}},
+		{name: "validJob4", jobStatus: v1.RadixBatchJobStatus{Name: "validJob4", Phase: v1.BatchJobPhaseActive}},
+	}
+	invalidJobs := []JobTestData{
+		{name: "invalidJob1", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob1", Phase: v1.BatchJobPhaseSucceeded}},
+		{name: "invalidJob2", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob2", Phase: v1.BatchJobPhaseFailed}},
+		{name: "invalidJob3", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob3", Phase: v1.BatchJobPhaseStopped}},
+	}
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeBatchName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
+					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
+				}},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
+					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeJobName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
+					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
+				}},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
+					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
+				},
+			},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// Test valid batch
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s/stop", anyAppName, anyEnvironment, anyJobName, batchTypeBatchName))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+	assert.Empty(t, response.Body.Bytes())
+
+	// Test invalid batch type
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s/stop", anyAppName, anyEnvironment, anyJobName, batchTypeJobName))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.NotEmpty(t, response.Body.Bytes())
+
+	// Test non-existent batch
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s/stop", anyAppName, anyEnvironment, anyJobName, nonExistentBatch))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.NotEmpty(t, response.Body.Bytes())
+
+	// jobs by name that can be stopped
+	validJobNames := slice.Reduce(validJobs, []string{}, func(obj []string, job JobTestData) []string { return append(obj, job.name) })
+
+	// Check that stoppable jobs are stopped
+	assertBatchJobStoppedStates(t, radixClient, namespace, batchTypeBatchName, validJobNames)
+	assertBatchJobStoppedStates(t, radixClient, namespace, batchTypeJobName, []string{}) // invalid batch type, no jobs should be stopped
 }
 
 func initHandler(client kubernetes.Interface,
@@ -1077,6 +2259,35 @@ func initHandler(client kubernetes.Interface,
 	return Init(options...)
 }
 
+type ComponentCreatorStruct struct {
+	name   string
+	number int
+}
+
+func createRadixDeploymentWithReplicas(tu *commontest.Utils, appName, envName string, components []ComponentCreatorStruct) (*v1.RadixDeployment, error) {
+	var comps []operatorutils.DeployComponentBuilder
+	for _, component := range components {
+		comps = append(
+			comps,
+			operatorutils.
+				NewDeployComponentBuilder().
+				WithName(component.name).
+				WithReplicas(numbers.IntPtr(component.number)),
+		)
+	}
+
+	rd, err := tu.ApplyDeployment(
+		operatorutils.
+			ARadixDeployment().
+			WithComponents(comps...).
+			WithAppName(appName).
+			WithAnnotations(make(map[string]string)).
+			WithEnvironment(envName),
+	)
+
+	return rd, err
+}
+
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
 	podSpec := getPodSpec(componentName)
 	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
@@ -1084,6 +2295,16 @@ func createComponentPod(kubeclient kubernetes.Interface, namespace, componentNam
 
 func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
 	kubeclient.CoreV1().Pods(namespace).Delete(context.TODO(), getComponentPodName(componentName), metav1.DeleteOptions{})
+}
+
+func findComponentInDeployment(rd *v1.RadixDeployment, componentName string) *v1.RadixDeployComponent {
+	for _, comp := range rd.Spec.Components {
+		if comp.Name == componentName {
+			return &comp
+		}
+	}
+
+	return nil
 }
 
 func getPodSpec(componentName string) *corev1.Pod {
@@ -1108,4 +2329,24 @@ func contains(secrets []secretModels.Secret, name string) bool {
 		}
 	}
 	return false
+}
+
+func assertBatchJobStoppedStates(t *testing.T, rc radixclient.Interface, ns, batchName string, stoppableJobs []string) {
+	updatedBatch, err := rc.RadixV1().RadixBatches(ns).Get(context.Background(), batchName, metav1.GetOptions{})
+	require.Nil(t, err)
+
+	isStopped := func(job *v1.RadixBatchJob) bool {
+		if job == nil || job.Stop == nil {
+			return false
+		}
+		return *job.Stop
+	}
+
+	for _, job := range updatedBatch.Spec.Jobs {
+		if slice.FindIndex(stoppableJobs, func(name string) bool { return name == job.Name }) != -1 {
+			assert.True(t, isStopped(&job))
+		} else {
+			assert.False(t, isStopped(&job))
+		}
+	}
 }

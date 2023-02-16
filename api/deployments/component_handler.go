@@ -200,11 +200,18 @@ func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentNa
 	for _, pod := range pods.Items {
 		pod := pod
 
-		// A previous version of the job-scheduler added the "radix-component" label to job pods.
+		// A previous version of the job-scheduler added the "radix-job-type" label to job pods.
 		// For backward compatibility, we need to ignore these pods in the list of pods returned for a component
-		if _, isScheduledJobPod := pod.GetLabels()[kube.RadixJobTypeLabel]; !isScheduledJobPod {
-			componentPods = append(componentPods, pod)
+		if _, isScheduledJobPod := pod.GetLabels()[kube.RadixJobTypeLabel]; isScheduledJobPod {
+			continue
 		}
+
+		// Ignore pods related to jobs created from RadixBatch
+		if _, isRadixBatchJobPod := pod.GetLabels()[kube.RadixBatchNameLabel]; isRadixBatchJobPod {
+			continue
+		}
+
+		componentPods = append(componentPods, pod)
 	}
 
 	return componentPods, nil
