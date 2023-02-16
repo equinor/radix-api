@@ -71,6 +71,33 @@ func (eh EnvironmentHandler) GetJob(appName, envName, jobComponentName, jobName 
 	return jh.GetJob(appName, envName, jobComponentName, jobName)
 }
 
+// StopJob Stop job by name
+func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName string) error {
+	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
+	if !ok {
+		return jobNotFoundError(jobName)
+	}
+
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, "")
+	if err != nil {
+		return err
+	}
+
+	idx := slice.FindIndex(batch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName })
+	if idx == -1 {
+		return jobNotFoundError(jobName)
+	}
+
+	nonStoppableJob := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == batchJobName && !isBatchJobStoppable(js) })
+	if len(nonStoppableJob) > 0 {
+		return radixhttp.ValidationError(jobName, fmt.Sprintf("invalid job running state=%s", nonStoppableJob[0].Phase))
+	}
+
+	batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(context.TODO(), batch, metav1.UpdateOptions{})
+	return err
+}
+
 func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
@@ -135,6 +162,34 @@ func (eh EnvironmentHandler) getBatches(appName, envName, jobComponentName strin
 	}
 
 	return eh.getScheduledBatchSummaryList(radixBatches), nil
+}
+
+// StopBatch Stop batch by name
+func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return err
+	}
+
+	if !isBatchStoppable(batch.Status.Condition) {
+		return nil
+	}
+
+	nonStoppableJobs := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool { return !isBatchJobStoppable(js) })
+	var didChange bool
+	for idx, job := range batch.Spec.Jobs {
+		if slice.FindIndex(nonStoppableJobs, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == job.Name }) == -1 {
+			batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
+			didChange = true
+		}
+	}
+
+	if !didChange {
+		return nil
+	}
+
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(context.TODO(), batch, metav1.UpdateOptions{})
+	return err
 }
 
 // GetBatch Gets batch by name
@@ -437,6 +492,16 @@ func getReplicaSummariesForPods(jobPods []corev1.Pod) []deploymentModels.Replica
 		replicaSummaries = append(replicaSummaries, deploymentModels.GetReplicaSummary(pod))
 	}
 	return replicaSummaries
+}
+
+// check if batch can be stopped
+func isBatchStoppable(condition radixv1.RadixBatchCondition) bool {
+	return condition.Type == "" || condition.Type == radixv1.BatchConditionTypeActive || condition.Type == radixv1.BatchConditionTypeWaiting
+}
+
+// check if batch job can be stopped
+func isBatchJobStoppable(status radixv1.RadixBatchJobStatus) bool {
+	return status.Phase == "" || status.Phase == radixv1.BatchJobPhaseActive || status.Phase == radixv1.BatchJobPhaseWaiting
 }
 
 func batchNotFoundError(batchName string) error {

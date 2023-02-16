@@ -3,7 +3,7 @@ module github.com/equinor/radix-api
 go 1.19
 
 require (
-	github.com/equinor/radix-common v1.2.8
+	github.com/equinor/radix-common v1.2.9
 	github.com/equinor/radix-job-scheduler v1.7.2
 	github.com/equinor/radix-operator v1.32.1
 	github.com/evanphx/json-patch/v5 v5.6.0
