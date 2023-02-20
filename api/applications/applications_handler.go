@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"net/http"
 	"strings"
 	"time"
@@ -626,39 +627,61 @@ func (ah *ApplicationHandler) getMachineUserServiceAccount(appName, namespace st
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
-func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
+func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
 	// Make check that this is an existing application and user has access to it
 	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
 	if len(sharedKey) == 0 {
-		return nil, fmt.Errorf("shared secret cannot be empty")
-	}
-	deployKey, err := utils.GenerateDeployKey()
-	if err != nil {
-		return nil, err
+		return fmt.Errorf("shared secret cannot be empty")
 	}
 
-	existingRegistration.Spec.DeployKey = deployKey.PrivateKey
-	existingRegistration.Spec.DeployKeyPublic = deployKey.PublicKey
+	// Deleting SSH keys from RR, for backwards compatibility. This forces radix-operator to create new keys
+	existingRegistration.Spec.DeployKeyPublic = ""
+	existingRegistration.Spec.DeployKey = ""
+
+	err = ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
 	existingRegistration.Spec.SharedSecret = sharedKey
 	setConfigBranchToFallbackWhenEmpty(existingRegistration)
 
 	err = ah.isValidUpdate(existingRegistration)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ah *ApplicationHandler) GetDeployKeyAndSecret(appName string) (*applicationModels.DeployKeyAndSecret, error) {
+	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+	publicKey := ""
+	if cm != nil {
+		publicKey = cm.Data[defaults.GitPublicKeyConfigMapKey]
+	}
+	rr, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
 		return nil, err
 	}
+	sharedSecret := rr.Spec.SharedSecret
 	return &applicationModels.DeployKeyAndSecret{
-		PublicDeployKey: deployKey.PublicKey,
-		SharedSecret:    sharedKey,
+		PublicDeployKey: publicKey,
+		SharedSecret:    sharedSecret,
 	}, nil
 }
 

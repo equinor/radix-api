@@ -25,7 +25,6 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/tektoncd/pipeline v0.36.0
 	github.com/urfave/negroni/v2 v2.0.2
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.1.0
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
@@ -95,6 +94,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sys v0.4.0 // indirect
@@ -118,4 +118,9 @@ require (
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
+)
+
+replace (
+	github.com/equinor/radix-common v1.2.8 => /home/anneli/go/src/github.com/equinor/radix-common
+	github.com/equinor/radix-operator v1.32.1 => /home/anneli/GolandProjects/radix-operator
 )

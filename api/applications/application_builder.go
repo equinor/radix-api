@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	"github.com/equinor/radix-api/api/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
@@ -122,15 +121,6 @@ func (rb *applicationBuilder) withPublicKey(publicKey string) Builder {
 
 func (rb *applicationBuilder) withPrivateKey(privateKey string) Builder {
 	rb.privateKey = strings.TrimSuffix(privateKey, "\n")
-	return rb
-}
-
-func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder {
-	if deploykey != nil {
-		rb.publicKey = deploykey.PublicKey
-		rb.privateKey = deploykey.PrivateKey
-	}
-
 	return rb
 }
 

@@ -111,6 +111,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.IsDeployKeyValidHandler,
 		},
 		models.Route{
+			Path:        appPath + "/deploy-key-and-secret",
+			Method:      "GET",
+			HandlerFunc: ac.GetDeployKeyAndSecret,
+		},
+		models.Route{
 			Path:        appPath + "/regenerate-machine-user-token",
 			Method:      "POST",
 			HandlerFunc: ac.RegenerateMachineUserTokenHandler,
@@ -430,8 +435,6 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	// responses:
 	//   "200":
 	//     description: Successful regenerate machine-user token
-	//     schema:
-	//       "$ref": "#/definitions/DeployKeyAndSecret"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
@@ -443,14 +446,55 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
-	generatedDeployKey, err := handler.RegenerateDeployKey(appName, sharedSecret)
+	err := handler.RegenerateDeployKey(appName, sharedSecret)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, &generatedDeployKey)
+	radixhttp.OKResponse(w)
+}
+func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/deploy-key-and-secret application getDeployKeyAndSecret
+	// ---
+	// summary: Get deploy key and secret
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful get deploy key and secret
+	//     schema:
+	//       "$ref": "#/definitions/DeployKeyAndSecret"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	handler := ac.applicationHandlerFactory(accounts)
+	deployKeyAndSecret, err := handler.GetDeployKeyAndSecret(appName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, &deployKeyAndSecret)
+
 }
 
 // RegisterApplication Creates new application registration
