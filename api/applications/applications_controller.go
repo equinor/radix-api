@@ -453,8 +453,9 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 		return
 	}
 
-	radixhttp.OKResponse(w)
+	w.WriteHeader(http.StatusNoContent)
 }
+
 func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deploy-key-and-secret application getDeployKeyAndSecret
 	// ---
