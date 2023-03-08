@@ -93,6 +93,9 @@ type Component struct {
 	// required: false
 	Identity *Identity `json:"identity,omitempty"`
 
+	// Notifications is the spec for notification about internal events or changes
+	Notifications *Notifications `json:"notifications,omitempty"`
+
 	AuxiliaryResource `json:",inline"`
 }
 
@@ -102,6 +105,14 @@ type Identity struct {
 	//
 	// required: false
 	Azure *AzureIdentity `json:"azure,omitempty"`
+}
+
+// Notifications is the spec for notification about internal events or changes
+type Notifications struct {
+	// Webhook is a URL for notification about internal events or changes. The URL should be of a Radix component or job-component, with not public port.
+	//
+	// required: false
+	Webhook *string `json:"webhook,omitempty"`
 }
 
 // AzureIdentity describes an identity in Azure
