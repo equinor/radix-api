@@ -3,7 +3,7 @@ module github.com/equinor/radix-api
 go 1.19
 
 require (
-	github.com/equinor/radix-common v1.2.8
+	github.com/equinor/radix-common v1.2.9
 	github.com/equinor/radix-job-scheduler v1.7.2
 	github.com/equinor/radix-operator v1.32.1
 	github.com/evanphx/json-patch/v5 v5.6.0
@@ -94,7 +94,6 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sys v0.4.0 // indirect
@@ -118,9 +117,4 @@ require (
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-replace (
-	github.com/equinor/radix-common v1.2.8 => /home/anneli/go/src/github.com/equinor/radix-common
-	github.com/equinor/radix-operator v1.32.1 => /home/anneli/GolandProjects/radix-operator
 )
