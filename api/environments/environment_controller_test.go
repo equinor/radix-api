@@ -1064,7 +1064,7 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *tes
 
 func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.T) {
 	envName1, envName2 := "dev", "master"
-	anyOrphanedSecret := "feature-1"
+	orphanedEnvironment := "feature-1"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
@@ -1075,7 +1075,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(envName1, envName2).
-		WithEnvironment(anyOrphanedSecret, "feature"))
+		WithEnvironment(orphanedEnvironment, "feature"))
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
@@ -1084,7 +1084,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 	commonTestUtils.ApplyDeployment(operatorutils.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedSecret).
+		WithEnvironment(orphanedEnvironment).
 		WithImageTag("someimageinfeature"))
 
 	// Remove feature environment from application config
@@ -1100,7 +1100,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 	controllertest.GetResponseBody(response, &environments)
 
 	for _, environment := range environments {
-		if strings.EqualFold(environment.Name, anyOrphanedSecret) {
+		if strings.EqualFold(environment.Name, orphanedEnvironment) {
 			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
 			assert.NotNil(t, environment.ActiveDeployment)
 		}
@@ -1108,7 +1108,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 }
 
 func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t *testing.T) {
-	anyOrphanedSecret := "feature-1"
+	orphanedEnvironment := "feature-1"
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
@@ -1123,7 +1123,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
-		WithEnvironmentName(anyOrphanedSecret).
+		WithEnvironmentName(orphanedEnvironment).
 		WithRegistrationOwner(rr).
 		WithOrphaned(true))
 
@@ -1135,7 +1135,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 
 	environmentListed := false
 	for _, environment := range environments {
-		if strings.EqualFold(environment.Name, anyOrphanedSecret) {
+		if strings.EqualFold(environment.Name, orphanedEnvironment) {
 			assert.Equal(t, environmentModels.Orphan.String(), environment.Status)
 			environmentListed = true
 		}
@@ -1654,7 +1654,6 @@ func Test_GetJob_AllProps(t *testing.T) {
 }
 
 func Test_GetJobPayload(t *testing.T) {
-	secretName := "payload-secret"
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
@@ -1685,11 +1684,11 @@ func Test_GetJobPayload(t *testing.T) {
 				{Name: "job1"},
 				{Name: "job2", PayloadSecretRef: &v1.PayloadSecretKeySelector{
 					Key:                  "payload1",
-					LocalObjectReference: v1.LocalObjectReference{Name: secretName},
+					LocalObjectReference: v1.LocalObjectReference{Name: anySecretName},
 				}},
 				{Name: "job3", PayloadSecretRef: &v1.PayloadSecretKeySelector{
 					Key:                  "missingpayloadkey",
-					LocalObjectReference: v1.LocalObjectReference{Name: secretName},
+					LocalObjectReference: v1.LocalObjectReference{Name: anySecretName},
 				}},
 				{Name: "job4", PayloadSecretRef: &v1.PayloadSecretKeySelector{
 					Key:                  "payload1",
@@ -1701,7 +1700,7 @@ func Test_GetJobPayload(t *testing.T) {
 	require.NoError(t, err)
 
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: secretName},
+		ObjectMeta: metav1.ObjectMeta{Name: anySecretName},
 		Data: map[string][]byte{
 			"payload1": []byte("job1payload"),
 		},
