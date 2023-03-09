@@ -98,6 +98,21 @@ func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName
 	return err
 }
 
+// DeleteJob Delete job by name
+func (eh EnvironmentHandler) DeleteJob(appName, envName, jobComponentName, jobName string) error {
+	batchName, _, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
+	if !ok {
+		return jobNotFoundError(jobName)
+	}
+
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeJob)
+	if err != nil {
+		return err
+	}
+
+	return eh.getServiceAccount().RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+}
+
 func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
@@ -129,7 +144,6 @@ func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName 
 
 	jobSummary := eh.getScheduledJobSummary(batch, jobs[0], pods, jobComponent)
 	return &jobSummary, nil
-
 }
 
 // GetBatches Get batches
