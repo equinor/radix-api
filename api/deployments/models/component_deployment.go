@@ -375,6 +375,12 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	DeploymentName string `json:"deploymentName,omitempty"`
+
+	// DeploymentName name of RadixDeployment for the job
+	//
+	// required: true
+	// example: 1
+	FailedCount int32 `json:"failedCount"`
 }
 
 // Node Defines node attributes, where pod should be scheduled
