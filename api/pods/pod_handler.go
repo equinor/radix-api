@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/utils/labelselector"
+	sortUtils "github.com/equinor/radix-api/api/utils/sort"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,6 +78,7 @@ func (ph PodHandler) getScheduledJobLog(namespace, scheduledJobName, containerNa
 		return nil, PodNotFoundError(scheduledJobName)
 	}
 
+	sortUtils.Pods(pods.Items, sortUtils.ByPodCreationTimestamp, sortUtils.Descending)
 	pod := &pods.Items[0]
 	return ph.getPodLogFor(pod, containerName, sinceTime, logLines)
 }
