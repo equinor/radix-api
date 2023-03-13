@@ -376,7 +376,7 @@ type ScheduledJobSummary struct {
 	// required: false
 	DeploymentName string `json:"deploymentName,omitempty"`
 
-	// FailedCount defines number of times the job has failed
+	// FailedCount is the number of times the job has failed
 	//
 	// required: true
 	// example: 1
