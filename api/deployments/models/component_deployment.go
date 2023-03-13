@@ -376,7 +376,7 @@ type ScheduledJobSummary struct {
 	// required: false
 	DeploymentName string `json:"deploymentName,omitempty"`
 
-	// DeploymentName name of RadixDeployment for the job
+	// FailedCount defines number of times the job has failed
 	//
 	// required: true
 	// example: 1
