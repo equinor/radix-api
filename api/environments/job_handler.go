@@ -417,6 +417,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 			summary.TimeLimitSeconds = job.TimeLimitSeconds
 		}
 
+		job.BackoffLimit = jobComponent.BackoffLimit
 		if job.BackoffLimit != nil {
 			summary.BackoffLimit = *job.BackoffLimit
 		}
