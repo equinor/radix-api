@@ -206,6 +206,16 @@ func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batch
 	return err
 }
 
+// DeleteBatch Delete batch by name
+func (eh EnvironmentHandler) DeleteBatch(appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return err
+	}
+
+	return eh.getServiceAccount().RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+}
+
 // GetBatch Gets batch by name
 func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
 	if batchSummary, err := eh.getBatch(appName, envName, jobComponentName, batchName); err == nil {
