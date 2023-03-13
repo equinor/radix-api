@@ -1545,6 +1545,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	creationTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 5, 0, time.UTC))
 	startTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 10, 0, time.UTC))
 	endTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 15, 0, time.UTC))
+	defaultBackoffLimit := numbers.Int32Ptr(3)
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
@@ -1567,6 +1568,11 @@ func Test_GetJob_AllProps(t *testing.T) {
 			WithNodeGpuCount("2").
 			WithResource(map[string]string{"cpu": "50Mi", "memory": "250M"}, map[string]string{"cpu": "100Mi", "memory": "500M"})).
 		WithActiveFrom(time.Now()))
+
+	// HACK: Missing WithBackoffLimit in DeploymentBuild, so we''' have to update the RD manually
+	rd, _ := radixClient.RadixV1().RadixDeployments(namespace).Get(context.Background(), anyDeployment, metav1.GetOptions{})
+	rd.Spec.Jobs[0].BackoffLimit = defaultBackoffLimit
+	radixClient.RadixV1().RadixDeployments(namespace).Update(context.Background(), rd, metav1.UpdateOptions{})
 
 	// Insert test data
 	testData := []v1.RadixBatch{
@@ -1624,6 +1630,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Ended:            radixutils.FormatTime(&endTime),
 		Status:           jobSchedulerModels.Succeeded.String(),
 		Message:          "anymessage",
+		BackoffLimit:     *defaultBackoffLimit,
 		TimeLimitSeconds: numbers.Int64Ptr(123),
 		Resources: deploymentModels.ResourceRequirements{
 			Limits:   deploymentModels.Resources{CPU: "100Mi", Memory: "500M"},
