@@ -32,6 +32,9 @@ type JobParameters struct {
 
 	// ImageTag of the image - if empty will use default logic
 	ImageTag string
+
+	// ImageTags tags for components - if empty will use default logic
+	ImageTags map[string]string
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

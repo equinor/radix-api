@@ -107,6 +107,11 @@ type PipelineParametersDeploy struct {
 	// example: prod
 	ToEnvironment string `json:"toEnvironment"`
 
+	// Image tags for components
+	//
+	// example: component1:tag1, component2:tag2
+	ImageTags map[string]string `json:"imageTags"`
+
 	// TriggeredBy of the job - if empty will use user token upn (user principle name)
 	//
 	// example: a_user@equinor.com
@@ -118,5 +123,6 @@ func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobPara
 	return &jobModels.JobParameters{
 		ToEnvironment: deployParam.ToEnvironment,
 		TriggeredBy:   deployParam.TriggeredBy,
+		ImageTags:     deployParam.ImageTags,
 	}
 }

@@ -100,6 +100,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	case v1.Deploy:
 		deploySpec = v1.RadixDeploySpec{
 			ToEnvironment: jobSpec.ToEnvironment,
+			ImageTags:     jobSpec.ImageTags,
 		}
 	}
 
