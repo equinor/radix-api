@@ -2246,16 +2246,9 @@ func Test_DeleteJob(t *testing.T) {
 		assert.NotEmpty(t, response.Body.Bytes())
 	}
 
-	// check if only deletable jobs are deleted/gone
+	// assert only deletable jobs are deleted/gone
 	for _, batchName := range append(batchTypeJobNames, batchTypeBatchName) {
-		updatedBatch, err := radixClient.RadixV1().RadixBatches(namespace).Get(context.Background(), batchName, metav1.GetOptions{})
-		if slice.FindIndex(deletableJobs, func(name string) bool { return name == batchName }) == -1 {
-			require.NotNil(t, updatedBatch)
-			require.Nil(t, err)
-		} else {
-			require.Nil(t, updatedBatch)
-			require.NotNil(t, err)
-		}
+		assertBatchDeleted(t, radixClient, namespace, batchName, deletableJobs)
 	}
 }
 
@@ -2365,6 +2358,110 @@ func Test_StopBatch(t *testing.T) {
 	assertBatchJobStoppedStates(t, radixClient, namespace, batchTypeJobName, []string{}) // invalid batch type, no jobs should be stopped
 }
 
+func Test_DeleteBatch(t *testing.T) {
+	type JobTestData struct {
+		name      string
+		jobStatus v1.RadixBatchJobStatus
+	}
+
+	batchTypeBatchNames, batchTypeJobName := []string{"batchBatch1", "batchBatch2", "batchBatch3"}, "jobBatch"
+	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
+
+	jobs := []JobTestData{
+		{name: "validJob1"},
+		{name: "validJob2", jobStatus: v1.RadixBatchJobStatus{Name: "validJob2", Phase: ""}},
+		{name: "validJob3", jobStatus: v1.RadixBatchJobStatus{Name: "validJob3", Phase: v1.BatchJobPhaseWaiting}},
+		{name: "validJob4", jobStatus: v1.RadixBatchJobStatus{Name: "validJob4", Phase: v1.BatchJobPhaseActive}},
+	}
+
+	// Setup
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName(anyAppName))
+	commonTestUtils.ApplyApplication(operatorutils.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment(anyEnvironment).
+		WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+		WithActiveFrom(time.Now()))
+
+	// Insert test data
+	testData := []v1.RadixBatch{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeBatchNames[0],
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec:   v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: jobs[0].name}, {Name: jobs[1].name}, {Name: jobs[2].name}, {Name: jobs[3].name}}},
+			Status: v1.RadixBatchStatus{JobStatuses: []v1.RadixBatchJobStatus{jobs[0].jobStatus, jobs[1].jobStatus, jobs[2].jobStatus, jobs[3].jobStatus}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeBatchNames[1],
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec:   v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: jobs[0].name}, {Name: jobs[1].name}}},
+			Status: v1.RadixBatchStatus{JobStatuses: []v1.RadixBatchJobStatus{jobs[0].jobStatus, jobs[1].jobStatus}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeBatchNames[2],
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Spec:   v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: jobs[2].name}, {Name: jobs[3].name}}},
+			Status: v1.RadixBatchStatus{JobStatuses: []v1.RadixBatchJobStatus{jobs[2].jobStatus, jobs[3].jobStatus}},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   batchTypeJobName,
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec:   v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: jobs[0].name}}},
+			Status: v1.RadixBatchStatus{JobStatuses: []v1.RadixBatchJobStatus{jobs[0].jobStatus}},
+		},
+	}
+	for _, rb := range testData {
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+
+	// deletable batches
+	deletableBatches := []string{batchTypeBatchNames[0], batchTypeBatchNames[2]} // selected jobs to delete
+	for _, batchName := range deletableBatches {
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s", anyAppName, anyEnvironment, anyJobName, batchName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusNoContent, response.Code)
+		assert.Empty(t, response.Body.Bytes())
+	}
+
+	// non-deletable batches
+	nonDeletableJobs := []string{batchTypeJobName}
+	for _, batchName := range nonDeletableJobs {
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s", anyAppName, anyEnvironment, anyJobName, batchName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.NotEmpty(t, response.Body.Bytes())
+	}
+
+	// non-existent batches
+	nonExistentJobs := []string{"noBatch"}
+	for _, batchName := range nonExistentJobs {
+		responseChannel := environmentControllerTestUtils.ExecuteRequest("DELETE", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/%s", anyAppName, anyEnvironment, anyJobName, batchName))
+		response := <-responseChannel
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.NotEmpty(t, response.Body.Bytes())
+	}
+
+	// assert only deletable batches are deleted/gone
+	for _, batchName := range append(batchTypeBatchNames, batchTypeJobName) {
+		assertBatchDeleted(t, radixClient, namespace, batchName, deletableBatches)
+	}
+}
+
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	secretproviderclient secretsstorevclient.Interface,
@@ -2445,6 +2542,19 @@ func contains(secrets []secretModels.Secret, name string) bool {
 		}
 	}
 	return false
+}
+
+func assertBatchDeleted(t *testing.T, rc radixclient.Interface, ns, batchName string, deletableBatches []string) {
+	updatedBatch, err := rc.RadixV1().RadixBatches(ns).Get(context.Background(), batchName, metav1.GetOptions{})
+	if slice.FindIndex(deletableBatches, func(name string) bool { return name == batchName }) == -1 {
+		// deletable
+		require.NotNil(t, updatedBatch)
+		require.Nil(t, err)
+	} else {
+		// not deletable
+		require.Nil(t, updatedBatch)
+		require.NotNil(t, err)
+	}
 }
 
 func assertBatchJobStoppedStates(t *testing.T, rc radixclient.Interface, ns, batchName string, stoppableJobs []string) {
