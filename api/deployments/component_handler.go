@@ -167,6 +167,7 @@ func GetComponentStateFromSpec(
 		if jobComponent.Payload != nil {
 			componentBuilder.WithScheduledJobPayloadPath(jobComponent.Payload.Path)
 		}
+		componentBuilder.WithNotifications(jobComponent.Notifications)
 	}
 
 	return componentBuilder.
