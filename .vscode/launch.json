@@ -13,10 +13,10 @@
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "PIPELINE_IMG_TAG": "master-latest",
-                "K8S_API_HOST": "https://weekly-46-clusters-16ede4-7090f147.hcp.northeurope.azmk8s.io",
+                "K8S_API_HOST": "https://weekly-11-clusters-16ede4-zd0m5a1i.hcp.northeurope.azmk8s.io",
                 "RADIX_CLUSTER_TYPE": "development",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",
-                "RADIX_CLUSTERNAME": "weekly-06",
+                "RADIX_CLUSTERNAME": "weekly-11",
                 "RADIX_ACTIVE_CLUSTER_EGRESS_IPS": "104.45.84.1",
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true"
             },
