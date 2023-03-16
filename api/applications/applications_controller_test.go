@@ -1206,7 +1206,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 			expectedToEnvironment: "target",
 		},
 		{
-			name:                  "only target environment",
+			name:                  "target environment with image tags",
 			params:                applicationModels.PipelineParametersDeploy{ToEnvironment: "target", ImageTags: "component1=tag1,component2=tag22"},
 			expectedToEnvironment: "target",
 			expectedImageTags:     "component1=tag1,component2=tag22",
