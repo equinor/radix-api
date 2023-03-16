@@ -109,8 +109,8 @@ type PipelineParametersDeploy struct {
 
 	// Image tags for components
 	//
-	// example: component1:tag1, component2:tag2
-	ImageTags map[string]string `json:"imageTags"`
+	// example: component1=tag1,component2=tag2
+	ImageTags string `json:"imageTags"`
 
 	// TriggeredBy of the job - if empty will use user token upn (user principle name)
 	//
