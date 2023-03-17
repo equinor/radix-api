@@ -864,7 +864,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
 	assert.Equal(t, newRepository, applicationRegistrationUpsertResponse.ApplicationRegistration.Repository)
 
-	// Test DeployKeyAndSecret
+	// Test SharedSecret
 	newSharedSecret := "Any shared secret"
 	builder = builder.
 		withSharedSecret(newSharedSecret)
