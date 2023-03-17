@@ -36,7 +36,7 @@ spec:
               cpu: "2000m"
           variables:
             PIPELINE_IMG_TAG: "master-latest"
-            GOMAXPROCS: 1
+            GOMAXPROCS: "1"
         - environment: prod
           runAsNonRoot: true
           replicas: 2
@@ -50,4 +50,4 @@ spec:
               cpu: "2000m"
           variables:
             PIPELINE_IMG_TAG: "release-latest"
-            GOMAXPROCS: 2
+            GOMAXPROCS: "2"

@@ -98,6 +98,21 @@ func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName
 	return err
 }
 
+// DeleteJob Delete job by name
+func (eh EnvironmentHandler) DeleteJob(appName, envName, jobComponentName, jobName string) error {
+	batchName, _, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
+	if !ok {
+		return jobNotFoundError(jobName)
+	}
+
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeJob)
+	if err != nil {
+		return err
+	}
+
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+}
+
 func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
@@ -129,7 +144,6 @@ func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName 
 
 	jobSummary := eh.getScheduledJobSummary(batch, jobs[0], pods, jobComponent)
 	return &jobSummary, nil
-
 }
 
 // GetBatches Get batches
@@ -190,6 +204,16 @@ func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batch
 
 	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(context.TODO(), batch, metav1.UpdateOptions{})
 	return err
+}
+
+// DeleteBatch Delete batch by name
+func (eh EnvironmentHandler) DeleteBatch(appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return err
+	}
+
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
 }
 
 // GetBatch Gets batch by name
@@ -403,6 +427,9 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 			summary.TimeLimitSeconds = job.TimeLimitSeconds
 		}
 
+		if jobComponent.BackoffLimit != nil {
+			summary.BackoffLimit = *jobComponent.BackoffLimit
+		}
 		if job.BackoffLimit != nil {
 			summary.BackoffLimit = *job.BackoffLimit
 		}
@@ -428,6 +455,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
+		summary.FailedCount = status.Failed
 	}
 
 	return summary

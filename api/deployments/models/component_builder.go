@@ -20,6 +20,7 @@ type ComponentBuilder interface {
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
 	WithAuxiliaryResource(AuxiliaryResource) ComponentBuilder
+	WithNotifications(*v1.Notifications) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -39,6 +40,7 @@ type componentBuilder struct {
 	scheduledJobPayloadPath   string
 	auxResource               AuxiliaryResource
 	identity                  *Identity
+	notifications             *Notifications
 	errors                    []error
 }
 
@@ -159,6 +161,17 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	return b
 }
 
+func (b *componentBuilder) WithNotifications(notifications *v1.Notifications) ComponentBuilder {
+	if notifications == nil {
+		b.notifications = nil
+		return b
+	}
+	b.notifications = &Notifications{
+		Webhook: notifications.Webhook,
+	}
+	return b
+}
+
 func (b *componentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
@@ -199,6 +212,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
 		AuxiliaryResource:       b.auxResource,
 		Identity:                b.identity,
+		Notifications:           b.notifications,
 	}, b.buildError()
 }
 
