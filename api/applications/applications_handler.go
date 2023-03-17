@@ -639,10 +639,11 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 		return fmt.Errorf("shared secret cannot be empty")
 	}
 
-	// Deleting SSH keys from RR, for backwards compatibility. This forces radix-operator to create new keys
+	// Deleting SSH keys from RRs where these deprecated fields are populated
 	existingRegistration.Spec.DeployKeyPublic = ""
 	existingRegistration.Spec.DeployKey = ""
 
+	// Deleting the configmap with the public key. This triggers the RR to be reconciled and the new key to be generated
 	err = ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.DeleteOptions{})
 	if err != nil {
 		return err
