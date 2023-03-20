@@ -10,11 +10,12 @@ import (
 	commonErrors "github.com/equinor/radix-common/utils/errors"
 )
 
-//GetLogParams Gets parameters for a log output
-func GetLogParams(r *http.Request) (time.Time, bool, *int64, error) {
+// GetLogParams Gets parameters for a log output
+func GetLogParams(r *http.Request) (time.Time, bool, *int64, error, bool) {
 	sinceTime := r.FormValue("sinceTime")
 	lines := r.FormValue("lines")
 	file := r.FormValue("file")
+	previous := r.FormValue("previous")
 	var since time.Time
 	var errs []error
 
@@ -33,6 +34,14 @@ func GetLogParams(r *http.Request) (time.Time, bool, *int64, error) {
 			errs = append(errs, err)
 		}
 	}
+	var previousLog = false
+	if strings.TrimSpace(file) != "" {
+		var err error
+		previousLog, err = strconv.ParseBool(previous)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
 	var logLines *int64
 	if strings.TrimSpace(lines) != "" {
 		var err error
@@ -42,5 +51,5 @@ func GetLogParams(r *http.Request) (time.Time, bool, *int64, error) {
 		}
 		logLines = &val
 	}
-	return since, asFile, logLines, commonErrors.Concat(errs)
+	return since, asFile, logLines, commonErrors.Concat(errs), previousLog
 }

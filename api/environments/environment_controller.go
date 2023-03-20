@@ -1022,6 +1022,12 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: previous
+	//   in: query
+	//   description: Get previous container log if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -1043,14 +1049,14 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	envName := mux.Vars(r)["envName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
 	eh := Init(WithAccounts(accounts))
-	log, err := eh.GetLogs(appName, envName, podName, &since, logLines)
+	log, err := eh.GetLogs(appName, envName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1130,7 +1136,7 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	envName := mux.Vars(r)["envName"]
 	scheduledJobName := mux.Vars(r)["scheduledJobName"]
 
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1704,7 +1710,7 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 	componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
