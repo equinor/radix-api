@@ -375,6 +375,12 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	DeploymentName string `json:"deploymentName,omitempty"`
+
+	// FailedCount is the number of times the job has failed
+	//
+	// required: true
+	// example: 1
+	FailedCount int32 `json:"failedCount"`
 }
 
 // Node Defines node attributes, where pod should be scheduled

@@ -3,7 +3,6 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
@@ -11,6 +10,7 @@ import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/api/utils/secret"
+	sortUtils "github.com/equinor/radix-api/api/utils/sort"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -744,8 +744,8 @@ func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, compone
 	if err != nil {
 		return nil, err
 	}
-	pods := sortPodsDesc(podList.Items)
-	return eh.getAzKeyVaultSecretVersions(appName, envNamespace, componentName, pods, azureKeyVaultSecretMap[secretId])
+	sortUtils.Pods(podList.Items, sortUtils.ByPodCreationTimestamp, sortUtils.Descending)
+	return eh.getAzKeyVaultSecretVersions(appName, envNamespace, componentName, podList.Items, azureKeyVaultSecretMap[secretId])
 }
 
 func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
@@ -805,13 +805,6 @@ func (eh SecretHandler) getJobMap(appName, namespace, componentName string) (map
 		jobMap[job.GetName()] = job
 	}
 	return jobMap, nil
-}
-
-func sortPodsDesc(pods []corev1.Pod) []corev1.Pod {
-	sort.Slice(pods, func(i, j int) bool {
-		return pods[j].ObjectMeta.CreationTimestamp.Before(&pods[i].ObjectMeta.CreationTimestamp)
-	})
-	return pods
 }
 
 func (eh SecretHandler) getCsiSecretStoreSecretMap(namespace string) (map[string]corev1.Secret, error) {

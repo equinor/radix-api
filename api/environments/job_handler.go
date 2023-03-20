@@ -110,7 +110,7 @@ func (eh EnvironmentHandler) DeleteJob(appName, envName, jobComponentName, jobNa
 		return err
 	}
 
-	return eh.getServiceAccount().RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
 }
 
 func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
@@ -213,7 +213,7 @@ func (eh EnvironmentHandler) DeleteBatch(appName, envName, jobComponentName, bat
 		return err
 	}
 
-	return eh.getServiceAccount().RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
 }
 
 // GetBatch Gets batch by name
@@ -427,6 +427,9 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 			summary.TimeLimitSeconds = job.TimeLimitSeconds
 		}
 
+		if jobComponent.BackoffLimit != nil {
+			summary.BackoffLimit = *jobComponent.BackoffLimit
+		}
 		if job.BackoffLimit != nil {
 			summary.BackoffLimit = *job.BackoffLimit
 		}
@@ -452,6 +455,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
+		summary.FailedCount = status.Failed
 	}
 
 	return summary
