@@ -1196,7 +1196,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 		name                  string
 		params                applicationModels.PipelineParametersDeploy
 		expectedToEnvironment string
-		expectedImageTags     string
+		expectedImageTagNames map[string]string
 	}
 
 	scenarios := []scenario{
@@ -1207,9 +1207,9 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 		},
 		{
 			name:                  "target environment with image tags",
-			params:                applicationModels.PipelineParametersDeploy{ToEnvironment: "target", ImageTags: "component1=tag1,component2=tag22"},
+			params:                applicationModels.PipelineParametersDeploy{ToEnvironment: "target", ImageTagNames: map[string]string{"component1": "tag1", "component2": "tag22"}},
 			expectedToEnvironment: "target",
-			expectedImageTags:     "component1=tag1,component2=tag22",
+			expectedImageTagNames: map[string]string{"component1": "tag1", "component2": "tag22"},
 		},
 	}
 
@@ -1223,7 +1223,8 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 			jobs, _ := getJobsInNamespace(radixclient, appNamespace)
 
 			assert.Equal(t, ts.expectedToEnvironment, jobs[0].Spec.Deploy.ToEnvironment)
-			assert.Equal(t, ts.expectedImageTags, jobs[0].Spec.Deploy.ImageTags)
+			t.Logf("-------- %v", jobs[0].Spec.Deploy.ImageTagNames)
+			assert.Equal(t, ts.expectedImageTagNames, jobs[0].Spec.Deploy.ImageTagNames)
 		})
 	}
 }
