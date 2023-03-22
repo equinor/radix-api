@@ -1188,8 +1188,6 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 }
 
 func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
-	_, controllerTestUtils, _, radixclient, _, _ := setupTest(true)
-
 	appName := "an-app"
 
 	type scenario struct {
@@ -1215,6 +1213,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
+			_, controllerTestUtils, _, radixclient, _, _ := setupTest(true)
 			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), ts.params)
 			<-responseChannel
@@ -1223,7 +1222,6 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 			jobs, _ := getJobsInNamespace(radixclient, appNamespace)
 
 			assert.Equal(t, ts.expectedToEnvironment, jobs[0].Spec.Deploy.ToEnvironment)
-			t.Logf("-------- %v", jobs[0].Spec.Deploy.ImageTagNames)
 			assert.Equal(t, ts.expectedImageTagNames, jobs[0].Spec.Deploy.ImageTagNames)
 		})
 	}
