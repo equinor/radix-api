@@ -284,8 +284,6 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	// deploymentName := mux.Vars(r)["deploymentName"]
-	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
 	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)

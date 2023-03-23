@@ -35,7 +35,7 @@ func GetLogParams(r *http.Request) (time.Time, bool, *int64, error, bool) {
 		}
 	}
 	var previousLog = false
-	if strings.TrimSpace(file) != "" {
+	if strings.TrimSpace(previous) != "" {
 		var err error
 		previousLog, err = strconv.ParseBool(previous)
 		if err != nil {
