@@ -371,9 +371,9 @@ func (eh EnvironmentHandler) getServiceAccount() models.Account {
 }
 
 // GetLogs handler for GetLogs
-func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime, logLines)
+	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime, logLines, previousLog)
 	if errors.IsNotFound(err) {
 		return nil, err
 	}
