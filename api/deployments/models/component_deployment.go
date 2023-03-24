@@ -503,6 +503,17 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 		replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
 		replicaSummary.StatusMessage = containerState.Terminated.Message
 	}
+	terminated := containerStatus.LastTerminationState.Terminated
+	if terminated != nil {
+		compositeMessage := []string{fmt.Sprintf("Last time container was terminated at: %s, with code: %d", radixutils.FormatTime(&terminated.FinishedAt), terminated.ExitCode)}
+		if terminated.Reason != "" {
+			compositeMessage = append(compositeMessage, fmt.Sprintf("reason: '%s'", terminated.Reason))
+		}
+		if terminated.Message != "" {
+			compositeMessage = append(compositeMessage, fmt.Sprintf("message: '%s'", terminated.Message))
+		}
+		replicaSummary.StatusMessage = strings.Join(compositeMessage, ", ")
+	}
 	replicaSummary.RestartCount = containerStatus.RestartCount
 	replicaSummary.Image = containerStatus.Image
 	replicaSummary.ImageId = containerStatus.ImageID

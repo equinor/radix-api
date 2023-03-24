@@ -1188,22 +1188,43 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 }
 
 func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
-	_, controllerTestUtils, _, radixclient, _, _ := setupTest(true)
-
 	appName := "an-app"
 
-	parameters := applicationModels.PipelineParametersDeploy{
-		ToEnvironment: "target",
+	type scenario struct {
+		name                  string
+		params                applicationModels.PipelineParametersDeploy
+		expectedToEnvironment string
+		expectedImageTagNames map[string]string
 	}
 
-	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), parameters)
-	<-responseChannel
+	scenarios := []scenario{
+		{
+			name:                  "only target environment",
+			params:                applicationModels.PipelineParametersDeploy{ToEnvironment: "target"},
+			expectedToEnvironment: "target",
+		},
+		{
+			name:                  "target environment with image tags",
+			params:                applicationModels.PipelineParametersDeploy{ToEnvironment: "target", ImageTagNames: map[string]string{"component1": "tag1", "component2": "tag22"}},
+			expectedToEnvironment: "target",
+			expectedImageTagNames: map[string]string{"component1": "tag1", "component2": "tag22"},
+		},
+	}
 
-	appNamespace := fmt.Sprintf("%s-app", appName)
-	jobs, _ := getJobsInNamespace(radixclient, appNamespace)
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			_, controllerTestUtils, _, radixclient, _, _ := setupTest(true)
+			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
+			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), ts.params)
+			<-responseChannel
 
-	assert.Equal(t, jobs[0].Spec.Deploy.ToEnvironment, "target")
+			appNamespace := fmt.Sprintf("%s-app", appName)
+			jobs, _ := getJobsInNamespace(radixclient, appNamespace)
+
+			assert.Equal(t, ts.expectedToEnvironment, jobs[0].Spec.Deploy.ToEnvironment)
+			assert.Equal(t, ts.expectedImageTagNames, jobs[0].Spec.Deploy.ImageTagNames)
+		})
+	}
 }
 
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
