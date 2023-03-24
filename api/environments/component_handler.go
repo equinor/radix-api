@@ -21,7 +21,10 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-const restartedAtAnnotation = "radixapi/restartedAt"
+const (
+	restartedAtAnnotation = "radixapi/restartedAt"
+	maxScaleReplicas      = 20
+)
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string, ignoreComponentStatusError bool) error {
@@ -131,7 +134,6 @@ func (eh EnvironmentHandler) ScaleComponent(appName, envName, componentName stri
 	if replicas < 0 {
 		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
 	}
-	const maxScaleReplicas = 20
 	if replicas > maxScaleReplicas {
 		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
 	}
@@ -141,7 +143,7 @@ func (eh EnvironmentHandler) ScaleComponent(appName, envName, componentName stri
 		return err
 	}
 	componentStatus := updater.getComponentStatus()
-	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
+	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
 		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
 	}
 	return eh.patchRadixDeploymentWithReplicas(updater, replicas)
