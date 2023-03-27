@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/equinor/radix-api/api/utils/logs"
-
 	"github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -169,6 +169,11 @@ func (ec *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "DELETE",
 			HandlerFunc: DeleteBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/scale/{replicas}",
+			Method:      "POST",
+			HandlerFunc: ScaleComponent,
 		},
 	}
 
@@ -1789,4 +1794,72 @@ func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	}
 
 	radixhttp.ReaderResponse(w, payload, "text/plain; charset=utf-8")
+}
+
+// ScaleComponent Scale component replicas
+func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/scale/{replicas} component scaleComponent
+	// ---
+	// summary: Scale a component replicas
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: replicas
+	//   in: path
+	//   description: New desired number of replicas
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid component"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	replicas, err := strconv.Atoi(mux.Vars(r)["replicas"])
+	if err != nil {
+		log.Error(err)
+		radixhttp.ErrorResponse(w, r, fmt.Errorf("invalid new desired number of replicas argument"))
+		return
+	}
+
+	eh := Init(WithAccounts(accounts))
+	err = eh.ScaleComponent(appName, envName, componentName, replicas)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

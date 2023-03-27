@@ -56,3 +56,18 @@ func MissingAuxiliaryResourceDeployment(appName, componentName string) error {
 func JobComponentCanOnlyBeRestarted() error {
 	return radixhttp.UnexpectedError("Radix Application Job Component", fmt.Errorf("job component can only be restarted"))
 }
+
+// CannotScaleComponent Component cannot be scaled
+func CannotScaleComponent(appName, envName, componentName, state string) error {
+	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s, environment %s cannot be scaled when in %s state", componentName, appName, envName, strings.ToLower(state)))
+}
+
+// CannotScaleComponentToNegativeReplicas Component cannot be scaled to negative replica amount
+func CannotScaleComponentToNegativeReplicas(appName, envName, componentName string) error {
+	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s, environment %s cannot be scaled to negative value", componentName, appName, envName))
+}
+
+// CannotScaleComponentToMoreThanMaxReplicas Component cannot be scaled to more than max replicas
+func CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName string, maxScaleReplicas int) error {
+	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s, environment %s cannot be scaled to more than %d replicas", componentName, appName, envName, maxScaleReplicas))
+}

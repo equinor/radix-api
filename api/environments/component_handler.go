@@ -21,7 +21,10 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-const restartedAtAnnotation = "radixapi/restartedAt"
+const (
+	restartedAtAnnotation = "radixapi/restartedAt"
+	maxScaleReplicas      = 20
+)
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(appName, envName, componentName string, ignoreComponentStatusError bool) error {
@@ -126,6 +129,26 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(appName, envName,
 	return eh.patchDeploymentForRestart(&deploymentList.Items[0])
 }
 
+// ScaleComponent Scale a component replicas
+func (eh EnvironmentHandler) ScaleComponent(appName, envName, componentName string, replicas int) error {
+	if replicas < 0 {
+		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
+	}
+	if replicas > maxScaleReplicas {
+		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
+	}
+	log.Infof("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
+	updater, err := eh.getRadixCommonComponentUpdater(appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	componentStatus := updater.getComponentStatus()
+	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
+		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
+	}
+	return eh.patchRadixDeploymentWithReplicas(updater, replicas)
+}
+
 func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 	if deployment == nil {
 		return false
@@ -175,4 +198,50 @@ func (eh EnvironmentHandler) patch(namespace, name string, oldJSON, newJSON []by
 	}
 
 	return nil
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 1
+		replicas, err := getReplicasForComponentInEnvironment(updater.getEnvironmentConfig())
+		if err != nil {
+			return err
+		}
+		if replicas != nil {
+			newReplica = *replicas
+		}
+		updater.setReplicasToComponent(&newReplica)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithReplicas(updater radixDeployCommonComponentUpdater, replicas int) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		updater.setReplicasToComponent(&replicas)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(updater radixDeployCommonComponentUpdater, envVarName string) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
+		if environmentVariables == nil {
+			environmentVariables = make(map[string]string)
+		}
+		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
+		updater.setEnvironmentVariablesToComponent(environmentVariables)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
+		return nil
+	})
+}
+
+func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(updater radixDeployCommonComponentUpdater) error {
+	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
+		newReplica := 0
+		updater.setReplicasToComponent(&newReplica)
+		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
+		return nil
+	})
 }
