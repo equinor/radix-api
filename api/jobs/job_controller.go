@@ -582,7 +582,7 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 	taskName := mux.Vars(r)["taskName"]
 	stepName := mux.Vars(r)["stepName"]
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -665,7 +665,7 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 	stepName := mux.Vars(r)["stepName"]
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

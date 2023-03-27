@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
 	eventModels "github.com/equinor/radix-api/api/events/models"
@@ -69,10 +70,14 @@ type EnvironmentHandler struct {
 	kubeUtilForServiceAccount *kube.Kube
 }
 
+var validaStatusesToScaleComponent []string
+
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' EnvironmentHandler.
 // EnvironmentHandlerOptions are processed in the seqeunce they are passed to this function.
 func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
+	validaStatusesToScaleComponent = []string{deploymentModels.ConsistentComponent.String(), deploymentModels.StoppedComponent.String()}
+
 	eh := EnvironmentHandler{}
 
 	for _, opt := range opts {
@@ -181,12 +186,12 @@ func (eh EnvironmentHandler) GetEnvironment(appName, envName string) (*environme
 
 		environmentDto.ActiveDeployment = deployment
 
-		secrets, err := eh.secretHandler.GetSecretsForDeployment(appName, envName, deployment.Name)
+		deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(appName, envName, deployment.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		environmentDto.Secrets = secrets
+		environmentDto.Secrets = deploymentSecrets
 	}
 
 	return environmentDto, nil
@@ -252,12 +257,12 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(appName, envName string) ([]*e
 		return nil, err
 	}
 
-	events, err := eh.eventHandler.GetEvents(events.RadixEnvironmentNamespace(radixApplication, envName))
+	environmentEvents, err := eh.eventHandler.GetEvents(events.RadixEnvironmentNamespace(radixApplication, envName))
 	if err != nil {
 		return nil, err
 	}
 
-	return events, nil
+	return environmentEvents, nil
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
@@ -371,14 +376,14 @@ func (eh EnvironmentHandler) getServiceAccount() models.Account {
 }
 
 // GetLogs handler for GetLogs
-func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetLogs(appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	log, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime, logLines)
+	logger, err := podHandler.HandleGetEnvironmentPodLog(appName, envName, podName, "", sinceTime, logLines, previousLog)
 	if errors.IsNotFound(err) {
 		return nil, err
 	}
 
-	return log, nil
+	return logger, nil
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
@@ -532,44 +537,6 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(appName, envName, co
 		return nil, err
 	}
 	return updater, nil
-}
-
-func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(updater radixDeployCommonComponentUpdater, envVarName string) error {
-	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
-		environmentVariables := updater.getComponentToPatch().GetEnvironmentVariables()
-		if environmentVariables == nil {
-			environmentVariables = make(map[string]string)
-		}
-		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
-		updater.setEnvironmentVariablesToComponent(environmentVariables)
-		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
-		return nil
-	})
-}
-
-func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(updater radixDeployCommonComponentUpdater) error {
-	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
-		newReplica := 1
-		replicas, err := getReplicasForComponentInEnvironment(updater.getEnvironmentConfig())
-		if err != nil {
-			return err
-		}
-		if replicas != nil {
-			newReplica = *replicas
-		}
-		updater.setReplicasToComponent(&newReplica)
-		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
-		return nil
-	})
-}
-
-func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(updater radixDeployCommonComponentUpdater) error {
-	return eh.commit(updater, func(updater radixDeployCommonComponentUpdater) error {
-		newReplica := 0
-		updater.setReplicasToComponent(&newReplica)
-		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
-		return nil
-	})
 }
 
 func (eh EnvironmentHandler) commit(updater radixDeployCommonComponentUpdater, commitFunc func(updater radixDeployCommonComponentUpdater) error) error {

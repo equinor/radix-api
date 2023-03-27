@@ -260,6 +260,12 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: previous
+	//   in: query
+	//   description: Get previous container log if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -278,18 +284,16 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	// deploymentName := mux.Vars(r)["deploymentName"]
-	// componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err := logs.GetLogParams(r)
+	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(appName, podName, &since, logLines)
+	log, err := deployHandler.GetLogs(appName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
