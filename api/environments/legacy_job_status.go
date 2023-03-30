@@ -28,7 +28,6 @@ func GetBatchStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods
 	batchStatus := jobSchedulerModels.BatchStatus{
 		JobStatus: *batchJobStatus,
 	}
-	//TODO 		JobStatuses: nil,
 	return &batchStatus, nil
 }
 
@@ -43,8 +42,8 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 	status := jobSchedulerModels.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
-	jobStatus.JobId = job.ObjectMeta.Labels["radix-job-id"]               //Not empty, if JobId exists
-	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] //Not empty, if BatchName exists
+	jobStatus.JobId = job.ObjectMeta.Labels["radix-job-id"]               // Not empty, if JobId exists
+	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] // Not empty, if BatchName exists
 	if status != jobSchedulerModels.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {

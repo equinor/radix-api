@@ -87,9 +87,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 			Branch:    jobSpec.Branch,
 			CommitID:  jobSpec.CommitID,
 			PushImage: jobSpec.PushImage,
-			//TODO - add in updated radix-operator
-			//ImageRepository: jobSpec.ImageRepository,
-			//ImageName:       jobSpec.ImageName,
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
@@ -100,6 +97,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	case v1.Deploy:
 		deploySpec = v1.RadixDeploySpec{
 			ToEnvironment: jobSpec.ToEnvironment,
+			ImageTagNames: jobSpec.ImageTagNames,
 		}
 	}
 
