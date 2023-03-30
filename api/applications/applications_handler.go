@@ -643,8 +643,8 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 	existingRegistration.Spec.DeployKeyPublic = ""
 	existingRegistration.Spec.DeployKey = ""
 
-	// Deleting the configmap with the public key. This triggers the RR to be reconciled and the new key to be generated
-	err = ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.DeleteOptions{})
+	// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
+	err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
