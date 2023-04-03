@@ -6,7 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
+	jobSchedulerCommonModels "github.com/equinor/radix-job-scheduler/models/common"
+	jobSchedulerV1Models "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 
 	"github.com/equinor/radix-common/utils"
@@ -22,34 +23,34 @@ var imageErrors = map[string]bool{"ImagePullBackOff": true, "ImageInspectError":
 	"ErrImageNeverPull": true, "RegistryUnavailable": true, "InvalidImageName": true}
 
 // GetBatchStatusFromJob Gets job from a k8s jobs for the batch
-func GetBatchStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) (*jobSchedulerModels.BatchStatus, error) {
+func GetBatchStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) (*jobSchedulerV1Models.BatchStatus, error) {
 	batchJobStatus := GetJobStatusFromJob(kubeClient, job, jobPods)
 	batchJobStatus.BatchName = job.GetName()
-	batchStatus := jobSchedulerModels.BatchStatus{
+	batchStatus := jobSchedulerV1Models.BatchStatus{
 		JobStatus: *batchJobStatus,
 	}
 	return &batchStatus, nil
 }
 
 // GetJobStatusFromJob Gets job from a k8s job
-func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *jobSchedulerModels.JobStatus {
-	jobStatus := jobSchedulerModels.JobStatus{
+func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods []corev1.Pod) *jobSchedulerV1Models.JobStatus {
+	jobStatus := jobSchedulerV1Models.JobStatus{
 		Name:    job.GetName(),
 		Created: utils.FormatTime(&job.ObjectMeta.CreationTimestamp),
 		Started: utils.FormatTime(job.Status.StartTime),
 		Ended:   getJobEndTimestamp(job),
 	}
-	status := jobSchedulerModels.GetStatusFromJobStatus(job.Status)
+	status := jobSchedulerCommonModels.GetStatusFromJobStatus(job.Status)
 
 	jobStatus.Status = status.String()
 	jobStatus.JobId = job.ObjectMeta.Labels["radix-job-id"]               // Not empty, if JobId exists
 	jobStatus.BatchName = job.ObjectMeta.Labels[kube.RadixBatchNameLabel] // Not empty, if BatchName exists
-	if status != jobSchedulerModels.Running {
+	if status != jobSchedulerCommonModels.Running {
 		// if the job is not in state 'Running', we check that job's pod status reason
 		for _, pod := range jobPods {
 			if pod.Status.Reason == "DeadlineExceeded" {
 				// if the pod's status reason is 'DeadlineExceeded', the entire job also gets that status
-				jobStatus.Status = jobSchedulerModels.DeadlineExceeded.String()
+				jobStatus.Status = jobSchedulerCommonModels.DeadlineExceeded.String()
 				jobStatus.Message = pod.Status.Message
 				return &jobStatus
 			}
@@ -65,17 +66,17 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			switch {
 			case cs.State.Terminated != nil:
 				//  job with one or more 'terminated' containers gets status 'Stopped'
-				jobStatus.Status = jobSchedulerModels.Stopped.String()
+				jobStatus.Status = jobSchedulerCommonModels.Stopped.String()
 				jobStatus.Message = cs.State.Terminated.Message
 
 				return &jobStatus
 			case cs.State.Waiting != nil:
 				if _, ok := imageErrors[cs.State.Waiting.Reason]; ok {
 					// if container waits because of inaccessible image, the job is 'Failed'
-					jobStatus.Status = jobSchedulerModels.Failed.String()
+					jobStatus.Status = jobSchedulerCommonModels.Failed.String()
 				} else {
 					// if container waits for any other reason, job is 'Waiting'
-					jobStatus.Status = jobSchedulerModels.Waiting.String()
+					jobStatus.Status = jobSchedulerCommonModels.Waiting.String()
 				}
 				jobStatus.Started = ""
 				message := cs.State.Waiting.Message
@@ -97,7 +98,7 @@ func GetJobStatusFromJob(kubeClient kubernetes.Interface, job *v1.Job, jobPods [
 			if lastCondition.Status == corev1.ConditionTrue {
 				continue
 			}
-			jobStatus.Status = jobSchedulerModels.Waiting.String()
+			jobStatus.Status = jobSchedulerCommonModels.Waiting.String()
 			jobStatus.Message = fmt.Sprintf("%s %s", lastCondition.Reason, lastCondition.Message)
 		}
 	}
