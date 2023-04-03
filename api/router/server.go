@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
-	"github.com/urfave/negroni/v2"
+	"github.com/urfave/negroni/v3"
 )
 
 const (

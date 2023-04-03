@@ -27,7 +27,7 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
