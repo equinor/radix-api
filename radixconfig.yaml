@@ -20,6 +20,7 @@ spec:
       public: true
       variables:
         REQUIRE_APP_CONFIGURATION_ITEM: "true"
+        REQUIRE_APP_AD_GROUPS: "true"
       environmentConfig:
         - environment: qa
           runAsNonRoot: true

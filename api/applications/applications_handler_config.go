@@ -28,11 +28,13 @@ func LoadApplicationHandlerConfig(args []string) (ApplicationHandlerConfig, erro
 
 type ApplicationHandlerConfig struct {
 	RequireAppConfigurationItem bool `cfg:"require_app_configuration_item" flag:"require-app-configuration-item"`
+	RequireAppADGroups          bool `cfg:"require_app_ad_groups" flag:"require-app-ad-groups"`
 }
 
 func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
 	flagset := pflag.NewFlagSet("config", pflag.ExitOnError)
 	flagset.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 	flagset.Bool("require-app-configuration-item", true, "Require configuration item for application")
+	flagset.Bool("require-app-ad-groups", true, "Require AD groups for application")
 	return flagset
 }
