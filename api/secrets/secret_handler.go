@@ -381,7 +381,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 			accountnameStatus = models.Pending.String()
 		}
 	}
-	//"accountkey"
+	// "accountkey"
 	accountKeySecretDTO := models.Secret{
 		Name:        secretName + accountKeyPartSuffix,
 		DisplayName: "Account Key",
@@ -390,7 +390,7 @@ func (eh SecretHandler) getAzureVolumeMountSecrets(envNamespace string, componen
 		Status:      accountkeyStatus,
 		Type:        secretType,
 		ID:          models.SecretIdAccountKey}
-	//"accountname"
+	// "accountname"
 	accountNameSecretDTO := models.Secret{
 		Name:        secretName + accountNamePartSuffix,
 		DisplayName: "Account Name",
@@ -473,11 +473,13 @@ func (eh SecretHandler) getComponentSecretRefsSecrets(envNamespace string, compo
 	secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) ([]models.Secret, error) {
 	var secrets []models.Secret
 	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
-		credSecrets, err := eh.getCredentialSecretsForSecretRefsAzureKeyVault(envNamespace, componentName, azureKeyVault.Name)
-		if err != nil {
-			return nil, err
+		if azureKeyVault.UseAzureIdentity == nil || !*azureKeyVault.UseAzureIdentity {
+			credSecrets, err := eh.getCredentialSecretsForSecretRefsAzureKeyVault(envNamespace, componentName, azureKeyVault.Name)
+			if err != nil {
+				return nil, err
+			}
+			secrets = append(secrets, credSecrets...)
 		}
-		secrets = append(secrets, credSecrets...)
 		secretStatus := getAzureKeyVaultSecretStatus(componentName, azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
 		for _, item := range azureKeyVault.Items {
 			secrets = append(secrets, models.Secret{
@@ -501,7 +503,7 @@ func getAzureKeyVaultSecretStatus(componentName, azureKeyVaultName string, secre
 		secretStatus = models.Consistent.String()
 		for _, secretObject := range secretProviderClass.Spec.SecretObjects {
 			if _, ok := csiSecretStoreSecretMap[secretObject.SecretName]; !ok {
-				secretStatus = models.NotAvailable.String() //Secrets does not exist for the secretProviderClass secret object
+				secretStatus = models.NotAvailable.String() // Secrets does not exist for the secretProviderClass secret object
 				break
 			}
 		}
@@ -541,7 +543,7 @@ func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace,
 			secretStatusMap[secretVersion.ID][secretsInPod.Status.PodName] = secretVersion.Version
 		}
 	}
-	return secretStatusMap, nil //map[secretType/secretName][podName]secretVersion
+	return secretStatusMap, nil // map[secretType/secretName][podName]secretVersion
 }
 
 func (eh SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppDeployment(appName, envNamespace, deploymentName string) (map[string]secretsstorev1.SecretProviderClass, error) {
