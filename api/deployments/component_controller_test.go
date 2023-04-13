@@ -577,13 +577,19 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().
 				WithName("job1").
-				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "job-clientid"}}),
+				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "job-clientid"}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "job-key-vault1", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret1"}}}}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "job-key-vault2", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret2"}}, UseAzureIdentity: operatorUtils.BoolPtr(false)}}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "job-key-vault3", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret3"}}, UseAzureIdentity: operatorUtils.BoolPtr(true)}}}),
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job2"),
 		).
 		WithComponents(
 			operatorUtils.NewDeployComponentBuilder().
 				WithName("comp1").
-				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "comp-clientid"}}),
+				WithIdentity(&v1.Identity{Azure: &v1.AzureIdentity{ClientId: "comp-clientid"}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "comp-key-vault1", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret1"}}}}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "comp-key-vault2", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret2"}}, UseAzureIdentity: operatorUtils.BoolPtr(false)}}}).
+				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "comp-key-vault3", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret3"}}, UseAzureIdentity: operatorUtils.BoolPtr(true)}}}),
 			operatorUtils.NewDeployComponentBuilder().WithName("comp2"),
 		))
 
@@ -598,9 +604,9 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	var components []deploymentModels.Component
 	controllertest.GetResponseBody(response, &components)
 
-	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("job1")}}, getComponentByName("job1", components).Identity)
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("job1"), AzureKeyVaults: []string{"job-key-vault3"}}}, getComponentByName("job1", components).Identity)
 	assert.Nil(t, getComponentByName("job2", components).Identity)
-	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "comp-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("comp1")}}, getComponentByName("comp1", components).Identity)
+	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "comp-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("comp1"), AzureKeyVaults: []string{"comp-key-vault3"}}}, getComponentByName("comp1", components).Identity)
 	assert.Nil(t, getComponentByName("comp2", components).Identity)
 }
 
