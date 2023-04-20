@@ -74,9 +74,17 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 
 	triggeredBy := jobSpec.TriggeredBy
 	if triggeredBy == "" {
-		triggeredBy, _ = jh.accounts.GetUserAccountUserPrincipleName()
-	}
-	if triggeredBy == "<nil>" {
+		triggeredBy, err := jh.accounts.GetUserAccountUserPrincipleName()
+		if err != nil {
+			log.Errorf("failed to get user principle name: %v", err)
+		}
+		if triggeredBy == "" {
+			triggeredBy, err = jh.accounts.GetServicePrincipalAppIdFromToken()
+			if err != nil {
+				log.Errorf("failed to get service principal app id: %v", err)
+			}
+		}
+	} else if triggeredBy == "<nil>" {
 		triggeredBy = ""
 	}
 

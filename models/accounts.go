@@ -58,7 +58,16 @@ func (accounts Accounts) GetUserAccountUserPrincipleName() (string, error) {
 	return getUserPrincipleNameFromToken(accounts.token)
 }
 
+// GetServicePrincipalAppIdFromToken get the service principal app id represented in a token
+func (accounts Accounts) GetServicePrincipalAppIdFromToken() (string, error) {
+	return getTokenClaim(accounts.token, "appId")
+}
+
 func getUserPrincipleNameFromToken(token string) (string, error) {
+	return getTokenClaim(token, "upn")
+}
+
+func getTokenClaim(token string, claim string) (string, error) {
 	claims := jwt.MapClaims{}
 	parser := jwt.Parser{}
 	_, _, err := parser.ParseUnverified(token, claims)
@@ -66,6 +75,5 @@ func getUserPrincipleNameFromToken(token string) (string, error) {
 		return "", fmt.Errorf("could not parse token (%v)", err)
 	}
 
-	userPrincipleName := fmt.Sprintf("%v", claims["upn"])
-	return userPrincipleName, nil
+	return fmt.Sprintf("%v", claims[claim]), nil
 }
