@@ -14,7 +14,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
