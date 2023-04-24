@@ -335,90 +335,6 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	assert.Equal(t, "Error: app name cannot be empty", errorResponse.Message)
 }
 
-func TestCreateApplication_WhenRepoIsNotSet_DoNotGenerateDeployKey(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	parameters := AnApplicationRegistration().withRepository("").BuildApplicationRegistrationRequest()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	application := applicationModels.ApplicationRegistration{}
-	controllertest.GetResponseBody(response, &application)
-	assert.Equal(t, "", application.PublicKey)
-}
-
-func TestCreateApplication_WhenRepoIsSetAnDeployKeyIsNot_GenerateDeployKey(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-1").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
-	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
-	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
-}
-
-func TestCreateApplication_WhenOnlyOnePartOfDeployKeyIsSet_ReturnError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withPublicKey("Any public key").
-		BuildApplicationRegistrationRequest()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := applicationModels.OnePartOfDeployKeyIsNotAllowed()
-	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-
-	parameters = AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withPrivateKey("Any private key").
-		BuildApplicationRegistrationRequest()
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response = <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ = controllertest.GetErrorResponse(response)
-	expectedError = applicationModels.OnePartOfDeployKeyIsNotAllowed()
-	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-}
-
-func TestCreateApplication_WhenDeployKeyIsSet_DoNotGenerateDeployKey(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withPublicKey("Any public key").
-		withPrivateKey("Any private key").
-		BuildApplicationRegistrationRequest()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
-	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
-	assert.Equal(t, "Any public key", applicationRegistrationUpsertResponse.ApplicationRegistration.PublicKey)
-}
-
 func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
@@ -497,8 +413,6 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 	parameters := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		withPublicKey("Any public key").
-		withPrivateKey("Any private key").
 		withConfigBranch("").
 		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -519,8 +433,6 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 	parameters := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/any-repo").
-		withPublicKey("Any public key").
-		withPrivateKey("Any private key").
 		withConfigBranch(configBranch).
 		BuildApplicationRegistrationRequest()
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -563,8 +475,6 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 			parameters := AnApplicationRegistration().
 				withName("any-name").
 				withRepository("https://github.com/Equinor/any-repo").
-				withPublicKey("Any public key").
-				withPrivateKey("Any private key").
 				withConfigBranch(configBranch).
 				withRadixConfigFullName(scenario.radixConfigFullName).
 				BuildApplicationRegistrationRequest()
@@ -586,24 +496,6 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestGetApplication_ShouldNeverReturnPrivatePartOfDeployKey(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("some-app").
-		WithPublicKey("some-public-key").
-		WithPrivateKey("some-private-key"))
-
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "some-app"))
-	response := <-responseChannel
-
-	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
-
-	assert.Equal(t, "", application.Registration.PrivateKey)
 }
 
 func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
@@ -887,8 +779,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	builder := AnApplicationRegistration().
 		withName("any-name").
 		withRepository("https://github.com/Equinor/a-repo").
-		withSharedSecret("").
-		withPublicKey("")
+		withSharedSecret("")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
 	<-responseChannel
 
@@ -958,7 +849,6 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		withName("any-name").
 		withRepository("https://github.com/Equinor/a-repo").
 		withSharedSecret("").
-		withPublicKey("").
 		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
 		withOwner("AN_OWNER@equinor.com").
 		withWBS("T.O123A.AZ.45678").
@@ -1445,71 +1335,6 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 	pipelines := make([]string, 0)
 	controllertest.GetResponseBody(response, &pipelines)
 	assert.Equal(t, len(supportedPipelines), len(pipelines))
-}
-
-func TestRegenerateDeployKey_WhenSecretProvided_GenerateNewDeployKeyAndSetSecret(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	appName := "any-name"
-	origSharedSecret := "Orig shared secret"
-	origDeployPublicKey := "Orig public key"
-	parameters := AnApplicationRegistration().
-		withName(appName).
-		withRepository("https://github.com/Equinor/any-repo").
-		withSharedSecret(origSharedSecret).
-		withPrivateKey(origDeployPublicKey).
-		withPublicKey("Orig private key").
-		BuildApplicationRegistrationRequest()
-
-	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-appResponseChannel
-
-	newSharedSecret := "new shared secret"
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret(newSharedSecret).
-		Build()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
-	response := <-responseChannel
-
-	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
-	controllertest.GetResponseBody(response, &deployKeyAndSecret)
-	assert.Equal(t, http.StatusOK, response.Code)
-	assert.NotEqual(t, origDeployPublicKey, deployKeyAndSecret.PublicDeployKey)
-	assert.True(t, strings.Contains(deployKeyAndSecret.PublicDeployKey, "ssh-rsa "))
-	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
-}
-
-func TestRegenerateDeployKey_WhenSecretNotProvided_Fails(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-
-	// Test
-	appName := "any-name"
-	parameters := AnApplicationRegistration().
-		withName(appName).
-		withRepository("https://github.com/Equinor/any-repo").
-		withSharedSecret("Orig shared secret").
-		withPrivateKey("Orig public key").
-		withPublicKey("Orig private key").
-		BuildApplicationRegistrationRequest()
-
-	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-appResponseChannel
-
-	newSharedSecret := ""
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret(newSharedSecret).
-		Build()
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
-	response := <-responseChannel
-
-	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
-	controllertest.GetResponseBody(response, &deployKeyAndSecret)
-	assert.NotEqual(t, http.StatusOK, response.Code)
-	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
-	assert.Empty(t, deployKeyAndSecret.SharedSecret)
 }
 
 func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
