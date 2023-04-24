@@ -72,20 +72,9 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
 
-	triggeredBy := jobSpec.TriggeredBy
-	if triggeredBy == "" {
-		triggeredBy, err := jh.accounts.GetUserAccountUserPrincipleName()
-		if err != nil {
-			log.Errorf("failed to get user principle name: %v", err)
-		}
-		if triggeredBy == "" {
-			triggeredBy, err = jh.accounts.GetServicePrincipalAppIdFromToken()
-			if err != nil {
-				log.Errorf("failed to get service principal app id: %v", err)
-			}
-		}
-	} else if triggeredBy == "<nil>" {
-		triggeredBy = ""
+	triggeredBy, err := jh.getTriggeredBy(jobSpec)
+	if err != nil {
+		log.Errorf("failed to get triggeredBy: %v", err)
 	}
 
 	switch pipeline.Type {
@@ -134,6 +123,27 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	}
 
 	return &job
+}
+
+func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, error) {
+	triggeredBy := jobSpec.TriggeredBy
+	if triggeredBy == "<nil>" {
+		return "", nil
+	}
+	if triggeredBy != "" {
+		return triggeredBy, nil
+	}
+	triggeredBy, err := jh.accounts.GetUserAccountUserPrincipleName()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user principle name: %w", err)
+	}
+	if triggeredBy == "" {
+		triggeredBy, err = jh.accounts.GetServicePrincipalAppIdFromToken()
+		if err != nil {
+			return "", fmt.Errorf("failed to get service principal app id: %w", err)
+		}
+	}
+	return triggeredBy, nil
 }
 
 func getPipelineTag() string {
