@@ -62,10 +62,10 @@ type getSecretScenario struct {
 	name                   string
 	components             []v1.RadixDeployComponent
 	jobs                   []v1.RadixDeployJobComponent
-	init                   *func(*SecretHandler) //scenario optional custom init function
+	init                   *func(*SecretHandler) // scenario optional custom init function
 	existingSecrets        []secretDescription
 	expectedSecrets        []secretModels.Secret
-	expectedSecretVersions map[string]map[string]map[string]map[string]map[string]bool //map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	expectedSecretVersions map[string]map[string]map[string]map[string]map[string]bool // map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 }
 
 type changeSecretScenario struct {
@@ -583,7 +583,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 				scenario.setExpectedSecretVersion(componentName2, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret3, "version-c21", "replica-name-c21")
 				scenario.setExpectedSecretVersion(jobName1, keyVaultName2, v1.RadixAzureKeyVaultObjectTypeSecret, secret2, "version-j1", "replica-name-j1")
 				initFunc := func(secretHandler *SecretHandler) {
-					//map[componentName]map[azureKeyVaultName]secretProviderClassAndSecret
+					// map[componentName]map[azureKeyVaultName]secretProviderClassAndSecret
 					componentAzKeyVaultSecretProviderClassNameMap := map[string]map[string]secretProviderClassAndSecret{
 						componentName1: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0]),
 						componentName2: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[1]),
@@ -603,7 +603,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 				}
 				scenario.jobs = []v1.RadixDeployJobComponent{createRadixDeployJobComponent(jobName1, keyVaultName2, secret2, secretEnvVar2)}
 				initFunc := func(secretHandler *SecretHandler) {
-					//map[componentName]map[azureKeyVaultName]createSecretProviderClassName
+					// map[componentName]map[azureKeyVaultName]createSecretProviderClassName
 					componentAzKeyVaultSecretProviderClassNameMap := map[string]map[string]secretProviderClassAndSecret{
 						componentName1: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0]),
 						componentName2: createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[1]),
@@ -624,7 +624,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 		s.Run(fmt.Sprintf("test GetSecretsStatus: %s", scenario.name), func() {
 			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
 
-			actualSecretVersions := make(map[string]map[string]map[string]map[string]map[string]bool) //map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+			actualSecretVersions := make(map[string]map[string]map[string]map[string]map[string]bool) // map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 			for _, component := range scenario.components {
 				s.appendActualSecretVersions(&component, secretHandler, appName, environment, actualSecretVersions)
 			}
@@ -637,16 +637,16 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 }
 
 func (s *secretHandlerTestSuite) appendActualSecretVersions(component v1.RadixCommonDeployComponent, secretHandler SecretHandler, appName string, environment string, actualSecretVersions map[string]map[string]map[string]map[string]map[string]bool) {
-	azureKeyVaultMap := make(map[string]map[string]map[string]map[string]bool) //map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	azureKeyVaultMap := make(map[string]map[string]map[string]map[string]bool) // map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 	for _, azureKeyVault := range component.GetSecretRefs().AzureKeyVaults {
-		itemSecretMap := make(map[string]map[string]map[string]bool) //map[secretId]map[version]map[replicaName]bool
+		itemSecretMap := make(map[string]map[string]map[string]bool) // map[secretId]map[version]map[replicaName]bool
 		for _, item := range azureKeyVault.Items {
 			secretId := secret.GetSecretIdForAzureKeyVaultItem(&item)
 
 			secretVersions, err := secretHandler.GetAzureKeyVaultSecretVersions(appName, environment, component.GetName(), azureKeyVault.Name, secretId)
 			s.Nil(err)
 
-			versionReplicaNameMap := make(map[string]map[string]bool) //map[version]map[replicaName]bool
+			versionReplicaNameMap := make(map[string]map[string]bool) // map[version]map[replicaName]bool
 			for _, secretVersion := range secretVersions {
 				if _, ok := versionReplicaNameMap[secretVersion.Version]; !ok {
 					versionReplicaNameMap[secretVersion.Version] = make(map[string]bool)
@@ -1989,7 +1989,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 }
 
 func (s *secretHandlerTestSuite) assertSecretVersionStatuses(expectedVersionsMap map[string]map[string]map[string]map[string]map[string]bool, actualVersionsMap map[string]map[string]map[string]map[string]map[string]bool) {
-	//maps: map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	// maps: map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 	s.Equal(len(expectedVersionsMap), len(actualVersionsMap), "Not equal component count")
 	for componentName, actualAzureKeyVaultMap := range actualVersionsMap {
 		expectedAzureKeyVaultMap, ok := expectedVersionsMap[componentName]
@@ -2046,7 +2046,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	envNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	rd, _ := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 	if scenario.init != nil {
-		(*scenario.init)(&secretHandler) //scenario optional custom init function
+		(*scenario.init)(&secretHandler) // scenario optional custom init function
 	}
 	for _, secret := range scenario.existingSecrets {
 		_, _ = kubeClient.CoreV1().Secrets(envNamespace).Create(context.Background(), &corev1.Secret{
@@ -2068,7 +2068,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 }
 
 func (s *secretHandlerTestSuite) createExpectedReplicas(scenario *getSecretScenario, component v1.RadixCommonDeployComponent, userAccount *models.Account, appName, envNamespace string, isJobComponent bool) {
-	//map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	// map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 	if azureKeyVaultNameMap, ok := scenario.expectedSecretVersions[component.GetName()]; ok {
 		replicaNameMap := make(map[string]bool)
 		for _, secretIdMap := range azureKeyVaultNameMap {
@@ -2200,7 +2200,7 @@ func (scenario *getSecretScenario) setExpectedSecretStatus(componentName, secret
 func (scenario *getSecretScenario) setExpectedSecretVersion(componentName, azureKeyVaultName string, secretType v1.RadixAzureKeyVaultObjectType, secretName, version, replicaName string) {
 	secretId := fmt.Sprintf("%s/%s", string(secretType), secretName)
 	if scenario.expectedSecretVersions == nil {
-		scenario.expectedSecretVersions = make(map[string]map[string]map[string]map[string]map[string]bool) //map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+		scenario.expectedSecretVersions = make(map[string]map[string]map[string]map[string]map[string]bool) // map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 	}
 	if _, ok := scenario.expectedSecretVersions[componentName]; !ok {
 		scenario.expectedSecretVersions[componentName] = make(map[string]map[string]map[string]map[string]bool)
@@ -2371,7 +2371,7 @@ func createRadixDeployJobComponent(componentName, keyVaultName, secretName, envV
 func createSecretProviderClass(secretProviderClient secretProviderClient.Interface, radixDeploymentName string, component v1.RadixCommonDeployComponent) map[string]secretProviderClassAndSecret {
 	azureKeyVaultSecretProviderClassNameMap := make(map[string]secretProviderClassAndSecret)
 	for _, azureKeyVault := range component.GetSecretRefs().AzureKeyVaults {
-		secretProviderClass, err := kube.BuildAzureKeyVaultSecretProviderClass(tenantId, anyAppName, radixDeploymentName, component.GetName(), azureKeyVault)
+		secretProviderClass, err := kube.BuildAzureKeyVaultSecretProviderClass(tenantId, anyAppName, radixDeploymentName, component.GetName(), azureKeyVault, component.GetIdentity())
 		if err != nil {
 			panic(err)
 		}
@@ -2386,14 +2386,14 @@ func createSecretProviderClass(secretProviderClient secretProviderClient.Interfa
 			className:  secretProviderClass.GetName(),
 		}
 	}
-	return azureKeyVaultSecretProviderClassNameMap //map[componentName]map[azureKeyVaultName]createSecretProviderClassName
+	return azureKeyVaultSecretProviderClassNameMap // map[componentName]map[azureKeyVaultName]createSecretProviderClassName
 }
 
 func createSecretProviderClassPodStatuses(secretProviderClient secretProviderClient.Interface, scenario *getSecretScenario, componentAzKeyVaultSecretProviderClassNameMap map[string]map[string]secretProviderClassAndSecret) {
 	namespace := operatorUtils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
-	//scenario.expectedSecretVersions: map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
+	// scenario.expectedSecretVersions: map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
 	for componentName, azKeyVaultMap := range scenario.expectedSecretVersions {
-		//componentAzKeyVaultSecretProviderClassNameMap map[componentName]map[AzureKeyVault]SecretName
+		// componentAzKeyVaultSecretProviderClassNameMap map[componentName]map[AzureKeyVault]SecretName
 		secretProviderClassNameMap, ok := componentAzKeyVaultSecretProviderClassNameMap[componentName]
 		if !ok {
 			continue
@@ -2410,15 +2410,15 @@ func createSecretProviderClassPodStatuses(secretProviderClient secretProviderCli
 }
 
 func createSecretProviderClassPodStatusesForAzureKeyVault(secretProviderClient secretProviderClient.Interface, namespace string, secretProviderClassObjectsMap map[string][]secretsstorev1.SecretProviderClassObject, secretProviderClassName string) {
-	//secretProviderClassObjects map[replicaName]SecretProviderClassObject
+	// secretProviderClassObjects map[replicaName]SecretProviderClassObject
 	for replicaName, secretProviderClassObjects := range secretProviderClassObjectsMap {
 		_, err := secretProviderClient.SecretsstoreV1().SecretProviderClassPodStatuses(namespace).Create(context.Background(),
 			&secretsstorev1.SecretProviderClassPodStatus{
-				ObjectMeta: metav1.ObjectMeta{Name: utils.RandString(10)}, //Name is not important
+				ObjectMeta: metav1.ObjectMeta{Name: utils.RandString(10)}, // Name is not important
 				Status: secretsstorev1.SecretProviderClassPodStatusStatus{
 					PodName:                 replicaName,
 					SecretProviderClassName: secretProviderClassName,
-					Objects:                 secretProviderClassObjects, //Secret id/version pairs
+					Objects:                 secretProviderClassObjects, // Secret id/version pairs
 				},
 			}, metav1.CreateOptions{})
 		if err != nil {
@@ -2428,8 +2428,8 @@ func createSecretProviderClassPodStatusesForAzureKeyVault(secretProviderClient s
 }
 
 func getReplicaNameToSecretProviderClassObjectsMap(secretIdMap map[string]map[string]map[string]bool) map[string][]secretsstorev1.SecretProviderClassObject {
-	//secretIdMap: map[secretId]map[version]map[replicaName]bool
-	objectsMap := make(map[string][]secretsstorev1.SecretProviderClassObject) //map[replicaName]SecretProviderClassObject
+	// secretIdMap: map[secretId]map[version]map[replicaName]bool
+	objectsMap := make(map[string][]secretsstorev1.SecretProviderClassObject) // map[replicaName]SecretProviderClassObject
 	for secretId, versionReplicaNameMap := range secretIdMap {
 		for version, replicaNameMap := range versionReplicaNameMap {
 			for replicaName := range replicaNameMap {
