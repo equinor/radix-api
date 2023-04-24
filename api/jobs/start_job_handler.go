@@ -127,10 +127,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 
 func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, error) {
 	triggeredBy := jobSpec.TriggeredBy
-	if triggeredBy == "<nil>" {
-		return "", nil
-	}
-	if triggeredBy != "" {
+	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy, nil
 	}
 	triggeredBy, err := jh.accounts.GetUserAccountUserPrincipleName()
