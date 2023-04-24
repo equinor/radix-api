@@ -60,7 +60,7 @@ func (accounts Accounts) GetUserAccountUserPrincipleName() (string, error) {
 
 // GetServicePrincipalAppIdFromToken get the service principal app id represented in a token
 func (accounts Accounts) GetServicePrincipalAppIdFromToken() (string, error) {
-	return getTokenClaim(accounts.token, "appId")
+	return getTokenClaim(accounts.token, "appid")
 }
 
 func getUserPrincipleNameFromToken(token string) (string, error) {
