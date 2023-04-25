@@ -134,7 +134,7 @@ func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, e
 	if err != nil {
 		return "", fmt.Errorf("failed to get user principle name: %w", err)
 	}
-	if triggeredBy == "" {
+	if triggeredBy == "" || triggeredBy == "<nil>" {
 		triggeredBy, err = jh.accounts.GetServicePrincipalAppIdFromToken()
 		if err != nil {
 			return "", fmt.Errorf("failed to get service principal app id: %w", err)
