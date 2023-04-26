@@ -49,23 +49,49 @@ type Accounts struct {
 	impersonation  radixmodels.Impersonation
 }
 
-// GetUserAccountUserPrincipleName get the user principle name represented in UserAccount
-func (accounts Accounts) GetUserAccountUserPrincipleName() (string, error) {
+// GetOriginator get the request originator name or id
+func (accounts Accounts) GetOriginator() (string, error) {
 	if accounts.impersonation.PerformImpersonation() {
 		return accounts.impersonation.User, nil
 	}
-
-	return getUserPrincipleNameFromToken(accounts.token)
+	if originator, err, done := accounts.getOriginator("upn", ""); done {
+		return originator, err
+	}
+	if originator, err, done := accounts.getOriginator("app_displayname", ""); done {
+		return originator, err
+	}
+	if originator, err, done := accounts.getOriginator("appid", "%s (appid)"); done {
+		return originator, err
+	}
+	if originator, err, done := accounts.getOriginator("sub", "%s (sub)"); done {
+		return originator, err
+	}
+	return "", nil
 }
 
-func getUserPrincipleNameFromToken(token string) (string, error) {
+func (accounts Accounts) getOriginator(claim, format string) (string, error, bool) {
+	originator, err := getTokenClaim(accounts.token, claim)
+	if err != nil {
+		return "", err, true
+	}
+	if originator == "" {
+		return "", nil, false
+	}
+	if format != "" {
+		return fmt.Sprintf(format, originator), nil, true
+	}
+	return originator, nil, true
+}
+
+func getTokenClaim(token string, claim string) (string, error) {
 	claims := jwt.MapClaims{}
 	parser := jwt.Parser{}
 	_, _, err := parser.ParseUnverified(token, claims)
 	if err != nil {
 		return "", fmt.Errorf("could not parse token (%v)", err)
 	}
-
-	userPrincipleName := fmt.Sprintf("%v", claims["upn"])
-	return userPrincipleName, nil
+	if val, ok := claims[claim]; ok {
+		return fmt.Sprintf("%v", val), nil
+	}
+	return "", nil
 }

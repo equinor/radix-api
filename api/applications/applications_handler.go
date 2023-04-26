@@ -159,7 +159,7 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 		application.PrivateKey = deployKey.PrivateKey
 	}
 
-	creator, err := ah.accounts.GetUserAccountUserPrincipleName()
+	creator, err := ah.accounts.GetOriginator()
 	if err != nil {
 		return nil, err
 	}
