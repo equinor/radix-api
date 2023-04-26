@@ -142,7 +142,7 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 
 	application := applicationRegistrationRequest.ApplicationRegistration
 
-	creator, err := ah.accounts.GetUserAccountUserPrincipleName()
+	creator, err := ah.accounts.GetOriginator()
 	if err != nil {
 		return nil, err
 	}

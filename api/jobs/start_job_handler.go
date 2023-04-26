@@ -127,21 +127,12 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 
 func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, error) {
 	triggeredBy := jobSpec.TriggeredBy
-	if triggeredBy == "<nil>" {
-		return "", nil
-	}
-	if triggeredBy != "" {
+	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy, nil
 	}
-	triggeredBy, err := jh.accounts.GetUserAccountUserPrincipleName()
+	triggeredBy, err := jh.accounts.GetOriginator()
 	if err != nil {
-		return "", fmt.Errorf("failed to get user principle name: %w", err)
-	}
-	if triggeredBy == "" {
-		triggeredBy, err = jh.accounts.GetServicePrincipalAppIdFromToken()
-		if err != nil {
-			return "", fmt.Errorf("failed to get service principal app id: %w", err)
-		}
+		return "", fmt.Errorf("failed to get originator: %w", err)
 	}
 	return triggeredBy, nil
 }
