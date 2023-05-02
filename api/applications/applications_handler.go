@@ -665,10 +665,28 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 	updatedRegistration.Spec.DeployKeyPublic = ""
 	updatedRegistration.Spec.DeployKey = ""
 
-	// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
-	err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
-	if err != nil {
-		return err
+	if regenerateDeployKeyAndSecretData.PrivateKey != "" {
+		// Deriving the public key from the private key in order to test it for validity
+		_, err := crdUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("failed to derive public key from private key: %v", err)
+		}
+		exisingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		newSecret := exisingSecret.DeepCopy()
+		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
+		_, err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Update(context.TODO(), newSecret, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
+		err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	setConfigBranchToFallbackWhenEmpty(updatedRegistration)
