@@ -127,6 +127,11 @@ type AzureIdentity struct {
 	//
 	// required: true
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// The Azure Key Vaults names, which use Azure Identity
+	//
+	// required: false
+	AzureKeyVaults []string `json:"azureKeyVaults,omitempty"`
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component

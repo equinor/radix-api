@@ -121,9 +121,11 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	secretRef := component.GetSecretRefs()
 	if secretRef.AzureKeyVaults != nil {
 		for _, azureKeyVault := range secretRef.AzureKeyVaults {
-			secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
-			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientIdSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
+			if azureKeyVault.UseAzureIdentity == nil || !*azureKeyVault.UseAzureIdentity {
+				secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(component.GetName(), azureKeyVault.Name)
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientIdSuffix)
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureKeyVaultCredsClientSecretSuffix)
+			}
 			for _, item := range azureKeyVault.Items {
 				b.secrets = append(b.secrets, secret.GetSecretNameForAzureKeyVaultItem(component.GetName(), azureKeyVault.Name, &item))
 			}
@@ -154,6 +156,11 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.identity.Azure = &AzureIdentity{}
 			b.identity.Azure.ClientId = azure.ClientId
 			b.identity.Azure.ServiceAccountName = utils.GetComponentServiceAccountName(component.GetName())
+			for _, azureKeyVault := range component.GetSecretRefs().AzureKeyVaults {
+				if azureKeyVault.UseAzureIdentity != nil && *azureKeyVault.UseAzureIdentity {
+					b.identity.Azure.AzureKeyVaults = append(b.identity.Azure.AzureKeyVaults, azureKeyVault.Name)
+				}
+			}
 		}
 	}
 
