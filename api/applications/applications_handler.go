@@ -635,8 +635,8 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 	}
 
 	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
-	if len(sharedKey) == 0 {
-		return fmt.Errorf("shared secret cannot be empty")
+	if len(sharedKey) != 0 {
+		existingRegistration.Spec.SharedSecret = sharedKey
 	}
 
 	// Deleting SSH keys from RRs where these deprecated fields are populated
@@ -649,7 +649,6 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 		return err
 	}
 
-	existingRegistration.Spec.SharedSecret = sharedKey
 	setConfigBranchToFallbackWhenEmpty(existingRegistration)
 
 	err = ah.isValidUpdate(existingRegistration)

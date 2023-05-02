@@ -5,6 +5,11 @@ package models
 type RegenerateDeployKeyAndSecretData struct {
 	// SharedSecret of the shared secret
 	//
-	// required: true
+	// required: false
 	SharedSecret string `json:"sharedSecret"`
+
+	// PrivateKey of the deploy key
+	//
+	// required: false
+	PrivateKey string `json:"privateKey"`
 }

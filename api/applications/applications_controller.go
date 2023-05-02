@@ -441,12 +441,12 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory(accounts)
-	var sharedSecret applicationModels.RegenerateDeployKeyAndSecretData
-	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
+	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyAndSecretData
+	if err := json.NewDecoder(r.Body).Decode(&sharedSecretAndPrivateKey); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
-	err := handler.RegenerateDeployKey(appName, sharedSecret)
+	err := handler.RegenerateDeployKey(appName, sharedSecretAndPrivateKey)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
