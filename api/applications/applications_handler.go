@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"net/http"
 	"strings"
 	"time"
@@ -138,11 +137,29 @@ func (ah *ApplicationHandler) RegenerateMachineUserToken(appName string) (*appli
 
 // RegisterApplication handler for RegisterApplication
 func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	// Only if repository is provided and deploykey is not set by user
+	// generate the key
+	var deployKey *utils.DeployKey
 	var err error
 
 	application := applicationRegistrationRequest.ApplicationRegistration
+	if (strings.TrimSpace(application.PublicKey) == "" && strings.TrimSpace(application.PrivateKey) != "") ||
+		(strings.TrimSpace(application.PublicKey) != "" && strings.TrimSpace(application.PrivateKey) == "") {
+		return nil, applicationModels.OnePartOfDeployKeyIsNotAllowed()
+	}
 
-	creator, err := ah.accounts.GetUserAccountUserPrincipleName()
+	if strings.TrimSpace(application.Repository) != "" &&
+		strings.TrimSpace(application.PublicKey) == "" {
+		deployKey, err = utils.GenerateDeployKey()
+		if err != nil {
+			return nil, err
+		}
+
+		application.PublicKey = deployKey.PublicKey
+		application.PrivateKey = deployKey.PrivateKey
+	}
+
+	creator, err := ah.accounts.GetOriginator()
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +178,7 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 
 	radixRegistration, err := NewBuilder().
 		withAppRegistration(application).
+		withDeployKey(deployKey).
 		withCreator(creator).
 		withRadixConfigFullName(application.RadixConfigFullName).
 		BuildRR()
@@ -168,7 +186,7 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 		return nil, err
 	}
 
-	err = ah.isValidRegistration(radixRegistration)
+	err = ah.isValidRegistrationInsert(radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -179,13 +197,14 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 		}
 	}
 
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(context.TODO(), radixRegistration, metav1.CreateOptions{})
+	radixRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(context.TODO(), radixRegistration, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	newApplication := NewBuilder().withRadixRegistration(radixRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
-		ApplicationRegistration: application,
+		ApplicationRegistration: &newApplication,
 	}, nil
 }
 
@@ -223,7 +242,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(appName string, applicat
 	}
 
 	// Make check that this is an existing application
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -233,145 +252,147 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(appName string, applicat
 		return nil, err
 	}
 
-	currentCloneURL := existingRegistration.Spec.CloneURL //currently repository is not changed here, but maybe later
-	// Only these fields can change over time
-	existingRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
-	existingRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
-	existingRegistration.Spec.DeployKey = radixRegistration.Spec.DeployKey
-	existingRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
-	existingRegistration.Spec.Owner = radixRegistration.Spec.Owner
-	existingRegistration.Spec.WBS = radixRegistration.Spec.WBS
-	existingRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
-	existingRegistration.Spec.RadixConfigFullName = radixRegistration.Spec.RadixConfigFullName
+	updatedRegistration := currentRegistration.DeepCopy()
 
-	err = ah.isValidUpdate(existingRegistration)
+	// Only these fields can change over time
+	updatedRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
+	updatedRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
+	updatedRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+	updatedRegistration.Spec.Owner = radixRegistration.Spec.Owner
+	updatedRegistration.Spec.WBS = radixRegistration.Spec.WBS
+	updatedRegistration.Spec.ConfigurationItem = radixRegistration.Spec.ConfigurationItem
+	updatedRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
+	updatedRegistration.Spec.RadixConfigFullName = radixRegistration.Spec.RadixConfigFullName
+
+	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
 	if err != nil {
 		return nil, err
 	}
 
-	needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+	needToRevalidateWarnings := updatedRegistration.Spec.CloneURL != currentRegistration.Spec.CloneURL
 	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
 		if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(radixRegistration); upsertResponse != nil || err != nil {
 			return upsertResponse, err
 		}
 	}
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
+	updatedRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), updatedRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	updatedApplication := NewBuilder().withRadixRegistration(updatedRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
-		ApplicationRegistration: application,
+		ApplicationRegistration: &updatedApplication,
 	}, nil
 }
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah *ApplicationHandler) ModifyRegistrationDetails(appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
 	// Make check that this is an existing application
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	payload := []patch{}
-
 	runUpdate := false
+	updatedRegistration := currentRegistration.DeepCopy()
+
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
-	if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) > 0 && !radixutils.ArrayEqualElements(existingRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
-		existingRegistration.Spec.AdGroups = *patchRequest.AdGroups
+	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
-		runUpdate = true
-	} else if patchRequest.AdGroups != nil && len(*patchRequest.AdGroups) == 0 {
-		existingRegistration.Spec.AdGroups = nil
-		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: nil})
 		runUpdate = true
 	}
 
 	if patchRequest.Owner != nil && *patchRequest.Owner != "" {
-		existingRegistration.Spec.Owner = *patchRequest.Owner
+		updatedRegistration.Spec.Owner = *patchRequest.Owner
 		payload = append(payload, patch{Op: "replace", Path: "/spec/owner", Value: *patchRequest.Owner})
 		runUpdate = true
 	}
 
-	currentCloneURL := existingRegistration.Spec.CloneURL
 	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
 		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
-		existingRegistration.Spec.CloneURL = cloneURL
+		updatedRegistration.Spec.CloneURL = cloneURL
 		payload = append(payload, patch{Op: "replace", Path: "/spec/cloneURL", Value: cloneURL})
 		runUpdate = true
 	}
 
-	if patchRequest.MachineUser != nil && *patchRequest.MachineUser != existingRegistration.Spec.MachineUser {
+	if patchRequest.MachineUser != nil && *patchRequest.MachineUser != currentRegistration.Spec.MachineUser {
 		if *patchRequest.MachineUser {
 			return nil, fmt.Errorf("machine user token is deprecated. Please use AD Service principal access token https://radix.equinor.com/guides/deploy-only/#ad-service-principal-access-token")
 		}
-		existingRegistration.Spec.MachineUser = *patchRequest.MachineUser
+		updatedRegistration.Spec.MachineUser = *patchRequest.MachineUser
 		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
 		runUpdate = true
 	}
 
 	if patchRequest.WBS != nil && *patchRequest.WBS != "" {
-		existingRegistration.Spec.WBS = *patchRequest.WBS
+		updatedRegistration.Spec.WBS = *patchRequest.WBS
 		payload = append(payload, patch{Op: "replace", Path: "/spec/wbs", Value: *patchRequest.WBS})
 		runUpdate = true
 	}
 
 	if patchRequest.ConfigBranch != nil {
 		if trimmedBranch := strings.TrimSpace(*patchRequest.ConfigBranch); trimmedBranch != "" {
-			existingRegistration.Spec.ConfigBranch = trimmedBranch
+			updatedRegistration.Spec.ConfigBranch = trimmedBranch
 			payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: trimmedBranch})
 			runUpdate = true
 		}
 	}
 
-	if setConfigBranchToFallbackWhenEmpty(existingRegistration) {
+	if setConfigBranchToFallbackWhenEmpty(updatedRegistration) {
 		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
 		runUpdate = true
 	}
 
 	radixConfigFullName := cleanFileFullName(patchRequest.RadixConfigFullName)
-	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, existingRegistration.Spec.RadixConfigFullName) {
+	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, currentRegistration.Spec.RadixConfigFullName) {
 		err := radixvalidators.ValidateRadixConfigFullName(radixConfigFullName)
 		if err != nil {
 			return nil, err
 		}
-		existingRegistration.Spec.RadixConfigFullName = radixConfigFullName
+		updatedRegistration.Spec.RadixConfigFullName = radixConfigFullName
 		payload = append(payload, patch{Op: "replace", Path: "/spec/radixConfigFullName", Value: radixConfigFullName})
 		runUpdate = true
 	}
 
 	if patchRequest.ConfigurationItem != nil {
 		if trimmedConfigurationItem := strings.TrimSpace(*patchRequest.ConfigurationItem); trimmedConfigurationItem != "" {
-			existingRegistration.Spec.ConfigurationItem = trimmedConfigurationItem
+			updatedRegistration.Spec.ConfigurationItem = trimmedConfigurationItem
 			payload = append(payload, patch{Op: "replace", Path: "/spec/configurationItem", Value: trimmedConfigurationItem})
 			runUpdate = true
 		}
 	}
 
 	if runUpdate {
-		err = ah.isValidUpdate(existingRegistration)
+		err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
 		if err != nil {
 			return nil, err
 		}
 
-		needToRevalidateWarnings := currentCloneURL != existingRegistration.Spec.CloneURL
+		needToRevalidateWarnings := currentRegistration.Spec.CloneURL != updatedRegistration.Spec.CloneURL
 		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
-			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(existingRegistration); upsertResponse != nil || err != nil {
+			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(updatedRegistration); upsertResponse != nil || err != nil {
 				return upsertResponse, err
 			}
 		}
 
-		payloadBytes, _ := json.Marshal(payload)
-		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(context.TODO(), existingRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+
+		updatedRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(context.TODO(), updatedRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	application := NewBuilder().withRadixRegistration(existingRegistration).Build()
+	updatedApplication := NewBuilder().withRadixRegistration(updatedRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
-		ApplicationRegistration: &application,
+		ApplicationRegistration: &updatedApplication,
 	}, nil
 }
 
@@ -542,21 +563,39 @@ func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v
 	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
 }
 
-func (ah *ApplicationHandler) isValidRegistration(radixRegistration *v1.RadixRegistration) error {
+func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationValidators()...)
+	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
 }
 
-func (ah *ApplicationHandler) isValidUpdate(radixRegistration *v1.RadixRegistration) error {
-	return radixvalidators.CanRadixRegistrationBeUpdated(radixRegistration, ah.getAdditionalRadixRegistrationValidators()...)
+func (ah *ApplicationHandler) isValidRegistrationUpdate(updatedRegistration, currentRegistration *v1.RadixRegistration) error {
+	return radixvalidators.CanRadixRegistrationBeUpdated(updatedRegistration, ah.getAdditionalRadixRegistrationUpdateValidators(currentRegistration)...)
 }
 
-func (ah *ApplicationHandler) getAdditionalRadixRegistrationValidators() []radixvalidators.RadixRegistrationValidator {
+func (ah *ApplicationHandler) getAdditionalRadixRegistrationInsertValidators() []radixvalidators.RadixRegistrationValidator {
 	var validators []radixvalidators.RadixRegistrationValidator
 
 	if ah.config.RequireAppConfigurationItem {
 		validators = append(validators, radixvalidators.RequireConfigurationItem)
+	}
+
+	if ah.config.RequireAppADGroups {
+		validators = append(validators, radixvalidators.RequireAdGroups)
+	}
+
+	return validators
+}
+
+func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(currentRegistration *v1.RadixRegistration) []radixvalidators.RadixRegistrationValidator {
+	var validators []radixvalidators.RadixRegistrationValidator
+
+	if ah.config.RequireAppConfigurationItem && currentRegistration != nil && len(currentRegistration.Spec.ConfigurationItem) > 0 {
+		validators = append(validators, radixvalidators.RequireConfigurationItem)
+	}
+
+	if ah.config.RequireAppADGroups && currentRegistration != nil && len(currentRegistration.Spec.AdGroups) > 0 {
+		validators = append(validators, radixvalidators.RequireAdGroups)
 	}
 
 	return validators
@@ -627,61 +666,40 @@ func (ah *ApplicationHandler) getMachineUserServiceAccount(appName, namespace st
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
-func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
+func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) (*applicationModels.DeployKeyAndSecret, error) {
 	// Make check that this is an existing application and user has access to it
-	existingRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
-	if len(sharedKey) != 0 {
-		existingRegistration.Spec.SharedSecret = sharedKey
-	}
-
-	// Deleting SSH keys from RRs where these deprecated fields are populated
-	existingRegistration.Spec.DeployKeyPublic = ""
-	existingRegistration.Spec.DeployKey = ""
-
-	// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
-	err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Delete(context.TODO(), defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	setConfigBranchToFallbackWhenEmpty(existingRegistration)
-
-	err = ah.isValidUpdate(existingRegistration)
-	if err != nil {
-		return err
-	}
-
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), existingRegistration, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ah *ApplicationHandler) GetDeployKeyAndSecret(appName string) (*applicationModels.DeployKeyAndSecret, error) {
-	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return nil, err
-		}
-	}
-	publicKey := ""
-	if cm != nil {
-		publicKey = cm.Data[defaults.GitPublicKeyConfigMapKey]
-	}
-	rr, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	sharedSecret := rr.Spec.SharedSecret
+
+	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
+	if len(sharedKey) == 0 {
+		return nil, fmt.Errorf("shared secret cannot be empty")
+	}
+	deployKey, err := utils.GenerateDeployKey()
+	if err != nil {
+		return nil, err
+	}
+
+	updatedRegistration := currentRegistration.DeepCopy()
+	updatedRegistration.Spec.DeployKey = deployKey.PrivateKey
+	updatedRegistration.Spec.DeployKeyPublic = deployKey.PublicKey
+	updatedRegistration.Spec.SharedSecret = sharedKey
+	setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+
+	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), updatedRegistration, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, err
+	}
 	return &applicationModels.DeployKeyAndSecret{
-		PublicDeployKey: publicKey,
-		SharedSecret:    sharedSecret,
+		PublicDeployKey: deployKey.PublicKey,
+		SharedSecret:    sharedKey,
 	}, nil
 }
 
