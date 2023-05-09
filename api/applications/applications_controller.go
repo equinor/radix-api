@@ -433,7 +433,7 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//   type: string
 	//   required: false
 	// responses:
-	//   "200":
+	//   "204":
 	//     description: Successful regenerate machine-user token
 	//   "401":
 	//     description: "Unauthorized"
