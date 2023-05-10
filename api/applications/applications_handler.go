@@ -705,10 +705,8 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 
 func (ah *ApplicationHandler) GetDeployKeyAndSecret(appName string) (*applicationModels.DeployKeyAndSecret, error) {
 	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return nil, err
-		}
+	if err != nil && !k8serrors.IsNotFound(err) {
+        return nil, err
 	}
 	publicKey := ""
 	if cm != nil {
