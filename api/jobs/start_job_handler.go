@@ -72,12 +72,9 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
 
-	triggeredBy := jobSpec.TriggeredBy
-	if triggeredBy == "" {
-		triggeredBy, _ = jh.accounts.GetUserAccountUserPrincipleName()
-	}
-	if triggeredBy == "<nil>" {
-		triggeredBy = ""
+	triggeredBy, err := jh.getTriggeredBy(jobSpec)
+	if err != nil {
+		log.Errorf("failed to get triggeredBy: %v", err)
 	}
 
 	switch pipeline.Type {
@@ -126,6 +123,18 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	}
 
 	return &job
+}
+
+func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, error) {
+	triggeredBy := jobSpec.TriggeredBy
+	if triggeredBy != "" && triggeredBy != "<nil>" {
+		return triggeredBy, nil
+	}
+	triggeredBy, err := jh.accounts.GetOriginator()
+	if err != nil {
+		return "", fmt.Errorf("failed to get originator: %w", err)
+	}
+	return triggeredBy, nil
 }
 
 func getPipelineTag() string {

@@ -83,22 +83,6 @@ We follow the [semantic version](https://semver.org/) as recommended by [go](htt
     git push origin v1.0.0
     ```
 
-### Manual redeployment on existing cluster
-
-#### Prerequisites
-
-1. Install draft (https://draft.sh/)
-2. `draft init` from project directory (inside `radix-api`)
-3. `draft config set registry radixdev.azurecr.io`
-4. `az acr login --name radixdev`
-
-#### Process
-
-1. Update version
-2. Execute `draft up` to install to dev environment of radix-api
-3. Wait for pods to start
-4. Go to `https://server-radix-api-dev.<cluster name>.dev.radix.equinor.com/swaggerui/` to see if the version in the swagger corresponds with the version you set in the header.
-
 ## Security Principle
 
 The Radix API server is meant to be the single point of entry for platform users to the platform (through the web console or a command line interface). They should not be able to access the Kubernetes API directly. Therefore the Radix API will limit what platform users will be able to do. Authentication is done through a bearer token, which essentially is relayed to the Kubernetes API to ensure that users only can see what they should be able to see, and therefore rely on the k8s AAD integration for authentication <sup><sup>1</sup></sup>.
