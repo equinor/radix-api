@@ -665,6 +665,18 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 	updatedRegistration.Spec.DeployKeyPublic = ""
 	updatedRegistration.Spec.DeployKey = ""
 
+	setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+
+	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
+	if err != nil {
+		return err
+	}
+
+	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), updatedRegistration, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
 	if regenerateDeployKeyAndSecretData.PrivateKey != "" {
 		// Deriving the public key from the private key in order to test it for validity
 		_, err := crdUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey)
@@ -689,24 +701,13 @@ func (ah *ApplicationHandler) RegenerateDeployKey(appName string, regenerateDepl
 		}
 	}
 
-	setConfigBranchToFallbackWhenEmpty(updatedRegistration)
-
-	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
-	if err != nil {
-		return err
-	}
-
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(context.TODO(), updatedRegistration, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
 func (ah *ApplicationHandler) GetDeployKeyAndSecret(appName string) (*applicationModels.DeployKeyAndSecret, error) {
 	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
-        return nil, err
+		return nil, err
 	}
 	publicKey := ""
 	if cm != nil {

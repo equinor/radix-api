@@ -1364,6 +1364,88 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	assert.Empty(t, deployKeyAndSecret.SharedSecret)
 }
 
+func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _ := setupTest(true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+
+	// Check that secret has been created
+	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(firstSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
+
+	// calling regenerate-deploy-key in order to delete secret
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret("new shared secret").
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+
+	// forcing resync of RR
+	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+
+	// Check that secret has been re-created and is different from first secret
+	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(secondSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
+	assert.NotEqual(t, firstSecret.Data[defaults.GitPrivateKeySecretKey], secondSecret.Data[defaults.GitPrivateKeySecretKey])
+}
+
+func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _ := setupTest(true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+
+	// make some valid private key
+	deployKey, err := builders.GenerateDeployKey()
+	assert.NoError(t, err)
+
+	// calling regenerate-deploy-key in order to set secret
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret("new shared secret").
+		WithPrivateKey(deployKey.PrivateKey).
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+
+	// forcing resync of RR
+	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+
+	// Check that secret has been re-created and is equal to the one in the web parameter
+	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, deployKey.PrivateKey, string(secret.Data[defaults.GitPrivateKeySecretKey]))
+}
+
+func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _ := setupTest(true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+
+	// calling regenerate-deploy-key with invalid private key, expecting error
+	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
+		WithSharedSecret("new shared secret").
+		WithPrivateKey("invalid key").
+		Build()
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+}
+
 func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
@@ -1420,11 +1502,18 @@ func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.
 // RegenerateDeployKeyAndSecretDataBuilder Handles construction of DTO
 type RegenerateDeployKeyAndSecretDataBuilder interface {
 	WithSharedSecret(string) RegenerateDeployKeyAndSecretDataBuilder
+	WithPrivateKey(string) RegenerateDeployKeyAndSecretDataBuilder
 	Build() *applicationModels.RegenerateDeployKeyAndSecretData
 }
 
 type regenerateDeployKeyAndSecretDataBuilder struct {
 	sharedSecret string
+	privateKey   string
+}
+
+func (builder *regenerateDeployKeyAndSecretDataBuilder) WithPrivateKey(privateKey string) RegenerateDeployKeyAndSecretDataBuilder {
+	builder.privateKey = privateKey
+	return builder
 }
 
 func AnRegenerateDeployKeyAndSecretDataBuilder() RegenerateDeployKeyAndSecretDataBuilder {
@@ -1439,5 +1528,6 @@ func (builder *regenerateDeployKeyAndSecretDataBuilder) WithSharedSecret(sharedS
 func (builder *regenerateDeployKeyAndSecretDataBuilder) Build() *applicationModels.RegenerateDeployKeyAndSecretData {
 	return &applicationModels.RegenerateDeployKeyAndSecretData{
 		SharedSecret: builder.sharedSecret,
+		PrivateKey:   builder.privateKey,
 	}
 }
