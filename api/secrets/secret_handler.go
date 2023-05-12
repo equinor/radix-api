@@ -289,7 +289,7 @@ func (eh SecretHandler) getCredentialSecretsForBlobVolumes(component radixv1.Rad
 			accountKeySecret, accountNameSecret := eh.getBlobFuseSecrets(component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)
-		case radixv1.MountTypeBlobCsiAzure, radixv1.MountTypeFileCsiAzure:
+		case radixv1.MountTypeBlobCsiAzure, radixv1.MountTypeBlob2CsiAzure, radixv1.MountTypeNfsCsiAzure, radixv1.MountTypeFileCsiAzure:
 			accountKeySecret, accountNameSecret := eh.getCsiAzureSecrets(component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)
