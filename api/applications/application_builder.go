@@ -1,10 +1,7 @@
 package applications
 
 import (
-	"strings"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	"github.com/equinor/radix-api/api/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
@@ -17,10 +14,7 @@ type Builder interface {
 	withRepository(string) Builder
 	withSharedSecret(string) Builder
 	withAdGroups([]string) Builder
-	withPublicKey(string) Builder
-	withPrivateKey(string) Builder
 	withCloneURL(string) Builder
-	withDeployKey(*utils.DeployKey) Builder
 	withMachineUser(bool) Builder
 	withWBS(string) Builder
 	withConfigBranch(string) Builder
@@ -41,8 +35,6 @@ type applicationBuilder struct {
 	repository          string
 	sharedSecret        string
 	adGroups            []string
-	publicKey           string
-	privateKey          string
 	cloneURL            string
 	machineUser         bool
 	wbs                 string
@@ -57,8 +49,6 @@ func (rb *applicationBuilder) withAppRegistration(appRegistration *applicationMo
 	rb.withRepository(appRegistration.Repository)
 	rb.withSharedSecret(appRegistration.SharedSecret)
 	rb.withAdGroups(appRegistration.AdGroups)
-	rb.withPublicKey(appRegistration.PublicKey)
-	rb.withPrivateKey(appRegistration.PrivateKey)
 	rb.withOwner(appRegistration.Owner)
 	rb.withWBS(appRegistration.WBS)
 	rb.withConfigBranch(appRegistration.ConfigBranch)
@@ -72,7 +62,6 @@ func (rb *applicationBuilder) withRadixRegistration(radixRegistration *v1.RadixR
 	rb.withCloneURL(radixRegistration.Spec.CloneURL)
 	rb.withSharedSecret(radixRegistration.Spec.SharedSecret)
 	rb.withAdGroups(radixRegistration.Spec.AdGroups)
-	rb.withPublicKey(radixRegistration.Spec.DeployKeyPublic)
 	rb.withOwner(radixRegistration.Spec.Owner)
 	rb.withCreator(radixRegistration.Spec.Creator)
 	rb.withMachineUser(radixRegistration.Spec.MachineUser)
@@ -120,25 +109,6 @@ func (rb *applicationBuilder) withAdGroups(adGroups []string) Builder {
 	return rb
 }
 
-func (rb *applicationBuilder) withPublicKey(publicKey string) Builder {
-	rb.publicKey = strings.TrimSuffix(publicKey, "\n")
-	return rb
-}
-
-func (rb *applicationBuilder) withPrivateKey(privateKey string) Builder {
-	rb.privateKey = strings.TrimSuffix(privateKey, "\n")
-	return rb
-}
-
-func (rb *applicationBuilder) withDeployKey(deploykey *utils.DeployKey) Builder {
-	if deploykey != nil {
-		rb.publicKey = deploykey.PublicKey
-		rb.privateKey = deploykey.PrivateKey
-	}
-
-	return rb
-}
-
 func (rb *applicationBuilder) withMachineUser(machineUser bool) Builder {
 	rb.machineUser = machineUser
 	return rb
@@ -180,8 +150,6 @@ func (rb *applicationBuilder) Build() applicationModels.ApplicationRegistration 
 		Repository:          repository,
 		SharedSecret:        rb.sharedSecret,
 		AdGroups:            rb.adGroups,
-		PublicKey:           rb.publicKey,
-		PrivateKey:          rb.privateKey,
 		Owner:               rb.owner,
 		Creator:             rb.creator,
 		MachineUser:         rb.machineUser,
@@ -196,8 +164,6 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 	builder := crdUtils.NewRegistrationBuilder()
 
 	radixRegistration := builder.
-		WithPublicKey(rb.publicKey).
-		WithPrivateKey(rb.privateKey).
 		WithName(rb.name).
 		WithRepository(rb.repository).
 		WithSharedSecret(rb.sharedSecret).
