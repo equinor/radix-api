@@ -3,6 +3,8 @@ package deployments
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
+	v2 "k8s.io/api/autoscaling/v2"
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
@@ -93,7 +95,7 @@ func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponen
 }
 
 func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	hpa, err := deploy.kubeClient.AutoscalingV1().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
+	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
@@ -106,21 +108,48 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 		minReplicas = *hpa.Spec.MinReplicas
 	}
 	maxReplicas := hpa.Spec.MaxReplicas
-	currentCPUUtil := int32(0)
-	if hpa.Status.CurrentCPUUtilizationPercentage != nil {
-		currentCPUUtil = *hpa.Status.CurrentCPUUtilizationPercentage
+
+	// find current CPU utilization
+	currentCPUUtil := getHpaCurrentMetric(hpa, corev1.ResourceCPU)
+	if currentCPUUtil == nil {
+		currentCPUUtil = numbers.Int32Ptr(0)
 	}
-	targetCPUUtil := defaultTargetCPUUtilization
-	if hpa.Spec.TargetCPUUtilizationPercentage != nil {
-		targetCPUUtil = *hpa.Spec.TargetCPUUtilizationPercentage
+
+	// find CPU utilization target
+	targetCpuMetric := crdUtils.GetHpaMetric(hpa, corev1.ResourceCPU)
+	if targetCpuMetric == nil {
+		return nil, fmt.Errorf("No target CPU utilization found for HPA %s", hpa.Name)
 	}
+	targetCPUUtil := *targetCpuMetric.Resource.Target.AverageUtilization
+
+	// find current memory utilization
+	currentMemoryUtil := getHpaCurrentMetric(hpa, corev1.ResourceMemory)
+
+	// find memory utilization target
+	var targetMemoryUtil *int32
+	targetMemoryMetric := crdUtils.GetHpaMetric(hpa, corev1.ResourceMemory)
+	if targetMemoryMetric != nil {
+		targetMemoryUtil = targetMemoryMetric.Resource.Target.AverageUtilization
+	}
+
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
-		MinReplicas:                     minReplicas,
-		MaxReplicas:                     maxReplicas,
-		CurrentCPUUtilizationPercentage: currentCPUUtil,
-		TargetCPUUtilizationPercentage:  targetCPUUtil,
+		MinReplicas:                        minReplicas,
+		MaxReplicas:                        maxReplicas,
+		CurrentCPUUtilizationPercentage:    *currentCPUUtil,
+		TargetCPUUtilizationPercentage:     targetCPUUtil,
+		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
+		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
 	}
 	return &hpaSummary, nil
+}
+
+func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
+	for _, metric := range hpa.Status.CurrentMetrics {
+		if metric.Resource.Name == resourceName {
+			return metric.Resource.Current.AverageUtilization
+		}
+	}
+	return nil
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
