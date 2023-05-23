@@ -35,18 +35,6 @@ type ApplicationRegistration struct {
 	// required: true
 	Creator string `json:"creator"`
 
-	// PublicKey the public part of the deploy key set or returned
-	// after successful application
-	//
-	// required: false
-	PublicKey string `json:"publicKey,omitempty"`
-
-	// PrivateKey the private part of the deploy key set or returned
-	// after successful application
-	//
-	// required: false
-	PrivateKey string `json:"privateKey,omitempty"`
-
 	// MachineUser is on/off toggle of machine user for the application
 	//
 	// required: false
