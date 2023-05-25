@@ -3,6 +3,7 @@ package deployments
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"strings"
 	"testing"
 
@@ -546,7 +547,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithHorizontalScaling(&minReplicas, maxReplicas)))
+				WithHorizontalScaling(&minReplicas, maxReplicas, nil, nil)))
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -564,6 +565,43 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	assert.Equal(t, maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
 	assert.Equal(t, int32(0), components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
 	assert.Equal(t, int32(80), components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
+}
+
+func TestGetComponents_WithHorizontalScaling_HpaSummaryHasMemory(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	minReplicas := int32(2)
+	maxReplicas := int32(6)
+	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+		WithAppName("any-app").
+		WithEnvironment("prod").
+		WithDeploymentName(anyDeployName).
+		WithJobComponents().
+		WithComponents(
+			operatorUtils.NewDeployComponentBuilder().
+				WithName("frontend").
+				WithPort("http", 8080).
+				WithPublicPort("http").
+				WithHorizontalScaling(&minReplicas, maxReplicas, nil, numbers.Int32Ptr(75))))
+
+	// Test
+	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+	response := <-responseChannel
+
+	assert.Equal(t, 200, response.Code)
+
+	var components []deploymentModels.Component
+	controllertest.GetResponseBody(response, &components)
+
+	assert.NotNil(t, components[0].HorizontalScalingSummary)
+	assert.Equal(t, minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
+	assert.Equal(t, maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
+	assert.Equal(t, int32(0), components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
+	assert.True(t, nil == components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage) // using assert.Equal() fails because simple nil and *int32 typed nil are not equal
+	assert.Equal(t, int32(0), components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
+	assert.Equal(t, numbers.Int32Ptr(75), components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
 }
 
 func TestGetComponents_WithIdentity(t *testing.T) {

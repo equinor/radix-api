@@ -3,7 +3,6 @@ package deployments
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	v2 "k8s.io/api/autoscaling/v2"
 	"strings"
 
@@ -109,18 +108,15 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 	}
 	maxReplicas := hpa.Spec.MaxReplicas
 
-	// find current CPU utilization
-	currentCPUUtil := getHpaCurrentMetric(hpa, corev1.ResourceCPU)
-	if currentCPUUtil == nil {
-		currentCPUUtil = numbers.Int32Ptr(0)
-	}
+	// find current cpu utilization
+	currentCpuUtil := getHpaCurrentMetric(hpa, corev1.ResourceCPU)
 
-	// find CPU utilization target
+	// find cpu utilization target
+	var targetCpuUtil *int32
 	targetCpuMetric := crdUtils.GetHpaMetric(hpa, corev1.ResourceCPU)
-	if targetCpuMetric == nil {
-		return nil, fmt.Errorf("No target CPU utilization found for HPA %s", hpa.Name)
+	if targetCpuMetric != nil {
+		targetCpuUtil = targetCpuMetric.Resource.Target.AverageUtilization
 	}
-	targetCPUUtil := *targetCpuMetric.Resource.Target.AverageUtilization
 
 	// find current memory utilization
 	currentMemoryUtil := getHpaCurrentMetric(hpa, corev1.ResourceMemory)
@@ -135,21 +131,21 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
 		MinReplicas:                        minReplicas,
 		MaxReplicas:                        maxReplicas,
-		CurrentCPUUtilizationPercentage:    *currentCPUUtil,
-		TargetCPUUtilizationPercentage:     targetCPUUtil,
+		CurrentCPUUtilizationPercentage:    currentCpuUtil,
+		TargetCPUUtilizationPercentage:     targetCpuUtil,
 		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
 		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
 	}
 	return &hpaSummary, nil
 }
 
-func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
+func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) int32 {
 	for _, metric := range hpa.Status.CurrentMetrics {
 		if metric.Resource.Name == resourceName {
-			return metric.Resource.Current.AverageUtilization
+			return *metric.Resource.Current.AverageUtilization
 		}
 	}
-	return nil
+	return 0
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
