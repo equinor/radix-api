@@ -108,25 +108,8 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 	}
 	maxReplicas := hpa.Spec.MaxReplicas
 
-	// find current cpu utilization
-	currentCpuUtil := getHpaCurrentMetric(hpa, corev1.ResourceCPU)
-
-	// find cpu utilization target
-	var targetCpuUtil *int32
-	targetCpuMetric := crdUtils.GetHpaMetric(hpa, corev1.ResourceCPU)
-	if targetCpuMetric != nil {
-		targetCpuUtil = targetCpuMetric.Resource.Target.AverageUtilization
-	}
-
-	// find current memory utilization
-	currentMemoryUtil := getHpaCurrentMetric(hpa, corev1.ResourceMemory)
-
-	// find memory utilization target
-	var targetMemoryUtil *int32
-	targetMemoryMetric := crdUtils.GetHpaMetric(hpa, corev1.ResourceMemory)
-	if targetMemoryMetric != nil {
-		targetMemoryUtil = targetMemoryMetric.Resource.Target.AverageUtilization
-	}
+	currentCpuUtil, targetCpuUtil := getHpaMetrics(hpa, corev1.ResourceCPU)
+	currentMemoryUtil, targetMemoryUtil := getHpaMetrics(hpa, corev1.ResourceMemory)
 
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
 		MinReplicas:                        minReplicas,
@@ -137,6 +120,18 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
 	}
 	return &hpaSummary, nil
+}
+
+func getHpaMetrics(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {
+	currentResourceUtil := getHpaCurrentMetric(hpa, resourceName)
+
+	// find resource utilization target
+	var targetResourceUtil *int32
+	targetResourceMetric := crdUtils.GetHpaMetric(hpa, resourceName)
+	if targetResourceMetric != nil {
+		targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
+	}
+	return currentResourceUtil, targetResourceUtil
 }
 
 func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
