@@ -139,13 +139,13 @@ func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployCompone
 	return &hpaSummary, nil
 }
 
-func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) int32 {
+func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
 	for _, metric := range hpa.Status.CurrentMetrics {
 		if metric.Resource.Name == resourceName {
-			return *metric.Resource.Current.AverageUtilization
+			return metric.Resource.Current.AverageUtilization
 		}
 	}
-	return 0
+	return nil
 }
 
 // GetComponentStateFromSpec Returns a component with the current state

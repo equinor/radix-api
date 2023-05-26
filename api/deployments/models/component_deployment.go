@@ -288,7 +288,7 @@ type HorizontalScalingSummary struct {
 	//
 	// required: false
 	// example: 70
-	CurrentCPUUtilizationPercentage int32 `json:"currentCPUUtilizationPercentage"`
+	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage"`
 
 	// Component target average CPU utilization over all pods
 	//
@@ -300,7 +300,7 @@ type HorizontalScalingSummary struct {
 	//
 	// required: false
 	// example: 80
-	CurrentMemoryUtilizationPercentage int32 `json:"currentMemoryUtilizationPercentage"`
+	CurrentMemoryUtilizationPercentage *int32 `json:"currentMemoryUtilizationPercentage"`
 
 	// Component target average memory utilization over all pods
 	//
