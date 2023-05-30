@@ -288,13 +288,25 @@ type HorizontalScalingSummary struct {
 	//
 	// required: false
 	// example: 70
-	CurrentCPUUtilizationPercentage int32 `json:"currentCPUUtilizationPercentage"`
+	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage"`
 
 	// Component target average CPU utilization over all pods
 	//
 	// required: false
 	// example: 80
-	TargetCPUUtilizationPercentage int32 `json:"targetCPUUtilizationPercentage"`
+	TargetCPUUtilizationPercentage *int32 `json:"targetCPUUtilizationPercentage"`
+
+	// Component current average memory utilization over all pods, represented as a percentage of requested memory
+	//
+	// required: false
+	// example: 80
+	CurrentMemoryUtilizationPercentage *int32 `json:"currentMemoryUtilizationPercentage"`
+
+	// Component target average memory utilization over all pods
+	//
+	// required: false
+	// example: 80
+	TargetMemoryUtilizationPercentage *int32 `json:"targetMemoryUtilizationPercentage"`
 }
 
 // ScheduledJobSummary holds general information about scheduled job
