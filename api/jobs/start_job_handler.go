@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils"
 	"os"
 	"strings"
 	"time"
@@ -130,7 +131,11 @@ func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, e
 	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy, nil
 	}
-	triggeredBy, err := jh.accounts.GetOriginator()
+	isDebugMode, err := utils.IsDebugMode()
+	if err != nil {
+		return "", err
+	}
+	triggeredBy, err = jh.accounts.GetOriginator(isDebugMode)
 	if err != nil {
 		return "", fmt.Errorf("failed to get originator: %w", err)
 	}

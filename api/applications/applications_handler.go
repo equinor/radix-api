@@ -142,7 +142,11 @@ func (ah *ApplicationHandler) RegisterApplication(applicationRegistrationRequest
 
 	application := applicationRegistrationRequest.ApplicationRegistration
 
-	creator, err := ah.accounts.GetOriginator()
+	isDebugMode, err := utils.IsDebugMode()
+	if err != nil {
+		return nil, err
+	}
+	creator, err := ah.accounts.GetOriginator(isDebugMode)
 	if err != nil {
 		return nil, err
 	}

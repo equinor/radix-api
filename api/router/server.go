@@ -70,8 +70,11 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	)
 	n.UseHandler(serveMux)
 
-	useOutClusterClient := kubeUtil.IsUseOutClusterClient()
-	return getCORSHandler(clusterName, n, useOutClusterClient)
+	debugMode, err := utils.IsDebugMode()
+	if err != nil {
+		panic(err)
+	}
+	return getCORSHandler(clusterName, n, debugMode)
 }
 
 func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClient bool) http.Handler {

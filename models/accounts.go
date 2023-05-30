@@ -50,7 +50,10 @@ type Accounts struct {
 }
 
 // GetOriginator get the request originator name or id
-func (accounts Accounts) GetOriginator() (string, error) {
+func (accounts Accounts) GetOriginator(isDebugMode bool) (string, error) {
+	if isDebugMode {
+		return "debug_mode", nil
+	}
 	if accounts.impersonation.PerformImpersonation() {
 		return accounts.impersonation.User, nil
 	}
