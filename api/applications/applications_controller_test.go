@@ -64,7 +64,7 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 		radixclient,
 		secretproviderclient,
 		NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true },
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool { return true },
 			NewApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 			),
@@ -88,7 +88,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			radixclient,
 			secretproviderclient,
 			NewApplicationController(
-				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
 					return false
 				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
@@ -101,7 +101,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to single app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) bool {
 				return rr.GetName() == "my-second-app"
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
@@ -114,7 +114,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to all app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
 				return true
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
@@ -182,7 +182,7 @@ func TestSearchApplications(t *testing.T) {
 	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-		func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
 			return true
 		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 
@@ -256,7 +256,7 @@ func TestSearchApplications(t *testing.T) {
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
 				return false
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
@@ -644,7 +644,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironmentName(anyOrphanedEnvironment))
 
 	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(context.TODO(), re, metav1.UpdateOptions{})
+	radix.RadixV1().RadixEnvironments().Update(context.Background(), re, metav1.UpdateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))
@@ -986,7 +986,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 		WithName(appName).
 		WithConfigurationItem("any").
 		WithConfigBranch("")
-	radixClient.RadixV1().RadixRegistrations().Create(context.TODO(), rr.BuildRR(), metav1.CreateOptions{})
+	radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr.BuildRR(), metav1.CreateOptions{})
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
@@ -1374,7 +1374,7 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been created
-	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(firstSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 
@@ -1390,7 +1390,7 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been re-created and is different from first secret
-	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(secondSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 	assert.NotEqual(t, firstSecret.Data[defaults.GitPrivateKeySecretKey], secondSecret.Data[defaults.GitPrivateKeySecretKey])
@@ -1422,7 +1422,7 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been re-created and is equal to the one in the web parameter
-	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, deployKey.PrivateKey, string(secret.Data[defaults.GitPrivateKeySecretKey]))
 }
@@ -1456,7 +1456,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 			return
 
 		case <-tick:
-			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
+			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.Background(), metav1.ListOptions{})
 			if len(jobs.Items) > 0 {
 				job := jobs.Items[0]
 
@@ -1466,7 +1466,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 					job.Status.Failed = int32(1)
 				}
 
-				kubeclient.BatchV1().Jobs(appNamespace).Update(context.TODO(), &job, metav1.UpdateOptions{})
+				kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
 			}
 		}
 	}
@@ -1492,7 +1492,7 @@ func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, 
 }
 
 func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
-	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
+	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

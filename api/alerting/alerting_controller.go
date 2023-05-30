@@ -1,7 +1,6 @@
 package alerting
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -81,7 +80,7 @@ func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHa
 		envName := mux.Vars(r)["envName"]
 		envNamespace := crdutils.GetEnvironmentNamespace(appName, envName)
 
-		if _, err := a.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), envNamespace, v1.GetOptions{}); err != nil {
+		if _, err := a.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Get(r.Context(), envNamespace, v1.GetOptions{}); err != nil {
 			radixhttp.ErrorResponse(rw, r, err)
 			return
 		}
@@ -148,7 +147,7 @@ func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	}
 
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
-	alertsConfig, err := alertHandler.UpdateAlertingConfig(updateAlertingConfig)
+	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -201,7 +200,7 @@ func GetEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	envName := mux.Vars(r)["envName"]
 
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
-	alertsConfig, err := alertHandler.GetAlertingConfig()
+	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -256,7 +255,7 @@ func EnableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	envName := mux.Vars(r)["envName"]
 
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
-	alertsConfig, err := alertHandler.EnableAlerting()
+	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -311,7 +310,7 @@ func DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter,
 	envName := mux.Vars(r)["envName"]
 
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
-	alertsConfig, err := alertHandler.DisableAlerting()
+	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -372,7 +371,7 @@ func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	}
 
 	alertHandler := NewApplicationHandler(accounts, appName)
-	alertsConfig, err := alertHandler.UpdateAlertingConfig(updateAlertingConfig)
+	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -419,7 +418,7 @@ func GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	appName := mux.Vars(r)["appName"]
 
 	alertHandler := NewApplicationHandler(accounts, appName)
-	alertsConfig, err := alertHandler.GetAlertingConfig()
+	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -468,7 +467,7 @@ func EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	appName := mux.Vars(r)["appName"]
 
 	alertHandler := NewApplicationHandler(accounts, appName)
-	alertsConfig, err := alertHandler.EnableAlerting()
+	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -517,7 +516,7 @@ func DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter,
 	appName := mux.Vars(r)["appName"]
 
 	alertHandler := NewApplicationHandler(accounts, appName)
-	alertsConfig, err := alertHandler.DisableAlerting()
+	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

@@ -16,6 +16,7 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/go-openapi/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"go.elastic.co/apm"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,20 @@ func Init(accounts models.Accounts, deployHandler deployments.DeployHandler) Job
 }
 
 // GetLatestJobPerApplication Handler for GetApplicationJobs - NOTE: does not get latestJob.Environments
-func (jh JobHandler) GetLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	return jh.getLatestJobPerApplication(forApplications)
+func (jh JobHandler) GetLatestJobPerApplication(ctx context.Context, forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
+	return jh.getLatestJobPerApplication(ctx, forApplications)
 }
 
 // GetApplicationJobs Handler for GetApplicationJobs
-func (jh JobHandler) GetApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getApplicationJobs(appName)
+func (jh JobHandler) GetApplicationJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
+	span, apmctx := apm.StartSpan(ctx, "GetApplicationJobs", "JobHandler")
+	defer span.End()
+	return jh.getApplicationJobs(apmctx, appName)
 }
 
 // GetLatestApplicationJob Get last run application job
-func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSummary, error) {
-	jobs, err := jh.getApplicationJobs(appName)
+func (jh JobHandler) GetLatestApplicationJob(ctx context.Context, appName string) (*jobModels.JobSummary, error) {
+	jobs, err := jh.getApplicationJobs(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +74,13 @@ func (jh JobHandler) GetLatestApplicationJob(appName string) (*jobModels.JobSumm
 }
 
 // GetApplicationJob Handler for GetApplicationJob
-func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job, error) {
-	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), jobName, metav1.GetOptions{})
+func (jh JobHandler) GetApplicationJob(ctx context.Context, appName, jobName string) (*jobModels.Job, error) {
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(ctx, jobName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(appName, jobName)
+	jobDeployments, err := jh.deploy.GetDeploymentsForJob(ctx, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +89,8 @@ func (jh JobHandler) GetApplicationJob(appName, jobName string) (*jobModels.Job,
 }
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
-func (jh JobHandler) GetTektonPipelineRuns(appName, jobName string) ([]jobModels.PipelineRun, error) {
-	pipelineRuns, err := tekton.GetTektonPipelineRuns(jh.userAccount.TektonClient, appName, jobName)
+func (jh JobHandler) GetTektonPipelineRuns(ctx context.Context, appName, jobName string) ([]jobModels.PipelineRun, error) {
+	pipelineRuns, err := tekton.GetTektonPipelineRuns(ctx, jh.userAccount.TektonClient, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +103,8 @@ func (jh JobHandler) GetTektonPipelineRuns(appName, jobName string) ([]jobModels
 }
 
 // GetTektonPipelineRun Get the Tekton pipeline run
-func (jh JobHandler) GetTektonPipelineRun(appName, jobName, pipelineRunName string) (*jobModels.PipelineRun, error) {
-	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+func (jh JobHandler) GetTektonPipelineRun(ctx context.Context, appName, jobName, pipelineRunName string) (*jobModels.PipelineRun, error) {
+	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +112,8 @@ func (jh JobHandler) GetTektonPipelineRun(appName, jobName, pipelineRunName stri
 }
 
 // GetTektonPipelineRunTasks Get the Tekton pipeline run tasks
-func (jh JobHandler) GetTektonPipelineRunTasks(appName, jobName, pipelineRunName string) ([]jobModels.PipelineRunTask, error) {
-	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(appName, jobName, pipelineRunName)
+func (jh JobHandler) GetTektonPipelineRunTasks(ctx context.Context, appName, jobName, pipelineRunName string) ([]jobModels.PipelineRunTask, error) {
+	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(ctx, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +121,8 @@ func (jh JobHandler) GetTektonPipelineRunTasks(appName, jobName, pipelineRunName
 	return sortPipelineTasks(taskModels), nil
 }
 
-func (jh JobHandler) getPipelineRunWithTasks(appName string, jobName string, pipelineRunName string) (*v1beta1.PipelineRun, map[string]string, error) {
-	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+func (jh JobHandler) getPipelineRunWithTasks(ctx context.Context, appName string, jobName string, pipelineRunName string) (*v1beta1.PipelineRun, map[string]string, error) {
+	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -136,8 +139,8 @@ func (jh JobHandler) getPipelineRunWithTasks(appName string, jobName string, pip
 }
 
 // GetTektonPipelineRunTask Get the Tekton pipeline run task
-func (jh JobHandler) GetTektonPipelineRunTask(appName, jobName, pipelineRunName, taskName string) (*jobModels.PipelineRunTask, error) {
-	pipelineRun, taskRunSpec, taskRealName, err := jh.getPipelineRunAndTask(appName, jobName, pipelineRunName, taskName)
+func (jh JobHandler) GetTektonPipelineRunTask(ctx context.Context, appName, jobName, pipelineRunName, taskName string) (*jobModels.PipelineRunTask, error) {
+	pipelineRun, taskRunSpec, taskRealName, err := jh.getPipelineRunAndTask(ctx, appName, jobName, pipelineRunName, taskName)
 	if err != nil {
 		return nil, err
 	}
@@ -145,16 +148,16 @@ func (jh JobHandler) GetTektonPipelineRunTask(appName, jobName, pipelineRunName,
 }
 
 // GetTektonPipelineRunTaskSteps Get the Tekton pipeline run task steps
-func (jh JobHandler) GetTektonPipelineRunTaskSteps(appName, jobName, pipelineRunName, taskName string) ([]jobModels.PipelineRunTaskStep, error) {
-	_, taskRunSpec, _, err := jh.getPipelineRunAndTask(appName, jobName, pipelineRunName, taskName)
+func (jh JobHandler) GetTektonPipelineRunTaskSteps(ctx context.Context, appName, jobName, pipelineRunName, taskName string) ([]jobModels.PipelineRunTaskStep, error) {
+	_, taskRunSpec, _, err := jh.getPipelineRunAndTask(ctx, appName, jobName, pipelineRunName, taskName)
 	if err != nil {
 		return nil, err
 	}
 	return buildPipelineRunTaskStepModels(taskRunSpec), nil
 }
 
-func (jh JobHandler) getPipelineRunAndTask(appName string, jobName string, pipelineRunName string, taskName string) (*v1beta1.PipelineRun, *v1beta1.PipelineRunTaskRunStatus, string, error) {
-	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(appName, jobName, pipelineRunName)
+func (jh JobHandler) getPipelineRunAndTask(ctx context.Context, appName string, jobName string, pipelineRunName string, taskName string) (*v1beta1.PipelineRun, *v1beta1.PipelineRunTaskRunStatus, string, error) {
+	pipelineRun, taskNameToRealNameMap, err := jh.getPipelineRunWithTasks(ctx, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -281,8 +284,8 @@ func sortPipelineTasks(tasks []jobModels.PipelineRunTask) []jobModels.PipelineRu
 	return tasks
 }
 
-func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary, error) {
-	jobs, err := jh.getJobs(appName)
+func (jh JobHandler) getApplicationJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
+	jobs, err := jh.getJobs(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +298,7 @@ func (jh JobHandler) getApplicationJobs(appName string) ([]*jobModels.JobSummary
 	return jobs, nil
 }
 
-func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary, error) {
+func (jh JobHandler) getDefinedJobs(ctx context.Context, appNames []string) ([]*jobModels.JobSummary, error) {
 	var g errgroup.Group
 	g.SetLimit(25)
 
@@ -303,7 +306,7 @@ func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary,
 	for _, appName := range appNames {
 		name := appName // locally scope appName to avoid race condition in go routines
 		g.Go(func() error {
-			jobs, err := jh.getJobs(name)
+			jobs, err := jh.getJobs(ctx, name)
 			if err == nil {
 				jobsCh <- jobs
 			}
@@ -324,12 +327,12 @@ func (jh JobHandler) getDefinedJobs(appNames []string) ([]*jobModels.JobSummary,
 	return jobSummaries, nil
 }
 
-func (jh JobHandler) getJobs(appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(crdUtils.GetAppNamespace(appName))
+func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
+	return jh.getJobsInNamespace(ctx, crdUtils.GetAppNamespace(appName))
 }
 
-func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSummary, error) {
-	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
+func (jh JobHandler) getJobsInNamespace(ctx context.Context, namespace string) ([]*jobModels.JobSummary, error) {
+	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +345,7 @@ func (jh JobHandler) getJobsInNamespace(namespace string) ([]*jobModels.JobSumma
 	return jobs, nil
 }
 
-func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
+func (jh JobHandler) getLatestJobPerApplication(ctx context.Context, forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
 	// Primarily use Radix Jobs
 	var apps []string
 	for name, shouldAdd := range forApplications {
@@ -351,7 +354,7 @@ func (jh JobHandler) getLatestJobPerApplication(forApplications map[string]bool)
 		}
 	}
 
-	someJobs, err := jh.getDefinedJobs(apps)
+	someJobs, err := jh.getDefinedJobs(ctx, apps)
 	if err != nil {
 		return nil, err
 	}

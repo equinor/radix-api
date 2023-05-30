@@ -38,7 +38,7 @@ func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 
 	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 	eventHandler := Init(kubeClient)
-	events, err := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+	events, err := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
 	assert.ElementsMatch(
@@ -58,7 +58,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 		createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})
@@ -68,7 +68,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Warning", "pod1", "Pod")
 		createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 		assert.Len(t, events, 1)
 		assert.NotNil(t, events[0].InvolvedObjectState)
 		assert.NotNil(t, events[0].InvolvedObjectState.Pod)
@@ -78,7 +78,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset()
 		createKubernetesEvent(kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})
@@ -102,7 +102,7 @@ func createKubernetesEvent(client *kubefake.Clientset, namespace,
 func createKubernetesPod(client *kubefake.Clientset, name, namespace string,
 	started, ready bool,
 	restartCount int32) {
-	client.CoreV1().Pods(namespace).Create(context.TODO(),
+	client.CoreV1().Pods(namespace).Create(context.Background(),
 		&v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,

@@ -25,8 +25,8 @@ import (
 )
 
 // IsDeployKeyValid Checks if deploy key for app is correctly setup
-func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
-	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+func IsDeployKeyValid(ctx context.Context, account models.Account, appName string) (bool, error) {
+	rr, err := account.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -39,25 +39,25 @@ func IsDeployKeyValid(account models.Account, appName string) (bool, error) {
 		return false, radixhttp.ValidationError("Radix Registration", "Deploy key is missing")
 	}
 
-	err = verifyDeployKey(account.Client, rr)
+	err = verifyDeployKey(ctx, account.Client, rr)
 	return err == nil, err
 }
 
-func verifyDeployKey(client kubernetes.Interface, rr *v1.RadixRegistration) error {
+func verifyDeployKey(ctx context.Context, client kubernetes.Interface, rr *v1.RadixRegistration) error {
 	namespace := utils.GetAppNamespace(rr.Name)
-	jobApplied, err := createCloneJob(client, rr)
+	jobApplied, err := createCloneJob(ctx, client, rr)
 	if err != nil {
 		return err
 	}
 
-	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(context.TODO(), metav1.ListOptions{
+	w, err := client.BatchV1().Jobs(jobApplied.Namespace).Watch(ctx, metav1.ListOptions{
 		FieldSelector: fields.Set{"metadata.name": jobApplied.Name}.AsSelector().String(),
 	})
 	if err != nil {
 		return err
 	}
 	defer w.Stop()
-	defer cleanup(client, namespace, jobApplied)
+	defer cleanup(ctx, client, namespace, jobApplied)
 
 	for events := range w.ResultChan() {
 		j, ok := events.Object.(*batchv1.Job)
@@ -88,7 +88,7 @@ func isJobStatusFailedWithDeadlineExceeded(job *batchv1.Job) bool {
 	return false
 }
 
-func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
+func createCloneJob(ctx context.Context, client kubernetes.Interface, rr *v1.RadixRegistration) (*batchv1.Job, error) {
 	jobName := strings.ToLower(fmt.Sprintf("%s-%s", rr.Name, radixutils.RandString(5)))
 	namespace := utils.GetAppNamespace(rr.Name)
 	backOffLimit := int32(0)
@@ -141,7 +141,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 		},
 	}
 
-	jobApplied, err := client.BatchV1().Jobs(namespace).Create(context.TODO(), &job, metav1.CreateOptions{})
+	jobApplied, err := client.BatchV1().Jobs(namespace).Create(ctx, &job, metav1.CreateOptions{})
 
 	if err != nil {
 		log.Errorf("%v", err)
@@ -149,7 +149,7 @@ func createCloneJob(client kubernetes.Interface, rr *v1.RadixRegistration) (*bat
 	return jobApplied, err
 }
 
-func cleanup(client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
-	err := client.BatchV1().Jobs(namespace).Delete(context.TODO(), jobApplied.Name, metav1.DeleteOptions{})
+func cleanup(ctx context.Context, client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
+	err := client.BatchV1().Jobs(namespace).Delete(ctx, jobApplied.Name, metav1.DeleteOptions{})
 	return err
 }

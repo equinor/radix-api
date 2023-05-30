@@ -333,7 +333,7 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 
 func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel string) {
 	podSpec := getPodSpec(podName, radixComponentLabel)
-	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 }
 
 func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
@@ -623,7 +623,7 @@ func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podNa
 	}
 	podSpec.Status = podStatus
 
-	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 }
 
 func getContainerState(message string, status deploymentModels.ContainerStatus) corev1.ContainerState {

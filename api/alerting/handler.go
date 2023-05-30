@@ -30,10 +30,10 @@ const (
 var alertConfigDisabled = alertModels.AlertingConfig{Enabled: false, Ready: false}
 
 type Handler interface {
-	GetAlertingConfig() (*alertModels.AlertingConfig, error)
-	EnableAlerting() (*alertModels.AlertingConfig, error)
-	DisableAlerting() (*alertModels.AlertingConfig, error)
-	UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) (*alertModels.AlertingConfig, error)
+	GetAlertingConfig(ctx context.Context) (*alertModels.AlertingConfig, error)
+	EnableAlerting(ctx context.Context) (*alertModels.AlertingConfig, error)
+	DisableAlerting(ctx context.Context) (*alertModels.AlertingConfig, error)
+	UpdateAlertingConfig(ctx context.Context, config alertModels.UpdateAlertingConfig) (*alertModels.AlertingConfig, error)
 }
 
 type handler struct {
@@ -67,8 +67,8 @@ func NewApplicationHandler(accounts models.Accounts, appName string) Handler {
 	}
 }
 
-func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
-	ral, err := h.getExistingRadixAlerts()
+func (h *handler) GetAlertingConfig(ctx context.Context) (*alertModels.AlertingConfig, error) {
+	ral, err := h.getExistingRadixAlerts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -81,11 +81,11 @@ func (h *handler) GetAlertingConfig() (*alertModels.AlertingConfig, error) {
 		return &alertConfigDisabled, nil
 	}
 
-	return h.getAlertingConfigFromRadixAlert(&ral.Items[0])
+	return h.getAlertingConfigFromRadixAlert(ctx, &ral.Items[0])
 }
 
-func (h *handler) UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) (*alertModels.AlertingConfig, error) {
-	alerts, err := h.getExistingRadixAlerts()
+func (h *handler) UpdateAlertingConfig(ctx context.Context, config alertModels.UpdateAlertingConfig) (*alertModels.AlertingConfig, error) {
+	alerts, err := h.getExistingRadixAlerts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,33 +98,33 @@ func (h *handler) UpdateAlertingConfig(config alertModels.UpdateAlertingConfig) 
 		return nil, AlertingNotEnabledError()
 	}
 
-	updatedAlert, err := h.updateRadixAlertFromAlertingConfig(alerts.Items[0], config)
+	updatedAlert, err := h.updateRadixAlertFromAlertingConfig(ctx, alerts.Items[0], config)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.getAlertingConfigFromRadixAlert(updatedAlert)
+	return h.getAlertingConfigFromRadixAlert(ctx, updatedAlert)
 }
 
-func (h *handler) EnableAlerting() (*alertModels.AlertingConfig, error) {
-	radixAlert, err := h.createDefaultRadixAlert()
+func (h *handler) EnableAlerting(ctx context.Context) (*alertModels.AlertingConfig, error) {
+	radixAlert, err := h.createDefaultRadixAlert(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if reconciledAlert, reconciled := h.waitForRadixAlertReconciled(radixAlert); reconciled {
+	if reconciledAlert, reconciled := h.waitForRadixAlertReconciled(ctx, radixAlert); reconciled {
 		radixAlert = reconciledAlert
 	}
-	return h.getAlertingConfigFromRadixAlert(radixAlert)
+	return h.getAlertingConfigFromRadixAlert(ctx, radixAlert)
 }
 
-func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
-	alerts, err := h.getExistingRadixAlerts()
+func (h *handler) DisableAlerting(ctx context.Context) (*alertModels.AlertingConfig, error) {
+	alerts, err := h.getExistingRadixAlerts(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, alert := range alerts.Items {
-		if err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(alert.Namespace).Delete(context.TODO(), alert.Name, metav1.DeleteOptions{}); err != nil {
+		if err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(alert.Namespace).Delete(ctx, alert.Name, metav1.DeleteOptions{}); err != nil {
 			return nil, err
 		}
 	}
@@ -132,13 +132,13 @@ func (h *handler) DisableAlerting() (*alertModels.AlertingConfig, error) {
 	return &alertConfigDisabled, nil
 }
 
-func (h *handler) updateRadixAlertFromAlertingConfig(radixAlert radixv1.RadixAlert, config alertModels.UpdateAlertingConfig) (*radixv1.RadixAlert, error) {
+func (h *handler) updateRadixAlertFromAlertingConfig(ctx context.Context, radixAlert radixv1.RadixAlert, config alertModels.UpdateAlertingConfig) (*radixv1.RadixAlert, error) {
 	if err := h.validateUpdateAlertingConfig(&config); err != nil {
 		return nil, err
 	}
 
 	if len(config.ReceiverSecrets) > 0 {
-		configSecret, err := h.getConfigSecret(radixAlert.Name)
+		configSecret, err := h.getConfigSecret(ctx, radixAlert.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +149,7 @@ func (h *handler) updateRadixAlertFromAlertingConfig(radixAlert radixv1.RadixAle
 
 	radixAlert.Spec.Alerts = config.Alerts.AsRadixAlertAlerts()
 	radixAlert.Spec.Receivers = config.Receivers.AsRadixAlertReceiverMap()
-	return h.applyRadixAlert(&radixAlert)
+	return h.applyRadixAlert(ctx, &radixAlert)
 }
 
 func (h *handler) updateConfigSecret(secret corev1.Secret, config *alertModels.UpdateAlertingConfig) error {
@@ -219,11 +219,11 @@ func (h *handler) validateUpdateSlackConfig(slackConfig *alertModels.UpdateSlack
 	return nil
 }
 
-func (h *handler) waitForRadixAlertReconciled(source *radixv1.RadixAlert) (*radixv1.RadixAlert, bool) {
+func (h *handler) waitForRadixAlertReconciled(ctx context.Context, source *radixv1.RadixAlert) (*radixv1.RadixAlert, bool) {
 	var reconciledAlert *radixv1.RadixAlert
 
 	hasReconciled := func() (bool, error) {
-		radixAlert, err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(source.Namespace).Get(context.TODO(), source.Name, metav1.GetOptions{})
+		radixAlert, err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(source.Namespace).Get(ctx, source.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -239,15 +239,15 @@ func (h *handler) waitForRadixAlertReconciled(source *radixv1.RadixAlert) (*radi
 	return reconciledAlert, true
 }
 
-func (h *handler) getExistingRadixAlerts() (*radixv1.RadixAlertList, error) {
+func (h *handler) getExistingRadixAlerts(ctx context.Context) (*radixv1.RadixAlertList, error) {
 	return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).List(
-		context.TODO(),
+		ctx,
 		metav1.ListOptions{LabelSelector: labelselector.ForApplication(h.appName).String()},
 	)
 }
 
-func (h *handler) createDefaultRadixAlert() (*radixv1.RadixAlert, error) {
-	ral, err := h.getExistingRadixAlerts()
+func (h *handler) createDefaultRadixAlert(ctx context.Context) (*radixv1.RadixAlert, error) {
+	ral, err := h.getExistingRadixAlerts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (h *handler) createDefaultRadixAlert() (*radixv1.RadixAlert, error) {
 	}
 
 	radixAlert := h.buildDefaultRadixAlertSpec()
-	return h.applyRadixAlert(radixAlert)
+	return h.applyRadixAlert(ctx, radixAlert)
 }
 
 func (h *handler) buildDefaultRadixAlertSpec() *radixv1.RadixAlert {
@@ -292,22 +292,22 @@ func (h *handler) buildDefaultRadixAlertAlerts() []radixv1.Alert {
 	return alerts
 }
 
-func (h *handler) applyRadixAlert(radixAlert *radixv1.RadixAlert) (*radixv1.RadixAlert, error) {
-	existingAlert, err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Get(context.TODO(), radixAlert.Name, metav1.GetOptions{})
+func (h *handler) applyRadixAlert(ctx context.Context, radixAlert *radixv1.RadixAlert) (*radixv1.RadixAlert, error) {
+	existingAlert, err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Get(ctx, radixAlert.Name, metav1.GetOptions{})
 	if err != nil {
 		if !kubeErrors.IsNotFound(err) {
 			return nil, err
 		}
-		return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Create(context.TODO(), radixAlert, metav1.CreateOptions{})
+		return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Create(ctx, radixAlert, metav1.CreateOptions{})
 	}
 
 	existingAlert.Labels = radixAlert.Labels
 	existingAlert.Spec = radixAlert.Spec
-	return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Update(context.TODO(), existingAlert, metav1.UpdateOptions{})
+	return h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(h.namespace).Update(ctx, existingAlert, metav1.UpdateOptions{})
 }
 
-func (h *handler) getAlertingConfigFromRadixAlert(ral *radixv1.RadixAlert) (*alertModels.AlertingConfig, error) {
-	configSecret, err := h.getConfigSecret(ral.Name)
+func (h *handler) getAlertingConfigFromRadixAlert(ctx context.Context, ral *radixv1.RadixAlert) (*alertModels.AlertingConfig, error) {
+	configSecret, err := h.getConfigSecret(ctx, ral.Name)
 	if err != nil && !kubeErrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -382,9 +382,9 @@ func (h *handler) getReceiverSlackURLFromSecret(receiverName string, configSecre
 	return string(url), found
 }
 
-func (h *handler) getConfigSecret(alertName string) (*corev1.Secret, error) {
+func (h *handler) getConfigSecret(ctx context.Context, alertName string) (*corev1.Secret, error) {
 	return h.accounts.UserAccount.Client.CoreV1().Secrets(h.namespace).
-		Get(context.TODO(), operatoralert.GetAlertSecretName(alertName), metav1.GetOptions{})
+		Get(ctx, operatoralert.GetAlertSecretName(alertName), metav1.GetOptions{})
 }
 
 func getAlertNamesForScope(scope operatoralert.AlertScope) []string {

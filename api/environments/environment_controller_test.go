@@ -411,7 +411,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 		response := <-responseChannel
 		assert.Equal(t, http.StatusOK, response.Code)
 
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
 		component = findComponentInDeployment(updatedRd, startedComponent)
 		assert.True(t, *component.Replicas > zeroReplicas)
 		assert.NotEmpty(t, component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
@@ -428,7 +428,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 		response := <-responseChannel
 		assert.Equal(t, http.StatusOK, response.Code)
 
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.TODO(), rd.GetName(), metav1.GetOptions{})
+		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
 		component = findComponentInDeployment(updatedRd, stoppedComponent)
 		assert.True(t, *component.Replicas > zeroReplicas)
 
@@ -1187,12 +1187,12 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	commonTestUtils.ApplyApplication(raBuilder)
 	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), anyEnvironment)
 	eventHandler.EXPECT().
-		GetEvents(controllertest.EqualsNamespaceFunc(nsFunc)).
+		GetEvents(context.Background(), controllertest.EqualsNamespaceFunc(nsFunc)).
 		Return(make([]*eventModels.Event, 0), fmt.Errorf("err")).
 		Return([]*eventModels.Event{{}, {}}, nil).
 		Times(1)
 
-	events, err := handler.GetEnvironmentEvents(anyAppName, anyEnvironment)
+	events, err := handler.GetEnvironmentEvents(context.Background(), anyAppName, anyEnvironment)
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
 }
@@ -1289,7 +1289,7 @@ func Test_GetJobs(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1348,7 +1348,7 @@ func Test_GetJobs_Status(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1419,7 +1419,7 @@ func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1507,7 +1507,7 @@ func Test_GetJob(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1614,7 +1614,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1703,7 +1703,7 @@ func Test_GetJobPayload(t *testing.T) {
 				}},
 			},
 		}}
-	_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+	_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	secret := corev1.Secret{
@@ -1712,7 +1712,7 @@ func Test_GetJobPayload(t *testing.T) {
 			"payload1": []byte("job1payload"),
 		},
 	}
-	_, err = kubeClient.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	_, err = kubeClient.CoreV1().Secrets(namespace).Create(context.Background(), &secret, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Test job1 payload
@@ -1784,7 +1784,7 @@ func Test_GetBatch_JobList(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1855,7 +1855,7 @@ func Test_GetBatch_JobList_StopFlag(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -1962,7 +1962,7 @@ func Test_GetBatches_Status(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2019,7 +2019,7 @@ func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2111,7 +2111,7 @@ func Test_StopJob(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2216,7 +2216,7 @@ func Test_DeleteJob(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2335,7 +2335,7 @@ func Test_StopBatch(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2432,7 +2432,7 @@ func Test_DeleteBatch(t *testing.T) {
 		},
 	}
 	for _, rb := range testData {
-		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.TODO(), &rb, metav1.CreateOptions{})
+		_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 
@@ -2510,11 +2510,11 @@ func createRadixDeploymentWithReplicas(tu *commontest.Utils, appName, envName st
 
 func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
 	podSpec := getPodSpec(componentName)
-	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 }
 
 func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) {
-	kubeclient.CoreV1().Pods(namespace).Delete(context.TODO(), getComponentPodName(componentName), metav1.DeleteOptions{})
+	kubeclient.CoreV1().Pods(namespace).Delete(context.Background(), getComponentPodName(componentName), metav1.DeleteOptions{})
 }
 
 func findComponentInDeployment(rd *v1.RadixDeployment, componentName string) *v1.RadixDeployComponent {

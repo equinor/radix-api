@@ -13,7 +13,7 @@ import (
 
 // EventHandler defines methods for interacting with Kubernetes events
 type EventHandler interface {
-	GetEvents(namespaceFunc NamespaceFunc) ([]*eventModels.Event, error)
+	GetEvents(ctx context.Context, namespaceFunc NamespaceFunc) ([]*eventModels.Event, error)
 }
 
 // NamespaceFunc defines a function that returns a namespace
@@ -37,13 +37,13 @@ func Init(kubeClient kubernetes.Interface) EventHandler {
 }
 
 // GetEvents return events for a namespace defined by a NamespaceFunc function
-func (eh *eventHandler) GetEvents(namespaceFunc NamespaceFunc) ([]*eventModels.Event, error) {
+func (eh *eventHandler) GetEvents(ctx context.Context, namespaceFunc NamespaceFunc) ([]*eventModels.Event, error) {
 	namespace := namespaceFunc()
-	return eh.getEvents(namespace)
+	return eh.getEvents(ctx, namespace)
 }
 
-func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error) {
-	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+func (eh *eventHandler) getEvents(ctx context.Context, namespace string) ([]*eventModels.Event, error) {
+	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
 		builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
-		buildObjectState(builder, ev, eh.kubeClient)
+		buildObjectState(ctx, builder, ev, eh.kubeClient)
 		event := builder.Build()
 		events = append(events, event)
 	}
@@ -59,24 +59,24 @@ func (eh *eventHandler) getEvents(namespace string) ([]*eventModels.Event, error
 	return events, nil
 }
 
-func buildObjectState(builder eventModels.EventBuilder, event k8v1.Event, kubeClient kubernetes.Interface) {
+func buildObjectState(ctx context.Context, builder eventModels.EventBuilder, event k8v1.Event, kubeClient kubernetes.Interface) {
 	if event.Type == "Normal" {
 		return
 	}
 
-	if objectState := getObjectState(event, kubeClient); objectState != nil {
+	if objectState := getObjectState(ctx, event, kubeClient); objectState != nil {
 		builder.WithInvolvedObjectState(objectState)
 	}
 }
 
-func getObjectState(event k8v1.Event, kubeClient kubernetes.Interface) *eventModels.ObjectState {
+func getObjectState(ctx context.Context, event k8v1.Event, kubeClient kubernetes.Interface) *eventModels.ObjectState {
 	builder := eventModels.NewObjectStateBuilder()
 	build := false
 	obj := event.InvolvedObject
 
 	switch obj.Kind {
 	case "Pod":
-		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{}); err == nil {
+		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(ctx, obj.Name, metav1.GetOptions{}); err == nil {
 			state := getPodState(pod)
 			builder.WithPodState(state)
 			build = true

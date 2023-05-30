@@ -74,6 +74,10 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        appPath,
 			Method:      "GET",
 			HandlerFunc: ac.GetApplication,
+			KubeApiConfig: models.KubeApiConfig{
+				QPS:   100,
+				Burst: 100,
+			},
 		},
 		models.Route{
 			Path:        appPath,
@@ -177,7 +181,7 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	}
 
 	handler := ac.applicationHandlerFactory(accounts)
-	appRegistrations, err := handler.GetApplications(matcher, ac.hasAccessToRR, GetApplicationsOptions{})
+	appRegistrations, err := handler.GetApplications(r.Context(), matcher, ac.hasAccessToRR, GetApplicationsOptions{})
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -243,6 +247,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
 
 	appRegistrations, err := handler.GetApplications(
+		r.Context(),
 		matcher,
 		ac.hasAccessToRR,
 		GetApplicationsOptions{
@@ -298,7 +303,8 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	application, err := handler.GetApplication(appName)
+
+	application, err := handler.GetApplication(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -344,7 +350,7 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	//     description: "Internal server error"
 
 	appName := mux.Vars(r)["appName"]
-	isDeployKeyValid, err := IsDeployKeyValid(accounts.UserAccount, appName)
+	isDeployKeyValid, err := IsDeployKeyValid(r.Context(), accounts.UserAccount, appName)
 
 	if isDeployKeyValid {
 		radixhttp.JSONResponse(w, r, &isDeployKeyValid)
@@ -393,7 +399,7 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory(accounts)
-	machineUser, err := handler.RegenerateMachineUserToken(appName)
+	machineUser, err := handler.RegenerateMachineUserToken(r.Context(), appName)
 
 	if err != nil {
 		log.Errorf("failed to re-generate machine user token for app %s. Error: %v", appName, err)
@@ -446,7 +452,7 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
-	err := handler.RegenerateDeployKey(appName, sharedSecretAndPrivateKey)
+	err := handler.RegenerateDeployKey(r.Context(), appName, sharedSecretAndPrivateKey)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -487,7 +493,7 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory(accounts)
-	deployKeyAndSecret, err := handler.GetDeployKeyAndSecret(appName)
+	deployKeyAndSecret, err := handler.GetDeployKeyAndSecret(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -539,7 +545,7 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := ac.applicationHandlerFactory(accounts)
-	appRegistrationUpsertResponse, err := handler.RegisterApplication(applicationRegistrationRequest)
+	appRegistrationUpsertResponse, err := handler.RegisterApplication(r.Context(), applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -598,7 +604,7 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := ac.applicationHandlerFactory(accounts)
-	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(appName, applicationRegistrationRequest)
+	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(r.Context(), appName, applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -657,7 +663,7 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
 	handler := ac.applicationHandlerFactory(accounts)
-	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(appName, applicationRegistrationPatchRequest)
+	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(r.Context(), appName, applicationRegistrationPatchRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -697,7 +703,7 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	err := handler.DeleteApplication(appName)
+	err := handler.DeleteApplication(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -769,7 +775,7 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	jobSummary, err := handler.TriggerPipelineBuild(appName, r)
+	jobSummary, err := handler.TriggerPipelineBuild(r.Context(), appName, r)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -816,7 +822,7 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	jobSummary, err := handler.TriggerPipelineBuildDeploy(appName, r)
+	jobSummary, err := handler.TriggerPipelineBuildDeploy(r.Context(), appName, r)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -863,7 +869,7 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	jobSummary, err := handler.TriggerPipelineDeploy(appName, r)
+	jobSummary, err := handler.TriggerPipelineDeploy(r.Context(), appName, r)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -910,7 +916,7 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	appName := mux.Vars(r)["appName"]
 
 	handler := ac.applicationHandlerFactory(accounts)
-	jobSummary, err := handler.TriggerPipelinePromote(appName, r)
+	jobSummary, err := handler.TriggerPipelinePromote(r.Context(), appName, r)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

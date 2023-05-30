@@ -3,9 +3,10 @@ package jobs_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
-	"testing"
 
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -72,7 +73,7 @@ func TestGetApplicationJob(t *testing.T) {
 	handler := Init(accounts, deployments.Init(accounts))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	jobSummary, _ := handler.HandleStartPipelineJob(anyAppName, anyPipeline, jobParameters)
+	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters)
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
 	// Test
@@ -158,23 +159,23 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 
 func createPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string) {
 	podSpec := getPodSpecForAPipelineJob(jobName)
-	kubeclient.CoreV1().Pods(namespace).Create(context.TODO(), podSpec, metav1.CreateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 }
 
 func addInitStepsToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, initSteps ...corev1.ContainerStatus) {
-	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
+	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
 	podStatus := pipelinePod.Status
 	podStatus.InitContainerStatuses = append(podStatus.InitContainerStatuses, initSteps...)
 	pipelinePod.Status = podStatus
-	kubeclient.CoreV1().Pods(namespace).Update(context.TODO(), pipelinePod, metav1.UpdateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
 }
 
 func addStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) {
-	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
+	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
 	podStatus := pipelinePod.Status
 	podStatus.ContainerStatuses = append(podStatus.ContainerStatuses, jobStep)
 	pipelinePod.Status = podStatus
-	kubeclient.CoreV1().Pods(namespace).Update(context.TODO(), pipelinePod, metav1.UpdateOptions{})
+	kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
 }
 
 func getPodSpecForAPipelineJob(jobName string) *corev1.Pod {
