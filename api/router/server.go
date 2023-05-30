@@ -77,7 +77,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	return getCORSHandler(clusterName, n, debugMode)
 }
 
-func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClient bool) http.Handler {
+func getCORSHandler(clusterName string, handler http.Handler, debugMode bool) http.Handler {
 	radixDNSZone := os.Getenv(radixDNSZoneEnvironmentVariable)
 
 	corsOptions := cors.Options{
@@ -105,7 +105,7 @@ func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClien
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE", "PATCH"},
 	}
 
-	if !useOutClusterClient {
+	if debugMode {
 		// debugging mode
 		corsOptions.Debug = true
 		// necessary header to allow ajax requests directly from radix-web-console app in browser
