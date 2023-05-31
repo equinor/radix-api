@@ -13,7 +13,6 @@ import (
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni/v3"
-	"go.elastic.co/apm/module/apmgorilla"
 )
 
 const (
@@ -27,7 +26,7 @@ const (
 // NewServer Constructor function
 func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
-	apmgorilla.Instrument(router)
+
 	statikFS, err := fs.New()
 	if err != nil {
 		panic(err)

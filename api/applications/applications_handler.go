@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -69,9 +68,7 @@ func (ah *ApplicationHandler) getServiceAccount() models.Account {
 
 // GetApplication handler for GetApplication
 func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string) (*applicationModels.Application, error) {
-	span, apmctx := apm.StartSpan(ctx, "GetApplication", "ApplicationHandler")
-	defer span.End()
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(apmctx, appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -81,17 +78,17 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		WithRadixRegistration(radixRegistration).
 		Build()
 
-	jobs, err := ah.jobHandler.GetApplicationJobs(apmctx, appName)
+	jobs, err := ah.jobHandler.GetApplicationJobs(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	environments, err := ah.environmentHandler.GetEnvironmentSummary(apmctx, appName)
+	environments, err := ah.environmentHandler.GetEnvironmentSummary(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	appAlias, err := ah.getAppAlias(apmctx, appName, environments)
+	appAlias, err := ah.getAppAlias(ctx, appName, environments)
 	if err != nil {
 		return nil, err
 	}
@@ -587,12 +584,10 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 }
 
 func (ah *ApplicationHandler) getAppAlias(ctx context.Context, appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
-	span, apmctx := apm.StartSpan(ctx, "getAppAlias", "ApplicationHandler")
-	defer span.End()
 	for _, environment := range environments {
 		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
 
-		ingresses, err := ah.getUserAccount().Client.NetworkingV1().Ingresses(environmentNamespace).List(apmctx, metav1.ListOptions{
+		ingresses, err := ah.getUserAccount().Client.NetworkingV1().Ingresses(environmentNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelselector.ForIsAppAlias().String(),
 		})
 

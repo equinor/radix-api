@@ -10,7 +10,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
@@ -20,7 +19,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
-type hasAccessToRR func(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) bool
+type hasAccessToRR func(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) (bool, error)
 
 type GetApplicationsOptions struct {
 	IncludeLatestJobSummary            bool // include LatestJobSummary
@@ -41,7 +40,10 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 		}
 	}
 
-	radixRegistrations := ah.filterRadixRegByAccess(ctx, filteredRegistrations, hasAccess)
+	radixRegistrations, err := ah.filterRadixRegByAccess(ctx, filteredRegistrations, hasAccess)
+	if err != nil {
+		return nil, err
+	}
 
 	var latestApplicationJobs map[string]*jobModels.JobSummary
 	if options.IncludeLatestJobSummary {
@@ -164,33 +166,41 @@ func (ah *ApplicationHandler) getJobsForApplication(ctx context.Context, radixRe
 	return applicationJobs, nil
 }
 
-func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) []v1.RadixRegistration {
+func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) ([]v1.RadixRegistration, error) {
 	result := []v1.RadixRegistration{}
-
 	limit := 25
-	semaphore := make(chan struct{}, limit)
 	rrChan := make(chan v1.RadixRegistration, len(radixregs))
 	kubeClient := ah.getUserAccount().Client
-	for _, rr := range radixregs {
-		semaphore <- struct{}{}
-		go func(rr v1.RadixRegistration) {
-			defer func() { <-semaphore }()
+	var g errgroup.Group
+	g.SetLimit(limit)
 
-			if rr.Status.Reconciled.IsZero() {
-				return
+	checkAccess := func(rr v1.RadixRegistration) func() error {
+		return func() error {
+			if err := ctx.Err(); err != nil {
+				return err
 			}
-
-			if hasAccess(ctx, kubeClient, rr) {
+			if rr.Status.Reconciled.IsZero() {
+				return nil
+			}
+			ok, err := hasAccess(ctx, kubeClient, rr)
+			if err != nil {
+				return err
+			}
+			if ok {
 				rrChan <- rr
 			}
-		}(rr)
+			return nil
+		}
 	}
 
-	// Wait for goroutines to release semaphore channel
-	for i := limit; i > 0; i-- {
-		semaphore <- struct{}{}
+	for _, rr := range radixregs {
+		g.Go(checkAccess(rr))
 	}
-	close(semaphore)
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
 	close(rrChan)
 
 	for rr := range rrChan {
@@ -200,11 +210,11 @@ func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixr
 	sort.Slice(result, func(i, j int) bool {
 		return strings.Compare(result[i].Name, result[j].Name) == -1
 	})
-	return result
+	return result, nil
 }
 
 // cannot run as test - does not return correct values
-func hasAccess(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) bool {
+func hasAccess(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 	sar := authorizationapi.SelfSubjectAccessReview{
 		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &authorizationapi.ResourceAttributes{
@@ -219,10 +229,9 @@ func hasAccess(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegi
 
 	r, err := postSelfSubjectAccessReviews(ctx, client, sar)
 	if err != nil {
-		log.Warnf("failed to verify access: %v", err)
-		return false
+		return false, err
 	}
-	return r.Status.Allowed
+	return r.Status.Allowed, nil
 }
 
 func postSelfSubjectAccessReviews(ctx context.Context, client kubernetes.Interface, sar authorizationapi.SelfSubjectAccessReview) (*authorizationapi.SelfSubjectAccessReview, error) {

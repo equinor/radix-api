@@ -24,7 +24,6 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
-	"go.elastic.co/apm"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,14 +89,12 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName string) ([]*environmentModels.EnvironmentSummary, error) {
-	span, apmctx := apm.StartSpan(ctx, "GetEnvironmentSummary", "EnvironmentHandler")
-	defer span.End()
 	type ChannelData struct {
 		position int
 		summary  *environmentModels.EnvironmentSummary
 	}
 
-	radixApplication, err := eh.getRadixApplicationInAppNamespace(apmctx, appName)
+	radixApplication, err := eh.getRadixApplicationInAppNamespace(ctx, appName)
 	if err != nil {
 		// This is no error, as the application may only have been just registered
 		return []*environmentModels.EnvironmentSummary{}, nil
@@ -112,7 +109,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName 
 		environment := environment
 		i := i
 		g.Go(func() error {
-			summary, err := eh.getEnvironmentSummary(apmctx, radixApplication, environment)
+			summary, err := eh.getEnvironmentSummary(ctx, radixApplication, environment)
 			if err == nil {
 				envChan <- &ChannelData{position: i, summary: summary}
 			}
@@ -126,7 +123,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName 
 		return nil, err
 	}
 
-	orphanedEnvironments, err := eh.getOrphanedEnvironments(apmctx, appName, radixApplication)
+	orphanedEnvironments, err := eh.getOrphanedEnvironments(ctx, appName, radixApplication)
 	if err != nil {
 		return nil, err
 	}
@@ -269,11 +266,9 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, 
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
-	span, apmctx := apm.StartSpan(ctx, "getConfigurationStatus", "EnvironmentHandler")
-	defer span.End()
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
-	re, err := eh.getRadixEnvironment(apmctx, uniqueName)
+	re, err := eh.getRadixEnvironment(ctx, uniqueName)
 	exists := err == nil
 
 	if !exists {
@@ -286,7 +281,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName
 		return environmentModels.Orphan, nil
 	}
 
-	_, err = eh.inClusterClient.CoreV1().Namespaces().Get(apmctx, uniqueName, metav1.GetOptions{})
+	_, err = eh.inClusterClient.CoreV1().Namespaces().Get(ctx, uniqueName, metav1.GetOptions{})
 	if err != nil {
 		return environmentModels.Pending, nil
 	}
@@ -296,19 +291,17 @@ func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName
 }
 
 func (eh EnvironmentHandler) getEnvironmentSummary(ctx context.Context, app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
-	span, apmctx := apm.StartSpan(ctx, "getEnvironmentSummary", "EnvironmentHandler")
-	defer span.End()
 	environmentSummary := &environmentModels.EnvironmentSummary{
 		Name:          env.Name,
 		BranchMapping: env.Build.From,
 	}
 
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(apmctx, app.Name, env.Name, true)
+	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, app.Name, env.Name, true)
 	if err != nil {
 		return nil, err
 	}
 
-	configurationStatus, _ := eh.getConfigurationStatus(apmctx, env.Name, app)
+	configurationStatus, _ := eh.getConfigurationStatus(ctx, env.Name, app)
 	environmentSummary.Status = configurationStatus.String()
 
 	if len(deploymentSummaries) == 1 {

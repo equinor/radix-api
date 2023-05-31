@@ -74,10 +74,6 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        appPath,
 			Method:      "GET",
 			HandlerFunc: ac.GetApplication,
-			KubeApiConfig: models.KubeApiConfig{
-				QPS:   100,
-				Burst: 100,
-			},
 		},
 		models.Route{
 			Path:        appPath,

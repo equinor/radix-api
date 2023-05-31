@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -131,20 +130,8 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
 	})
-	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-		return &apmRoundTripper{rt}
-	})
+
 	return config
-}
-
-type apmRoundTripper struct {
-	rt http.RoundTripper
-}
-
-func (x *apmRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	span, _ := apm.StartSpan(req.Context(), req.URL.Path, "Kubernetes")
-	defer span.End()
-	return x.rt.RoundTrip(req)
 }
 
 func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface) {

@@ -16,7 +16,6 @@ import (
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -97,20 +96,18 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(ctx co
 
 // GetDeploymentsForApplicationEnvironment Lists deployments inside environment
 func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(ctx context.Context, appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	span, apmctx := apm.StartSpan(ctx, "GetDeploymentsForApplicationEnvironment", "DeployHandler")
-	defer span.End()
 	var environments []string
 	if strings.TrimSpace(environment) != "" {
 		environments = append(environments, environment)
 	} else {
-		envs, err := deploy.getEnvironmentNames(apmctx, appName)
+		envs, err := deploy.getEnvironmentNames(ctx, appName)
 		if err != nil {
 			return nil, err
 		}
 		environments = append(environments, envs...)
 	}
 
-	deployments, err := deploy.getDeployments(apmctx, appName, environments, "", latest)
+	deployments, err := deploy.getDeployments(ctx, appName, environments, "", latest)
 	return deployments, err
 }
 
@@ -188,8 +185,6 @@ func (deploy *deployHandler) getEnvironmentNames(ctx context.Context, appName st
 }
 
 func (deploy *deployHandler) getDeployments(ctx context.Context, appName string, environments []string, jobName string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	span, apmctx := apm.StartSpan(ctx, "getDeployments", "DeployHandler")
-	defer span.End()
 	appNameLabel, err := labels.NewRequirement(kube.RadixAppLabel, selection.Equals, []string{appName})
 	if err != nil {
 		return nil, err
@@ -207,7 +202,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	var radixDeploymentList []v1.RadixDeployment
 	namespaces := slice.Map(environments, func(env string) string { return operatorUtils.GetEnvironmentNamespace(appName, env) })
 	for _, ns := range namespaces {
-		rdlist, err := deploy.radixClient.RadixV1().RadixDeployments(ns).List(apmctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
+		rdlist, err := deploy.radixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -218,13 +213,13 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	radixJobMap := make(map[string]*v1.RadixJob)
 
 	if jobName != "" {
-		radixJob, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).Get(apmctx, jobName, metav1.GetOptions{})
+		radixJob, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).Get(ctx, jobName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		radixJobMap[radixJob.Name] = radixJob
 	} else {
-		radixJobList, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).List(apmctx, metav1.ListOptions{LabelSelector: appNameLabel.String()})
+		radixJobList, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).List(ctx, metav1.ListOptions{LabelSelector: appNameLabel.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +230,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	}
 
 	// getting RadixDeployment's RadixRegistration to fetch git repository url
-	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(apmctx, appName, metav1.GetOptions{})
+	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

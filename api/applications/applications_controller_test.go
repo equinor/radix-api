@@ -64,7 +64,9 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 		radixclient,
 		secretproviderclient,
 		NewApplicationController(
-			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool { return true },
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return true, nil
+			},
 			NewApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 			),
@@ -88,8 +90,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			radixclient,
 			secretproviderclient,
 			NewApplicationController(
-				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
-					return false
+				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+					return false, nil
 				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -101,8 +103,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to single app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) bool {
-				return rr.GetName() == "my-second-app"
+			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
+				return rr.GetName() == "my-second-app", nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -114,8 +116,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to all app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
-				return true
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return true, nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -182,8 +184,8 @@ func TestSearchApplications(t *testing.T) {
 	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
-			return true
+		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+			return true, nil
 		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 
 	// Tests
@@ -256,8 +258,8 @@ func TestSearchApplications(t *testing.T) {
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) bool {
-				return false
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return false, nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
