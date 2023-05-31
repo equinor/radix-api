@@ -76,9 +76,9 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	applicationRegistrationBuilder := NewBuilder()
+	applicationRegistrationBuilder := applicationModels.NewApplicationRegistrationBuilder()
 	applicationRegistration := applicationRegistrationBuilder.
-		withRadixRegistration(radixRegistration).
+		WithRadixRegistration(radixRegistration).
 		Build()
 
 	jobs, err := ah.jobHandler.GetApplicationJobs(apmctx, appName)
@@ -163,10 +163,9 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 		log.Debugf("There is no Shared Secret specified for the registering application - a random Shared Secret has been generated")
 	}
 
-	radixRegistration, err := NewBuilder().
-		withAppRegistration(application).
-		withCreator(creator).
-		withRadixConfigFullName(application.RadixConfigFullName).
+	radixRegistration, err := applicationModels.NewApplicationRegistrationBuilder().
+		WithAppRegistration(application).
+		WithCreator(creator).
 		BuildRR()
 	if err != nil {
 		return nil, err
@@ -188,7 +187,7 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 		return nil, err
 	}
 
-	newApplication := NewBuilder().withRadixRegistration(radixRegistration).Build()
+	newApplication := applicationModels.NewApplicationRegistrationBuilder().WithRadixRegistration(radixRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &newApplication,
 	}, nil
@@ -233,7 +232,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 		return nil, err
 	}
 
-	radixRegistration, err := NewBuilder().withAppRegistration(application).BuildRR()
+	radixRegistration, err := applicationModels.NewApplicationRegistrationBuilder().WithAppRegistration(application).BuildRR()
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +265,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 		return nil, err
 	}
 
-	updatedApplication := NewBuilder().withRadixRegistration(updatedRegistration).Build()
+	updatedApplication := applicationModels.NewApplicationRegistrationBuilder().WithRadixRegistration(updatedRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &updatedApplication,
 	}, nil
@@ -376,7 +375,7 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 		}
 	}
 
-	updatedApplication := NewBuilder().withRadixRegistration(updatedRegistration).Build()
+	updatedApplication := applicationModels.NewApplicationRegistrationBuilder().WithRadixRegistration(updatedRegistration).Build()
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &updatedApplication,
 	}, nil

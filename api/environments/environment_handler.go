@@ -255,10 +255,10 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, 
 		return nil, err
 	}
 
-	// _, err = eh.getConfigurationStatus(ctx, envName, radixApplication)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	_, err = eh.getConfigurationStatus(ctx, envName, radixApplication)
+	if err != nil {
+		return nil, err
+	}
 
 	environmentEvents, err := eh.eventHandler.GetEvents(ctx, events.RadixEnvironmentNamespace(radixApplication, envName))
 	if err != nil {
