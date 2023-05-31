@@ -3,6 +3,7 @@ package deployments
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"strings"
 	"testing"
 
@@ -533,37 +534,56 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 
 func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
+
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	minReplicas := int32(2)
-	maxReplicas := int32(6)
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
-		WithAppName("any-app").
-		WithEnvironment("prod").
-		WithDeploymentName(anyDeployName).
-		WithJobComponents().
-		WithComponents(
-			operatorUtils.NewDeployComponentBuilder().
-				WithName("frontend").
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithHorizontalScaling(&minReplicas, maxReplicas)))
+	testScenarios := []struct {
+		name              string
+		deploymentName    string
+		minReplicas       int32
+		maxReplicas       int32
+		targetCpu         *int32
+		targetMemory      *int32
+		expectedTargetCpu *int32
+	}{
+		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, numbers.Int32Ptr(defaultTargetCPUUtilization)},
+		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, numbers.Int32Ptr(75), nil},
+		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, numbers.Int32Ptr(60), nil, numbers.Int32Ptr(60)},
+		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, numbers.Int32Ptr(62), numbers.Int32Ptr(79), numbers.Int32Ptr(62)},
+	}
 
-	// Test
-	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
+	for _, scenario := range testScenarios {
+		t.Run(scenario.name, func(t *testing.T) {
+			utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+				WithAppName(anyAppName).
+				WithEnvironment("prod").
+				WithDeploymentName(scenario.deploymentName).
+				WithJobComponents().
+				WithComponents(
+					operatorUtils.NewDeployComponentBuilder().
+						WithName("frontend").
+						WithPort("http", 8080).
+						WithPublicPort("http").
+						WithHorizontalScaling(&scenario.minReplicas, scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)))
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
-	response := <-responseChannel
+			// Test
+			endpoint := createGetComponentsEndpoint(anyAppName, scenario.deploymentName)
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
+			response := <-responseChannel
 
-	assert.Equal(t, 200, response.Code)
+			assert.Equal(t, 200, response.Code)
 
-	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+			var components []deploymentModels.Component
+			controllertest.GetResponseBody(response, &components)
 
-	assert.NotNil(t, components[0].HorizontalScalingSummary)
-	assert.Equal(t, minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
-	assert.Equal(t, maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
-	assert.Equal(t, int32(0), components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
-	assert.Equal(t, int32(80), components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
+			assert.NotNil(t, components[0].HorizontalScalingSummary)
+			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
+			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
+			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage) // using assert.Equal() fails because simple nil and *int32 typed nil do not pass equality test
+			assert.Equal(t, scenario.expectedTargetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
+			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
+			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
+		})
+	}
 }
 
 func TestGetComponents_WithIdentity(t *testing.T) {
