@@ -3,8 +3,9 @@ package deployments
 import (
 	"context"
 	"fmt"
-	v2 "k8s.io/api/autoscaling/v2"
 	"strings"
+
+	v2 "k8s.io/api/autoscaling/v2"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/labelselector"
@@ -93,8 +94,8 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 	return deploymentComponent, nil
 }
 
-func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
+func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
+	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(ctx, component.GetName(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
