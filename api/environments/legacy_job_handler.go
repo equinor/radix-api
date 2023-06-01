@@ -236,7 +236,7 @@ func (h legacyJobHandler) getScheduledBatchSummary(batch *batchv1.Job) (*deploym
 		if count, err := strconv.Atoi(jobCount); err == nil {
 			summary.TotalJobCount = count
 		} else {
-			log.Errorf("failed to get job count for the annotation %s",
+			log.Warnf("failed to get job count for the annotation %s",
 				legacyRadixBatchJobCountAnnotation)
 		}
 	}

@@ -16,7 +16,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -216,7 +215,6 @@ func getComponentPodsByNamespace(ctx context.Context, client kubernetes.Interfac
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
-		log.Errorf("error getting pods: %v", err)
 		return nil, err
 	}
 

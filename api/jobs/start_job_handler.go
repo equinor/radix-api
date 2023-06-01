@@ -74,7 +74,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 
 	triggeredBy, err := jh.getTriggeredBy(jobSpec)
 	if err != nil {
-		log.Errorf("failed to get triggeredBy: %v", err)
+		log.Warnf("failed to get triggeredBy: %v", err)
 	}
 
 	switch pipeline.Type {

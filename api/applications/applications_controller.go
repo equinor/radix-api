@@ -398,7 +398,6 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 	machineUser, err := handler.RegenerateMachineUserToken(r.Context(), appName)
 
 	if err != nil {
-		log.Errorf("failed to re-generate machine user token for app %s. Error: %v", appName, err)
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}

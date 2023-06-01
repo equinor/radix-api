@@ -141,12 +141,7 @@ func createCloneJob(ctx context.Context, client kubernetes.Interface, rr *v1.Rad
 		},
 	}
 
-	jobApplied, err := client.BatchV1().Jobs(namespace).Create(ctx, &job, metav1.CreateOptions{})
-
-	if err != nil {
-		log.Errorf("%v", err)
-	}
-	return jobApplied, err
+	return client.BatchV1().Jobs(namespace).Create(ctx, &job, metav1.CreateOptions{})
 }
 
 func cleanup(ctx context.Context, client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
