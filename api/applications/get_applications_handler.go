@@ -183,13 +183,10 @@ func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixr
 				return nil
 			}
 			ok, err := hasAccess(ctx, kubeClient, rr)
-			if err != nil {
-				return err
-			}
 			if ok {
 				rrChan <- rr
 			}
-			return nil
+			return err
 		}
 	}
 
@@ -197,11 +194,11 @@ func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixr
 		g.Go(checkAccess(rr))
 	}
 
-	if err := g.Wait(); err != nil {
+	err := g.Wait()
+	close(rrChan)
+	if err != nil {
 		return nil, err
 	}
-
-	close(rrChan)
 
 	for rr := range rrChan {
 		result = append(result, rr)
