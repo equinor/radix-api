@@ -136,7 +136,7 @@ func getHpaMetrics(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.Resource
 
 func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
 	for _, metric := range hpa.Status.CurrentMetrics {
-		if metric.Resource.Name == resourceName {
+		if metric.Resource != nil && metric.Resource.Name == resourceName {
 			return metric.Resource.Current.AverageUtilization
 		}
 	}
