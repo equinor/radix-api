@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -68,6 +69,8 @@ func (ah *ApplicationHandler) getServiceAccount() models.Account {
 
 // GetApplication handler for GetApplication
 func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string) (*applicationModels.Application, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetApplication (appName=%s)", appName), "ApplicationHandler")
+	defer span.End()
 	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -584,6 +587,8 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 }
 
 func (ah *ApplicationHandler) getAppAlias(ctx context.Context, appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getAppAlias (appName=%s)", appName), "ApplicationHandler")
+	defer span.End()
 	for _, environment := range environments {
 		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
 

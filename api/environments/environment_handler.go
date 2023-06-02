@@ -3,6 +3,7 @@ package environments
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
+	"go.elastic.co/apm"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -89,6 +91,8 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName string) ([]*environmentModels.EnvironmentSummary, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetEnvironmentSummary (appName=%s)", appName), "EnvironmentHandler")
+	defer span.End()
 	type ChannelData struct {
 		position int
 		summary  *environmentModels.EnvironmentSummary
@@ -266,6 +270,8 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, 
 }
 
 func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getConfigurationStatus (appName=%s, envName=%s)", radixApplication.Name, envName), "EnvironmentHandler")
+	defer span.End()
 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
 
 	re, err := eh.getRadixEnvironment(ctx, uniqueName)
@@ -291,6 +297,8 @@ func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName
 }
 
 func (eh EnvironmentHandler) getEnvironmentSummary(ctx context.Context, app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getEnvironmentSummary (appName=%s, envName=%s)", app.Name, env.Name), "EnvironmentHandler")
+	defer span.End()
 	environmentSummary := &environmentModels.EnvironmentSummary{
 		Name:          env.Name,
 		BranchMapping: env.Build.From,
@@ -331,6 +339,8 @@ func (eh EnvironmentHandler) getOrphanEnvironmentSummary(ctx context.Context, ap
 
 // getOrphanedEnvironments returns a slice of Summary data of orphaned environments
 func (eh EnvironmentHandler) getOrphanedEnvironments(ctx context.Context, appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getOrphanedEnvironments (appName=%s)", appName), "EnvironmentHandler")
+	defer span.End()
 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 
 	for _, name := range eh.getOrphanedEnvNames(ctx, radixApplication) {

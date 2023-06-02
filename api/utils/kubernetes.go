@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -123,10 +124,23 @@ func getInClusterClientConfig(options []RestClientConfigOption) *restclient.Conf
 	return addCommonConfigs(config, options)
 }
 
+type apmRoundTripper struct {
+	rt http.RoundTripper
+}
+
+func (x *apmRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	span, _ := apm.StartSpan(req.Context(), req.URL.Path, "Kubernetes")
+	defer span.End()
+	return x.rt.RoundTrip(req)
+}
+
 func addCommonConfigs(config *restclient.Config, options []RestClientConfigOption) *restclient.Config {
 	for _, opt := range options {
 		opt(config)
 	}
+	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+		return &apmRoundTripper{rt}
+	})
 	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
 	})
