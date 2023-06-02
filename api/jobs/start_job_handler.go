@@ -27,8 +27,8 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
+func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 
 	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
 	if err != nil {
@@ -39,7 +39,7 @@ func (jh JobHandler) HandleStartPipelineJob(appName string, pipeline *pipelineJo
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 
 	triggeredBy, err := jh.getTriggeredBy(jobSpec)
 	if err != nil {
-		log.Errorf("failed to get triggeredBy: %v", err)
+		log.Warnf("failed to get triggeredBy: %v", err)
 	}
 
 	switch pipeline.Type {

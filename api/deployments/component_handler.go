@@ -3,8 +3,9 @@ package deployments
 import (
 	"context"
 	"fmt"
-	v2 "k8s.io/api/autoscaling/v2"
 	"strings"
+
+	v2 "k8s.io/api/autoscaling/v2"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/labelselector"
@@ -15,7 +16,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,18 +27,18 @@ const (
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
-func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
+func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 	var components []*deploymentModels.Component
 
 	for _, component := range rd.Spec.Components {
-		componentModel, err := deploy.getComponent(&component, ra, rd, deployment)
+		componentModel, err := deploy.getComponent(ctx, &component, ra, rd, deployment)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +46,7 @@ func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployme
 	}
 
 	for _, component := range rd.Spec.Jobs {
-		componentModel, err := deploy.getComponent(&component, ra, rd, deployment)
+		componentModel, err := deploy.getComponent(ctx, &component, ra, rd, deployment)
 		if err != nil {
 			return nil, err
 		}
@@ -57,34 +57,34 @@ func (deploy *deployHandler) GetComponentsForDeployment(appName string, deployme
 }
 
 // GetComponentsForDeploymentName handler for GetDeployments
-func (deploy *deployHandler) GetComponentsForDeploymentName(appName, deploymentName string) ([]*deploymentModels.Component, error) {
-	deployments, err := deploy.GetDeploymentsForApplication(appName)
+func (deploy *deployHandler) GetComponentsForDeploymentName(ctx context.Context, appName, deploymentName string) ([]*deploymentModels.Component, error) {
+	deployments, err := deploy.GetDeploymentsForApplication(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, depl := range deployments {
 		if strings.EqualFold(depl.Name, deploymentName) {
-			return deploy.GetComponentsForDeployment(appName, depl)
+			return deploy.GetComponentsForDeployment(ctx, appName, depl)
 		}
 	}
 
 	return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
 }
 
-func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
+func (deploy *deployHandler) getComponent(ctx context.Context, component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
 
 	// TODO: Add interface for RA + EnvConfig
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
 
-	deploymentComponent, err := GetComponentStateFromSpec(deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
+	deploymentComponent, err := GetComponentStateFromSpec(ctx, deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
 	if err != nil {
 		return nil, err
 	}
 
 	if component.GetType() == v1.RadixComponentTypeComponent {
-		hpaSummary, err := deploy.getHpaSummary(component, envNs)
+		hpaSummary, err := deploy.getHpaSummary(ctx, component, envNs)
 		if err != nil {
 			return nil, err
 		}
@@ -93,8 +93,8 @@ func (deploy *deployHandler) getComponent(component v1.RadixCommonDeployComponen
 	return deploymentComponent, nil
 }
 
-func (deploy *deployHandler) getHpaSummary(component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(context.TODO(), component.GetName(), metav1.GetOptions{})
+func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
+	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(ctx, component.GetName(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
@@ -145,6 +145,7 @@ func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.Re
 
 // GetComponentStateFromSpec Returns a component with the current state
 func GetComponentStateFromSpec(
+	ctx context.Context,
 	kubeClient kubernetes.Interface,
 	appName string,
 	deployment *deploymentModels.DeploymentSummary,
@@ -162,14 +163,14 @@ func GetComponentStateFromSpec(
 
 	if deployment.ActiveTo == "" {
 		// current active deployment - we get existing pods
-		componentPods, err := getComponentPodsByNamespace(kubeClient, envNs, component.GetName())
+		componentPods, err := getComponentPodsByNamespace(ctx, kubeClient, envNs, component.GetName())
 		if err != nil {
 			return nil, err
 		}
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		replicaSummaryList = getReplicaSummaryList(componentPods)
-		auxResource, err = getAuxiliaryResources(kubeClient, appName, component, envNs)
+		auxResource, err = getAuxiliaryResources(ctx, kubeClient, appName, component, envNs)
 		if err != nil {
 			return nil, err
 		}
@@ -208,13 +209,12 @@ func getPodNames(pods []corev1.Pod) []string {
 	return names
 }
 
-func getComponentPodsByNamespace(client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
+func getComponentPodsByNamespace(ctx context.Context, client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
 	var componentPods []corev1.Pod
-	pods, err := client.CoreV1().Pods(envNs).List(context.TODO(), metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(envNs).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
 	})
 	if err != nil {
-		log.Errorf("error getting pods: %v", err)
 		return nil, err
 	}
 
@@ -309,9 +309,9 @@ func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary 
 	return replicaSummaryList
 }
 
-func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
+func getAuxiliaryResources(ctx context.Context, kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
 	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
-		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(kubeClient, appName, component.GetName(), envNamespace)
+		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(ctx, kubeClient, appName, component.GetName(), envNamespace)
 		if err != nil {
 			return
 		}
@@ -320,9 +320,9 @@ func getAuxiliaryResources(kubeClient kubernetes.Interface, appName string, comp
 	return
 }
 
-func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, componentName, envNamespace string) (*deploymentModels.OAuth2AuxiliaryResource, error) {
+func getOAuth2AuxiliaryResource(ctx context.Context, kubeClient kubernetes.Interface, appName, componentName, envNamespace string) (*deploymentModels.OAuth2AuxiliaryResource, error) {
 	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
-	oauthDeployment, err := getAuxiliaryResourceDeployment(kubeClient, appName, componentName, envNamespace, defaults.OAuthProxyAuxiliaryComponentType)
+	oauthDeployment, err := getAuxiliaryResourceDeployment(ctx, kubeClient, appName, componentName, envNamespace, defaults.OAuthProxyAuxiliaryComponentType)
 	if err != nil {
 		return nil, err
 	}
@@ -333,11 +333,11 @@ func getOAuth2AuxiliaryResource(kubeClient kubernetes.Interface, appName, compon
 	return &oauth2Resource, nil
 }
 
-func getAuxiliaryResourceDeployment(kubeClient kubernetes.Interface, appName, componentName, envNamespace, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
+func getAuxiliaryResourceDeployment(ctx context.Context, kubeClient kubernetes.Interface, appName, componentName, envNamespace, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
 	var auxResourceDeployment deploymentModels.AuxiliaryResourceDeployment
 
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
-	deployments, err := kubeClient.AppsV1().Deployments(envNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	deployments, err := kubeClient.AppsV1().Deployments(envNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func getAuxiliaryResourceDeployment(kubeClient kubernetes.Interface, appName, co
 	}
 	deployment := deployments.Items[0]
 
-	pods, err := kubeClient.CoreV1().Pods(envNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector})
+	pods, err := kubeClient.CoreV1().Pods(envNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return nil, err
 	}
