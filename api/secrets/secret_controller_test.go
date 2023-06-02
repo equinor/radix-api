@@ -124,7 +124,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
+	kubeclient.CoreV1().Namespaces().Create(context.Background(), &namespace, metav1.CreateOptions{})
 
 	// Component secret
 	secretObject := corev1.Secret{
@@ -134,7 +134,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
+	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
 
 	// Job secret
 	secretObject = corev1.Secret{
@@ -144,7 +144,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
+	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, updateSecret, updateComponent, updateSecretName), parameters)
@@ -298,7 +298,7 @@ func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubern
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
+	kubeclient.CoreV1().Namespaces().Create(context.Background(), &namespace, metav1.CreateOptions{})
 
 	for componentName, clusterComponentSecrets := range clusterComponentSecretsMap {
 		secretObject := corev1.Secret{
@@ -308,7 +308,7 @@ func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubern
 			},
 			Data: clusterComponentSecrets,
 		}
-		kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
+		kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
 	}
 }
 
@@ -363,7 +363,7 @@ func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
 			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
 		})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -432,7 +432,7 @@ func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
 			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
 		})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -485,7 +485,7 @@ func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
 			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
 		})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -549,7 +549,7 @@ func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
 				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
 			})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -623,7 +623,7 @@ func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
 				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
 			})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -699,7 +699,7 @@ func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
 				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
 			})
 
-		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+		secrets, _ := handler.GetSecretsForDeployment(context.Background(), appName, environmentOne, deploymentName)
 
 		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
 		for _, aSecret := range secrets {
@@ -760,7 +760,7 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 		))
 
 	// No secret objects exist
-	secretDtos, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	secretDtos, err := handler.GetSecretsForDeployment(context.Background(), appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
 	expected := []secretModels.Secret{
 		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
@@ -788,7 +788,7 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 		},
 		metav1.CreateOptions{},
 	)
-	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	secretDtos, err = handler.GetSecretsForDeployment(context.Background(), appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
 	expected = []secretModels.Secret{
 		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},
@@ -802,7 +802,7 @@ func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
 	// RedisPassword should have status Consistent
 	comp2Secret.Data[defaults.OAuthRedisPasswordKeyName] = []byte("redis pwd")
 	kubeclient.CoreV1().Secrets(envNs).Update(context.Background(), comp2Secret, metav1.UpdateOptions{})
-	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	secretDtos, err = handler.GetSecretsForDeployment(context.Background(), appName, environmentName, deployment.Name)
 	assert.NoError(t, err)
 	expected = []secretModels.Secret{
 		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},

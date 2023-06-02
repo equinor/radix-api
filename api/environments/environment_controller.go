@@ -238,7 +238,7 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 
 	deploymentHandler := deployments.Init(accounts)
 
-	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(appName, envName, useLatest)
+	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(r.Context(), appName, envName, useLatest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -284,7 +284,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	// Need in cluster client in order to delete namespace using sufficient privileges
 	environmentHandler := Init(WithAccounts(accounts))
-	_, err := environmentHandler.CreateEnvironment(appName, envName)
+	_, err := environmentHandler.CreateEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -334,7 +334,7 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
+	appEnvironment, err := environmentHandler.GetEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -383,7 +383,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.DeleteEnvironment(appName, envName)
+	err := environmentHandler.DeleteEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -428,7 +428,7 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
+	appEnvironments, err := environmentHandler.GetEnvironmentSummary(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -478,7 +478,7 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	events, err := environmentHandler.GetEnvironmentEvents(appName, envName)
+	events, err := environmentHandler.GetEnvironmentEvents(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -532,7 +532,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StopComponent(appName, envName, componentName, false)
+	err := environmentHandler.StopComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -585,7 +585,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StartComponent(appName, envName, componentName, false)
+	err := environmentHandler.StartComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -642,7 +642,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartComponent(appName, envName, componentName, false)
+	err := environmentHandler.RestartComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -689,7 +689,7 @@ func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StopEnvironment(appName, envName)
+	err := environmentHandler.StopEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -736,7 +736,7 @@ func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StartEnvironment(appName, envName)
+	err := environmentHandler.StartEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -787,7 +787,7 @@ func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartEnvironment(appName, envName)
+	err := environmentHandler.RestartEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -828,7 +828,7 @@ func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StopApplication(appName)
+	err := environmentHandler.StopApplication(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -869,7 +869,7 @@ func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.StartApplication(appName)
+	err := environmentHandler.StartApplication(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -914,7 +914,7 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartApplication(appName)
+	err := environmentHandler.RestartApplication(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -973,7 +973,7 @@ func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWrit
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := Init(WithAccounts(accounts))
-	err := environmentHandler.RestartComponentAuxiliaryResource(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
+	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1061,7 +1061,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	}
 
 	eh := Init(WithAccounts(accounts))
-	log, err := eh.GetLogs(appName, envName, podName, &since, logLines, previousLog)
+	log, err := eh.GetLogs(r.Context(), appName, envName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1148,7 +1148,7 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	}
 
 	eh := Init(WithAccounts(accounts))
-	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since, logLines)
+	log, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1208,7 +1208,7 @@ func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
 	eh := Init(WithAccounts(accounts))
-	jobSummaries, err := eh.GetJobs(appName, envName, jobComponentName)
+	jobSummaries, err := eh.GetJobs(r.Context(), appName, envName, jobComponentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1267,7 +1267,7 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)["jobName"]
 
 	eh := Init(WithAccounts(accounts))
-	jobSummary, err := eh.GetJob(appName, envName, jobComponentName, jobName)
+	jobSummary, err := eh.GetJob(r.Context(), appName, envName, jobComponentName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1331,7 +1331,7 @@ func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	jobName := mux.Vars(r)["jobName"]
 
 	eh := Init(WithAccounts(accounts))
-	err := eh.StopJob(appName, envName, jobComponentName, jobName)
+	err := eh.StopJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1394,7 +1394,7 @@ func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	jobName := mux.Vars(r)["jobName"]
 
 	eh := Init(WithAccounts(accounts))
-	err := eh.DeleteJob(appName, envName, jobComponentName, jobName)
+	err := eh.DeleteJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1448,7 +1448,7 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
 	eh := Init(WithAccounts(accounts))
-	batchSummaries, err := eh.GetBatches(appName, envName, jobComponentName)
+	batchSummaries, err := eh.GetBatches(r.Context(), appName, envName, jobComponentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1507,7 +1507,7 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := Init(WithAccounts(accounts))
-	jobSummary, err := eh.GetBatch(appName, envName, jobComponentName, batchName)
+	jobSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1571,7 +1571,7 @@ func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := Init(WithAccounts(accounts))
-	err := eh.StopBatch(appName, envName, jobComponentName, batchName)
+	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1634,7 +1634,7 @@ func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Reques
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := Init(WithAccounts(accounts))
-	err := eh.DeleteBatch(appName, envName, jobComponentName, batchName)
+	err := eh.DeleteBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1722,7 +1722,7 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 	}
 
 	eh := Init(WithAccounts(accounts))
-	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
+	log, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1786,7 +1786,7 @@ func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	jobName := mux.Vars(r)["jobName"]
 
 	eh := Init(WithAccounts(accounts))
-	payload, err := eh.GetJobPayload(appName, envName, jobComponentName, jobName)
+	payload, err := eh.GetJobPayload(r.Context(), appName, envName, jobComponentName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1855,7 +1855,7 @@ func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	}
 
 	eh := Init(WithAccounts(accounts))
-	err = eh.ScaleComponent(appName, envName, componentName, replicas)
+	err = eh.ScaleComponent(r.Context(), appName, envName, componentName, replicas)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

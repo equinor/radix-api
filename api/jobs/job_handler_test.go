@@ -114,7 +114,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		defer ctrl.Finish()
 		dh := deployMock.NewMockDeployHandler(ctrl)
 		h := Init(s.accounts, dh)
-		actualJob, err := h.GetApplicationJob(appName, "missing_job")
+		actualJob, err := h.GetApplicationJob(context.Background(), appName, "missing_job")
 		s.True(k8serrors.IsNotFound(err))
 		s.Nil(actualJob)
 	})
@@ -124,10 +124,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		defer ctrl.Finish()
 
 		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(nil, assert.AnError).Times(1)
+		dh.EXPECT().GetDeploymentsForJob(context.Background(), appName, jobName).Return(nil, assert.AnError).Times(1)
 		h := Init(s.accounts, dh)
 
-		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
+		actualJob, actualErr := h.GetApplicationJob(context.Background(), appName, jobName)
 		s.Equal(assert.AnError, actualErr)
 		s.Nil(actualJob)
 	})
@@ -138,10 +138,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 
 		deployList := []*deploymentModels.DeploymentSummary{&deploySummary}
 		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(appName, jobName).Return(deployList, nil).Times(1)
+		dh.EXPECT().GetDeploymentsForJob(context.Background(), appName, jobName).Return(deployList, nil).Times(1)
 		h := Init(s.accounts, dh)
 
-		actualJob, actualErr := h.GetApplicationJob(appName, jobName)
+		actualJob, actualErr := h.GetApplicationJob(context.Background(), appName, jobName)
 		s.NoError(actualErr)
 		s.Equal(jobName, actualJob.Name)
 		s.Equal(branch, actualJob.Branch)
@@ -181,7 +181,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			defer ctrl.Finish()
 
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			dh.EXPECT().GetDeploymentsForJob(gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+			dh.EXPECT().GetDeploymentsForJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
 			rj := v1.RadixJob{ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName), CreationTimestamp: scenario.creationTimestamp}}
 			if scenario.jobStatusCreated != emptyTime {
@@ -189,7 +189,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			}
 			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
 			s.NoError(err)
-			actualJob, err := h.GetApplicationJob(appName, scenario.jobName)
+			actualJob, err := h.GetApplicationJob(context.Background(), appName, scenario.jobName)
 			s.NoError(err)
 			s.Equal(scenario.expectedCreated, actualJob.Created)
 		})
@@ -212,7 +212,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 			defer ctrl.Finish()
 
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			dh.EXPECT().GetDeploymentsForJob(gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+			dh.EXPECT().GetDeploymentsForJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
 			rj := v1.RadixJob{
 				ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName)},
@@ -222,7 +222,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 
 			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
 			s.NoError(err)
-			actualJob, err := h.GetApplicationJob(appName, scenario.jobName)
+			actualJob, err := h.GetApplicationJob(context.Background(), appName, scenario.jobName)
 			s.NoError(err)
 			s.Equal(scenario.expectedStatus, actualJob.Status)
 		})

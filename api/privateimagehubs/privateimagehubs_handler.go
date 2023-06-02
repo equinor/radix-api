@@ -1,6 +1,8 @@
 package privateimagehubs
 
 import (
+	"context"
+
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
 	sharedModels "github.com/equinor/radix-api/models"
@@ -21,9 +23,9 @@ func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
 }
 
 // GetPrivateImageHubs returns all private image hubs defined for app
-func (ph PrivateImageHubHandler) GetPrivateImageHubs(appName string) ([]models.ImageHubSecret, error) {
+func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appName string) ([]models.ImageHubSecret, error) {
 	var imageHubSecrets []models.ImageHubSecret
-	application, err := utils.CreateApplicationConfig(ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
+	application, err := utils.CreateApplicationConfig(ctx, ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
 	if err != nil {
 		return []models.ImageHubSecret{}, nil
 	}
@@ -46,8 +48,8 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(appName string) ([]models.I
 }
 
 // UpdatePrivateImageHubValue updates the private image hub value with new password
-func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(appName, server, password string) error {
-	application, err := utils.CreateApplicationConfig(ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
+func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
+	application, err := utils.CreateApplicationConfig(ctx, ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
 	if err != nil {
 		return err
 	}

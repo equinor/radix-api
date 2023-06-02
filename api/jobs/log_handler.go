@@ -19,8 +19,8 @@ import (
 )
 
 // GetTektonPipelineRunTaskStepLogs Get logs of a pipeline run task for a pipeline job
-func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	pipelineRun, err := tekton.GetPipelineRun(jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, jobModels.PipelineRunNotFoundError(appName, jobName, pipelineRunName)
@@ -35,7 +35,7 @@ func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(appName, jobName, pipeline
 	if err != nil {
 		return nil, err
 	}
-	return podHandler.HandleGetAppPodLog(appName, podName, containerName, sinceTime, logLines)
+	return podHandler.HandleGetAppPodLog(ctx, appName, podName, containerName, sinceTime, logLines)
 }
 
 func (jh JobHandler) getTaskPodAndContainerName(pipelineRun *v1beta1.PipelineRun, taskRealName, stepName string) (string, string, error) {
@@ -67,8 +67,8 @@ func (jh JobHandler) getTaskPodAndContainerName(pipelineRun *v1beta1.PipelineRun
 }
 
 // GetPipelineJobStepLogs Get logs of a pipeline job step
-func (jh JobHandler) GetPipelineJobStepLogs(appName, jobName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), jobName, metav1.GetOptions{})
+func (jh JobHandler) GetPipelineJobStepLogs(ctx context.Context, appName, jobName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(ctx, jobName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, jobModels.PipelineNotFoundError(appName, jobName)
@@ -81,7 +81,7 @@ func (jh JobHandler) GetPipelineJobStepLogs(appName, jobName, stepName string, s
 	}
 
 	podHandler := pods.Init(jh.userAccount.Client)
-	logReader, err := podHandler.HandleGetAppPodLog(appName, stepPodName, stepName, sinceTime, logLines)
+	logReader, err := podHandler.HandleGetAppPodLog(ctx, appName, stepPodName, stepName, sinceTime, logLines)
 	if err != nil {
 		log.Warnf("Failed to get build logs. %v", err)
 		return nil, err

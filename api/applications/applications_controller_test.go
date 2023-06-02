@@ -64,7 +64,9 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 		radixclient,
 		secretproviderclient,
 		NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool { return true },
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return true, nil
+			},
 			NewApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 			),
@@ -88,8 +90,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			radixclient,
 			secretproviderclient,
 			NewApplicationController(
-				func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
-					return false
+				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+					return false, nil
 				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -101,8 +103,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to single app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
-				return rr.GetName() == "my-second-app"
+			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
+				return rr.GetName() == "my-second-app", nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -114,8 +116,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 	t.Run("access to all app", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
-				return true
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return true, nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -182,8 +184,8 @@ func TestSearchApplications(t *testing.T) {
 	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-		func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
-			return true
+		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+			return true, nil
 		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 
 	// Tests
@@ -256,8 +258,8 @@ func TestSearchApplications(t *testing.T) {
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
-			func(client kubernetes.Interface, rr v1.RadixRegistration) bool {
-				return false
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return false, nil
 			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
@@ -326,7 +328,10 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
 	// Test
-	parameters := AnApplicationRegistration().withName("").BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().WithName("").Build(),
+		false,
+	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -340,11 +345,13 @@ func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withConfigurationItem("").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name-2").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithConfigurationItem("").
+			Build(),
+		false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -359,11 +366,13 @@ func TestCreateApplication_WhenOptionalConfigurationItemIsNotSet_ReturnSuccess(t
 	_, controllerTestUtils, _, _, _, _ := setupTest(false, true)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withConfigurationItem("").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name-2").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithConfigurationItem("").
+			Build(),
+		false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -375,11 +384,13 @@ func TestCreateApplication_WhenRequiredAdGroupsIsNotSet_ReturnError(t *testing.T
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withAdGroups(nil).
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name-2").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithAdGroups(nil).
+			Build(),
+		false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -394,11 +405,14 @@ func TestCreateApplication_WhenOptionalAdGroupsIsNotSet_ReturnSuccess(t *testing
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, false)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name-2").
-		withRepository("https://github.com/Equinor/any-repo").
-		withAdGroups(nil).
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name-2").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithAdGroups(nil).
+			Build(),
+		false,
+	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -410,11 +424,14 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		withConfigBranch("").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithConfigBranch("").
+			Build(),
+		false,
+	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -430,11 +447,13 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 
 	// Test
 	configBranch := "main.."
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		withConfigBranch(configBranch).
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithConfigBranch(configBranch).
+			Build(),
+		false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -472,12 +491,14 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 
 			// Test
 			configBranch := "main"
-			parameters := AnApplicationRegistration().
-				withName("any-name").
-				withRepository("https://github.com/Equinor/any-repo").
-				withConfigBranch(configBranch).
-				withRadixConfigFullName(scenario.radixConfigFullName).
-				BuildApplicationRegistrationRequest()
+			parameters := buildApplicationRegistrationRequest(
+				anApplicationRegistration().
+					WithName("any-name").
+					WithRepository("https://github.com/Equinor/any-repo").
+					WithConfigBranch(configBranch).
+					WithRadixConfigFullName(scenario.radixConfigFullName).
+					Build(),
+				false)
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 			response := <-responseChannel
 
@@ -502,18 +523,25 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
+
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -528,19 +556,24 @@ func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withAcknowledgeWarnings().
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		true,
+	)
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	response := <-responseChannel
 
@@ -555,15 +588,18 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		withSharedSecret("Any secret").
-		withAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
-		withConfigBranch("abranch").
-		withRadixConfigFullName("a/custom-radixconfig.yaml").
-		withConfigurationItem("ci").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			WithSharedSecret("Any secret").
+			WithAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+			WithConfigBranch("abranch").
+			WithRadixConfigFullName("a/custom-radixconfig.yaml").
+			WithConfigurationItem("ci").
+			Build(),
+		false,
+	)
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -644,7 +680,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironmentName(anyOrphanedEnvironment))
 
 	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(context.TODO(), re, metav1.UpdateOptions{})
+	radix.RadixV1().RadixEnvironments().Update(context.Background(), re, metav1.UpdateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))
@@ -672,27 +708,36 @@ func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withRepository("https://github.com/Equinor/any-other-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-other-repo").
+			Build(),
+		false,
+	)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
@@ -707,28 +752,36 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withRepository("https://github.com/Equinor/any-other-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-other-repo").
+			Build(),
+		false,
+	)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().
-		withName("any-other-name").
-		withAcknowledgeWarnings().
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-other-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		true,
+	)
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
 	response := <-responseChannel
@@ -745,12 +798,12 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().withName("any-name").BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(anApplicationRegistration().WithName("any-name").Build(), false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
 
 	// Test
-	parameters = AnApplicationRegistration().withName("any-name").BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(anApplicationRegistration().WithName("any-name").Build(), false)
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
 	response := <-responseChannel
 
@@ -758,7 +811,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, controllertest.AppNotFoundErrorMsg("another-name"), errorResponse.Message)
 
-	parameters = AnApplicationRegistration().withName("another-name").BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(anApplicationRegistration().WithName("another-name").Build(), false)
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), parameters)
 	response = <-responseChannel
 
@@ -766,7 +819,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, "App name any-name does not correspond with application name another-name", errorResponse.Message)
 
-	parameters = AnApplicationRegistration().withName("another-name").BuildApplicationRegistrationRequest()
+	parameters = buildApplicationRegistrationRequest(anApplicationRegistration().WithName("another-name").Build(), false)
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "another-name"), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusNotFound, response.Code)
@@ -776,19 +829,20 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	builder := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/a-repo").
-		withSharedSecret("")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
+	builder :=
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/a-repo").
+			WithSharedSecret("")
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", buildApplicationRegistrationRequest(builder.Build(), false))
 	<-responseChannel
 
 	// Test Repository
 	newRepository := "https://github.com/Equinor/any-repo"
 	builder = builder.
-		withRepository(newRepository)
+		WithRepository(newRepository)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response := <-responseChannel
 
 	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
@@ -799,9 +853,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Test SharedSecret
 	newSharedSecret := "Any shared secret"
 	builder = builder.
-		withSharedSecret(newSharedSecret)
+		WithSharedSecret(newSharedSecret)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
@@ -810,9 +864,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Test WBS
 	newWbs := "new.wbs.code"
 	builder = builder.
-		withWBS(newWbs)
+		WithWBS(newWbs)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
@@ -821,9 +875,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Test ConfigBranch
 	newConfigBranch := "newcfgbranch"
 	builder = builder.
-		withConfigBranch(newConfigBranch)
+		WithConfigBranch(newConfigBranch)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
@@ -832,9 +886,9 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Test ConfigurationItem
 	newConfigurationItem := "newci"
 	builder = builder.
-		withConfigurationItem(newConfigurationItem)
+		WithConfigurationItem(newConfigurationItem)
 
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), builder.BuildApplicationRegistrationRequest())
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
 	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
@@ -845,16 +899,16 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	builder := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/a-repo").
-		withSharedSecret("").
-		withAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
-		withOwner("AN_OWNER@equinor.com").
-		withWBS("T.O123A.AZ.45678").
-		withConfigBranch("main1").
-		withConfigurationItem("ci-initial")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
+	builder := anApplicationRegistration().
+		WithName("any-name").
+		WithRepository("https://github.com/Equinor/a-repo").
+		WithSharedSecret("").
+		WithAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
+		WithOwner("AN_OWNER@equinor.com").
+		WithWBS("T.O123A.AZ.45678").
+		WithConfigBranch("main1").
+		WithConfigurationItem("ci-initial")
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", buildApplicationRegistrationRequest(builder.Build(), false))
 	<-responseChannel
 
 	// Test
@@ -953,10 +1007,10 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	builder := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/a-repo")
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", builder.BuildApplicationRegistrationRequest())
+	builder := anApplicationRegistration().
+		WithName("any-name").
+		WithRepository("https://github.com/Equinor/a-repo")
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", buildApplicationRegistrationRequest(builder.Build(), false))
 	<-responseChannel
 
 	// Test
@@ -986,7 +1040,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 		WithName(appName).
 		WithConfigurationItem("any").
 		WithConfigBranch("")
-	radixClient.RadixV1().RadixRegistrations().Create(context.TODO(), rr.BuildRR(), metav1.CreateOptions{})
+	radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr.BuildRR(), metav1.CreateOptions{})
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
@@ -1011,9 +1065,9 @@ func TestModifyApplication_IgnoreRequireCIValidationWhenRequiredButCurrentIsEmpt
 	// Setup
 	_, controllerTestUtils, _, radixClient, _, _ := setupTest(true, true)
 
-	rr, err := AnApplicationRegistration().
-		withName("any-name").
-		withConfigurationItem("").
+	rr, err := anApplicationRegistration().
+		WithName("any-name").
+		WithConfigurationItem("").
 		BuildRR()
 	require.NoError(t, err)
 	_, err = radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr, metav1.CreateOptions{})
@@ -1035,9 +1089,9 @@ func TestModifyApplication_IgnoreRequireADGroupValidationWhenRequiredButCurrentI
 	// Setup
 	_, controllerTestUtils, _, radixClient, _, _ := setupTest(true, true)
 
-	rr, err := AnApplicationRegistration().
-		withName("any-name").
-		withAdGroups(nil).
+	rr, err := anApplicationRegistration().
+		WithName("any-name").
+		WithAdGroups(nil).
 		BuildRR()
 	require.NoError(t, err)
 	_, err = radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr, metav1.CreateOptions{})
@@ -1101,8 +1155,14 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().
-		withName("any-app").withConfigBranch("maincfg").BuildApplicationRegistrationRequest())
+	registerAppParam := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-app").
+			WithConfigBranch("maincfg").
+			Build(),
+		false,
+	)
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 	<-responseChannel
 
 	// Test
@@ -1164,7 +1224,8 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			_, controllerTestUtils, _, radixclient, _, _ := setupTest(true, true)
-			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
+			registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
+			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), ts.params)
 			<-responseChannel
 
@@ -1187,8 +1248,8 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 		ToEnvironment:   "target",
 		DeploymentName:  "a-deployment",
 	}
-
-	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", AnApplicationRegistration().withName(appName).BuildApplicationRegistrationRequest())
+	registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
+	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Promote), parameters)
 	<-responseChannel
 
@@ -1269,8 +1330,12 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
-	parameters := AnApplicationRegistration().
-		withName("any-name").BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			Build(),
+		false,
+	)
 
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-responseChannel
@@ -1342,17 +1407,18 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	_, controllerTestUtils, _, _, _, _ := setupTest(true, true)
 
 	// Test
-	parameters := AnApplicationRegistration().
-		withName("any-name").
-		withRepository("https://github.com/Equinor/any-repo").
-		BuildApplicationRegistrationRequest()
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
 
 	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-appResponseChannel
 
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret("new shared secret").
-		Build()
+	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret"}
 	appName := "any-non-existing-name"
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
@@ -1374,14 +1440,12 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been created
-	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(firstSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 
 	// calling regenerate-deploy-key in order to delete secret
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret("new shared secret").
-		Build()
+	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret"}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusNoContent, response.Code)
@@ -1390,7 +1454,7 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been re-created and is different from first secret
-	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(secondSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 	assert.NotEqual(t, firstSecret.Data[defaults.GitPrivateKeySecretKey], secondSecret.Data[defaults.GitPrivateKeySecretKey])
@@ -1410,10 +1474,7 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	assert.NoError(t, err)
 
 	// calling regenerate-deploy-key in order to set secret
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret("new shared secret").
-		WithPrivateKey(deployKey.PrivateKey).
-		Build()
+	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret", PrivateKey: deployKey.PrivateKey}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusNoContent, response.Code)
@@ -1422,7 +1483,7 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// Check that secret has been re-created and is equal to the one in the web parameter
-	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.TODO(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, deployKey.PrivateKey, string(secret.Data[defaults.GitPrivateKeySecretKey]))
 }
@@ -1437,10 +1498,7 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
 
 	// calling regenerate-deploy-key with invalid private key, expecting error
-	regenerateParameters := AnRegenerateDeployKeyAndSecretDataBuilder().
-		WithSharedSecret("new shared secret").
-		WithPrivateKey("invalid key").
-		Build()
+	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret", PrivateKey: "invalid key"}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusBadRequest, response.Code)
@@ -1456,7 +1514,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 			return
 
 		case <-tick:
-			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
+			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.Background(), metav1.ListOptions{})
 			if len(jobs.Items) > 0 {
 				job := jobs.Items[0]
 
@@ -1466,7 +1524,7 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 					job.Status.Failed = int32(1)
 				}
 
-				kubeclient.BatchV1().Jobs(appNamespace).Update(context.TODO(), &job, metav1.UpdateOptions{})
+				kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
 			}
 		}
 	}
@@ -1492,42 +1550,28 @@ func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, 
 }
 
 func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
-	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.TODO(), metav1.ListOptions{})
+	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return jobs.Items, nil
 }
 
-// RegenerateDeployKeyAndSecretDataBuilder Handles construction of DTO
-type RegenerateDeployKeyAndSecretDataBuilder interface {
-	WithSharedSecret(string) RegenerateDeployKeyAndSecretDataBuilder
-	WithPrivateKey(string) RegenerateDeployKeyAndSecretDataBuilder
-	Build() *applicationModels.RegenerateDeployKeyAndSecretData
+// anApplicationRegistration Constructor for application builder with test values
+func anApplicationRegistration() applicationModels.ApplicationRegistrationBuilder {
+	return applicationModels.NewApplicationRegistrationBuilder().
+		WithName("my-app").
+		WithRepository("https://github.com/Equinor/my-app").
+		WithSharedSecret("AnySharedSecret").
+		WithAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+		WithCreator("a_test_user@equinor.com").
+		WithConfigurationItem("2b0781a7db131784551ea1ea4b9619c9").
+		WithConfigBranch("main")
 }
 
-type regenerateDeployKeyAndSecretDataBuilder struct {
-	sharedSecret string
-	privateKey   string
-}
-
-func (builder *regenerateDeployKeyAndSecretDataBuilder) WithPrivateKey(privateKey string) RegenerateDeployKeyAndSecretDataBuilder {
-	builder.privateKey = privateKey
-	return builder
-}
-
-func AnRegenerateDeployKeyAndSecretDataBuilder() RegenerateDeployKeyAndSecretDataBuilder {
-	return &regenerateDeployKeyAndSecretDataBuilder{}
-}
-
-func (builder *regenerateDeployKeyAndSecretDataBuilder) WithSharedSecret(sharedSecret string) RegenerateDeployKeyAndSecretDataBuilder {
-	builder.sharedSecret = sharedSecret
-	return builder
-}
-
-func (builder *regenerateDeployKeyAndSecretDataBuilder) Build() *applicationModels.RegenerateDeployKeyAndSecretData {
-	return &applicationModels.RegenerateDeployKeyAndSecretData{
-		SharedSecret: builder.sharedSecret,
-		PrivateKey:   builder.privateKey,
+func buildApplicationRegistrationRequest(applicationRegistration applicationModels.ApplicationRegistration, acknowledgeWarnings bool) *applicationModels.ApplicationRegistrationRequest {
+	return &applicationModels.ApplicationRegistrationRequest{
+		ApplicationRegistration: &applicationRegistration,
+		AcknowledgeWarnings:     acknowledgeWarnings,
 	}
 }

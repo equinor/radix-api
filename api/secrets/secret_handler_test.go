@@ -540,7 +540,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 		s.Run(fmt.Sprintf("test GetSecretsForDeployment: %s", scenario.name), func() {
 			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
 
-			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
+			secrets, err := secretHandler.GetSecretsForDeployment(context.Background(), appName, environment, deploymentName)
 
 			s.Nil(err)
 			s.assertSecrets(&scenario, secrets)
@@ -730,7 +730,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefVers
 		s.Run(fmt.Sprintf("test GetSecretsStatus: %s", scenario.name), func() {
 			secretHandler, _ := s.prepareTestRun(ctrl, &scenario, appName, environment, deploymentName)
 
-			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
+			secrets, err := secretHandler.GetSecretsForDeployment(context.Background(), appName, environment, deploymentName)
 
 			s.Nil(err)
 			s.assertSecrets(&scenario, secrets)
@@ -894,7 +894,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 
 			secretHandler, _ := s.prepareTestRun(ctrl, &commonScenario, appName, environment, deploymentName)
 
-			secrets, err := secretHandler.GetSecretsForDeployment(appName, environment, deploymentName)
+			secrets, err := secretHandler.GetSecretsForDeployment(context.Background(), appName, environment, deploymentName)
 
 			s.Nil(err)
 			s.assertSecrets(&commonScenario, secrets)
@@ -1597,7 +1597,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				}, metav1.CreateOptions{})
 			}
 
-			err := secretHandler.ChangeComponentSecret(appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
+			err := secretHandler.ChangeComponentSecret(context.Background(), appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
 
 			s.Equal(scenario.expectedError, err != nil, getErrorMessage(err))
 			if scenario.secretExists && err == nil {
@@ -1692,7 +1692,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() 
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1705,7 +1705,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() 
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",
@@ -1743,7 +1743,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyDat
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1756,7 +1756,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyDat
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",
@@ -1796,7 +1796,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValida
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1809,7 +1809,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValida
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",
@@ -1844,7 +1844,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingCertDa
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1857,7 +1857,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingCertDa
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",
@@ -1883,7 +1883,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataParse
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1896,7 +1896,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataParse
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",
@@ -1927,7 +1927,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValid
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.TODO(),
+	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1940,7 +1940,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValid
 		metav1.CreateOptions{},
 	)
 
-	secrets, err := sut.GetSecretsForDeployment(s.appName, s.environmentName, s.deployment.Name)
+	secrets, err := sut.GetSecretsForDeployment(context.Background(), s.appName, s.environmentName, s.deployment.Name)
 	s.NoError(err)
 	expectedSecrets := []secretModels.Secret{
 		{Name: s.alias + "-key", DisplayName: "Key",

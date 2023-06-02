@@ -2,8 +2,9 @@ package buildsecrets
 
 import (
 	"encoding/json"
-	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
+
+	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -74,7 +75,7 @@ func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 
 	buildSecretsHandler := Init(accounts)
-	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(appName)
+	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -137,7 +138,7 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 	}
 
 	buildSecretsHandler := Init(accounts)
-	err := buildSecretsHandler.ChangeBuildSecret(appName, secretName, secretParameters.SecretValue)
+	err := buildSecretsHandler.ChangeBuildSecret(r.Context(), appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

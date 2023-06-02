@@ -109,7 +109,7 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	}
 
 	deployHandler := Init(accounts)
-	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(appName, environment, useLatest)
+	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(r.Context(), appName, environment, useLatest)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -158,7 +158,7 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(accounts)
-	appDeployment, err := deployHandler.GetDeploymentWithName(appName, deploymentName)
+	appDeployment, err := deployHandler.GetDeploymentWithName(r.Context(), appName, deploymentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -207,7 +207,7 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	deploymentName := mux.Vars(r)["deploymentName"]
 
 	deployHandler := Init(accounts)
-	components, err := deployHandler.GetComponentsForDeploymentName(appName, deploymentName)
+	components, err := deployHandler.GetComponentsForDeploymentName(r.Context(), appName, deploymentName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -293,7 +293,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(appName, podName, &since, logLines, previousLog)
+	log, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
