@@ -13,11 +13,14 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
 	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/kubequery"
+	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -26,7 +29,6 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"go.elastic.co/apm"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -40,7 +42,6 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.client = accounts.UserAccount.Client
 		eh.radixclient = accounts.UserAccount.RadixClient
-		eh.inClusterClient = accounts.ServiceAccount.Client
 		eh.deployHandler = deployments.Init(accounts)
 		eh.secretHandler = secrets.Init(secrets.WithAccounts(accounts))
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
@@ -63,7 +64,6 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 type EnvironmentHandler struct {
 	client                    kubernetes.Interface
 	radixclient               radixclient.Interface
-	inClusterClient           kubernetes.Interface
 	deployHandler             deployments.DeployHandler
 	secretHandler             secrets.SecretHandler
 	eventHandler              events.EventHandler
@@ -93,51 +93,34 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName string) ([]*environmentModels.EnvironmentSummary, error) {
 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetEnvironmentSummary (appName=%s)", appName), "EnvironmentHandler")
 	defer span.End()
-	type ChannelData struct {
-		position int
-		summary  *environmentModels.EnvironmentSummary
-	}
 
-	radixApplication, err := eh.getRadixApplicationInAppNamespace(ctx, appName)
+	rr, err := kubequery.GetRadixRegistration(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	ra, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		// This is no error, as the application may only have been just registered
-		return []*environmentModels.EnvironmentSummary{}, nil
+		if errors.IsNotFound(err) {
+			return []*environmentModels.EnvironmentSummary{}, nil
+		}
+		return nil, err
 	}
-
-	var g errgroup.Group
-	g.SetLimit(10)
-
-	envSize := len(radixApplication.Spec.Environments)
-	envChan := make(chan *ChannelData, envSize)
-	for i, environment := range radixApplication.Spec.Environments {
-		environment := environment
-		i := i
-		g.Go(func() error {
-			summary, err := eh.getEnvironmentSummary(ctx, radixApplication, environment)
-			if err == nil {
-				envChan <- &ChannelData{position: i, summary: summary}
-			}
-			return err
-		})
+	reList, err := kubequery.GetRadixEnvironments(ctx, eh.accounts.ServiceAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
 	}
-
-	err = g.Wait()
-	close(envChan)
+	rjList, err := kubequery.GetRadixJobs(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	envNames := slice.Map(reList, func(re v1.RadixEnvironment) string { return re.Spec.EnvName })
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.accounts.UserAccount.RadixClient, appName, envNames, 10)
 	if err != nil {
 		return nil, err
 	}
 
-	orphanedEnvironments, err := eh.getOrphanedEnvironments(ctx, appName, radixApplication)
-	if err != nil {
-		return nil, err
-	}
-
-	environments := make([]*environmentModels.EnvironmentSummary, envSize)
-	for env := range envChan {
-		environments[env.position] = env.summary
-	}
-	environments = append(environments, orphanedEnvironments...)
-
+	environments := apimodels.BuildEnvironmentSummaryList(rr, ra, reList, rdList, rjList)
 	return environments, nil
 }
 
@@ -287,7 +270,7 @@ func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName
 		return environmentModels.Orphan, nil
 	}
 
-	_, err = eh.inClusterClient.CoreV1().Namespaces().Get(ctx, uniqueName, metav1.GetOptions{})
+	_, err = eh.accounts.ServiceAccount.Client.CoreV1().Namespaces().Get(ctx, uniqueName, metav1.GetOptions{})
 	if err != nil {
 		return environmentModels.Pending, nil
 	}
@@ -296,69 +279,83 @@ func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName
 	return environmentModels.Consistent, nil
 }
 
-func (eh EnvironmentHandler) getEnvironmentSummary(ctx context.Context, app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getEnvironmentSummary (appName=%s, envName=%s)", app.Name, env.Name), "EnvironmentHandler")
-	defer span.End()
-	environmentSummary := &environmentModels.EnvironmentSummary{
-		Name:          env.Name,
-		BranchMapping: env.Build.From,
-	}
+// func (eh EnvironmentHandler) getEnvironmentSummary(ctx context.Context, app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
+// 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getEnvironmentSummary (appName=%s, envName=%s)", app.Name, env.Name), "EnvironmentHandler")
+// 	defer span.End()
 
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, app.Name, env.Name, true)
-	if err != nil {
-		return nil, err
-	}
+// 	rr, err := kubequery.GetRadixRegistration(ctx, eh.accounts.UserAccount.RadixClient, app.Name)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	rjs, err := kubequery.GetRadixJobs(ctx, eh.accounts.UserAccount.RadixClient, app.Name)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	activeRd, err := kubequery.GetActiveRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, app.GetName(), env.Name)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	configurationStatus, _ := eh.getConfigurationStatus(ctx, env.Name, app)
-	environmentSummary.Status = configurationStatus.String()
+// 	environmentSummary := &environmentModels.EnvironmentSummary{
+// 		Name:          env.Name,
+// 		BranchMapping: env.Build.From,
+// 	}
 
-	if len(deploymentSummaries) == 1 {
-		environmentSummary.ActiveDeployment = deploymentSummaries[0]
-	}
+// 	// deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, app.Name, env.Name, true)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	return environmentSummary, nil
-}
+// 	configurationStatus, _ := eh.getConfigurationStatus(ctx, env.Name, app)
+// 	environmentSummary.Status = configurationStatus.String()
 
-func (eh EnvironmentHandler) getOrphanEnvironmentSummary(ctx context.Context, appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, true)
-	if err != nil {
-		return nil, err
-	}
+// 	if activeRd != nil {
+// 		environmentSummary.ActiveDeployment, _ = apimodels.NewDeploymentSummary(activeRd, rr, rjs)
+// 	}
 
-	environmentSummary := &environmentModels.EnvironmentSummary{
-		Name:   envName,
-		Status: environmentModels.Orphan.String(),
-	}
+// 	return environmentSummary, nil
+// }
 
-	if len(deploymentSummaries) == 1 {
-		environmentSummary.ActiveDeployment = deploymentSummaries[0]
-	}
+// func (eh EnvironmentHandler) getOrphanEnvironmentSummary(ctx context.Context, appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
+// 	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, true)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return environmentSummary, nil
-}
+// 	environmentSummary := &environmentModels.EnvironmentSummary{
+// 		Name:   envName,
+// 		Status: environmentModels.Orphan.String(),
+// 	}
 
-// getOrphanedEnvironments returns a slice of Summary data of orphaned environments
-func (eh EnvironmentHandler) getOrphanedEnvironments(ctx context.Context, appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getOrphanedEnvironments (appName=%s)", appName), "EnvironmentHandler")
-	defer span.End()
-	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
+// 	if len(deploymentSummaries) == 1 {
+// 		environmentSummary.ActiveDeployment = deploymentSummaries[0]
+// 	}
 
-	for _, name := range eh.getOrphanedEnvNames(ctx, radixApplication) {
-		summary, err := eh.getOrphanEnvironmentSummary(ctx, appName, name)
-		if err != nil {
-			return nil, err
-		}
+// 	return environmentSummary, nil
+// }
 
-		orphanedEnvironments = append(orphanedEnvironments, summary)
-	}
+// // getOrphanedEnvironments returns a slice of Summary data of orphaned environments
+// func (eh EnvironmentHandler) getOrphanedEnvironments(ctx context.Context, appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
+// 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getOrphanedEnvironments (appName=%s)", appName), "EnvironmentHandler")
+// 	defer span.End()
+// 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
 
-	return orphanedEnvironments, nil
-}
+// 	for _, name := range eh.getOrphanedEnvNames(ctx, radixApplication) {
+// 		summary, err := eh.getOrphanEnvironmentSummary(ctx, appName, name)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-// getOrphanedEnvNames returns a slice of non-unique-names of orphaned environments
-func (eh EnvironmentHandler) getOrphanedEnvNames(ctx context.Context, app *v1.RadixApplication) []string {
-	return eh.getEnvironments(ctx, app, true)
-}
+// 		orphanedEnvironments = append(orphanedEnvironments, summary)
+// 	}
+
+// 	return orphanedEnvironments, nil
+// }
+
+// // getOrphanedEnvNames returns a slice of non-unique-names of orphaned environments
+// func (eh EnvironmentHandler) getOrphanedEnvNames(ctx context.Context, app *v1.RadixApplication) []string {
+// 	return eh.getEnvironments(ctx, app, true)
+// }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
 func (eh EnvironmentHandler) getNotOrphanedEnvNames(ctx context.Context, app *v1.RadixApplication) []string {

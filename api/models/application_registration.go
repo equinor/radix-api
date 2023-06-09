@@ -1,0 +1,11 @@
+package models
+
+import (
+	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+)
+
+func BuildApplicationRegistration(rr *radixv1.RadixRegistration) *applicationModels.ApplicationRegistration {
+	appReg := applicationModels.NewApplicationRegistrationBuilder().WithRadixRegistration(rr).Build()
+	return &appReg
+}

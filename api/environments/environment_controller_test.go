@@ -164,7 +164,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
 	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithRadixApplication(operatorutils.
@@ -174,6 +174,11 @@ func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t
 			WithEnvironment(anyEnvironment, "master")).
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment))
+
+	re, err := radixClient.RadixV1().RadixEnvironments().Get(context.Background(), operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment), metav1.GetOptions{})
+	require.NoError(t, err)
+	re.Status.Reconciled = metav1.Now()
+	radixClient.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), re, metav1.UpdateOptions{})
 
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
@@ -1037,29 +1042,6 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 	assert.Equal(t, environmentModels.Pending.String(), environments[0].Status)
 	assert.Equal(t, envName2, environments[0].BranchMapping)
 	assert.Nil(t, environments[0].ActiveDeployment)
-}
-
-func TestGetEnvironmentSummary_ApplicationWithDeployment_SecretConsistent(t *testing.T) {
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorutils.
-		ARadixDeployment().
-		WithRadixApplication(operatorutils.
-			NewRadixApplicationBuilder().
-			WithRadixRegistration(operatorutils.ARadixRegistration()).
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master")).
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment))
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments", anyAppName))
-	response := <-responseChannel
-	environments := make([]*environmentModels.EnvironmentSummary, 0)
-	controllertest.GetResponseBody(response, &environments)
-
-	assert.Equal(t, environmentModels.Consistent.String(), environments[0].Status)
-	assert.NotNil(t, environments[0].ActiveDeployment)
 }
 
 func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.T) {
