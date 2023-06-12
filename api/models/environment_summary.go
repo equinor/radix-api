@@ -12,10 +12,10 @@ import (
 func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob) []*environmentModels.EnvironmentSummary {
 	var envList []*environmentModels.EnvironmentSummary
 
-	getActiveDeploymentSummary := func(appName, envName string, activeRdList []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
+	getActiveDeploymentSummary := func(appName, envName string, rds []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
 		var activeDeployment *deploymentModels.DeploymentSummary
-		if i := slice.FindIndex(activeRdList, isActiveDeploymentForAppAndEnv(appName, envName)); i >= 0 {
-			activeDeployment = BuildDeploymentSummary(&activeRdList[i], rr, rjList)
+		if i := slice.FindIndex(rds, isActiveDeploymentForAppAndEnv(appName, envName)); i >= 0 {
+			activeDeployment = BuildDeploymentSummary(&rds[i], rr, rjList)
 		}
 		return activeDeployment
 	}
@@ -51,18 +51,5 @@ func isActiveDeploymentForAppAndEnv(appName, envName string) func(rd radixv1.Rad
 	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	return func(rd radixv1.RadixDeployment) bool {
 		return predicate.IsActiveRadixDeployment(rd) && rd.Namespace == envNs
-	}
-}
-
-func getEnvironmentConfigurationStatus(re *radixv1.RadixEnvironment) environmentModels.ConfigurationStatus {
-	switch {
-	case re == nil:
-		return environmentModels.Pending
-	case re.Status.Orphaned:
-		return environmentModels.Orphan
-	case re.Status.Reconciled.IsZero():
-		return environmentModels.Pending
-	default:
-		return environmentModels.Consistent
 	}
 }

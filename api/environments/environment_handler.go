@@ -126,29 +126,54 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName 
 
 // GetEnvironment Handler for GetEnvironment
 func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envName string) (*environmentModels.Environment, error) {
-	radixApplication, err := eh.getRadixApplicationInAppNamespace(ctx, appName)
+	rr, err := kubequery.GetRadixRegistration(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	configurationStatus, err := eh.getConfigurationStatus(ctx, envName, radixApplication)
+	ra, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
-
-	buildFrom := ""
-
-	if configurationStatus != environmentModels.Orphan {
-		// Find the environment
-		var theEnvironment *v1.Environment
-		for _, environment := range radixApplication.Spec.Environments {
-			if strings.EqualFold(environment.Name, envName) {
-				theEnvironment = &environment
-				break
-			}
+	re, err := kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
 		}
+		return nil, err
+	}
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	rjList, err := kubequery.GetRadixJobs(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	deploymentList, err := kubequery.GetDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	componentPodList, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	hpaList, err := kubequery.GetHorizontalPodAutoscalersForEnvironment(ctx, eh.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 
-		buildFrom = theEnvironment.Build.From
+	configurationStatus, err := eh.getConfigurationStatus(ctx, envName, ra)
+	if err != nil {
+		return nil, err
+	}
+
+	var buildFrom string
+	for _, environment := range ra.Spec.Environments {
+		if strings.EqualFold(environment.Name, envName) {
+			buildFrom = environment.Build.From
+			break
+		}
 	}
 
 	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, false)
@@ -180,6 +205,17 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 
 		environmentDto.Secrets = deploymentSecrets
 	}
+
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList)
+	// if env.ActiveDeployment != nil {
+	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, env.ActiveDeployment.Name)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	env.Secrets = deploymentSecrets
+	// }
+	fmt.Println(env)
 
 	return environmentDto, nil
 }

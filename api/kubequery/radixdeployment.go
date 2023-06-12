@@ -21,7 +21,7 @@ func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.
 	for _, envName := range envNames {
 		g.Go(func(envName string) func() error {
 			return func() error {
-				rds, err := getRadixDeploymentsForEnvironment(ctx, client, appName, envName)
+				rds, err := GetRadixDeploymentsForEnvironment(ctx, client, appName, envName)
 				if err != nil {
 					return err
 				}
@@ -43,7 +43,7 @@ func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.
 	return rdList, nil
 }
 
-func getRadixDeploymentsForEnvironment(ctx context.Context, client radixclient.Interface, appName, envName string) ([]radixv1.RadixDeployment, error) {
+func GetRadixDeploymentsForEnvironment(ctx context.Context, client radixclient.Interface, appName, envName string) ([]radixv1.RadixDeployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	rds, err := client.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {

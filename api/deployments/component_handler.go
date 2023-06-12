@@ -29,12 +29,12 @@ const (
 // GetComponentsForDeployment Gets a list of components for a given deployment
 func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	rd, err := deploy.radixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deployment.Name, metav1.GetOptions{})
+	rd, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deployment.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	ra, _ := deploy.radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+	ra, _ := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 	var components []*deploymentModels.Component
 
 	for _, component := range rd.Spec.Components {
@@ -78,7 +78,7 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 	// TODO: Add interface for RA + EnvConfig
 	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
 
-	deploymentComponent, err := GetComponentStateFromSpec(ctx, deploy.kubeClient, ra.Name, deployment, rd.Status, environmentConfig, component)
+	deploymentComponent, err := GetComponentStateFromSpec(ctx, deploy.accounts.UserAccount.Client, ra.Name, deployment, rd.Status, environmentConfig, component)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 }
 
 func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	hpa, err := deploy.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(ctx, component.GetName(), metav1.GetOptions{})
+	hpa, err := deploy.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(ctx, component.GetName(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
