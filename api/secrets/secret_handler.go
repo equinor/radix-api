@@ -767,7 +767,7 @@ func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace
 			ReplicaCreated: radixutils.FormatTime(&podCreated),
 			Version:        secretVersion,
 		}
-		if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true") {
+		if _, ok := pod.ObjectMeta.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok {
 			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
 			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 			continue

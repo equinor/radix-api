@@ -2,10 +2,7 @@ package deployments
 
 import (
 	"context"
-	"fmt"
 	"strings"
-
-	v2 "k8s.io/api/autoscaling/v2"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/labelselector"
@@ -16,9 +13,12 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -212,7 +212,7 @@ func getPodNames(pods []corev1.Pod) []string {
 func getComponentPodsByNamespace(ctx context.Context, client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
 	var componentPods []corev1.Pod
 	pods, err := client.CoreV1().Pods(envNs).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", kube.RadixComponentLabel, componentName),
+		LabelSelector: getLabelSelectorForComponentPods(componentName).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -236,6 +236,12 @@ func getComponentPodsByNamespace(ctx context.Context, client kubernetes.Interfac
 	}
 
 	return componentPods, nil
+}
+
+func getLabelSelectorForComponentPods(componentName string) labels.Selector {
+	componentNameRequirement, _ := labels.NewRequirement(kube.RadixComponentLabel, selection.Equals, []string{componentName})
+	notJobAuxRequirement, _ := labels.NewRequirement(kube.RadixPodIsJobAuxObjectLabel, selection.DoesNotExist, []string{})
+	return labels.NewSelector().Add(*componentNameRequirement, *notJobAuxRequirement)
 }
 
 func runningReplicaDiffersFromConfig(environmentConfig v1.RadixCommonEnvironmentConfig, actualPods []corev1.Pod) bool {
