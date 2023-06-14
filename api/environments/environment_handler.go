@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
@@ -18,6 +17,7 @@ import (
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/labelselector"
+	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -70,6 +70,7 @@ type EnvironmentHandler struct {
 	accounts                  models.Accounts
 	kubeUtil                  *kube.Kube
 	kubeUtilForServiceAccount *kube.Kube
+	tlsSecretValidator        tlsvalidator.Interface
 }
 
 var validaStatusesToScaleComponent []string
@@ -162,51 +163,54 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-
-	configurationStatus, err := eh.getConfigurationStatus(ctx, envName, ra)
+	secretList, err := kubequery.GetSecretsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName)
 	if err != nil {
 		return nil, err
 	}
+	// configurationStatus, err := eh.getConfigurationStatus(ctx, envName, ra)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	var buildFrom string
-	for _, environment := range ra.Spec.Environments {
-		if strings.EqualFold(environment.Name, envName) {
-			buildFrom = environment.Build.From
-			break
-		}
-	}
+	// var buildFrom string
+	// for _, environment := range ra.Spec.Environments {
+	// 	if strings.EqualFold(environment.Name, envName) {
+	// 		buildFrom = environment.Build.From
+	// 		break
+	// 	}
+	// }
 
-	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, false)
+	// deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, false)
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// data-transfer-object for serialization
-	environmentDto := &environmentModels.Environment{
-		Name:          envName,
-		BranchMapping: buildFrom,
-		Status:        configurationStatus.String(),
-		Deployments:   deploymentSummaries,
-	}
+	// // data-transfer-object for serialization
+	// environmentDto := &environmentModels.Environment{
+	// 	Name:          envName,
+	// 	BranchMapping: buildFrom,
+	// 	Status:        configurationStatus.String(),
+	// 	Deployments:   deploymentSummaries,
+	// }
 
-	if len(deploymentSummaries) > 0 {
-		deployment, err := eh.deployHandler.GetDeploymentWithName(ctx, appName, deploymentSummaries[0].Name)
-		if err != nil {
-			return nil, err
-		}
+	// if len(deploymentSummaries) > 0 {
+	// 	deployment, err := eh.deployHandler.GetDeploymentWithName(ctx, appName, deploymentSummaries[0].Name)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		environmentDto.ActiveDeployment = deployment
+	// 	environmentDto.ActiveDeployment = deployment
 
-		deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, deployment.Name)
-		if err != nil {
-			return nil, err
-		}
+	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, deployment.Name)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		environmentDto.Secrets = deploymentSecrets
-	}
+	// 	environmentDto.Secrets = deploymentSecrets
+	// }
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, eh.tlsSecretValidator)
 	// if env.ActiveDeployment != nil {
 	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, env.ActiveDeployment.Name)
 	// 	if err != nil {
@@ -215,9 +219,9 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 
 	// 	env.Secrets = deploymentSecrets
 	// }
-	fmt.Println(env)
+	// fmt.Println(env)
 
-	return environmentDto, nil
+	return env, nil
 }
 
 // CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist

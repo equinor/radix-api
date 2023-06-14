@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/api/utils/secret"
 	sortUtils "github.com/equinor/radix-api/api/utils/sort"
+	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -34,9 +35,9 @@ const (
 	k8sJobNameLabel            = "job-name" // A label that k8s automatically adds to a Pod created by a Job
 )
 
-var (
-	defaultTlsSecretValidator = tlsSecretValidator{}
-)
+// var (
+// 	defaultTlsSecretValidator = tlsSecretValidator{}
+// )
 
 type podNameToSecretVersionMap map[string]string
 type secretIdToPodNameToSecretVersionMap map[string]podNameToSecretVersionMap
@@ -58,7 +59,7 @@ type SecretHandler struct {
 	userAccount        apiModels.Account
 	serviceAccount     apiModels.Account
 	deployHandler      deployments.DeployHandler
-	tlsSecretValidator TLSSecretValidator
+	tlsSecretValidator tlsvalidator.Interface
 }
 
 // Init Constructor.
@@ -659,7 +660,7 @@ func (eh SecretHandler) getSecretsFromTLSCertificates(ctx context.Context, rd *r
 	var secrets []models.Secret
 	tlsValidator := eh.tlsSecretValidator
 	if tlsValidator == nil {
-		tlsValidator = &defaultTlsSecretValidator
+		tlsValidator = tlsvalidator.DefaultValidator()
 	}
 
 	for _, component := range rd.Spec.Components {

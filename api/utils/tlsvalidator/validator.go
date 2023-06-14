@@ -1,4 +1,4 @@
-package secrets
+package tlsvalidator
 
 import (
 	"crypto/ecdsa"
@@ -11,22 +11,15 @@ import (
 	"strings"
 )
 
-// TLSSecretValidator defines methods to validate certificate and private key for TLS
-type TLSSecretValidator interface {
-	// ValidateTLSKey validates the private key
-	// keyBytes must be in PEM format
-	// Returns false is keyBytes is invalid, along with a list of validation error messages
-	ValidateTLSKey(keyBytes []byte) (bool, []string)
+var defaultValidator = validator{}
 
-	// ValidateTLSCertificate validates the certificate, dnsName and private key
-	// certBytes and keyBytes must be in PEM format
-	// Returns false if validation fails, along with a list of validation error messages
-	ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (bool, []string)
+func DefaultValidator() Interface {
+	return &defaultValidator
 }
 
-type tlsSecretValidator struct{}
+type validator struct{}
 
-func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failedValidationMessages []string) {
+func (v *validator) ValidateTLSKey(keyBytes []byte) (valid bool, failedValidationMessages []string) {
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()
@@ -75,7 +68,7 @@ func (v *tlsSecretValidator) ValidateTLSKey(keyBytes []byte) (valid bool, failed
 	return
 }
 
-func (v *tlsSecretValidator) ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (valid bool, failedValidationMessages []string) {
+func (v *validator) ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (valid bool, failedValidationMessages []string) {
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()

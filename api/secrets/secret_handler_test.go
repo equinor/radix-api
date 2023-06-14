@@ -15,10 +15,10 @@ import (
 	"time"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
-	"github.com/equinor/radix-api/api/secrets/mock"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
+	"github.com/equinor/radix-api/api/utils/tlsvalidator/mock"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"

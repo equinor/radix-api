@@ -69,6 +69,8 @@ func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName strin
 
 // GetDeploymentsForApplication Lists deployments across environments
 func (deploy *deployHandler) GetDeploymentsForApplication(ctx context.Context, appName string) ([]*deploymentModels.DeploymentSummary, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetDeploymentsForApplication (appName=%s)", appName), "DeployHandler")
+	defer span.End()
 	environments, err := deploy.getEnvironmentNames(ctx, appName)
 	if err != nil {
 		return nil, err

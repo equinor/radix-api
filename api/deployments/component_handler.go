@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"go.elastic.co/apm"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
@@ -28,6 +29,8 @@ const (
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
 func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetComponentsForDeployment (appName=%s, deploymentName=%s)", appName, deployment.Name), "DeployHandler")
+	defer span.End()
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	rd, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deployment.Name, metav1.GetOptions{})
 	if err != nil {
@@ -58,6 +61,8 @@ func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, app
 
 // GetComponentsForDeploymentName handler for GetDeployments
 func (deploy *deployHandler) GetComponentsForDeploymentName(ctx context.Context, appName, deploymentName string) ([]*deploymentModels.Component, error) {
+	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetComponentsForDeploymentName (appName=%s, deploymentName=%s)", appName, deploymentName), "DeployHandler")
+	defer span.End()
 	deployments, err := deploy.GetDeploymentsForApplication(ctx, appName)
 	if err != nil {
 		return nil, err

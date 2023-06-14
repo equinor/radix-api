@@ -4,6 +4,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -11,17 +12,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) *environmentModels.Environment {
+func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidator.Interface) *environmentModels.Environment {
 	var buildFromBranch string
+	var activeDeployment *deploymentModels.Deployment
+	var secrets []secretModels.Secret
+
 	if raEnv := getRadixApplicationEnvironment(ra, re.Spec.EnvName); raEnv != nil {
 		buildFromBranch = raEnv.Build.From
 	}
 
-	var activeDeployment *deploymentModels.Deployment
-	var secrets []secretModels.Secret
 	if i := slice.FindIndex(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); i >= 0 {
-		activeDeployment = BuildDeployment(rr, ra, &rdList[i], deploymentList, podList, hpaList)
-		secrets = BuildSecrets()
+		activeRd := &rdList[i]
+		activeDeployment = BuildDeployment(rr, ra, activeRd, deploymentList, podList, hpaList)
+		secrets = BuildSecrets(secretList, activeRd, tlsValidator)
 	}
 
 	return &environmentModels.Environment{
