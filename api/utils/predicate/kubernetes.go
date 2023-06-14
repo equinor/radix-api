@@ -10,6 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+const (
+	secretStoreCsiManagedLabel = "secrets-store.csi.k8s.io/managed"
+)
+
 func IsAppAliasIngress(ingress networkingv1.Ingress) bool {
 	return labelselector.ForIsAppAlias().AsSelector().Matches(labels.Set(ingress.Labels))
 }
@@ -40,4 +44,8 @@ func IsHpaForComponent(componentName string) func(autoscalingv2.HorizontalPodAut
 	return func(hpa autoscalingv2.HorizontalPodAutoscaler) bool {
 		return selector.Matches(labels.Set(hpa.Labels))
 	}
+}
+
+func IsSecretForSecretStoreProviderClass(secret corev1.Secret) bool {
+	return labels.Set{secretStoreCsiManagedLabel: "true"}.AsSelector().Matches(labels.Set(secret.Labels))
 }

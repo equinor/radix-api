@@ -10,9 +10,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
-func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidator.Interface) *environmentModels.Environment {
+func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, tlsValidator tlsvalidator.Interface) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
@@ -24,7 +25,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	if i := slice.FindIndex(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); i >= 0 {
 		activeRd := &rdList[i]
 		activeDeployment = BuildDeployment(rr, ra, activeRd, deploymentList, podList, hpaList)
-		secrets = BuildSecrets(secretList, activeRd, tlsValidator)
+		secrets = BuildSecrets(secretList, secretProviderClassList, activeRd, tlsValidator)
 	}
 
 	return &environmentModels.Environment{

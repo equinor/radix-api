@@ -167,6 +167,10 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
+	secretProviderClassList, err := kubequery.GetSecretProviderClassesForEnvironment(ctx, eh.accounts.ServiceAccount.SecretProviderClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 	// configurationStatus, err := eh.getConfigurationStatus(ctx, envName, ra)
 	// if err != nil {
 	// 	return nil, err
@@ -210,7 +214,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	// 	environmentDto.Secrets = deploymentSecrets
 	// }
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, eh.tlsSecretValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsSecretValidator)
 	// if env.ActiveDeployment != nil {
 	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, env.ActiveDeployment.Name)
 	// 	if err != nil {

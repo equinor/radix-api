@@ -5,23 +5,28 @@ import (
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
+	"github.com/equinor/radix-api/api/utils/predicate"
+	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
+	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
 const secretDefaultData = "xx"
 
-func BuildSecrets(secretList []corev1.Secret, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.Interface) []secretModels.Secret {
+func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.Interface) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	secrets = append(secrets, getSecretsForDeployment(secretList, rd)...)
 	secrets = append(secrets, getSecretsForTLSCertificates(secretList, rd, tlsValidator)...)
 	secrets = append(secrets, getSecretsForVolumeMounts(secretList, rd)...)
 	secrets = append(secrets, getSecretsForAuthentication(secretList, rd)...)
+	secrets = append(secrets, getSecretsForSecretRefs(secretList, secretProviderClassList, rd)...)
 	return secrets
 }
 
@@ -345,31 +350,127 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 	return secrets
 }
 
-// func getSecretsForSecretRefs(appName string, radixDeployment *radixv1.RadixDeployment, envNamespace string) []secretModels.Secret {
-// 	secretProviderClassMapForDeployment, err := eh.getAzureKeyVaultSecretProviderClassMapForAppDeployment(appName, envNamespace, radixDeployment.GetName())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	csiSecretStoreSecretMap, err := eh.getCsiSecretStoreSecretMap(envNamespace)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var secrets []models.Secret
-// 	for _, component := range radixDeployment.Spec.Components {
-// 		secretRefs := component.GetSecretRefs()
-// 		componentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		secrets = append(secrets, componentSecrets...)
-// 	}
-// 	for _, jobComponent := range radixDeployment.Spec.Jobs {
-// 		secretRefs := jobComponent.GetSecretRefs()
-// 		jobComponentSecrets, err := eh.getComponentSecretRefsSecrets(envNamespace, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		secrets = append(secrets, jobComponentSecrets...)
-// 	}
-// 	return secrets, nil
-// }
+func getSecretsForSecretRefs(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment) []secretModels.Secret {
+	secretProviderClassMapForDeployment := slice.Reduce(
+		slice.FindAll(secretProviderClassList, predicate.IsSecretProviderClassForDeployment(rd.Name)),
+		map[string]secretsstorev1.SecretProviderClass{},
+		func(acc map[string]secretsstorev1.SecretProviderClass, spc secretsstorev1.SecretProviderClass) map[string]secretsstorev1.SecretProviderClass {
+			acc[spc.GetName()] = spc
+			return acc
+		},
+	)
+
+	csiSecretStoreSecretMap := slice.Reduce(
+		slice.FindAll(secretList, predicate.IsSecretForSecretStoreProviderClass),
+		map[string]corev1.Secret{},
+		func(acc map[string]corev1.Secret, secret corev1.Secret) map[string]corev1.Secret {
+			acc[secret.GetName()] = secret
+			return acc
+		},
+	)
+
+	var secrets []secretModels.Secret
+
+	for _, component := range rd.Spec.Components {
+		secretRefs := component.GetSecretRefs()
+		componentSecrets := getComponentSecretRefsSecrets(secretList, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
+		secrets = append(secrets, componentSecrets...)
+	}
+	for _, jobComponent := range rd.Spec.Jobs {
+		secretRefs := jobComponent.GetSecretRefs()
+		jobComponentSecrets := getComponentSecretRefsSecrets(secretList, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
+		secrets = append(secrets, jobComponentSecrets...)
+	}
+	return secrets
+}
+
+func getComponentSecretRefsSecrets(secretList []corev1.Secret, componentName string, secretRefs *radixv1.RadixSecretRefs,
+	secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) []secretModels.Secret {
+	var secrets []secretModels.Secret
+	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
+		if azureKeyVault.UseAzureIdentity == nil || !*azureKeyVault.UseAzureIdentity {
+			credSecrets := getCredentialSecretsForSecretRefsAzureKeyVault(secretList, componentName, azureKeyVault.Name)
+			secrets = append(secrets, credSecrets...)
+		}
+		secretStatus := getAzureKeyVaultSecretStatus(componentName, azureKeyVault.Name, secretProviderClassMap, csiSecretStoreSecretMap)
+		for _, item := range azureKeyVault.Items {
+			secrets = append(secrets, secretModels.Secret{
+				Name:        secret.GetSecretNameForAzureKeyVaultItem(componentName, azureKeyVault.Name, &item),
+				DisplayName: secret.GetSecretDisplayNameForAzureKeyVaultItem(&item),
+				Type:        secretModels.SecretTypeCsiAzureKeyVaultItem,
+				Resource:    azureKeyVault.Name,
+				Component:   componentName,
+				Status:      secretStatus,
+				ID:          secret.GetSecretIdForAzureKeyVaultItem(&item),
+			})
+		}
+	}
+	return secrets
+}
+
+func getAzureKeyVaultSecretStatus(componentName, azureKeyVaultName string, secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) string {
+	secretStatus := secretModels.NotAvailable.String()
+	secretProviderClass := getComponentSecretProviderClassMapForAzureKeyVault(componentName, secretProviderClassMap, azureKeyVaultName)
+	if secretProviderClass != nil {
+		secretStatus = secretModels.Consistent.String()
+		for _, secretObject := range secretProviderClass.Spec.SecretObjects {
+			if _, ok := csiSecretStoreSecretMap[secretObject.SecretName]; !ok {
+				secretStatus = secretModels.NotAvailable.String() // Secrets does not exist for the secretProviderClass secret object
+				break
+			}
+		}
+	}
+	return secretStatus
+}
+
+func getComponentSecretProviderClassMapForAzureKeyVault(componentName string, componentSecretProviderClassMap map[string]secretsstorev1.SecretProviderClass, azureKeyVaultName string) *secretsstorev1.SecretProviderClass {
+	for _, secretProviderClass := range componentSecretProviderClassMap {
+		if strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixComponentLabel], componentName) &&
+			strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixSecretRefNameLabel], azureKeyVaultName) {
+			return &secretProviderClass
+		}
+	}
+	return nil
+}
+
+func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, componentName, azureKeyVaultName string) []secretModels.Secret {
+	var secrets []secretModels.Secret
+	secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(componentName, azureKeyVaultName)
+	clientIdStatus := secretModels.Consistent.String()
+	clientSecretStatus := secretModels.Consistent.String()
+
+	i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretName })
+	if i == -1 {
+		clientIdStatus = secretModels.Pending.String()
+		clientSecretStatus = secretModels.Pending.String()
+	} else {
+		secretValue := secretList[i]
+		clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
+		if strings.EqualFold(clientIdValue, secretDefaultData) {
+			clientIdStatus = secretModels.Pending.String()
+		}
+		clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
+		if strings.EqualFold(clientSecretValue, secretDefaultData) {
+			clientSecretStatus = secretModels.Pending.String()
+		}
+	}
+	secrets = append(secrets, secretModels.Secret{
+		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
+		DisplayName: "Client ID",
+		Resource:    azureKeyVaultName,
+		Component:   componentName,
+		Status:      clientIdStatus,
+		Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+		ID:          secretModels.SecretIdClientId},
+	)
+	secrets = append(secrets, secretModels.Secret{
+		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
+		DisplayName: "Client Secret",
+		Resource:    azureKeyVaultName,
+		Component:   componentName,
+		Status:      clientSecretStatus,
+		Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
+		ID:          secretModels.SecretIdClientSecret},
+	)
+	return secrets
+}
