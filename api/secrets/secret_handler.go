@@ -289,7 +289,7 @@ func (eh SecretHandler) getCredentialSecretsForBlobVolumes(ctx context.Context, 
 			accountKeySecret, accountNameSecret := eh.getBlobFuseSecrets(ctx, component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)
-		case radixv1.MountTypeBlobCsiAzure, radixv1.MountTypeFileCsiAzure:
+		case radixv1.MountTypeBlobCsiAzure, radixv1.MountTypeBlob2CsiAzure, radixv1.MountTypeNfsCsiAzure, radixv1.MountTypeFileCsiAzure:
 			accountKeySecret, accountNameSecret := eh.getCsiAzureSecrets(ctx, component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)
@@ -767,7 +767,7 @@ func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace
 			ReplicaCreated: radixutils.FormatTime(&podCreated),
 			Version:        secretVersion,
 		}
-		if strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixPodIsJobSchedulerLabel], "true") {
+		if _, ok := pod.ObjectMeta.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok {
 			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
 			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 			continue
