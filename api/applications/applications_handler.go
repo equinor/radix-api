@@ -240,6 +240,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 	updatedRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
 	updatedRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
 	updatedRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+	updatedRegistration.Spec.ReaderAdGroups = radixRegistration.Spec.ReaderAdGroups
 	updatedRegistration.Spec.Owner = radixRegistration.Spec.Owner
 	updatedRegistration.Spec.WBS = radixRegistration.Spec.WBS
 	updatedRegistration.Spec.ConfigurationItem = radixRegistration.Spec.ConfigurationItem
@@ -285,6 +286,11 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
+		runUpdate = true
+	}
+	if patchRequest.ReaderAdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdGroups, *patchRequest.ReaderAdGroups) {
+		updatedRegistration.Spec.ReaderAdGroups = *patchRequest.ReaderAdGroups
+		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdGroups", Value: *patchRequest.ReaderAdGroups})
 		runUpdate = true
 	}
 
