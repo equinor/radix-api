@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/authorization/v1"
 	"os"
 	"strings"
 	"time"
@@ -28,6 +29,24 @@ const (
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
 func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+
+	review, err := jh.userAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1.SelfSubjectAccessReview{
+		Spec: corev1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &corev1.ResourceAttributes{
+				Verb:     "patch",
+				Group:    "radix.equinor.com",
+				Resource: "radixregistrations",
+				Name:     appName,
+			},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if !review.Status.Allowed {
+		return nil, fmt.Errorf("user is not allowed to start pipeline job for application %s", appName)
+	}
+
 	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 
 	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
