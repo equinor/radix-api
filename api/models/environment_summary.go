@@ -35,7 +35,7 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 		envList = append(envList, env)
 	}
 
-	for _, re := range slice.FindAll(reList, func(re radixv1.RadixEnvironment) bool { return re.Status.Orphaned }) {
+	for _, re := range slice.FindAll(reList, predicate.IsOrphanEnvironment) {
 		env := &environmentModels.EnvironmentSummary{
 			Name:             re.Spec.EnvName,
 			ActiveDeployment: getActiveDeploymentSummary(ra.GetName(), re.Spec.EnvName, rdList),

@@ -62,7 +62,7 @@ type getSecretScenario struct {
 	name                   string
 	components             []v1.RadixDeployComponent
 	jobs                   []v1.RadixDeployJobComponent
-	init                   *func(*SecretHandler) // scenario optional custom init function
+	init                   func(*SecretHandler) // scenario optional custom init function
 	existingSecrets        []secretDescription
 	expectedSecrets        []secretModels.Secret
 	expectedSecretVersions map[string]map[string]map[string]map[string]map[string]bool // map[componentName]map[azureKeyVaultName]map[secretId]map[version]map[replicaName]bool
@@ -592,7 +592,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 					}
 					createSecretProviderClassPodStatuses(secretHandler.serviceAccount.SecretProviderClient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
 				}
-				scenario.init = &initFunc
+				scenario.init = initFunc
 			}),
 		createScenario("No secret version statuses exist",
 			func(scenario *getSecretScenario) {
@@ -612,7 +612,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefStat
 					}
 					createSecretProviderClassPodStatuses(secretHandler.serviceAccount.SecretProviderClient, scenario, componentAzKeyVaultSecretProviderClassNameMap)
 				}
-				scenario.init = &initFunc
+				scenario.init = initFunc
 			}),
 	}
 
@@ -697,7 +697,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefVers
 					createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.components[0])
 					createSecretProviderClass(secretHandler.serviceAccount.SecretProviderClient, deployment1, &scenario.jobs[0])
 				}
-				scenario.init = &initFunc
+				scenario.init = initFunc
 			}),
 		createScenarioWithComponentAndJobWithCredSecretsAndOneSecretPerComponent(
 			"Consistent, when exists secret provider class and secret",
@@ -718,7 +718,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAzureKeyVaultSecretRefVers
 						createAzureKeyVaultCsiDriverSecret(secretHandler.userAccount.Client, secretProviderClassAndSecret.secretName, map[string]string{"SECRET2": "val2"})
 					}
 				}
-				scenario.init = &initFunc
+				scenario.init = initFunc
 			}),
 	}
 
@@ -2046,7 +2046,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(ctrl *gomock.Controller, scenari
 	envNamespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	rd, _ := radixClient.RadixV1().RadixDeployments(envNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
 	if scenario.init != nil {
-		(*scenario.init)(&secretHandler) // scenario optional custom init function
+		scenario.init(&secretHandler) // scenario optional custom init function
 	}
 	for _, secret := range scenario.existingSecrets {
 		_, _ = kubeClient.CoreV1().Secrets(envNamespace).Create(context.Background(), &corev1.Secret{
