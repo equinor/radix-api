@@ -42,7 +42,6 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.client = accounts.UserAccount.Client
 		eh.radixclient = accounts.UserAccount.RadixClient
 		eh.deployHandler = deployments.Init(accounts)
-		// eh.secretHandler = secrets.Init(secrets.WithAccounts(accounts))
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
@@ -59,12 +58,26 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 	}
 }
 
+func WithTLSSecretValidator(validator tlsvalidator.Interface) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.tlsSecretValidator = validator
+	}
+}
+
+type EnvironmentHandlerFactory func(accounts models.Accounts) EnvironmentHandler
+
+func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) EnvironmentHandlerFactory {
+	return func(accounts models.Accounts) EnvironmentHandler {
+		opts = append(opts, WithAccounts(accounts))
+		return Init(opts...)
+	}
+}
+
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client        kubernetes.Interface
-	radixclient   radixclient.Interface
-	deployHandler deployments.DeployHandler
-	// secretHandler             secrets.SecretHandler
+	client                    kubernetes.Interface
+	radixclient               radixclient.Interface
+	deployHandler             deployments.DeployHandler
 	eventHandler              events.EventHandler
 	accounts                  models.Accounts
 	kubeUtil                  *kube.Kube
@@ -170,60 +183,8 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-	// configurationStatus, err := eh.getConfigurationStatus(ctx, envName, ra)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// var buildFrom string
-	// for _, environment := range ra.Spec.Environments {
-	// 	if strings.EqualFold(environment.Name, envName) {
-	// 		buildFrom = environment.Build.From
-	// 		break
-	// 	}
-	// }
-
-	// deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, false)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// // data-transfer-object for serialization
-	// environmentDto := &environmentModels.Environment{
-	// 	Name:          envName,
-	// 	BranchMapping: buildFrom,
-	// 	Status:        configurationStatus.String(),
-	// 	Deployments:   deploymentSummaries,
-	// }
-
-	// if len(deploymentSummaries) > 0 {
-	// 	deployment, err := eh.deployHandler.GetDeploymentWithName(ctx, appName, deploymentSummaries[0].Name)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	environmentDto.ActiveDeployment = deployment
-
-	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, deployment.Name)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	environmentDto.Secrets = deploymentSecrets
-	// }
 
 	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsSecretValidator)
-	// if env.ActiveDeployment != nil {
-	// 	deploymentSecrets, err := eh.secretHandler.GetSecretsForDeployment(ctx, appName, envName, env.ActiveDeployment.Name)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	env.Secrets = deploymentSecrets
-	// }
-	// fmt.Println(env)
-
 	return env, nil
 }
 
@@ -298,111 +259,6 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, 
 
 	return environmentEvents, nil
 }
-
-// func (eh EnvironmentHandler) getConfigurationStatus(ctx context.Context, envName string, radixApplication *v1.RadixApplication) (environmentModels.ConfigurationStatus, error) {
-// 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getConfigurationStatus (appName=%s, envName=%s)", radixApplication.Name, envName), "EnvironmentHandler")
-// 	defer span.End()
-// 	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(radixApplication.Name, envName)
-
-// 	re, err := eh.getRadixEnvironment(ctx, uniqueName)
-// 	exists := err == nil
-
-// 	if !exists {
-// 		// does not exist in radix regardless of config
-// 		return environmentModels.Pending, environmentModels.NonExistingEnvironment(err, radixApplication.Name, envName)
-// 	}
-
-// 	if re.Status.Orphaned {
-// 		// does not occur in config but is still an active resource
-// 		return environmentModels.Orphan, nil
-// 	}
-
-// 	_, err = eh.accounts.ServiceAccount.Client.CoreV1().Namespaces().Get(ctx, uniqueName, metav1.GetOptions{})
-// 	if err != nil {
-// 		return environmentModels.Pending, nil
-// 	}
-
-// 	// exists and has underlying resources
-// 	return environmentModels.Consistent, nil
-// }
-
-// func (eh EnvironmentHandler) getEnvironmentSummary(ctx context.Context, app *v1.RadixApplication, env v1.Environment) (*environmentModels.EnvironmentSummary, error) {
-// 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getEnvironmentSummary (appName=%s, envName=%s)", app.Name, env.Name), "EnvironmentHandler")
-// 	defer span.End()
-
-// 	rr, err := kubequery.GetRadixRegistration(ctx, eh.accounts.UserAccount.RadixClient, app.Name)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	rjs, err := kubequery.GetRadixJobs(ctx, eh.accounts.UserAccount.RadixClient, app.Name)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	activeRd, err := kubequery.GetActiveRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, app.GetName(), env.Name)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	environmentSummary := &environmentModels.EnvironmentSummary{
-// 		Name:          env.Name,
-// 		BranchMapping: env.Build.From,
-// 	}
-
-// 	// deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, app.Name, env.Name, true)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-
-// 	configurationStatus, _ := eh.getConfigurationStatus(ctx, env.Name, app)
-// 	environmentSummary.Status = configurationStatus.String()
-
-// 	if activeRd != nil {
-// 		environmentSummary.ActiveDeployment, _ = apimodels.NewDeploymentSummary(activeRd, rr, rjs)
-// 	}
-
-// 	return environmentSummary, nil
-// }
-
-// func (eh EnvironmentHandler) getOrphanEnvironmentSummary(ctx context.Context, appName string, envName string) (*environmentModels.EnvironmentSummary, error) {
-// 	deploymentSummaries, err := eh.deployHandler.GetDeploymentsForApplicationEnvironment(ctx, appName, envName, true)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	environmentSummary := &environmentModels.EnvironmentSummary{
-// 		Name:   envName,
-// 		Status: environmentModels.Orphan.String(),
-// 	}
-
-// 	if len(deploymentSummaries) == 1 {
-// 		environmentSummary.ActiveDeployment = deploymentSummaries[0]
-// 	}
-
-// 	return environmentSummary, nil
-// }
-
-// // getOrphanedEnvironments returns a slice of Summary data of orphaned environments
-// func (eh EnvironmentHandler) getOrphanedEnvironments(ctx context.Context, appName string, radixApplication *v1.RadixApplication) ([]*environmentModels.EnvironmentSummary, error) {
-// 	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("getOrphanedEnvironments (appName=%s)", appName), "EnvironmentHandler")
-// 	defer span.End()
-// 	orphanedEnvironments := make([]*environmentModels.EnvironmentSummary, 0)
-
-// 	for _, name := range eh.getOrphanedEnvNames(ctx, radixApplication) {
-// 		summary, err := eh.getOrphanEnvironmentSummary(ctx, appName, name)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		orphanedEnvironments = append(orphanedEnvironments, summary)
-// 	}
-
-// 	return orphanedEnvironments, nil
-// }
-
-// // getOrphanedEnvNames returns a slice of non-unique-names of orphaned environments
-// func (eh EnvironmentHandler) getOrphanedEnvNames(ctx context.Context, app *v1.RadixApplication) []string {
-// 	return eh.getEnvironments(ctx, app, true)
-// }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
 func (eh EnvironmentHandler) getNotOrphanedEnvNames(ctx context.Context, appName string) ([]string, error) {

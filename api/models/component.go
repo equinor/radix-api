@@ -20,7 +20,6 @@ import (
 
 func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) []*deploymentModels.Component {
 	var components []*deploymentModels.Component
-	// TODO: Implement
 
 	for _, component := range rd.Spec.Components {
 		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList))

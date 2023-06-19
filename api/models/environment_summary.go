@@ -30,7 +30,7 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 			Name:             e.Name,
 			BranchMapping:    e.Build.From,
 			ActiveDeployment: getActiveDeploymentSummary(ra.GetName(), e.Name, rdList),
-			Status:           getEnvironmentConfigurationStatus(re).String(), // TODO: Set real status
+			Status:           getEnvironmentConfigurationStatus(re).String(),
 		}
 		envList = append(envList, env)
 	}

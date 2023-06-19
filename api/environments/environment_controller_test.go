@@ -61,7 +61,7 @@ const (
 	egressIps         = "0.0.0.0"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -75,7 +75,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, *controllertest.Util
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewEnvironmentController())
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
 	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -90,7 +90,7 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, anyEnvironment))
@@ -123,7 +123,7 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, anyEnvironment))
@@ -142,7 +142,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 	envName1, envName2 := "dev", "master"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithRadixRegistration(operatorutils.ARadixRegistration()).
@@ -164,7 +164,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t
 
 func TestGetEnvironmentSummary_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithRadixApplication(operatorutils.
@@ -195,7 +195,7 @@ func TestGetEnvironmentSummary_RemoveEnvironmentFromConfig_OrphanedEnvironment(t
 	anyOrphanedEnvironment := "feature-1"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -239,7 +239,7 @@ func TestGetEnvironmentSummary_OrphanedEnvironmentWithDash_OrphanedEnvironmentIs
 	anyOrphanedEnvironment := "feature-1"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -277,7 +277,7 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 	anyOrphanedEnvironment := "feature-1"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
@@ -324,7 +324,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 	anyNonExistingEnvironment := "non-existing-environment"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
@@ -342,7 +342,7 @@ func TestGetEnvironment_NoExistingEnvironment_ReturnsAnError(t *testing.T) {
 
 func TestGetEnvironment_ExistingEnvironmentInConfig_ReturnsAPendingEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
@@ -399,7 +399,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 	stoppedComponent, startedComponent := "stoppedComponent", "startedComponent"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest(nil)
 	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
 		{name: stoppedComponent, number: 0},
 		{name: startedComponent, number: 1},
@@ -454,7 +454,7 @@ func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testi
 	stoppedComponent1, stoppedComponent2 := "stoppedComponent1", "stoppedComponent2"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _ := setupTest(nil)
 	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
 		{name: stoppedComponent1, number: 0},
 		{name: stoppedComponent2, number: 0},
@@ -501,7 +501,7 @@ func TestStopComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testin
 	runningComponent, stoppedComponent := "runningComp", "stoppedComponent"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest(nil)
 	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
 		{name: runningComponent, number: 3},
 		{name: stoppedComponent, number: 0},
@@ -546,7 +546,7 @@ func TestRestartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *t
 	zeroReplicas := 0
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest(nil)
 
 	// Test
 	t.Run("Restart Environment", func(t *testing.T) {
@@ -601,7 +601,7 @@ func TestStartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 	zeroReplicas := 0
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest(nil)
 
 	// Test
 	t.Run("Start Environment", func(t *testing.T) {
@@ -656,7 +656,7 @@ func TestStopEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *test
 	zeroReplicas := 0
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _ := setupTest(nil)
 
 	// Test
 	t.Run("Stop Environment", func(t *testing.T) {
@@ -707,7 +707,7 @@ func TestStopEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *test
 
 func TestCreateEnvironment(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName))
@@ -722,7 +722,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	envName := "dev"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest(nil)
 	createEvent := func(namespace, eventName string) {
 		kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
 			ObjectMeta: metav1.ObjectMeta{
@@ -774,7 +774,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 // secret tests
 func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest()
+	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest(nil)
 	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
@@ -819,7 +819,7 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 
 func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(nil)
 	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
@@ -858,7 +858,7 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(nil)
 	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
@@ -896,7 +896,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	// Setup
 	envNs := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
-	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
+	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(nil)
 	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorutils.NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyEnvironment).
@@ -972,7 +972,7 @@ func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments", anyAppName, anyEnvironment))
@@ -1005,7 +1005,7 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 	deploymentThreeCreated, _ := time.Parse(layout, "2018-11-20T09:00:00.000Z")
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, anyEnvironment)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/deployments?latest=true", anyAppName, anyEnvironment))
@@ -1024,7 +1024,7 @@ func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *tes
 	envName1, envName2 := "dev", "master"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
 		WithRadixRegistration(operatorutils.ARadixRegistration()).
@@ -1049,7 +1049,7 @@ func TestGetEnvironmentSummary_RemoveSecretFromConfig_OrphanedSecret(t *testing.
 	orphanedEnvironment := "feature-1"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1093,7 +1093,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 	orphanedEnvironment := "feature-1"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	rr, _ := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1128,7 +1128,7 @@ func TestGetEnvironmentSummary_OrphanedSecretWithDash_OrphanedSecretIsListedOk(t
 
 func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName).
@@ -1148,7 +1148,7 @@ func TestGetSecret_ExistingSecretInConfig_ReturnsAPendingSecret(t *testing.T) {
 
 func TestCreateSecret(t *testing.T) {
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName))
@@ -1160,7 +1160,7 @@ func TestCreateSecret(t *testing.T) {
 }
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
-	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient := setupTest(nil)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
@@ -1183,7 +1183,7 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 	auxType := "oauth"
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1225,7 +1225,7 @@ func Test_GetJobs(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1293,7 +1293,7 @@ func Test_GetJobs_Status(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1364,7 +1364,7 @@ func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1435,7 +1435,7 @@ func Test_GetJob(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1530,7 +1530,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	defaultBackoffLimit := numbers.Int32Ptr(3)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1646,7 +1646,7 @@ func Test_GetJobPayload(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, kubeClient, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, kubeClient, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1729,7 +1729,7 @@ func Test_GetBatch_JobList(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1800,7 +1800,7 @@ func Test_GetBatch_JobList_StopFlag(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1871,7 +1871,7 @@ func Test_GetBatches_Status(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -1974,7 +1974,7 @@ func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -2041,7 +2041,7 @@ func Test_StopJob(t *testing.T) {
 	}
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -2148,7 +2148,7 @@ func Test_DeleteJob(t *testing.T) {
 	}
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -2263,7 +2263,7 @@ func Test_StopBatch(t *testing.T) {
 	}
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
@@ -2364,7 +2364,7 @@ func Test_DeleteBatch(t *testing.T) {
 	}
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest()
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
