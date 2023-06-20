@@ -20,9 +20,6 @@
                 "RADIX_ACTIVE_CLUSTER_EGRESS_IPS": "104.45.84.1",
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true",
                 "REQUIRE_APP_AD_GROUPS": "true",
-                "ELASTIC_APM_SERVER_URL": "http://10.52.71.232:8200",
-                "ELASTIC_APM_LOG_FILE": "stderr",
-                "ELASTIC_APM_LOG_LEVEL": "debug"
             },
             "args": [
                 "--useOutClusterClient=false"
