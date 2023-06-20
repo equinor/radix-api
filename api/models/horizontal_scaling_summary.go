@@ -4,14 +4,13 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func getHpaSummary(component radixv1.RadixCommonDeployComponent, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
-	i := slice.FindIndex(hpaList, predicate.IsHpaForComponent(component.GetName()))
+func getHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
+	i := slice.FindIndex(hpaList, predicate.IsHpaForComponent(appName, componentName))
 	if i == -1 {
 		return nil
 	}

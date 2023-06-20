@@ -36,9 +36,9 @@ func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radix
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
-		WithHorizontalScalingSummary(getHpaSummary(radixComponent, hpaList))
+		WithHorizontalScalingSummary(getHpaSummary(ra.Name, radixComponent.GetName(), hpaList))
 
-	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(radixComponent.GetName()))
+	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
 
 	if rd.Status.ActiveTo.IsZero() {
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"golang.org/x/sync/errgroup"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +46,7 @@ func GetIngressesForEnvironments(ctx context.Context, client kubernetes.Interfac
 
 func getIngressesForEnvironment(ctx context.Context, client kubernetes.Interface, appName, envName string) ([]networkingv1.Ingress, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	ingresses, err := client.NetworkingV1().Ingresses(ns).List(ctx, metav1.ListOptions{})
+	ingresses, err := client.NetworkingV1().Ingresses(ns).List(ctx, metav1.ListOptions{LabelSelector: labels.ForApplicationName(appName).String()})
 	if err != nil {
 		return nil, err
 	}

@@ -18,8 +18,8 @@ func IsAppAliasIngress(ingress networkingv1.Ingress) bool {
 	return labelselector.ForIsAppAlias().AsSelector().Matches(labels.Set(ingress.Labels))
 }
 
-func IsPodForComponent(componentName string) func(corev1.Pod) bool {
-	selector := labels.SelectorFromSet(radixlabels.ForComponentName(componentName))
+func IsPodForComponent(appName, componentName string) func(corev1.Pod) bool {
+	selector := labels.SelectorFromSet(radixlabels.Merge(radixlabels.ForApplicationName(appName), radixlabels.ForComponentName(componentName)))
 	return func(pod corev1.Pod) bool {
 		return selector.Matches(labels.Set(pod.Labels))
 	}
@@ -39,8 +39,8 @@ func IsDeploymentForAuxComponent(appName, componentName, auxType string) func(ap
 	}
 }
 
-func IsHpaForComponent(componentName string) func(autoscalingv2.HorizontalPodAutoscaler) bool {
-	selector := labels.SelectorFromSet(radixlabels.ForComponentName(componentName))
+func IsHpaForComponent(appName, componentName string) func(autoscalingv2.HorizontalPodAutoscaler) bool {
+	selector := labels.SelectorFromSet(radixlabels.Merge(radixlabels.ForApplicationName(appName), radixlabels.ForComponentName(componentName)))
 	return func(hpa autoscalingv2.HorizontalPodAutoscaler) bool {
 		return selector.Matches(labels.Set(hpa.Labels))
 	}
