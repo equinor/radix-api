@@ -16,7 +16,6 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/go-openapi/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"go.elastic.co/apm"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,8 +53,6 @@ func (jh JobHandler) GetLatestJobPerApplication(ctx context.Context, forApplicat
 
 // GetApplicationJobs Handler for GetApplicationJobs
 func (jh JobHandler) GetApplicationJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetApplicationJobs (appName=%s)", appName), "JobHandler")
-	defer span.End()
 	return jh.getApplicationJobs(ctx, appName)
 }
 

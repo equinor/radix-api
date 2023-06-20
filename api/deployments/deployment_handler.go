@@ -2,7 +2,6 @@ package deployments
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -69,8 +67,6 @@ func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName strin
 
 // GetDeploymentsForApplication Lists deployments across environments
 func (deploy *deployHandler) GetDeploymentsForApplication(ctx context.Context, appName string) ([]*deploymentModels.DeploymentSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetDeploymentsForApplication (appName=%s)", appName), "DeployHandler")
-	defer span.End()
 	environments, err := deploy.getEnvironmentNames(ctx, appName)
 	if err != nil {
 		return nil, err
@@ -94,8 +90,6 @@ func (deploy *deployHandler) GetLatestDeploymentForApplicationEnvironment(ctx co
 
 // GetDeploymentsForApplicationEnvironment Lists deployments inside environment
 func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(ctx context.Context, appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetDeploymentsForApplicationEnvironment (appName=%s, envName=%s)", appName, environment), "DeployHandler")
-	defer span.End()
 	var environments []string
 	if strings.TrimSpace(environment) != "" {
 		environments = append(environments, environment)

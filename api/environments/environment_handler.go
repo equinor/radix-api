@@ -3,7 +3,6 @@ package environments
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
-	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -104,9 +102,6 @@ func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 
 // GetEnvironmentSummary handles api calls and returns a slice of EnvironmentSummary data for each environment
 func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName string) ([]*environmentModels.EnvironmentSummary, error) {
-	span, ctx := apm.StartSpan(ctx, fmt.Sprintf("GetEnvironmentSummary (appName=%s)", appName), "EnvironmentHandler")
-	defer span.End()
-
 	rr, err := kubequery.GetRadixRegistration(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
