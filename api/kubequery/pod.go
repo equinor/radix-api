@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetPodsForEnvironmentComponents returns all Radix component pods for the specified application and environments.
 func GetPodsForEnvironmentComponents(ctx context.Context, client kubernetes.Interface, appName, envName string) ([]corev1.Pod, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	noJobTypeLabel, err := labels.NewRequirement(kube.RadixJobTypeLabel, selection.DoesNotExist, nil)

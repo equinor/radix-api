@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetRadixRegistration returns the RadixRegistration for the specified application name.
 func GetRadixRegistration(ctx context.Context, client radixclient.Interface, appName string) (*radixv1.RadixRegistration, error) {
 	return client.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 }

@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetRadixApplication returns the RadixApplication for the specified application name.
 func GetRadixApplication(ctx context.Context, client radixclient.Interface, appName string) (*radixv1.RadixApplication, error) {
 	ns := operatorUtils.GetAppNamespace(appName)
 	return client.RadixV1().RadixApplications(ns).Get(ctx, appName, metav1.GetOptions{})

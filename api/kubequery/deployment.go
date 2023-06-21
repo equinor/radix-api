@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetDeploymentsForEnvironment returns all Deployments for the specified application and environment.
 func GetDeploymentsForEnvironment(ctx context.Context, client kubernetes.Interface, appName, envName string) ([]appsv1.Deployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	deployments, err := client.AppsV1().Deployments(ns).List(ctx, v1.ListOptions{LabelSelector: labels.ForApplicationName(appName).String()})

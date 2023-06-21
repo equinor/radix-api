@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetHorizontalPodAutoscalersForEnvironment returns all HorizontalPodAutoscalers for the specified application and environment.
 func GetHorizontalPodAutoscalersForEnvironment(ctx context.Context, client kubernetes.Interface, appName, envName string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	hpas, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{LabelSelector: labels.ForApplicationName(appName).String()})

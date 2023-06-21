@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetSecretsForEnvironment returns all Secrets for the specified application and environment.
 func GetSecretsForEnvironment(ctx context.Context, client kubernetes.Interface, appName, envName string) ([]corev1.Secret, error) {
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
 	secrets, err := client.CoreV1().Secrets(ns).List(ctx, metav1.ListOptions{})

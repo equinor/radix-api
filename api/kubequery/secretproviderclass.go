@@ -12,6 +12,7 @@ import (
 	secretProviderClient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
+// GetSecretProviderClassesForEnvironment returns all SecretProviderClasses for the specified application and environment.
 func GetSecretProviderClassesForEnvironment(ctx context.Context, client secretProviderClient.Interface, appName, envName string) ([]secretsstorev1.SecretProviderClass, error) {
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
 	labelSelector := labels.Set{

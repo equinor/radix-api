@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetRadixEnvironments returns all RadixEnvironments for the specified application.
 func GetRadixEnvironments(ctx context.Context, client radixclient.Interface, appName string) ([]radixv1.RadixEnvironment, error) {
 	res, err := client.RadixV1().RadixEnvironments().List(ctx, v1.ListOptions{LabelSelector: labelselector.ForApplication(appName).String()})
 	if err != nil {
@@ -18,6 +19,7 @@ func GetRadixEnvironments(ctx context.Context, client radixclient.Interface, app
 	return res.Items, nil
 }
 
+// GetRadixEnvironment returns the RadixEnvironment for the specified application and environment.
 func GetRadixEnvironment(ctx context.Context, client radixclient.Interface, appName, envName string) (*radixv1.RadixEnvironment, error) {
 	reName := operatorutils.GetEnvironmentNamespace(appName, envName)
 	re, err := client.RadixV1().RadixEnvironments().Get(ctx, reName, v1.GetOptions{})

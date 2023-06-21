@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GetRadixDeploymentsForEnvironments returns all RadixDeployments for the specified application and environments.
+// Go routines are used to query RDs per environment, and number of concurrenct Go routines is controlled with the parallelism parameter.
 func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.Interface, appName string, envNames []string, parallelism int) ([]radixv1.RadixDeployment, error) {
 	if len(envNames) == 0 {
 		return nil, nil
@@ -43,6 +45,7 @@ func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.
 	return rdList, nil
 }
 
+// GetRadixDeploymentsForEnvironment returns all RadixDeployments for the specified application and environment.
 func GetRadixDeploymentsForEnvironment(ctx context.Context, client radixclient.Interface, appName, envName string) ([]radixv1.RadixDeployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	rds, err := client.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
