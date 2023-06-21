@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// BuildComponents builds a list of Component models.
 func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) []*deploymentModels.Component {
 	var components []*deploymentModels.Component
 

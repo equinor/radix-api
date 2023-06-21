@@ -10,6 +10,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
+// BuildApplicationAlias builds an ApplicationAlias model for the first Ingress
 func BuildApplicationAlias(ingressList []networkingv1.Ingress, reList []radixv1.RadixEnvironment) *applicationModels.ApplicationAlias {
 	appAliasIngressList := slice.FindAll(ingressList, predicate.IsAppAliasIngress)
 	namespaceReMap := slice.Reduce(reList, map[string]radixv1.RadixEnvironment{}, func(acc map[string]radixv1.RadixEnvironment, re radixv1.RadixEnvironment) map[string]radixv1.RadixEnvironment {

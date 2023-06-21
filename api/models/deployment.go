@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// BuildDeployment builds a Deployment model.
 func BuildDeployment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.Deployment {
 	components := BuildComponents(ra, rd, deploymentList, podList, hpaList)
 

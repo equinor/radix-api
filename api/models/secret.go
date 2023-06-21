@@ -20,6 +20,7 @@ import (
 
 const secretDefaultData = "xx"
 
+// BuildSecrets builds a list of Secret models.
 func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.Interface) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	secrets = append(secrets, getSecretsForDeployment(secretList, rd)...)

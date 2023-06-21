@@ -7,12 +7,14 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
+// BuildDeploymentSummaryList builds a list of DeploymentSummary models.
 func BuildDeploymentSummaryList(rr *radixv1.RadixRegistration, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob) []*deploymentModels.DeploymentSummary {
 	return slice.Map(rdList, func(rd radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
 		return BuildDeploymentSummary(&rd, rr, rjList)
 	})
 }
 
+// BuildDeploymentSummary builds a DeploymentSummary model.
 func BuildDeploymentSummary(rd *radixv1.RadixDeployment, rr *radixv1.RadixRegistration, rjList []radixv1.RadixJob) *deploymentModels.DeploymentSummary {
 	var rj *radixv1.RadixJob
 	if i := slice.FindIndex(rjList, func(rj radixv1.RadixJob) bool { return rd.Labels[kube.RadixJobNameLabel] == rj.Name }); i >= 0 {

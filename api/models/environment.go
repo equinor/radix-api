@@ -13,6 +13,7 @@ import (
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
+// BuildEnvironment builds and Environment model.
 func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, tlsValidator tlsvalidator.Interface) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment

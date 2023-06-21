@@ -9,6 +9,7 @@ import (
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
+// BuildEnvironmentSummaryList builds a list of EnvironmentSummary models.
 func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob) []*environmentModels.EnvironmentSummary {
 	var envList []*environmentModels.EnvironmentSummary
 
