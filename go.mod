@@ -30,7 +30,7 @@ require (
 	k8s.io/apimachinery v0.25.8
 	k8s.io/client-go v0.25.8
 	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
-	sigs.k8s.io/secrets-store-csi-driver v1.3.2
+	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
 
 require (
