@@ -284,12 +284,13 @@ func (eh SecretHandler) getSecretsFromLatestDeployment(ctx context.Context, acti
 func (eh SecretHandler) getCredentialSecretsForBlobVolumes(ctx context.Context, component radixv1.RadixCommonDeployComponent, envNamespace string) []models.Secret {
 	var secrets []models.Secret
 	for _, volumeMount := range component.GetVolumeMounts() {
-		switch volumeMount.Type {
+		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
+		switch volumeMountType {
 		case radixv1.MountTypeBlob:
 			accountKeySecret, accountNameSecret := eh.getBlobFuseSecrets(ctx, component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)
-		case radixv1.MountTypeBlobCsiAzure, radixv1.MountTypeBlob2CsiAzure, radixv1.MountTypeNfsCsiAzure, radixv1.MountTypeFileCsiAzure:
+		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure, radixv1.MountTypeBlobFuse2NfsCsiAzure, radixv1.MountTypeAzureFileCsiAzure:
 			accountKeySecret, accountNameSecret := eh.getCsiAzureSecrets(ctx, component, envNamespace, volumeMount)
 			secrets = append(secrets, accountKeySecret)
 			secrets = append(secrets, accountNameSecret)

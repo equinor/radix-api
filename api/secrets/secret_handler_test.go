@@ -218,7 +218,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: componentName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobCsiAzure,
+							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
 							Name:    "volume1",
 							Storage: "container1",
 						},
@@ -230,7 +230,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: jobName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobCsiAzure,
+							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
 							Name:    "volume2",
 							Storage: "container2",
 						},
@@ -283,7 +283,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: componentName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobCsiAzure,
+							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
 							Name:    "volume1",
 							Storage: "container1",
 						},
@@ -295,7 +295,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: jobName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobCsiAzure,
+							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
 							Name:    "volume2",
 							Storage: "container2",
 						},
