@@ -68,7 +68,7 @@ func (ah *ApplicationHandler) getServiceAccount() models.Account {
 
 // GetApplication handler for GetApplication
 func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string) (*applicationModels.Application, error) {
-	rr, err := kubequery.GetRadixRegistration(ctx, ah.accounts.UserAccount.RadixClient, appName) // ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	rr, err := kubequery.GetRadixRegistration(ctx, ah.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
