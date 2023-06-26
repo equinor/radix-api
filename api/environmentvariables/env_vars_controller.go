@@ -3,12 +3,13 @@ package environmentvariables
 import (
 	"encoding/json"
 	//"encoding/json"
+	"net/http"
+
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 const rootPath = "/applications/{appName}"
@@ -77,7 +78,9 @@ func (controller *envVarsController) GetComponentEnvVars(accounts models.Account
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -138,7 +141,9 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
