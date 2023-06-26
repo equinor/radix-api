@@ -673,14 +673,24 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
 
-	re, _ := commonTestUtils.ApplyEnvironment(builders.
+	// Set RE statuses
+	devRe, err := radix.RadixV1().RadixEnvironments().Get(context.Background(), builders.GetEnvironmentNamespace(anyAppName, "dev"), metav1.GetOptions{})
+	require.NoError(t, err)
+	devRe.Status.Reconciled = metav1.Now()
+	radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), devRe, metav1.UpdateOptions{})
+	prodRe, err := radix.RadixV1().RadixEnvironments().Get(context.Background(), builders.GetEnvironmentNamespace(anyAppName, "prod"), metav1.GetOptions{})
+	require.NoError(t, err)
+	prodRe.Status.Reconciled = metav1.Time{}
+	radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), prodRe, metav1.UpdateOptions{})
+
+	orphanedRe, _ := commonTestUtils.ApplyEnvironment(builders.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
 		WithEnvironmentName(anyOrphanedEnvironment))
-
-	re.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(context.Background(), re, metav1.UpdateOptions{})
+	orphanedRe.Status.Reconciled = metav1.Now()
+	orphanedRe.Status.Orphaned = true
+	radix.RadixV1().RadixEnvironments().Update(context.Background(), orphanedRe, metav1.UpdateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))

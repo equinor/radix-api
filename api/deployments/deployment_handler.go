@@ -15,12 +15,10 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes"
 )
 
 type DeployHandler interface {
@@ -35,17 +33,13 @@ type DeployHandler interface {
 
 // DeployHandler Instance variables
 type deployHandler struct {
-	accounts    models.Accounts
-	kubeClient  kubernetes.Interface
-	radixClient radixclient.Interface
+	accounts models.Accounts
 }
 
 // Init Constructor
 func Init(accounts models.Accounts) DeployHandler {
 	return &deployHandler{
-		accounts:    accounts,
-		kubeClient:  accounts.UserAccount.Client,
-		radixClient: accounts.UserAccount.RadixClient,
+		accounts: accounts,
 	}
 }
 
@@ -53,12 +47,12 @@ func Init(accounts models.Accounts) DeployHandler {
 func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
 	ns := operatorUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
-	ra, err := deploy.radixClient.RadixV1().RadixApplications(ns).Get(ctx, appName, metav1.GetOptions{})
+	ra, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixApplications(ns).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, deploymentModels.NonExistingApplication(err, appName)
 	}
 	for _, env := range ra.Spec.Environments {
-		podHandler := pods.Init(deploy.kubeClient)
+		podHandler := pods.Init(deploy.accounts.UserAccount.Client)
 		log, err := podHandler.HandleGetEnvironmentPodLog(ctx, appName, env.Name, podName, "", sinceTime, logLines, previousLog)
 		if errors.IsNotFound(err) {
 			continue
@@ -143,7 +137,7 @@ func (deploy *deployHandler) GetDeploymentWithName(ctx context.Context, appName,
 	}
 
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, deploymentSummary.Environment)
-	rd, err := deploy.radixClient.RadixV1().RadixDeployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	rd, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +148,7 @@ func (deploy *deployHandler) GetDeploymentWithName(ctx context.Context, appName,
 	}
 
 	// getting RadixDeployment's RadixRegistration to fetch git repository url
-	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	rr, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +196,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	var radixDeploymentList []v1.RadixDeployment
 	namespaces := slice.Map(environments, func(env string) string { return operatorUtils.GetEnvironmentNamespace(appName, env) })
 	for _, ns := range namespaces {
-		rdlist, err := deploy.radixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
+		rdlist, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -213,13 +207,13 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	radixJobMap := make(map[string]*v1.RadixJob)
 
 	if jobName != "" {
-		radixJob, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).Get(ctx, jobName, metav1.GetOptions{})
+		radixJob, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Get(ctx, jobName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		radixJobMap[radixJob.Name] = radixJob
 	} else {
-		radixJobList, err := deploy.radixClient.RadixV1().RadixJobs(appNamespace).List(ctx, metav1.ListOptions{LabelSelector: appNameLabel.String()})
+		radixJobList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(appNamespace).List(ctx, metav1.ListOptions{LabelSelector: appNameLabel.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +224,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	}
 
 	// getting RadixDeployment's RadixRegistration to fetch git repository url
-	rr, err := deploy.radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	rr, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
