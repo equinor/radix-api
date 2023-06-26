@@ -11,7 +11,7 @@ import (
 )
 
 // GetRadixDeploymentsForEnvironments returns all RadixDeployments for the specified application and environments.
-// Go routines are used to query RDs per environment, and number of concurrenct Go routines is controlled with the parallelism parameter.
+// Go routines are used to query RDs per environment, and number of concurrent Go routines is controlled with the parallelism parameter.
 func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.Interface, appName string, envNames []string, parallelism int) ([]radixv1.RadixDeployment, error) {
 	if len(envNames) == 0 {
 		return nil, nil

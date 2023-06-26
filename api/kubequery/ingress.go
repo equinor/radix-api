@@ -12,7 +12,7 @@ import (
 )
 
 // GetIngressesForEnvironments returns all HorizontalPodAutoscalers for the specified application and environments.
-// Go routines are used to query HPAs per environment, and number of concurrenct Go routines is controlled with the parallelism parameter.
+// Go routines are used to query HPAs per environment, and number of concurrent Go routines is controlled with the parallelism parameter.
 func GetIngressesForEnvironments(ctx context.Context, client kubernetes.Interface, appName string, envNames []string, parallelism int) ([]networkingv1.Ingress, error) {
 	if len(envNames) == 0 {
 		return nil, nil
