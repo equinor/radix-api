@@ -36,11 +36,6 @@ const (
 	egressIps          = "0.0.0.0"
 )
 
-// type componentProps struct {
-// 	componentName string
-// 	secrets       []string
-// }
-
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
