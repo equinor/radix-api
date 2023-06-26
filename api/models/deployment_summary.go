@@ -17,8 +17,8 @@ func BuildDeploymentSummaryList(rr *radixv1.RadixRegistration, rdList []radixv1.
 // BuildDeploymentSummary builds a DeploymentSummary model.
 func BuildDeploymentSummary(rd *radixv1.RadixDeployment, rr *radixv1.RadixRegistration, rjList []radixv1.RadixJob) *deploymentModels.DeploymentSummary {
 	var rj *radixv1.RadixJob
-	if i := slice.FindIndex(rjList, func(rj radixv1.RadixJob) bool { return rd.Labels[kube.RadixJobNameLabel] == rj.Name }); i >= 0 {
-		rj = &rjList[i]
+	if foundRj, ok := slice.FindFirst(rjList, func(rj radixv1.RadixJob) bool { return rd.Labels[kube.RadixJobNameLabel] == rj.Name }); ok {
+		rj = &foundRj
 	}
 
 	// The only error that can be returned from DeploymentBuilder is related to errors from github.com/imdario/mergo

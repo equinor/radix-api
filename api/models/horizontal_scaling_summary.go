@@ -10,11 +10,10 @@ import (
 )
 
 func getHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
-	i := slice.FindIndex(hpaList, predicate.IsHpaForComponent(appName, componentName))
-	if i == -1 {
+	hpa, ok := slice.FindFirst(hpaList, predicate.IsHpaForComponent(appName, componentName))
+	if !ok {
 		return nil
 	}
-	hpa := hpaList[i]
 
 	minReplicas := int32(1)
 	if hpa.Spec.MinReplicas != nil {

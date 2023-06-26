@@ -15,16 +15,16 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 
 	getActiveDeploymentSummary := func(appName, envName string, rds []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
 		var activeDeployment *deploymentModels.DeploymentSummary
-		if i := slice.FindIndex(rds, isActiveDeploymentForAppAndEnv(appName, envName)); i >= 0 {
-			activeDeployment = BuildDeploymentSummary(&rds[i], rr, rjList)
+		if activeRd, ok := slice.FindFirst(rds, isActiveDeploymentForAppAndEnv(appName, envName)); ok {
+			activeDeployment = BuildDeploymentSummary(&activeRd, rr, rjList)
 		}
 		return activeDeployment
 	}
 
 	for _, e := range ra.Spec.Environments {
 		var re *radixv1.RadixEnvironment
-		if i := slice.FindIndex(reList, func(re radixv1.RadixEnvironment) bool { return re.Spec.AppName == ra.Name && re.Spec.EnvName == e.Name }); i >= 0 {
-			re = &reList[i]
+		if foundRe, ok := slice.FindFirst(reList, func(re radixv1.RadixEnvironment) bool { return re.Spec.AppName == ra.Name && re.Spec.EnvName == e.Name }); ok {
+			re = &foundRe
 		}
 
 		env := &environmentModels.EnvironmentSummary{

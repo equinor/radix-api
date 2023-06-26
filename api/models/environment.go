@@ -23,10 +23,9 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 		buildFromBranch = raEnv.Build.From
 	}
 
-	if i := slice.FindIndex(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); i >= 0 {
-		activeRd := &rdList[i]
-		activeDeployment = BuildDeployment(rr, ra, activeRd, deploymentList, podList, hpaList)
-		secrets = BuildSecrets(secretList, secretProviderClassList, activeRd, tlsValidator)
+	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList)
+		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd, tlsValidator)
 	}
 
 	return &environmentModels.Environment{
@@ -40,11 +39,8 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 }
 
 func getRadixApplicationEnvironment(ra *radixv1.RadixApplication, envName string) *radixv1.Environment {
-	envIdx := slice.FindIndex(ra.Spec.Environments, func(env radixv1.Environment) bool {
-		return env.Name == envName
-	})
-	if envIdx >= 0 {
-		return &ra.Spec.Environments[envIdx]
+	if env, ok := slice.FindFirst(ra.Spec.Environments, func(env radixv1.Environment) bool { return env.Name == envName }); ok {
+		return &env
 	}
 	return nil
 }

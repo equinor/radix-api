@@ -65,9 +65,9 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 	var secretDTOsMap []secretModels.Secret
 	for componentName, secretNamesMap := range componentSecretsMap {
 		secretObjectName := operatorutils.GetComponentSecretName(componentName)
-		i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretObjectName })
-		// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
-		if i == -1 {
+		secret, ok := slice.FindFirst(secretList, isSecretWithName(secretObjectName))
+		if !ok {
+			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for secretName := range secretNamesMap {
 				secretDTO := secretModels.Secret{Name: secretName, DisplayName: secretName, Component: componentName, Status: secretModels.Pending.String(), Type: secretModels.SecretTypeGeneric}
 				secretDTOsMap = append(secretDTOsMap, secretDTO)
@@ -75,7 +75,7 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 			continue
 		}
 
-		clusterSecretEntriesMap := secretList[i].Data
+		clusterSecretEntriesMap := secret.Data
 		for secretName := range secretNamesMap {
 			status := secretModels.Consistent.String()
 			if _, exists := clusterSecretEntriesMap[secretName]; !exists {
@@ -101,14 +101,7 @@ func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixD
 			certStatus := secretModels.Consistent
 			keyStatus := secretModels.Consistent
 
-			var secretValue *corev1.Secret
-			if i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == externalAlias }); i >= 0 {
-				secretValue = &secretList[i]
-			}
-			if secretValue == nil {
-				certStatus = secretModels.Pending
-				keyStatus = secretModels.Pending
-			} else {
+			if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias)); ok {
 				certData = secretValue.Data[corev1.TLSCertKey]
 				if certValue := strings.TrimSpace(string(certData)); len(certValue) == 0 || strings.EqualFold(certValue, secretDefaultData) {
 					certStatus = secretModels.Pending
@@ -120,6 +113,9 @@ func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixD
 					keyStatus = secretModels.Pending
 					keyData = nil
 				}
+			} else {
+				certStatus = secretModels.Pending
+				keyStatus = secretModels.Pending
 			}
 
 			var tlsCerts []secretModels.TLSCertificate
@@ -184,7 +180,8 @@ func getSecretsForVolumeMounts(secretList []corev1.Secret, rd *radixv1.RadixDepl
 func getCredentialSecretsForBlobVolumes(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, volumeMount := range component.GetVolumeMounts() {
-		switch volumeMount.Type {
+		volumeMountType := operatordeployment.GetCsiAzureVolumeMountType(&volumeMount)
+		switch volumeMountType {
 		case radixv1.MountTypeBlob:
 			accountKeySecret, accountNameSecret := getBlobFuseSecrets(secretList, component, volumeMount)
 			secrets = append(secrets, accountKeySecret)
@@ -224,12 +221,7 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 	accountkeyStatus := secretModels.Consistent.String()
 	accountnameStatus := secretModels.Consistent.String()
 
-	i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretName })
-	if i == -1 {
-		accountkeyStatus = secretModels.Pending.String()
-		accountnameStatus = secretModels.Pending.String()
-	} else {
-		secretValue := secretList[i]
+	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 		accountkeyValue := strings.TrimSpace(string(secretValue.Data[accountKeyPart]))
 		if strings.EqualFold(accountkeyValue, secretDefaultData) {
 			accountkeyStatus = secretModels.Pending.String()
@@ -238,6 +230,9 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		if strings.EqualFold(accountnameValue, secretDefaultData) {
 			accountnameStatus = secretModels.Pending.String()
 		}
+	} else {
+		accountkeyStatus = secretModels.Pending.String()
+		accountnameStatus = secretModels.Pending.String()
 	}
 	// "accountkey"
 	accountKeySecretDTO := secretModels.Secret{
@@ -284,14 +279,13 @@ func getSecretsForComponentAuthenticationClientCertificate(secretList []corev1.S
 		secretName := operatorutils.GetComponentClientCertificateSecretName(component.GetName())
 		secretStatus := secretModels.Consistent.String()
 
-		i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretName })
-		if i == -1 {
-			secretStatus = secretModels.Pending.String()
-		} else {
-			secretValue := strings.TrimSpace(string(secretList[i].Data["ca.crt"]))
+		if secret, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+			secretValue := strings.TrimSpace(string(secret.Data["ca.crt"]))
 			if strings.EqualFold(secretValue, secretDefaultData) {
 				secretStatus = secretModels.Pending.String()
 			}
+		} else {
+			secretStatus = secretModels.Pending.String()
 		}
 
 		secrets = append(secrets, secretModels.Secret{Name: secretName,
@@ -315,13 +309,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 		redisPasswordStatus := secretModels.Consistent.String()
 
 		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
-		i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretName })
-		if i == -1 {
-			clientSecretStatus = secretModels.Pending.String()
-			cookieSecretStatus = secretModels.Pending.String()
-			redisPasswordStatus = secretModels.Pending.String()
-		} else {
-			secret := secretList[i]
+		if secret, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 			if secretValue, found := secret.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				clientSecretStatus = secretModels.Pending.String()
 			}
@@ -331,6 +319,10 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 			if secretValue, found := secret.Data[defaults.OAuthRedisPasswordKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				redisPasswordStatus = secretModels.Pending.String()
 			}
+		} else {
+			clientSecretStatus = secretModels.Pending.String()
+			cookieSecretStatus = secretModels.Pending.String()
+			redisPasswordStatus = secretModels.Pending.String()
 		}
 
 		secrets = append(secrets, secretModels.Secret{Name: component.GetName() + suffix.OAuth2ClientSecret,
@@ -440,12 +432,7 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, 
 	clientIdStatus := secretModels.Consistent.String()
 	clientSecretStatus := secretModels.Consistent.String()
 
-	i := slice.FindIndex(secretList, func(secret corev1.Secret) bool { return secret.Name == secretName })
-	if i == -1 {
-		clientIdStatus = secretModels.Pending.String()
-		clientSecretStatus = secretModels.Pending.String()
-	} else {
-		secretValue := secretList[i]
+	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 		clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
 		if strings.EqualFold(clientIdValue, secretDefaultData) {
 			clientIdStatus = secretModels.Pending.String()
@@ -454,6 +441,9 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, 
 		if strings.EqualFold(clientSecretValue, secretDefaultData) {
 			clientSecretStatus = secretModels.Pending.String()
 		}
+	} else {
+		clientIdStatus = secretModels.Pending.String()
+		clientSecretStatus = secretModels.Pending.String()
 	}
 	secrets = append(secrets, secretModels.Secret{
 		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
@@ -474,4 +464,10 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, 
 		ID:          secretModels.SecretIdClientSecret},
 	)
 	return secrets
+}
+
+func isSecretWithName(name string) func(secret corev1.Secret) bool {
+	return func(secret corev1.Secret) bool {
+		return secret.Name == name
+	}
 }
