@@ -26,6 +26,7 @@ const (
 // NewServer Constructor function
 func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
+
 	statikFS, err := fs.New()
 	if err != nil {
 		panic(err)

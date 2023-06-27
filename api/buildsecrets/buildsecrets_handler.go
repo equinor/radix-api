@@ -28,12 +28,12 @@ func Init(accounts sharedModels.Accounts) Handler {
 }
 
 // ChangeBuildSecret handler to modify the build secret
-func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, secretValue string) error {
+func (sh Handler) ChangeBuildSecret(appName, secretName, secretValue string) error {
 	if strings.TrimSpace(secretValue) == "" {
 		return radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, defaults.BuildSecretsName, metav1.GetOptions{})
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return radixhttp.TypeMissingError("Build secrets object does not exist", err)
 	}
@@ -47,7 +47,7 @@ func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, se
 	}
 
 	secretObject.Data[secretName] = []byte(secretValue)
-	_, err = sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Update(ctx, secretObject, metav1.UpdateOptions{})
+	_, err = sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Update(context.TODO(), secretObject, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -56,15 +56,15 @@ func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, se
 }
 
 // GetBuildSecrets Lists build secrets for application
-func (sh Handler) GetBuildSecrets(ctx context.Context, appName string) ([]buildSecretsModels.BuildSecret, error) {
-	ra, err := sh.userAccount.RadixClient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+func (sh Handler) GetBuildSecrets(appName string) ([]buildSecretsModels.BuildSecret, error) {
+	ra, err := sh.userAccount.RadixClient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 
 	if err != nil {
 		return []buildSecretsModels.BuildSecret{}, nil
 	}
 
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, defaults.BuildSecretsName, metav1.GetOptions{})
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(context.TODO(), defaults.BuildSecretsName, metav1.GetOptions{})
 	if err == nil && secretObject != nil && ra.Spec.Build != nil {
 		for _, secretName := range ra.Spec.Build.Secrets {
 			secretStatus := buildSecretsModels.Pending.String()

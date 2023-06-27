@@ -100,7 +100,7 @@ func getControllers() ([]models.Controller, error) {
 		applications.NewApplicationController(nil, applicationHandlerFactory),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
-		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
+		environments.NewEnvironmentController(),
 		environmentvariables.NewEnvVarsController(),
 		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),

@@ -41,7 +41,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		noAlertNs := "no-alert-ns"
 
 		sut := handler{accounts: s.accounts, namespace: noAlertNs, appName: "any-app"}
-		config, err := sut.GetAlertingConfig(context.Background())
+		config, err := sut.GetAlertingConfig()
 		s.Nil(err)
 		s.False(config.Enabled)
 		s.False(config.Ready)
@@ -53,7 +53,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(incorrectLabelNs).Create(context.Background(), &incorrectlLabelRal, metav1.CreateOptions{})
 
 		sut := handler{accounts: s.accounts, namespace: incorrectLabelNs, appName: "other-app"}
-		config, err := sut.GetAlertingConfig(context.Background())
+		config, err := sut.GetAlertingConfig()
 		s.Nil(err)
 		s.False(config.Enabled)
 		s.False(config.Ready)
@@ -67,7 +67,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(multipleAlertNs).Create(context.Background(), &multipleRal2, metav1.CreateOptions{})
 
 		sut := handler{accounts: s.accounts, namespace: multipleAlertNs, appName: multipleAlertApp}
-		config, err := sut.GetAlertingConfig(context.Background())
+		config, err := sut.GetAlertingConfig()
 		s.Error(err, MultipleAlertingConfigurationsError())
 		s.Nil(config)
 	})
@@ -78,7 +78,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(notReconciledNs).Create(context.Background(), &notReconciledRal, metav1.CreateOptions{})
 
 		sut := handler{accounts: s.accounts, namespace: notReconciledNs, appName: notReconciledApp}
-		config, err := sut.GetAlertingConfig(context.Background())
+		config, err := sut.GetAlertingConfig()
 		s.Nil(err)
 		s.True(config.Enabled)
 		s.False(config.Ready)
@@ -114,7 +114,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		s.accounts.UserAccount.Client.CoreV1().Secrets(appNs).Create(context.Background(), &secret, metav1.CreateOptions{})
 
 		sut := handler{accounts: s.accounts, namespace: appNs, appName: appName, validAlertNames: alertNames}
-		config, err := sut.GetAlertingConfig(context.Background())
+		config, err := sut.GetAlertingConfig()
 		s.Nil(err)
 		s.True(config.Enabled)
 		s.True(config.Ready)
@@ -133,7 +133,7 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 func (s *HandlerTestSuite) Test_EnableAlerting() {
 	namespace, appName, alertNames := "anyapp-app", "anyapp", []string{"alert1", "alert2"}
 	sut := handler{accounts: s.accounts, namespace: namespace, appName: appName, validAlertNames: alertNames, reconcilePollInterval: time.Millisecond, reconcilePollTimeout: time.Millisecond}
-	config, err := sut.EnableAlerting(context.Background())
+	config, err := sut.EnableAlerting()
 	s.Nil(err)
 	s.True(config.Enabled)
 	s.False(config.Ready) // Unable to test radix-operator reconciliation, so Ready will be false
@@ -143,7 +143,7 @@ func (s *HandlerTestSuite) Test_EnableAlerting() {
 	s.Equal(config.ReceiverSecretStatus[defaultReceiverName], alertModels.ReceiverConfigSecretStatus{SlackConfig: &alertModels.SlackConfigSecretStatus{WebhookURLConfigured: false}})
 	s.ElementsMatch([]alertModels.AlertConfig{{Receiver: defaultReceiverName, Alert: alertNames[0]}, {Receiver: defaultReceiverName, Alert: alertNames[1]}}, config.Alerts)
 
-	_, err = sut.EnableAlerting(context.Background())
+	_, err = sut.EnableAlerting()
 	s.Error(err, AlertingAlreadyEnabledError())
 }
 
@@ -162,7 +162,7 @@ func (s *HandlerTestSuite) Test_DisableAlerting() {
 
 	s.Run("disable alerting should delete expected RadixAlert resources", func() {
 		sut := handler{accounts: s.accounts, namespace: namespace, appName: appName}
-		config, err := sut.DisableAlerting(context.Background())
+		config, err := sut.DisableAlerting()
 		s.Nil(err)
 		s.False(config.Enabled)
 		s.False(config.Ready)
@@ -175,7 +175,7 @@ func (s *HandlerTestSuite) Test_DisableAlerting() {
 
 	s.Run("disable alerting when not enabled should not return an error", func() {
 		sut := handler{accounts: s.accounts, namespace: "any-ns", appName: "any-app"}
-		_, err := sut.DisableAlerting(context.Background())
+		_, err := sut.DisableAlerting()
 		s.Nil(err)
 	})
 }
@@ -208,12 +208,12 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 
 	s.Run("multiple RadixAlert resources returns error", func() {
 		sut := handler{accounts: s.accounts, namespace: namespace, appName: appName1}
-		_, err := sut.UpdateAlertingConfig(context.Background(), alertModels.UpdateAlertingConfig{})
+		_, err := sut.UpdateAlertingConfig(alertModels.UpdateAlertingConfig{})
 		s.Error(err, MultipleAlertingConfigurationsError())
 	})
 	s.Run("no RadixAlert in namespace returns error", func() {
 		sut := handler{accounts: s.accounts, namespace: namespace, appName: appName2}
-		_, err := sut.UpdateAlertingConfig(context.Background(), alertModels.UpdateAlertingConfig{})
+		_, err := sut.UpdateAlertingConfig(alertModels.UpdateAlertingConfig{})
 		s.Error(err, AlertingNotEnabledError())
 	})
 
@@ -225,7 +225,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 				"receiver1": alertModels.UpdateReceiverConfigSecrets{},
 			},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.NotNil(err)
 		s.True(errors.IsNotFound(err))
 		s.IsType(&errors.StatusError{}, err)
@@ -241,7 +241,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 				"receiver2": alertModels.UpdateReceiverConfigSecrets{},
 			},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.Error(err, UpdateReceiverSecretNotDefinedError("receiver2"))
 	})
 
@@ -251,7 +251,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 			Receivers: alertModels.ReceiverConfigMap{"receiver1": alertModels.ReceiverConfig{}},
 			Alerts:    alertModels.AlertConfigList{{Alert: "alert1", Receiver: "receiver2"}},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.Error(err, InvalidAlertReceiverError("alert1", "receiver2"))
 	})
 
@@ -261,7 +261,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 			Receivers: alertModels.ReceiverConfigMap{"receiver1": alertModels.ReceiverConfig{}},
 			Alerts:    alertModels.AlertConfigList{{Alert: "alert2", Receiver: "receiver1"}},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.Error(err, InvalidAlertError("alert2"))
 	})
 
@@ -277,7 +277,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 			},
 			Alerts: alertModels.AlertConfigList{{Alert: "alert1", Receiver: "receiver1"}},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.Error(err, InvalidSlackURLSchemeError())
 	})
 
@@ -299,7 +299,7 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 				{Alert: "alert1", Receiver: "receiver2"},
 			},
 		}
-		_, err := sut.UpdateAlertingConfig(context.Background(), update)
+		_, err := sut.UpdateAlertingConfig(update)
 		s.Nil(err)
 
 		// Check that receiver1 secret is updated and receiver2 secret is deleted

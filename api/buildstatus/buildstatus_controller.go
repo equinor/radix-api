@@ -75,7 +75,7 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	}
 
 	buildStatusHandler := Init(accounts, bsc.PipelineBadge)
-	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(r.Context(), appName, env, pipeline)
+	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(appName, env, pipeline)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

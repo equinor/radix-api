@@ -22,7 +22,7 @@ func Init(accounts models.Accounts, pipelineBadge build_models.PipelineBadge) Bu
 }
 
 // GetBuildStatusForApplication Gets a list of build status for environments
-func (handler BuildStatusHandler) GetBuildStatusForApplication(ctx context.Context, appName, env, pipeline string) ([]byte, error) {
+func (handler BuildStatusHandler) GetBuildStatusForApplication(appName, env, pipeline string) ([]byte, error) {
 	var output []byte
 
 	// Get latest RJ
@@ -30,7 +30,7 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(ctx context.Conte
 	namespace := operatorUtils.GetAppNamespace(appName)
 
 	// Get list of Jobs in the namespace
-	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(ctx, metav1.ListOptions{})
+	radixJobs, err := serviceAccount.RadixClient.RadixV1().RadixJobs(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

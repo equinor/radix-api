@@ -20,163 +20,160 @@ const rootPath = "/applications/{appName}"
 
 type environmentController struct {
 	*models.DefaultController
-	environmentHandlerFactory EnvironmentHandlerFactory
 }
 
 // NewEnvironmentController Constructor
-func NewEnvironmentController(environmentHandlerFactory EnvironmentHandlerFactory) models.Controller {
-	return &environmentController{
-		environmentHandlerFactory: environmentHandlerFactory,
-	}
+func NewEnvironmentController() models.Controller {
+	return &environmentController{}
 }
 
 // GetRoutes List the supported routes of this handler
-func (c *environmentController) GetRoutes() models.Routes {
+func (ec *environmentController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/deployments",
 			Method:      "GET",
-			HandlerFunc: c.GetApplicationEnvironmentDeployments,
+			HandlerFunc: GetApplicationEnvironmentDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/environments",
 			Method:      "GET",
-			HandlerFunc: c.GetEnvironmentSummary,
+			HandlerFunc: GetEnvironmentSummary,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "GET",
-			HandlerFunc: c.GetEnvironment,
+			HandlerFunc: GetEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "POST",
-			HandlerFunc: c.CreateEnvironment,
+			HandlerFunc: CreateEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "DELETE",
-			HandlerFunc: c.DeleteEnvironment,
+			HandlerFunc: DeleteEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/events",
 			Method:      "GET",
-			HandlerFunc: c.GetEnvironmentEvents,
+			HandlerFunc: GetEnvironmentEvents,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
 			Method:      "POST",
-			HandlerFunc: c.StopComponent,
+			HandlerFunc: StopComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/start",
 			Method:      "POST",
-			HandlerFunc: c.StartComponent,
+			HandlerFunc: StartComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
 			Method:      "POST",
-			HandlerFunc: c.RestartComponent,
+			HandlerFunc: RestartComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/restart",
 			Method:      "POST",
-			HandlerFunc: c.RestartOAuthAuxiliaryResource,
+			HandlerFunc: RestartOAuthAuxiliaryResource,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/stop",
 			Method:      "POST",
-			HandlerFunc: c.StopEnvironment,
+			HandlerFunc: StopEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/start",
 			Method:      "POST",
-			HandlerFunc: c.StartEnvironment,
+			HandlerFunc: StartEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/restart",
 			Method:      "POST",
-			HandlerFunc: c.RestartEnvironment,
+			HandlerFunc: RestartEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/stop",
 			Method:      "POST",
-			HandlerFunc: c.StopApplication,
+			HandlerFunc: StopApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/start",
 			Method:      "POST",
-			HandlerFunc: c.StartApplication,
+			HandlerFunc: StartApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/restart",
 			Method:      "POST",
-			HandlerFunc: c.RestartApplication,
+			HandlerFunc: RestartApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: c.GetPodLog,
+			HandlerFunc: GetPodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
 			Method:      "GET",
-			HandlerFunc: c.GetScheduledJobLog,
+			HandlerFunc: GetScheduledJobLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
+			HandlerFunc: GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
 			Method:      "GET",
-			HandlerFunc: c.GetJobs,
+			HandlerFunc: GetJobs,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
 			Method:      "GET",
-			HandlerFunc: c.GetJob,
+			HandlerFunc: GetJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
 			Method:      "POST",
-			HandlerFunc: c.StopJob,
+			HandlerFunc: StopJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
 			Method:      "DELETE",
-			HandlerFunc: c.DeleteJob,
+			HandlerFunc: DeleteJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload",
 			Method:      "GET",
-			HandlerFunc: c.GetJobPayload,
+			HandlerFunc: GetJobPayload,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches",
 			Method:      "GET",
-			HandlerFunc: c.GetBatches,
+			HandlerFunc: GetBatches,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "GET",
-			HandlerFunc: c.GetBatch,
+			HandlerFunc: GetBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
 			Method:      "POST",
-			HandlerFunc: c.StopBatch,
+			HandlerFunc: StopBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "DELETE",
-			HandlerFunc: c.DeleteBatch,
+			HandlerFunc: DeleteBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/scale/{replicas}",
 			Method:      "POST",
-			HandlerFunc: c.ScaleComponent,
+			HandlerFunc: ScaleComponent,
 		},
 	}
 
@@ -184,7 +181,7 @@ func (c *environmentController) GetRoutes() models.Routes {
 }
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
-func (c *environmentController) GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments
 	// ---
 	// summary: Lists the application environment deployments
@@ -241,7 +238,7 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 
 	deploymentHandler := deployments.Init(accounts)
 
-	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(r.Context(), appName, envName, useLatest)
+	appEnvironmentDeployments, err := deploymentHandler.GetDeploymentsForApplicationEnvironment(appName, envName, useLatest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -251,7 +248,7 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 }
 
 // CreateEnvironment Creates a new environment
-func (c *environmentController) CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName} environment createEnvironment
 	// ---
 	// summary: Creates application environment
@@ -286,8 +283,8 @@ func (c *environmentController) CreateEnvironment(accounts models.Accounts, w ht
 	envName := mux.Vars(r)["envName"]
 
 	// Need in cluster client in order to delete namespace using sufficient privileges
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	_, err := environmentHandler.CreateEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	_, err := environmentHandler.CreateEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -298,7 +295,7 @@ func (c *environmentController) CreateEnvironment(accounts models.Accounts, w ht
 }
 
 // GetEnvironment Get details for an application environment
-func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName} environment getEnvironment
 	// ---
 	// summary: Get details for an application environment
@@ -336,8 +333,8 @@ func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	appEnvironment, err := environmentHandler.GetEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	appEnvironment, err := environmentHandler.GetEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -349,7 +346,7 @@ func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.
 }
 
 // DeleteEnvironment Deletes environment
-func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName} environment deleteEnvironment
 	// ---
 	// summary: Deletes application environment
@@ -385,8 +382,8 @@ func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w ht
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.DeleteEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.DeleteEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -397,7 +394,7 @@ func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w ht
 }
 
 // GetEnvironmentSummary Lists the environments for an application
-func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments environment getEnvironmentSummary
 	// ---
 	// summary: Lists the environments for an application
@@ -430,8 +427,8 @@ func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, 
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	appEnvironments, err := environmentHandler.GetEnvironmentSummary(r.Context(), appName)
+	environmentHandler := Init(WithAccounts(accounts))
+	appEnvironments, err := environmentHandler.GetEnvironmentSummary(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -442,7 +439,7 @@ func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, 
 }
 
 // GetEnvironmentEvents Get events for an application environment
-func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/events environment getEnvironmentEvents
 	// ---
 	// summary: Lists events for an application environment
@@ -480,8 +477,8 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetEnvironmentEvents(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	events, err := environmentHandler.GetEnvironmentEvents(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -493,7 +490,7 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 }
 
 // StopComponent Stops job
-func (c *environmentController) StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/stop component stopComponent
 	// ---
 	// summary: Stops component
@@ -534,8 +531,8 @@ func (c *environmentController) StopComponent(accounts models.Accounts, w http.R
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StopComponent(r.Context(), appName, envName, componentName, false)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StopComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -546,7 +543,7 @@ func (c *environmentController) StopComponent(accounts models.Accounts, w http.R
 }
 
 // StartComponent Starts job
-func (c *environmentController) StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
 	// ---
 	// summary: Start component
@@ -587,8 +584,8 @@ func (c *environmentController) StartComponent(accounts models.Accounts, w http.
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StartComponent(r.Context(), appName, envName, componentName, false)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -599,7 +596,7 @@ func (c *environmentController) StartComponent(accounts models.Accounts, w http.
 }
 
 // RestartComponent Restarts job
-func (c *environmentController) RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/restart component restartComponent
 	// ---
 	// summary: |
@@ -644,8 +641,8 @@ func (c *environmentController) RestartComponent(accounts models.Accounts, w htt
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartComponent(r.Context(), appName, envName, componentName, false)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartComponent(appName, envName, componentName, false)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -656,7 +653,7 @@ func (c *environmentController) RestartComponent(accounts models.Accounts, w htt
 }
 
 // StopEnvironment  all components in the environment
-func (c *environmentController) StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/stop environment stopEnvironment
 	// ---
 	// summary: Stops all components in the environment
@@ -691,8 +688,8 @@ func (c *environmentController) StopEnvironment(accounts models.Accounts, w http
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StopEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StopEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -703,7 +700,7 @@ func (c *environmentController) StopEnvironment(accounts models.Accounts, w http
 }
 
 // StartEnvironment Starts all components in the environment
-func (c *environmentController) StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/start environment startEnvironment
 	// ---
 	// summary: Start all components in the environment
@@ -738,8 +735,8 @@ func (c *environmentController) StartEnvironment(accounts models.Accounts, w htt
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StartEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StartEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -750,7 +747,7 @@ func (c *environmentController) StartEnvironment(accounts models.Accounts, w htt
 }
 
 // RestartEnvironment Restarts all components in the environment
-func (c *environmentController) RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/restart environment restartEnvironment
 	// ---
 	// summary: |
@@ -789,8 +786,8 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartEnvironment(r.Context(), appName, envName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartEnvironment(appName, envName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -801,7 +798,7 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 }
 
 // StopApplication  all components in all environments of the application
-func (c *environmentController) StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/stop application stopApplication
 	// ---
 	// summary: Stops all components in the environment
@@ -830,8 +827,8 @@ func (c *environmentController) StopApplication(accounts models.Accounts, w http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StopApplication(r.Context(), appName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StopApplication(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -842,7 +839,7 @@ func (c *environmentController) StopApplication(accounts models.Accounts, w http
 }
 
 // StartApplication Starts all components in all environments of the application
-func (c *environmentController) StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/start application startApplication
 	// ---
 	// summary: Start all components in all environments of the application
@@ -871,8 +868,8 @@ func (c *environmentController) StartApplication(accounts models.Accounts, w htt
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StartApplication(r.Context(), appName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.StartApplication(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -883,7 +880,7 @@ func (c *environmentController) StartApplication(accounts models.Accounts, w htt
 }
 
 // RestartApplication Restarts all components in all environments of the application
-func (c *environmentController) RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/restart application restartApplication
 	// ---
 	// summary: |
@@ -916,8 +913,8 @@ func (c *environmentController) RestartApplication(accounts models.Accounts, w h
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartApplication(r.Context(), appName)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartApplication(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -928,7 +925,7 @@ func (c *environmentController) RestartApplication(accounts models.Accounts, w h
 }
 
 // RestartOAuthAuxiliaryResource Restarts oauth auxiliary resource for a component
-func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart component restartOAuthAuxiliaryResource
 	// ---
 	// summary: Restarts an auxiliary resource for a component
@@ -975,8 +972,8 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
+	environmentHandler := Init(WithAccounts(accounts))
+	err := environmentHandler.RestartComponentAuxiliaryResource(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -987,7 +984,7 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 }
 
 // GetPodLog Get logs of a single pod
-func (c *environmentController) GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component replicaLog
 	// ---
 	// summary: Get logs from a deployed pod
@@ -1063,8 +1060,8 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 		return
 	}
 
-	eh := c.environmentHandlerFactory(accounts)
-	log, err := eh.GetLogs(r.Context(), appName, envName, podName, &since, logLines, previousLog)
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetLogs(appName, envName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1080,7 +1077,7 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 }
 
 // GetScheduledJobLog Get log from a scheduled job
-func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job jobLog
 	// ---
 	// summary: Get log from a scheduled job
@@ -1150,8 +1147,8 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 		return
 	}
 
-	eh := c.environmentHandlerFactory(accounts)
-	log, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, &since, logLines)
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetScheduledJobLogs(appName, envName, scheduledJobName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1167,7 +1164,7 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 }
 
 // GetJobs Get list of scheduled jobs
-func (c *environmentController) GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs job getJobs
 	// ---
 	// summary: Get list of scheduled jobs
@@ -1210,8 +1207,8 @@ func (c *environmentController) GetJobs(accounts models.Accounts, w http.Respons
 	envName := mux.Vars(r)["envName"]
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	jobSummaries, err := eh.GetJobs(r.Context(), appName, envName, jobComponentName)
+	eh := Init(WithAccounts(accounts))
+	jobSummaries, err := eh.GetJobs(appName, envName, jobComponentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1222,7 +1219,7 @@ func (c *environmentController) GetJobs(accounts models.Accounts, w http.Respons
 }
 
 // GetJob Get a scheduled job
-func (c *environmentController) GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName} job getJob
 	// ---
 	// summary: Get list of scheduled jobs
@@ -1269,8 +1266,8 @@ func (c *environmentController) GetJob(accounts models.Accounts, w http.Response
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	jobSummary, err := eh.GetJob(r.Context(), appName, envName, jobComponentName, jobName)
+	eh := Init(WithAccounts(accounts))
+	jobSummary, err := eh.GetJob(appName, envName, jobComponentName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1281,7 +1278,7 @@ func (c *environmentController) GetJob(accounts models.Accounts, w http.Response
 }
 
 // StopJob Stop a scheduled job
-func (c *environmentController) StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop job stopJob
 	// ---
 	// summary: Stop scheduled job
@@ -1333,8 +1330,8 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	err := eh.StopJob(r.Context(), appName, envName, jobComponentName, jobName)
+	eh := Init(WithAccounts(accounts))
+	err := eh.StopJob(appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1344,7 +1341,7 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 }
 
 // DeleteJob Delete a job
-func (c *environmentController) DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName} job deleteJob
 	// ---
 	// summary: Delete job
@@ -1396,8 +1393,8 @@ func (c *environmentController) DeleteJob(accounts models.Accounts, w http.Respo
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	err := eh.DeleteJob(r.Context(), appName, envName, jobComponentName, jobName)
+	eh := Init(WithAccounts(accounts))
+	err := eh.DeleteJob(appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1407,7 +1404,7 @@ func (c *environmentController) DeleteJob(accounts models.Accounts, w http.Respo
 }
 
 // GetBatches Get list of scheduled batches
-func (c *environmentController) GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches job getBatches
 	// ---
 	// summary: Get list of scheduled batches
@@ -1450,8 +1447,8 @@ func (c *environmentController) GetBatches(accounts models.Accounts, w http.Resp
 	envName := mux.Vars(r)["envName"]
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	batchSummaries, err := eh.GetBatches(r.Context(), appName, envName, jobComponentName)
+	eh := Init(WithAccounts(accounts))
+	batchSummaries, err := eh.GetBatches(appName, envName, jobComponentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1462,7 +1459,7 @@ func (c *environmentController) GetBatches(accounts models.Accounts, w http.Resp
 }
 
 // GetBatch Get a scheduled batch
-func (c *environmentController) GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName} job getBatch
 	// ---
 	// summary: Get list of scheduled batches
@@ -1509,8 +1506,8 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	jobSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	eh := Init(WithAccounts(accounts))
+	jobSummary, err := eh.GetBatch(appName, envName, jobComponentName, batchName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1521,7 +1518,7 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 }
 
 // StopBatch Stop a scheduled batch
-func (c *environmentController) StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop job stopBatch
 	// ---
 	// summary: Stop scheduled batch
@@ -1573,8 +1570,8 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	eh := Init(WithAccounts(accounts))
+	err := eh.StopBatch(appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1584,7 +1581,7 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 }
 
 // DeleteBatch Delete a batch
-func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName} job deleteBatch
 	// ---
 	// summary: Delete batch
@@ -1636,8 +1633,8 @@ func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.Res
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	err := eh.DeleteBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	eh := Init(WithAccounts(accounts))
+	err := eh.DeleteBatch(appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1647,7 +1644,7 @@ func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.Res
 }
 
 // GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
-func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs component getOAuthPodLog
 	// ---
 	// summary: Get logs for an oauth auxiliary resource pod
@@ -1724,8 +1721,8 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 		return
 	}
 
-	eh := c.environmentHandlerFactory(accounts)
-	log, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
+	eh := Init(WithAccounts(accounts))
+	log, err := eh.GetAuxiliaryResourcePodLog(appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1741,7 +1738,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 }
 
 // GetJobPayload Get a scheduled job payload
-func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload job getJobPayload
 	// ---
 	// summary: Get payload of a scheduled job
@@ -1788,8 +1785,8 @@ func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.R
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := c.environmentHandlerFactory(accounts)
-	payload, err := eh.GetJobPayload(r.Context(), appName, envName, jobComponentName, jobName)
+	eh := Init(WithAccounts(accounts))
+	payload, err := eh.GetJobPayload(appName, envName, jobComponentName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1800,7 +1797,7 @@ func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.R
 }
 
 // ScaleComponent Scale component replicas
-func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/scale/{replicas} component scaleComponent
 	// ---
 	// summary: Scale a component replicas
@@ -1857,8 +1854,8 @@ func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.
 		return
 	}
 
-	eh := c.environmentHandlerFactory(accounts)
-	err = eh.ScaleComponent(r.Context(), appName, envName, componentName, replicas)
+	eh := Init(WithAccounts(accounts))
+	err = eh.ScaleComponent(appName, envName, componentName, replicas)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

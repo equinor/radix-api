@@ -115,7 +115,7 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 
 	handler := Init(WithAccounts(accounts))
 
-	if err := handler.ChangeComponentSecret(r.Context(), appName, envName, componentName, secretName, secretParameters); err != nil {
+	if err := handler.ChangeComponentSecret(appName, envName, componentName, secretName, secretParameters); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}

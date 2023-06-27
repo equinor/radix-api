@@ -9,7 +9,12 @@ import (
 
 	_ "github.com/equinor/radix-api/api/events"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
+	apiModels "github.com/equinor/radix-api/models"
+	radixmodels "github.com/equinor/radix-common/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -35,6 +40,11 @@ const (
 	anyEnvironmentName = "TEST_SECRET"
 	egressIps          = "0.0.0.0"
 )
+
+type componentProps struct {
+	componentName string
+	secrets       []string
+}
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
@@ -114,7 +124,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(context.Background(), &namespace, metav1.CreateOptions{})
+	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
 
 	// Component secret
 	secretObject := corev1.Secret{
@@ -124,7 +134,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
 
 	// Job secret
 	secretObject = corev1.Secret{
@@ -134,7 +144,7 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, updateSecret, updateComponent, updateSecretName), parameters)
@@ -230,4 +240,587 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
+}
+
+func componentBuilderFromSecretMap(secretsMap map[string][]string) func(*operatorutils.DeploymentBuilder) {
+	return func(deployBuilder *operatorutils.DeploymentBuilder) {
+		componentBuilders := make([]operatorutils.DeployComponentBuilder, 0, len(secretsMap))
+		for componentName, componentSecrets := range secretsMap {
+			component := operatorutils.
+				NewDeployComponentBuilder().
+				WithName(componentName).
+				WithSecrets(componentSecrets)
+			componentBuilders = append(componentBuilders, component)
+		}
+		(*deployBuilder).WithComponents(componentBuilders...)
+	}
+}
+
+func jobBuilderFromSecretMap(secretsMap map[string][]string) func(*operatorutils.DeploymentBuilder) {
+	return func(deployBuilder *operatorutils.DeploymentBuilder) {
+		jobBuilders := make([]operatorutils.DeployJobComponentBuilder, 0, len(secretsMap))
+		for jobName, jobSecret := range secretsMap {
+			job := operatorutils.
+				NewDeployJobComponentBuilder().
+				WithName(jobName).
+				WithSecrets(jobSecret)
+			jobBuilders = append(jobBuilders, job)
+		}
+		(*deployBuilder).WithJobComponents(jobBuilders...)
+	}
+}
+
+func applyTestSecretComponentSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+	configurator := componentBuilderFromSecretMap(componentSecretsMap)
+	applyTestSecretSecrets(commonTestUtils, kubeclient, appName, environmentName, buildFrom, clusterComponentSecretsMap, configurator)
+}
+
+func applyTestSecretJobSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte) {
+	configurator := jobBuilderFromSecretMap(componentSecretsMap)
+	applyTestSecretSecrets(commonTestUtils, kubeclient, appName, environmentName, buildFrom, clusterComponentSecretsMap, configurator)
+}
+
+func applyTestSecretSecrets(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, clusterComponentSecretsMap map[string]map[string][]byte, deploymentConfigurator func(*operatorutils.DeploymentBuilder)) {
+	ns := operatorutils.GetEnvironmentNamespace(appName, environmentName)
+
+	deployBuilder := operatorutils.
+		NewDeploymentBuilder().
+		WithRadixApplication(operatorutils.ARadixApplication()).
+		WithAppName(anyAppName).
+		WithEnvironment(environmentName)
+
+	deploymentConfigurator(&deployBuilder)
+
+	commonTestUtils.ApplyDeployment(deployBuilder)
+
+	namespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}
+	kubeclient.CoreV1().Namespaces().Create(context.TODO(), &namespace, metav1.CreateOptions{})
+
+	for componentName, clusterComponentSecrets := range clusterComponentSecretsMap {
+		secretObject := corev1.Secret{
+			Type: "Opaque",
+			ObjectMeta: metav1.ObjectMeta{
+				Name: operatorutils.GetComponentSecretName(componentName),
+			},
+			Data: clusterComponentSecrets,
+		}
+		kubeclient.CoreV1().Secrets(ns).Create(context.TODO(), &secretObject, metav1.CreateOptions{})
+	}
+}
+
+func assertSecretObject(t *testing.T, secretObject secretModels.Secret, name, component, status, testname string) {
+	assert.Equal(t, name, secretObject.Name, testname, fmt.Sprintf("%s: incorrect secret name", testname))
+	assert.Equal(t, component, secretObject.Component, fmt.Sprintf("%s: incorrect component name", testname))
+	assert.Equal(t, status, secretObject.Status, fmt.Sprintf("%s: incorrect secret status", testname))
+}
+
+type secretTestFunc func(commonTestUtils *commontest.Utils, kubeclient kubernetes.Interface, appName, environmentName, buildFrom string, componentSecretsMap map[string][]string, clusterComponentSecretsMap map[string]map[string][]byte)
+
+type secretTestDefinition struct {
+	name   string
+	tester secretTestFunc
+}
+
+var secretTestFunctions []secretTestDefinition = []secretTestDefinition{
+	{name: "component secrets", tester: applyTestSecretComponentSecrets},
+	{name: "job secrets", tester: applyTestSecretJobSecrets},
+}
+
+func TestGetSecrets_OneComponent_AllConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
+		}
+
+		clusterComponentSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+		}
+	}
+}
+
+func createDeployment(radixclient radixclient.Interface, appName, environmentOne, deploymentName string, componentSecrets ...componentProps) {
+	radixDeployment := v1.RadixDeployment{
+		ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
+		Spec: v1.RadixDeploymentSpec{
+			Environment: environmentOne,
+		},
+	}
+	for _, componentSecret := range componentSecrets {
+		radixDeployment.Spec.Components = append(radixDeployment.Spec.Components, v1.RadixDeployComponent{
+			Name:    componentSecret.componentName,
+			Secrets: componentSecret.secrets,
+		},
+		)
+	}
+	appEnvNamespace := operatorutils.GetEnvironmentNamespace(appName, environmentOne)
+	_, _ = radixclient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), &radixDeployment, metav1.CreateOptions{})
+}
+
+func TestGetSecrets_OneComponent_PartiallyConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
+		}
+
+		clusterComponentSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+		}
+	}
+}
+
+func TestGetSecrets_OneComponent_NoConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+		secretE := "e"
+		secretF := "f"
+
+		componentSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentSecrets,
+		}
+
+		clusterComponentSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName, componentProps{
+			componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+		})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 3, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
+			}
+		}
+	}
+}
+
+func TestGetSecrets_TwoComponents_AllConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
+		}
+
+		clusterComponentOneSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+		}
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretA: []byte(secretA),
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent", test.name)
+			}
+		}
+	}
+}
+
+func TestGetSecrets_TwoComponents_PartiallyConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
+		}
+
+		clusterComponentOneSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
+		}
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretB: []byte(secretB),
+			secretC: []byte(secretC),
+			secretD: []byte(secretD),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Consistent", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Consistent", test.name)
+			}
+		}
+	}
+}
+
+func TestGetSecrets_TwoComponents_NoConsistent(t *testing.T) {
+	for _, test := range secretTestFunctions {
+		commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+		handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+		appName := "any-app"
+		componentOneName := "backend"
+		componentTwoName := "frontend"
+		environmentOne := "dev"
+		buildFrom := "master"
+		secretA := "a"
+		secretB := "b"
+		secretC := "c"
+		secretD := "d"
+		secretE := "e"
+		secretF := "f"
+
+		componentOneSecrets := []string{secretA, secretB, secretC}
+		componentTwoSecrets := []string{secretA, secretB, secretC}
+		componentSecretsMap := map[string][]string{
+			componentOneName: componentOneSecrets,
+			componentTwoName: componentTwoSecrets,
+		}
+
+		clusterComponentOneSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
+		}
+		clusterComponentTwoSecrets := map[string][]byte{
+			secretD: []byte(secretD),
+			secretE: []byte(secretE),
+			secretF: []byte(secretF),
+		}
+		clusterComponentSecretsMap := map[string]map[string][]byte{
+			componentOneName: clusterComponentOneSecrets,
+			componentTwoName: clusterComponentTwoSecrets,
+		}
+
+		test.tester(commonTestUtils, kubeclient, appName, environmentOne, buildFrom, componentSecretsMap, clusterComponentSecretsMap)
+
+		deploymentName := "deployment1"
+		createDeployment(radixclient, appName, environmentOne, deploymentName,
+			componentProps{
+				componentName: componentOneName, secrets: []string{secretA, secretB, secretC},
+			},
+			componentProps{
+				componentName: componentTwoName, secrets: []string{secretA, secretB, secretC},
+			})
+
+		secrets, _ := handler.GetSecretsForDeployment(appName, environmentOne, deploymentName)
+
+		assert.Equal(t, 6, len(secrets), fmt.Sprintf("%s: incorrect secret count", test.name))
+		for _, aSecret := range secrets {
+			if aSecret.Component == componentOneName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentOneName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentOneName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretA {
+				assertSecretObject(t, aSecret, secretA, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretB {
+				assertSecretObject(t, aSecret, secretB, componentTwoName, "Pending", test.name)
+			}
+			if aSecret.Component == componentTwoName && aSecret.Name == secretC {
+				assertSecretObject(t, aSecret, secretC, componentTwoName, "Pending", test.name)
+			}
+		}
+	}
+}
+
+func Test_GetSecretsForDeployment_OAuth2(t *testing.T) {
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest()
+	handler := initHandler(kubeclient, radixclient, secretproviderclient)
+
+	appName := "appname"
+	component1Name := "c1"
+	component2Name := "c2"
+	component3Name := "c3"
+	component4Name := "c4"
+	environmentName := "dev"
+	envNs := operatorutils.GetEnvironmentNamespace(appName, environmentName)
+
+	deployment, _ := commonTestUtils.ApplyDeployment(operatorutils.
+		NewDeploymentBuilder().
+		WithAppName(appName).
+		WithComponents(
+			operatorutils.NewDeployComponentBuilder().WithName(component1Name).WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component2Name).WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component3Name).WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
+			operatorutils.NewDeployComponentBuilder().WithName(component4Name).WithPublicPort("http"),
+		).
+		WithEnvironment(environmentName))
+
+	commonTestUtils.ApplyApplication(operatorutils.
+		ARadixApplication().
+		WithAppName(appName).
+		WithEnvironment(environmentName, "branch1").
+		WithComponents(
+			operatorutils.NewApplicationComponentBuilder().WithName(component1Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component2Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component3Name),
+			operatorutils.NewApplicationComponentBuilder().WithName(component4Name),
+		))
+
+	// No secret objects exist
+	secretDtos, err := handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected := []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+	// k8s secrets with clientsecret set for component1 and cookiesecret set for component2
+	kubeclient.CoreV1().Secrets(envNs).Create(
+		context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: operatorutils.GetAuxiliaryComponentSecretName(component1Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			Data:       map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("client secret")},
+		},
+		metav1.CreateOptions{},
+	)
+	comp2Secret, _ := kubeclient.CoreV1().Secrets(envNs).Create(
+		context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: operatorutils.GetAuxiliaryComponentSecretName(component2Name, defaults.OAuthProxyAuxiliaryComponentSuffix)},
+			Data:       map[string][]byte{defaults.OAuthCookieSecretKeyName: []byte("cookie secret")},
+		},
+		metav1.CreateOptions{},
+	)
+	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected = []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+	// RedisPassword should have status Consistent
+	comp2Secret.Data[defaults.OAuthRedisPasswordKeyName] = []byte("redis pwd")
+	kubeclient.CoreV1().Secrets(envNs).Update(context.Background(), comp2Secret, metav1.UpdateOptions{})
+	secretDtos, err = handler.GetSecretsForDeployment(appName, environmentName, deployment.Name)
+	assert.NoError(t, err)
+	expected = []secretModels.Secret{
+		{Name: component1Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Consistent.String()},
+		{Name: component1Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component1Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Pending.String()},
+		{Name: component2Name + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
+		{Name: component2Name + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: component2Name, Status: secretModels.Consistent.String()},
+	}
+	assert.ElementsMatch(t, expected, secretDtos)
+
+}
+
+func initHandler(client kubernetes.Interface,
+	radixclient radixclient.Interface,
+	secretproviderclient secretsstorevclient.Interface,
+	handlerConfig ...SecretHandlerOptions) SecretHandler {
+	accounts := apiModels.NewAccounts(client, radixclient, secretproviderclient, nil, client, radixclient, secretproviderclient, nil, "", radixmodels.Impersonation{})
+	options := []SecretHandlerOptions{WithAccounts(accounts)}
+	options = append(options, handlerConfig...)
+	return Init(options...)
 }

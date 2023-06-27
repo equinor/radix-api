@@ -116,7 +116,7 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	jobSummaries, err := handler.GetApplicationJobs(r.Context(), appName)
+	jobSummaries, err := handler.GetApplicationJobs(appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -165,7 +165,7 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	jobName := mux.Vars(r)["jobName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	jobDetail, err := handler.GetApplicationJob(r.Context(), appName, jobName)
+	jobDetail, err := handler.GetApplicationJob(appName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -212,7 +212,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	jobName := mux.Vars(r)["jobName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	err := handler.StopJob(r.Context(), appName, jobName)
+	err := handler.StopJob(appName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -263,7 +263,7 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 	jobName := mux.Vars(r)["jobName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	tektonPipelineRuns, err := handler.GetTektonPipelineRuns(r.Context(), appName, jobName)
+	tektonPipelineRuns, err := handler.GetTektonPipelineRuns(appName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -318,7 +318,7 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	tektonPipelineRun, err := handler.GetTektonPipelineRun(r.Context(), appName, jobName, pipelineRunName)
+	tektonPipelineRun, err := handler.GetTektonPipelineRun(appName, jobName, pipelineRunName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -375,7 +375,7 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	tektonTasks, err := handler.GetTektonPipelineRunTasks(r.Context(), appName, jobName, pipelineRunName)
+	tektonTasks, err := handler.GetTektonPipelineRunTasks(appName, jobName, pipelineRunName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -436,7 +436,7 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 	taskName := mux.Vars(r)["taskName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	tektonTasks, err := handler.GetTektonPipelineRunTask(r.Context(), appName, jobName, pipelineRunName, taskName)
+	tektonTasks, err := handler.GetTektonPipelineRunTask(appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -499,7 +499,7 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 	taskName := mux.Vars(r)["taskName"]
 
 	handler := Init(accounts, deployments.Init(accounts))
-	tektonTaskSteps, err := handler.GetTektonPipelineRunTaskSteps(r.Context(), appName, jobName, pipelineRunName, taskName)
+	tektonTaskSteps, err := handler.GetTektonPipelineRunTaskSteps(appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -589,7 +589,7 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
+	log, err := handler.GetTektonPipelineRunTaskStepLogs(appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -672,7 +672,7 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
+	log, err := handler.GetPipelineJobStepLogs(appName, jobName, stepName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

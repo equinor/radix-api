@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,13 +14,13 @@ import (
 )
 
 // CreateApplicationConfig creates an application config based on input
-func CreateApplicationConfig(ctx context.Context, client kubernetes.Interface, radixClient radixclient.Interface, secretProviderClient secretsstorevclient.Interface, appName string) (*applicationconfig.ApplicationConfig, error) {
-	radixApp, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+func CreateApplicationConfig(client kubernetes.Interface, radixClient radixclient.Interface, secretProviderClient secretsstorevclient.Interface, appName string) (*applicationconfig.ApplicationConfig, error) {
+	radixApp, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	registration, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	registration, err := radixClient.RadixV1().RadixRegistrations().Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

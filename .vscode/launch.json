@@ -19,7 +19,7 @@
                 "RADIX_CLUSTERNAME": "weekly-14",
                 "RADIX_ACTIVE_CLUSTER_EGRESS_IPS": "104.45.84.1",
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true",
-                "REQUIRE_APP_AD_GROUPS": "true",
+                "REQUIRE_APP_AD_GROUPS": "true"
             },
             "args": [
                 "--useOutClusterClient=false"

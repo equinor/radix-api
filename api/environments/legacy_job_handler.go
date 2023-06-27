@@ -40,17 +40,17 @@ type legacyJobHandler struct {
 }
 
 // GetJobs Get jobs
-func (h legacyJobHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
+func (h legacyJobHandler) GetJobs(appName, envName, jobComponentName string) ([]deploymentModels.
 	ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	jobs, err := h.getSingleJobs(ctx, namespace, jobComponentName)
+	jobs, err := h.getSingleJobs(namespace, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
 	jobPodLabelSelector := labels.Set{
 		kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
 	}
-	podList, err := h.getPodsForSelector(ctx, namespace, labels.SelectorFromSet(jobPodLabelSelector))
+	podList, err := h.getPodsForSelector(namespace, labels.SelectorFromSet(jobPodLabelSelector))
 	if err != nil {
 		return nil, err
 	}
@@ -62,10 +62,10 @@ func (h legacyJobHandler) GetJobs(ctx context.Context, appName, envName, jobComp
 	return jobSummaryList, nil
 }
 
-func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.
+func (h legacyJobHandler) GetJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.
 	ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	job, err := h.getJob(ctx, namespace, jobComponentName, jobName, kube.RadixJobTypeJobSchedule)
+	job, err := h.getJob(namespace, jobComponentName, jobName, kube.RadixJobTypeJobSchedule)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobCompo
 		k8sJobNameLabel:        jobName,
 		kube.RadixJobTypeLabel: kube.RadixJobTypeJobSchedule,
 	}
-	podList, err := h.getPodsForSelector(ctx, namespace, labels.SelectorFromSet(jobPodLabelSelector))
+	podList, err := h.getPodsForSelector(namespace, labels.SelectorFromSet(jobPodLabelSelector))
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +86,10 @@ func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobCompo
 }
 
 // GetBatches Get batches
-func (h legacyJobHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
+func (h legacyJobHandler) GetBatches(appName, envName, jobComponentName string) ([]deploymentModels.
 	ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	batches, err := h.getBatches(ctx, namespace, jobComponentName)
+	batches, err := h.getBatches(namespace, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +111,10 @@ func (h legacyJobHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 	return summaries
 }
 
-func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.
+func (h legacyJobHandler) GetBatch(appName, envName, jobComponentName, batchName string) (*deploymentModels.
 	ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	batch, err := h.getJob(ctx, namespace, jobComponentName, batchName, kube.RadixJobTypeBatchSchedule)
+	batch, err := h.getJob(namespace, jobComponentName, batchName, kube.RadixJobTypeBatchSchedule)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobCom
 	jobPodLabelSelector := labels.Set{
 		kube.RadixBatchNameLabel: batchName,
 	}
-	batchPods, err := h.getPodsForSelector(ctx, namespace, labels.SelectorFromSet(jobPodLabelSelector))
+	batchPods, err := h.getPodsForSelector(namespace, labels.SelectorFromSet(jobPodLabelSelector))
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobCom
 		//lint:ignore SA1019 support old batch scheduler
 		summary.Replica = &batchPodSummary
 	}
-	batchJobSummaryList, err := h.getBatchJobSummaryList(ctx, namespace, jobComponentName, batchName, jobPodsMap)
+	batchJobSummaryList, err := h.getBatchJobSummaryList(namespace, jobComponentName, batchName, jobPodsMap)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +236,7 @@ func (h legacyJobHandler) getScheduledBatchSummary(batch *batchv1.Job) (*deploym
 		if count, err := strconv.Atoi(jobCount); err == nil {
 			summary.TotalJobCount = count
 		} else {
-			log.Warnf("failed to get job count for the annotation %s",
+			log.Errorf("failed to get job count for the annotation %s",
 				legacyRadixBatchJobCountAnnotation)
 		}
 	}
@@ -244,9 +244,9 @@ func (h legacyJobHandler) getScheduledBatchSummary(batch *batchv1.Job) (*deploym
 	return &summary, nil
 }
 
-func (h legacyJobHandler) getBatchJobSummaryList(ctx context.Context, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
+func (h legacyJobHandler) getBatchJobSummaryList(namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
 	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
-	batchJobs, err := h.getBatchJobs(ctx, namespace, jobComponentName, batchName)
+	batchJobs, err := h.getBatchJobs(namespace, jobComponentName, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +284,8 @@ func (h legacyJobHandler) getJobPodsMap(podList []corev1.Pod) (map[string][]core
 	return jobPodMap, nil
 }
 
-func (h legacyJobHandler) getPodsForSelector(ctx context.Context, namespace string, selector labels.Selector) ([]corev1.Pod, error) {
-	podList, err := h.accounts.UserAccount.Client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+func (h legacyJobHandler) getPodsForSelector(namespace string, selector labels.Selector) ([]corev1.Pod, error) {
+	podList, err := h.accounts.UserAccount.Client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -294,7 +294,7 @@ func (h legacyJobHandler) getPodsForSelector(ctx context.Context, namespace stri
 	return podList.Items, err
 }
 
-func (h legacyJobHandler) getSingleJobs(ctx context.Context, namespace, componentName string) ([]batchv1.Job, error) {
+func (h legacyJobHandler) getSingleJobs(namespace, componentName string) ([]batchv1.Job, error) {
 	batchNameNotExistsRequirement, err := labels.NewRequirement(kube.RadixBatchNameLabel, selection.DoesNotExist, nil)
 	if err != nil {
 		return nil, err
@@ -303,28 +303,28 @@ func (h legacyJobHandler) getSingleJobs(ctx context.Context, namespace, componen
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 	}).Add(*batchNameNotExistsRequirement)
-	return h.getJobsForLabelSelector(ctx, namespace, selector)
+	return h.getJobsForLabelSelector(namespace, selector)
 }
 
-func (h legacyJobHandler) getBatches(ctx context.Context, namespace, componentName string) ([]batchv1.Job, error) {
+func (h legacyJobHandler) getBatches(namespace, componentName string) ([]batchv1.Job, error) {
 	jobLabelSelector := map[string]string{
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeBatchSchedule,
 	}
-	return h.getJobsForLabelSelector(ctx, namespace, labels.SelectorFromSet(jobLabelSelector))
+	return h.getJobsForLabelSelector(namespace, labels.SelectorFromSet(jobLabelSelector))
 }
 
-func (h legacyJobHandler) getBatchJobs(ctx context.Context, namespace, componentName, batchName string) ([]batchv1.Job, error) {
+func (h legacyJobHandler) getBatchJobs(namespace, componentName, batchName string) ([]batchv1.Job, error) {
 	labelSelector := map[string]string{
 		kube.RadixComponentLabel: componentName,
 		kube.RadixJobTypeLabel:   kube.RadixJobTypeJobSchedule,
 		kube.RadixBatchNameLabel: batchName,
 	}
-	return h.getJobsForLabelSelector(ctx, namespace, labels.SelectorFromSet(labelSelector))
+	return h.getJobsForLabelSelector(namespace, labels.SelectorFromSet(labelSelector))
 }
 
-func (h legacyJobHandler) getJobsForLabelSelector(ctx context.Context, namespace string, labelSelector labels.Selector) ([]batchv1.Job, error) {
-	jobList, err := h.accounts.UserAccount.Client.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{
+func (h legacyJobHandler) getJobsForLabelSelector(namespace string, labelSelector labels.Selector) ([]batchv1.Job, error) {
+	jobList, err := h.accounts.UserAccount.Client.BatchV1().Jobs(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: labelSelector.String(),
 	})
 	if err != nil {
@@ -333,8 +333,8 @@ func (h legacyJobHandler) getJobsForLabelSelector(ctx context.Context, namespace
 	return jobList.Items, err
 }
 
-func (h legacyJobHandler) getJob(ctx context.Context, namespace, componentName, name, jobType string) (*batchv1.Job, error) {
-	job, err := h.accounts.UserAccount.Client.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+func (h legacyJobHandler) getJob(namespace, componentName, name, jobType string) (*batchv1.Job, error) {
+	job, err := h.accounts.UserAccount.Client.BatchV1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
