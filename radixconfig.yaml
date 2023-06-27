@@ -21,6 +21,7 @@ spec:
       variables:
         REQUIRE_APP_CONFIGURATION_ITEM: "true"
         REQUIRE_APP_AD_GROUPS: "true"
+        USE_PROFILER: "false"
       environmentConfig:
         - environment: qa
           runAsNonRoot: true
