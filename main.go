@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -33,11 +34,14 @@ import (
 
 	"github.com/equinor/radix-api/api/utils"
 
+	_ "net/http/pprof"
+
 	_ "github.com/equinor/radix-api/docs"
 )
 
 const (
-	logLevelEnvironmentVariable = "LOG_LEVEL"
+	logLevelEnvironmentVariable    = "LOG_LEVEL"
+	useProfilerEnvironmentVariable = "USE_PROFILER"
 )
 
 //go:generate swagger generate spec
@@ -80,6 +84,13 @@ func main() {
 		}()
 	} else {
 		log.Info("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
+	}
+
+	if useProfiler, _ := strconv.ParseBool(os.Getenv(useProfilerEnvironmentVariable)); useProfiler {
+		go func() {
+			log.Infof("Profiler endpoint is serving on port 7070")
+			errs <- http.ListenAndServe("localhost:7070", nil)
+		}()
 	}
 
 	err = <-errs
