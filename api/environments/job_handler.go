@@ -26,8 +26,8 @@ import (
 )
 
 // GetJobs Get jobs
-func (eh EnvironmentHandler) GetJobs(appName, envName, jobComponentName string) ([]deploymentModels.ScheduledJobSummary, error) {
-	jobs, err := eh.getJobs(appName, envName, jobComponentName)
+func (eh EnvironmentHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledJobSummary, error) {
+	jobs, err := eh.getJobs(ctx, appName, envName, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (eh EnvironmentHandler) GetJobs(appName, envName, jobComponentName string) 
 	// Backward compatibility: Get list of jobs not handled by RadixBatch
 	// TODO: Remove when there are no legacy jobs left
 	jh := legacyJobHandler{accounts: eh.accounts}
-	legacyJobs, err := jh.GetJobs(appName, envName, jobComponentName)
+	legacyJobs, err := jh.GetJobs(ctx, appName, envName, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ func (eh EnvironmentHandler) GetJobs(appName, envName, jobComponentName string) 
 	return jobs, nil
 }
 
-func (eh EnvironmentHandler) getJobs(appName, envName, jobComponentName string) ([]deploymentModels.ScheduledJobSummary, error) {
-	radixBatches, err := eh.getRadixBatches(appName, envName, jobComponentName, kube.RadixBatchTypeJob)
+func (eh EnvironmentHandler) getJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledJobSummary, error) {
+	radixBatches, err := eh.getRadixBatches(ctx, appName, envName, jobComponentName, kube.RadixBatchTypeJob)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +58,8 @@ func (eh EnvironmentHandler) getJobs(appName, envName, jobComponentName string) 
 }
 
 // GetJob Gets job by name
-func (eh EnvironmentHandler) GetJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
-	if jobSummary, err := eh.getJob(appName, envName, jobComponentName, jobName); err == nil {
+func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
+	if jobSummary, err := eh.getJob(ctx, appName, envName, jobComponentName, jobName); err == nil {
 		return jobSummary, nil
 	}
 
@@ -68,17 +68,17 @@ func (eh EnvironmentHandler) GetJob(appName, envName, jobComponentName, jobName 
 
 	// Backward compatibility: Get job not handled by RadixBatch
 	jh := legacyJobHandler{accounts: eh.accounts}
-	return jh.GetJob(appName, envName, jobComponentName, jobName)
+	return jh.GetJob(ctx, appName, envName, jobComponentName, jobName)
 }
 
 // StopJob Stop job by name
-func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName string) error {
+func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return jobNotFoundError(jobName)
 	}
 
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, "")
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
 	if err != nil {
 		return err
 	}
@@ -94,32 +94,32 @@ func (eh EnvironmentHandler) StopJob(appName, envName, jobComponentName, jobName
 	}
 
 	batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
-	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(context.TODO(), batch, metav1.UpdateOptions{})
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
 	return err
 }
 
 // DeleteJob Delete job by name
-func (eh EnvironmentHandler) DeleteJob(appName, envName, jobComponentName, jobName string) error {
+func (eh EnvironmentHandler) DeleteJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
 	batchName, _, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return jobNotFoundError(jobName)
 	}
 
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeJob)
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeJob)
 	if err != nil {
 		return err
 	}
 
-	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(ctx, batch.GetName(), metav1.DeleteOptions{})
 }
 
-func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
+func (eh EnvironmentHandler) getJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return nil, jobNotFoundError(jobName)
 	}
 
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, "")
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
 	if err != nil {
 		return nil, err
 	}
@@ -129,14 +129,14 @@ func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName 
 		return nil, jobNotFoundError(jobName)
 	}
 
-	pods, err := eh.getPodsForBatchJob(appName, envName, batchName, batchJobName)
+	pods, err := eh.getPodsForBatchJob(ctx, appName, envName, batchName, batchJobName)
 	if err != nil {
 		return nil, err
 	}
 
 	var jobComponent *radixv1.RadixDeployJobComponent
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	if rd, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Get(context.TODO(), batch.Spec.RadixDeploymentJobRef.Name, metav1.GetOptions{}); err == nil {
+	if rd, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Get(ctx, batch.Spec.RadixDeploymentJobRef.Name, metav1.GetOptions{}); err == nil {
 		if rdJobs := slice.FindAll(rd.Spec.Jobs, func(job radixv1.RadixDeployJobComponent) bool { return job.Name == jobComponentName }); len(rdJobs) > 0 {
 			jobComponent = &rdJobs[0]
 		}
@@ -147,8 +147,8 @@ func (eh EnvironmentHandler) getJob(appName, envName, jobComponentName, jobName 
 }
 
 // GetBatches Get batches
-func (eh EnvironmentHandler) GetBatches(appName, envName, jobComponentName string) ([]deploymentModels.ScheduledBatchSummary, error) {
-	summaries, err := eh.getBatches(appName, envName, jobComponentName)
+func (eh EnvironmentHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledBatchSummary, error) {
+	summaries, err := eh.getBatches(ctx, appName, envName, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (eh EnvironmentHandler) GetBatches(appName, envName, jobComponentName strin
 	// Backward compatibility: Get list of batches not handled by RadixBatch
 	// TODO: Remove when there are no legacy jobs left
 	jh := legacyJobHandler{accounts: eh.accounts}
-	legacyBatches, err := jh.GetBatches(appName, envName, jobComponentName)
+	legacyBatches, err := jh.GetBatches(ctx, appName, envName, jobComponentName)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +169,8 @@ func (eh EnvironmentHandler) GetBatches(appName, envName, jobComponentName strin
 	return summaries, nil
 }
 
-func (eh EnvironmentHandler) getBatches(appName, envName, jobComponentName string) ([]deploymentModels.ScheduledBatchSummary, error) {
-	radixBatches, err := eh.getRadixBatches(appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
+func (eh EnvironmentHandler) getBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledBatchSummary, error) {
+	radixBatches, err := eh.getRadixBatches(ctx, appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +179,8 @@ func (eh EnvironmentHandler) getBatches(appName, envName, jobComponentName strin
 }
 
 // StopBatch Stop batch by name
-func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batchName string) error {
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+func (eh EnvironmentHandler) StopBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
 	if err != nil {
 		return err
 	}
@@ -202,23 +202,23 @@ func (eh EnvironmentHandler) StopBatch(appName, envName, jobComponentName, batch
 		return nil
 	}
 
-	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(context.TODO(), batch, metav1.UpdateOptions{})
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
 	return err
 }
 
 // DeleteBatch Delete batch by name
-func (eh EnvironmentHandler) DeleteBatch(appName, envName, jobComponentName, batchName string) error {
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
 	if err != nil {
 		return err
 	}
 
-	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(context.TODO(), batch.GetName(), metav1.DeleteOptions{})
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(ctx, batch.GetName(), metav1.DeleteOptions{})
 }
 
 // GetBatch Gets batch by name
-func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
-	if batchSummary, err := eh.getBatch(appName, envName, jobComponentName, batchName); err == nil {
+func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
+	if batchSummary, err := eh.getBatch(ctx, appName, envName, jobComponentName, batchName); err == nil {
 		return batchSummary, nil
 	}
 
@@ -227,17 +227,17 @@ func (eh EnvironmentHandler) GetBatch(appName, envName, jobComponentName, batchN
 
 	// Backward compatibility: Get batch not handled by RadixBatch
 	jh := legacyJobHandler{accounts: eh.accounts}
-	return jh.GetBatch(appName, envName, jobComponentName, batchName)
+	return jh.GetBatch(ctx, appName, envName, jobComponentName, batchName)
 }
 
-func (eh EnvironmentHandler) getBatch(appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+func (eh EnvironmentHandler) getBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
 	if err != nil {
 		return nil, err
 	}
 
 	batchSummary := eh.getScheduledBatchSummary(batch)
-	pods, err := eh.getPodsForBatch(appName, envName, batchName)
+	pods, err := eh.getPodsForBatch(ctx, appName, envName, batchName)
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +247,8 @@ func (eh EnvironmentHandler) getBatch(appName, envName, jobComponentName, batchN
 }
 
 // GetJobPayload Gets job payload
-func (eh EnvironmentHandler) GetJobPayload(appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
-	if payload, err := eh.getJobPayload(appName, envName, jobComponentName, jobName); err == nil {
+func (eh EnvironmentHandler) GetJobPayload(ctx context.Context, appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
+	if payload, err := eh.getJobPayload(ctx, appName, envName, jobComponentName, jobName); err == nil {
 		return payload, nil
 	}
 
@@ -258,13 +258,13 @@ func (eh EnvironmentHandler) GetJobPayload(appName, envName, jobComponentName, j
 	return jh.GetJobPayload(appName, envName, jobComponentName, jobName)
 }
 
-func (eh EnvironmentHandler) getJobPayload(appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) getJobPayload(ctx context.Context, appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return nil, jobNotFoundError(jobName)
 	}
 
-	batch, err := eh.getRadixBatch(appName, envName, jobComponentName, batchName, "")
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (eh EnvironmentHandler) getJobPayload(appName, envName, jobComponentName, j
 	}
 
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	secret, err := eh.accounts.ServiceAccount.Client.CoreV1().Secrets(namespace).Get(context.TODO(), job.PayloadSecretRef.Name, metav1.GetOptions{})
+	secret, err := eh.accounts.ServiceAccount.Client.CoreV1().Secrets(namespace).Get(ctx, job.PayloadSecretRef.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, environmentModels.ScheduledJobPayloadNotFoundError(appName, jobName)
@@ -296,7 +296,7 @@ func (eh EnvironmentHandler) getJobPayload(appName, envName, jobComponentName, j
 	return io.NopCloser(bytes.NewReader(payload)), nil
 }
 
-func (eh EnvironmentHandler) getRadixBatches(appName, envName, jobComponentName string, batchType kube.RadixBatchType) ([]radixv1.RadixBatch, error) {
+func (eh EnvironmentHandler) getRadixBatches(ctx context.Context, appName, envName, jobComponentName string, batchType kube.RadixBatchType) ([]radixv1.RadixBatch, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	selector := radixLabels.Merge(
 		radixLabels.ForApplicationName(appName),
@@ -304,7 +304,7 @@ func (eh EnvironmentHandler) getRadixBatches(appName, envName, jobComponentName 
 		radixLabels.ForBatchType(batchType),
 	)
 
-	batches, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
+	batches, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (eh EnvironmentHandler) getRadixBatches(appName, envName, jobComponentName 
 	return batches.Items, nil
 }
 
-func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
+func (eh EnvironmentHandler) getRadixBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	labelSelector := radixLabels.Merge(
 		radixLabels.ForApplicationName(appName),
@@ -326,7 +326,7 @@ func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, b
 		)
 	}
 
-	batch, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).Get(context.TODO(), batchName, metav1.GetOptions{})
+	batch, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, batchNotFoundError(batchName)
@@ -341,25 +341,25 @@ func (eh EnvironmentHandler) getRadixBatch(appName, envName, jobComponentName, b
 	return batch, nil
 }
 
-func (eh EnvironmentHandler) getPodsForBatch(appName, envName, batchName string) ([]corev1.Pod, error) {
+func (eh EnvironmentHandler) getPodsForBatch(ctx context.Context, appName, envName, batchName string) ([]corev1.Pod, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	selector := radixLabels.ForBatchName(batchName)
 
-	return eh.getPodsWithLabelSelector(namespace, selector.String())
+	return eh.getPodsWithLabelSelector(ctx, namespace, selector.String())
 }
 
-func (eh EnvironmentHandler) getPodsForBatchJob(appName, envName, batchName, jobName string) ([]corev1.Pod, error) {
+func (eh EnvironmentHandler) getPodsForBatchJob(ctx context.Context, appName, envName, batchName, jobName string) ([]corev1.Pod, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	selector := radixLabels.Merge(
 		radixLabels.ForBatchName(batchName),
 		radixLabels.ForBatchJobName(jobName),
 	)
 
-	return eh.getPodsWithLabelSelector(namespace, selector.String())
+	return eh.getPodsWithLabelSelector(ctx, namespace, selector.String())
 }
 
-func (eh EnvironmentHandler) getPodsWithLabelSelector(namespace, labelSelector string) ([]corev1.Pod, error) {
-	pods, err := eh.accounts.UserAccount.Client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+func (eh EnvironmentHandler) getPodsWithLabelSelector(ctx context.Context, namespace, labelSelector string) ([]corev1.Pod, error) {
+	pods, err := eh.accounts.UserAccount.Client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return nil, err
 	}

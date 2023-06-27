@@ -127,10 +127,10 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 	for _, opt := range options {
 		opt(config)
 	}
-
-	config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
-	}
+	})
+
 	return config
 }
 

@@ -2,8 +2,9 @@ package privateimagehubs
 
 import (
 	"encoding/json"
-	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	"net/http"
+
+	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -74,7 +75,7 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 	appName := mux.Vars(r)["appName"]
 
 	privateImageHubHandler := Init(accounts)
-	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(appName)
+	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(r.Context(), appName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -137,7 +138,7 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 	}
 
 	privateImageHubHandler := Init(accounts)
-	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
+	err := privateImageHubHandler.UpdatePrivateImageHubValue(r.Context(), appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

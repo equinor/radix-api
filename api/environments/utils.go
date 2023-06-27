@@ -9,24 +9,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (eh EnvironmentHandler) getRadixDeployment(appName string, envName string) (*deploymentModels.DeploymentSummary, *v1.RadixDeployment, error) {
+func (eh EnvironmentHandler) getRadixDeployment(ctx context.Context, appName string, envName string) (*deploymentModels.DeploymentSummary, *v1.RadixDeployment, error) {
 	envNs := operatorutils.GetEnvironmentNamespace(appName, envName)
-	deploymentSummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(appName, envName)
+	deploymentSummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(ctx, appName, envName)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	radixDeployment, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(context.TODO(), deploymentSummary.Name, metav1.GetOptions{})
+	radixDeployment, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(ctx, deploymentSummary.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 	return deploymentSummary, radixDeployment, nil
 }
 
-func (eh EnvironmentHandler) getRadixApplicationInAppNamespace(appName string) (*v1.RadixApplication, error) {
-	return eh.radixclient.RadixV1().RadixApplications(operatorutils.GetAppNamespace(appName)).Get(context.TODO(), appName, metav1.GetOptions{})
+func (eh EnvironmentHandler) getRadixApplicationInAppNamespace(ctx context.Context, appName string) (*v1.RadixApplication, error) {
+	return eh.radixclient.RadixV1().RadixApplications(operatorutils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 }
 
-func (eh EnvironmentHandler) getRadixEnvironment(name string) (*v1.RadixEnvironment, error) {
-	return eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Get(context.TODO(), name, metav1.GetOptions{})
+func (eh EnvironmentHandler) getRadixEnvironment(ctx context.Context, name string) (*v1.RadixEnvironment, error) {
+	return eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Get(ctx, name, metav1.GetOptions{})
 }
