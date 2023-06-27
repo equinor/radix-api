@@ -2,7 +2,6 @@ package environmentvariables
 
 import (
 	"encoding/json"
-	//"encoding/json"
 	"net/http"
 
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
