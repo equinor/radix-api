@@ -66,8 +66,13 @@ type EnvironmentHandlerFactory func(accounts models.Accounts) EnvironmentHandler
 
 func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) EnvironmentHandlerFactory {
 	return func(accounts models.Accounts) EnvironmentHandler {
-		opts = append(opts, WithAccounts(accounts))
-		return Init(opts...)
+		// We must make a new slice and copy values from opts into it.
+		// Appending to the original opts will modify its underlying array and cause a memory leak.
+		newOpts := make([]EnvironmentHandlerOptions, len(opts), len(opts)+1)
+		copy(newOpts, opts)
+		newOpts = append(newOpts, WithAccounts(accounts))
+		eh := Init(newOpts...)
+		return eh
 	}
 }
 
