@@ -59,7 +59,9 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -115,7 +117,9 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
