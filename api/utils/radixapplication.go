@@ -2,30 +2,36 @@ package utils
 
 import (
 	"context"
-
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"fmt"
+	"github.com/equinor/radix-api/models"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CreateApplicationConfig creates an application config based on input
-func CreateApplicationConfig(ctx context.Context, client kubernetes.Interface, radixClient radixclient.Interface, secretProviderClient secretsstorevclient.Interface, appName string) (*applicationconfig.ApplicationConfig, error) {
-	radixApp, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+func CreateApplicationConfig(ctx context.Context, user *models.Account, appName string) (*applicationconfig.ApplicationConfig, error) {
+	radixApp, err := user.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	registration, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	// review comment: this block adds an extra request to the API server
+	userIsAdmin, err := UserIsAdmin(ctx, user, appName)
+	if err != nil {
+		return nil, err
+	}
+	if !userIsAdmin {
+		return nil, fmt.Errorf("user is not allowed to create application config for %s", appName)
+	}
+
+	registration, err := user.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	kubeUtils, _ := kube.New(client, radixClient, secretProviderClient)
-	return applicationconfig.NewApplicationConfig(client, kubeUtils, radixClient, registration, radixApp)
+	kubeUtils, _ := kube.New(user.Client, user.RadixClient, user.SecretProviderClient)
+	return applicationconfig.NewApplicationConfig(user.Client, kubeUtils, user.RadixClient, registration, radixApp)
 }
