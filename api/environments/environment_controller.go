@@ -20,160 +20,163 @@ const rootPath = "/applications/{appName}"
 
 type environmentController struct {
 	*models.DefaultController
+	environmentHandlerFactory EnvironmentHandlerFactory
 }
 
 // NewEnvironmentController Constructor
-func NewEnvironmentController() models.Controller {
-	return &environmentController{}
+func NewEnvironmentController(environmentHandlerFactory EnvironmentHandlerFactory) models.Controller {
+	return &environmentController{
+		environmentHandlerFactory: environmentHandlerFactory,
+	}
 }
 
 // GetRoutes List the supported routes of this handler
-func (ec *environmentController) GetRoutes() models.Routes {
+func (c *environmentController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/deployments",
 			Method:      "GET",
-			HandlerFunc: GetApplicationEnvironmentDeployments,
+			HandlerFunc: c.GetApplicationEnvironmentDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/environments",
 			Method:      "GET",
-			HandlerFunc: GetEnvironmentSummary,
+			HandlerFunc: c.GetEnvironmentSummary,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "GET",
-			HandlerFunc: GetEnvironment,
+			HandlerFunc: c.GetEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "POST",
-			HandlerFunc: CreateEnvironment,
+			HandlerFunc: c.CreateEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
 			Method:      "DELETE",
-			HandlerFunc: DeleteEnvironment,
+			HandlerFunc: c.DeleteEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/events",
 			Method:      "GET",
-			HandlerFunc: GetEnvironmentEvents,
+			HandlerFunc: c.GetEnvironmentEvents,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
 			Method:      "POST",
-			HandlerFunc: StopComponent,
+			HandlerFunc: c.StopComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/start",
 			Method:      "POST",
-			HandlerFunc: StartComponent,
+			HandlerFunc: c.StartComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
 			Method:      "POST",
-			HandlerFunc: RestartComponent,
+			HandlerFunc: c.RestartComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/restart",
 			Method:      "POST",
-			HandlerFunc: RestartOAuthAuxiliaryResource,
+			HandlerFunc: c.RestartOAuthAuxiliaryResource,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/stop",
 			Method:      "POST",
-			HandlerFunc: StopEnvironment,
+			HandlerFunc: c.StopEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/start",
 			Method:      "POST",
-			HandlerFunc: StartEnvironment,
+			HandlerFunc: c.StartEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/restart",
 			Method:      "POST",
-			HandlerFunc: RestartEnvironment,
+			HandlerFunc: c.RestartEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/stop",
 			Method:      "POST",
-			HandlerFunc: StopApplication,
+			HandlerFunc: c.StopApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/start",
 			Method:      "POST",
-			HandlerFunc: StartApplication,
+			HandlerFunc: c.StartApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/restart",
 			Method:      "POST",
-			HandlerFunc: RestartApplication,
+			HandlerFunc: c.RestartApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetPodLog,
+			HandlerFunc: c.GetPodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetScheduledJobLog,
+			HandlerFunc: c.GetScheduledJobLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetOAuthAuxiliaryResourcePodLog,
+			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
 			Method:      "GET",
-			HandlerFunc: GetJobs,
+			HandlerFunc: c.GetJobs,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
 			Method:      "GET",
-			HandlerFunc: GetJob,
+			HandlerFunc: c.GetJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
 			Method:      "POST",
-			HandlerFunc: StopJob,
+			HandlerFunc: c.StopJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
 			Method:      "DELETE",
-			HandlerFunc: DeleteJob,
+			HandlerFunc: c.DeleteJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload",
 			Method:      "GET",
-			HandlerFunc: GetJobPayload,
+			HandlerFunc: c.GetJobPayload,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches",
 			Method:      "GET",
-			HandlerFunc: GetBatches,
+			HandlerFunc: c.GetBatches,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "GET",
-			HandlerFunc: GetBatch,
+			HandlerFunc: c.GetBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
 			Method:      "POST",
-			HandlerFunc: StopBatch,
+			HandlerFunc: c.StopBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "DELETE",
-			HandlerFunc: DeleteBatch,
+			HandlerFunc: c.DeleteBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/scale/{replicas}",
 			Method:      "POST",
-			HandlerFunc: ScaleComponent,
+			HandlerFunc: c.ScaleComponent,
 		},
 	}
 
@@ -181,7 +184,7 @@ func (ec *environmentController) GetRoutes() models.Routes {
 }
 
 // GetApplicationEnvironmentDeployments Lists the application environment deployments
-func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/deployments environment getApplicationEnvironmentDeployments
 	// ---
 	// summary: Lists the application environment deployments
@@ -209,7 +212,9 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -248,7 +253,7 @@ func GetApplicationEnvironmentDeployments(accounts models.Accounts, w http.Respo
 }
 
 // CreateEnvironment Creates a new environment
-func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName} environment createEnvironment
 	// ---
 	// summary: Creates application environment
@@ -271,7 +276,9 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -283,7 +290,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	envName := mux.Vars(r)["envName"]
 
 	// Need in cluster client in order to delete namespace using sufficient privileges
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	_, err := environmentHandler.CreateEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -295,7 +302,7 @@ func CreateEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 }
 
 // GetEnvironment Get details for an application environment
-func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName} environment getEnvironment
 	// ---
 	// summary: Get details for an application environment
@@ -318,7 +325,9 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -333,7 +342,7 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	appEnvironment, err := environmentHandler.GetEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -346,7 +355,7 @@ func GetEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 }
 
 // DeleteEnvironment Deletes environment
-func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName} environment deleteEnvironment
 	// ---
 	// summary: Deletes application environment
@@ -369,7 +378,9 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -382,7 +393,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.DeleteEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -394,7 +405,7 @@ func DeleteEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.
 }
 
 // GetEnvironmentSummary Lists the environments for an application
-func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments environment getEnvironmentSummary
 	// ---
 	// summary: Lists the environments for an application
@@ -412,7 +423,9 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -427,7 +440,7 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	appEnvironments, err := environmentHandler.GetEnvironmentSummary(r.Context(), appName)
 
 	if err != nil {
@@ -439,7 +452,7 @@ func GetEnvironmentSummary(accounts models.Accounts, w http.ResponseWriter, r *h
 }
 
 // GetEnvironmentEvents Get events for an application environment
-func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/events environment getEnvironmentEvents
 	// ---
 	// summary: Lists events for an application environment
@@ -462,7 +475,9 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -477,7 +492,7 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	events, err := environmentHandler.GetEnvironmentEvents(r.Context(), appName, envName)
 
 	if err != nil {
@@ -490,7 +505,7 @@ func GetEnvironmentEvents(accounts models.Accounts, w http.ResponseWriter, r *ht
 }
 
 // StopComponent Stops job
-func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/stop component stopComponent
 	// ---
 	// summary: Stops component
@@ -518,7 +533,9 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -531,7 +548,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StopComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
@@ -543,7 +560,7 @@ func StopComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 }
 
 // StartComponent Starts job
-func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
 	// ---
 	// summary: Start component
@@ -571,7 +588,9 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -584,7 +603,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StartComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
@@ -596,7 +615,7 @@ func StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 }
 
 // RestartComponent Restarts job
-func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/restart component restartComponent
 	// ---
 	// summary: |
@@ -628,7 +647,9 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -641,7 +662,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.RestartComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
@@ -653,7 +674,7 @@ func RestartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.R
 }
 
 // StopEnvironment  all components in the environment
-func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/stop environment stopEnvironment
 	// ---
 	// summary: Stops all components in the environment
@@ -676,7 +697,9 @@ func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -688,7 +711,7 @@ func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StopEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -700,7 +723,7 @@ func StopEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 }
 
 // StartEnvironment Starts all components in the environment
-func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/start environment startEnvironment
 	// ---
 	// summary: Start all components in the environment
@@ -723,7 +746,9 @@ func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -735,7 +760,7 @@ func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StartEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -747,7 +772,7 @@ func StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.R
 }
 
 // RestartEnvironment Restarts all components in the environment
-func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/restart environment restartEnvironment
 	// ---
 	// summary: |
@@ -774,7 +799,9 @@ func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -786,7 +813,7 @@ func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.RestartEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
@@ -798,7 +825,7 @@ func RestartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http
 }
 
 // StopApplication  all components in all environments of the application
-func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/stop application stopApplication
 	// ---
 	// summary: Stops all components in the environment
@@ -816,7 +843,9 @@ func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -827,7 +856,7 @@ func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StopApplication(r.Context(), appName)
 
 	if err != nil {
@@ -839,7 +868,7 @@ func StopApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 }
 
 // StartApplication Starts all components in all environments of the application
-func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/start application startApplication
 	// ---
 	// summary: Start all components in all environments of the application
@@ -857,7 +886,9 @@ func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -868,7 +899,7 @@ func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.R
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.StartApplication(r.Context(), appName)
 
 	if err != nil {
@@ -880,7 +911,7 @@ func StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.R
 }
 
 // RestartApplication Restarts all components in all environments of the application
-func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/restart application restartApplication
 	// ---
 	// summary: |
@@ -902,7 +933,9 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -913,7 +946,7 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.RestartApplication(r.Context(), appName)
 
 	if err != nil {
@@ -925,7 +958,7 @@ func RestartApplication(accounts models.Accounts, w http.ResponseWriter, r *http
 }
 
 // RestartOAuthAuxiliaryResource Restarts oauth auxiliary resource for a component
-func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart component restartOAuthAuxiliaryResource
 	// ---
 	// summary: Restarts an auxiliary resource for a component
@@ -953,7 +986,9 @@ func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWrit
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -972,7 +1007,7 @@ func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWrit
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
 
-	environmentHandler := Init(WithAccounts(accounts))
+	environmentHandler := c.environmentHandlerFactory(accounts)
 	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
 
 	if err != nil {
@@ -984,7 +1019,7 @@ func RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWrit
 }
 
 // GetPodLog Get logs of a single pod
-func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs component replicaLog
 	// ---
 	// summary: Get logs from a deployed pod
@@ -1041,7 +1076,9 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1060,7 +1097,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	log, err := eh.GetLogs(r.Context(), appName, envName, podName, &since, logLines, previousLog)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1077,7 +1114,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 }
 
 // GetScheduledJobLog Get log from a scheduled job
-func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs job jobLog
 	// ---
 	// summary: Get log from a scheduled job
@@ -1128,7 +1165,9 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1147,7 +1186,7 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 		return
 	}
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	log, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1164,7 +1203,7 @@ func GetScheduledJobLog(accounts models.Accounts, w http.ResponseWriter, r *http
 }
 
 // GetJobs Get list of scheduled jobs
-func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs job getJobs
 	// ---
 	// summary: Get list of scheduled jobs
@@ -1192,7 +1231,9 @@ func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1207,7 +1248,7 @@ func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	envName := mux.Vars(r)["envName"]
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	jobSummaries, err := eh.GetJobs(r.Context(), appName, envName, jobComponentName)
 
 	if err != nil {
@@ -1219,7 +1260,7 @@ func GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 }
 
 // GetJob Get a scheduled job
-func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName} job getJob
 	// ---
 	// summary: Get list of scheduled jobs
@@ -1252,7 +1293,9 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1266,7 +1309,7 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	jobSummary, err := eh.GetJob(r.Context(), appName, envName, jobComponentName, jobName)
 
 	if err != nil {
@@ -1278,7 +1321,7 @@ func GetJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 }
 
 // StopJob Stop a scheduled job
-func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop job stopJob
 	// ---
 	// summary: Stop scheduled job
@@ -1311,7 +1354,9 @@ func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1330,7 +1375,7 @@ func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1341,7 +1386,7 @@ func StopJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteJob Delete a job
-func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName} job deleteJob
 	// ---
 	// summary: Delete job
@@ -1374,7 +1419,9 @@ func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1393,7 +1440,7 @@ func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	err := eh.DeleteJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1404,7 +1451,7 @@ func DeleteJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 }
 
 // GetBatches Get list of scheduled batches
-func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches job getBatches
 	// ---
 	// summary: Get list of scheduled batches
@@ -1432,7 +1479,9 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1447,7 +1496,7 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 	envName := mux.Vars(r)["envName"]
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	batchSummaries, err := eh.GetBatches(r.Context(), appName, envName, jobComponentName)
 
 	if err != nil {
@@ -1459,7 +1508,7 @@ func GetBatches(accounts models.Accounts, w http.ResponseWriter, r *http.Request
 }
 
 // GetBatch Get a scheduled batch
-func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName} job getBatch
 	// ---
 	// summary: Get list of scheduled batches
@@ -1492,7 +1541,9 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1506,7 +1557,7 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	jobSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
 
 	if err != nil {
@@ -1518,7 +1569,7 @@ func GetBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) 
 }
 
 // StopBatch Stop a scheduled batch
-func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop job stopBatch
 	// ---
 	// summary: Stop scheduled batch
@@ -1551,7 +1602,9 @@ func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1570,7 +1623,7 @@ func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1581,7 +1634,7 @@ func StopBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteBatch Delete a batch
-func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation DELETE /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName} job deleteBatch
 	// ---
 	// summary: Delete batch
@@ -1614,7 +1667,9 @@ func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Reques
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1633,7 +1688,7 @@ func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Reques
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	err := eh.DeleteBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1644,7 +1699,7 @@ func DeleteBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Reques
 }
 
 // GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
-func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs component getOAuthPodLog
 	// ---
 	// summary: Get logs for an oauth auxiliary resource pod
@@ -1695,7 +1750,9 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1721,7 +1778,7 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 		return
 	}
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	log, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -1738,7 +1795,7 @@ func GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWr
 }
 
 // GetJobPayload Get a scheduled job payload
-func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload job getJobPayload
 	// ---
 	// summary: Get payload of a scheduled job
@@ -1771,7 +1828,9 @@ func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1785,7 +1844,7 @@ func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	payload, err := eh.GetJobPayload(r.Context(), appName, envName, jobComponentName, jobName)
 
 	if err != nil {
@@ -1797,7 +1856,7 @@ func GetJobPayload(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 }
 
 // ScaleComponent Scale component replicas
-func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/scale/{replicas} component scaleComponent
 	// ---
 	// summary: Scale a component replicas
@@ -1830,7 +1889,9 @@ func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1854,7 +1915,7 @@ func ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	eh := Init(WithAccounts(accounts))
+	eh := c.environmentHandlerFactory(accounts)
 	err = eh.ScaleComponent(r.Context(), appName, envName, componentName, replicas)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

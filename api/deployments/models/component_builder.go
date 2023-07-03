@@ -21,6 +21,7 @@ type ComponentBuilder interface {
 	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
 	WithAuxiliaryResource(AuxiliaryResource) ComponentBuilder
 	WithNotifications(*v1.Notifications) ComponentBuilder
+	WithHorizontalScalingSummary(*HorizontalScalingSummary) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -41,6 +42,7 @@ type componentBuilder struct {
 	auxResource               AuxiliaryResource
 	identity                  *Identity
 	notifications             *Notifications
+	hpa                       *HorizontalScalingSummary
 	errors                    []error
 }
 
@@ -106,12 +108,13 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	}
 
 	for _, volumeMount := range component.GetVolumeMounts() {
-		switch volumeMount.Type {
+		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
+		switch volumeMountType {
 		case v1.MountTypeBlob:
 			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
-		case v1.MountTypeBlobCsiAzure, v1.MountTypeBlob2CsiAzure, v1.MountTypeNfsCsiAzure, v1.MountTypeFileCsiAzure:
+		case v1.MountTypeBlobFuse2FuseCsiAzure, v1.MountTypeBlobFuse2Fuse2CsiAzure, v1.MountTypeBlobFuse2NfsCsiAzure, v1.MountTypeAzureFileCsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
@@ -179,6 +182,11 @@ func (b *componentBuilder) WithNotifications(notifications *v1.Notifications) Co
 	return b
 }
 
+func (b *componentBuilder) WithHorizontalScalingSummary(hpa *HorizontalScalingSummary) ComponentBuilder {
+	b.hpa = hpa
+	return b
+}
+
 func (b *componentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
@@ -206,20 +214,21 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 	}
 
 	return &Component{
-		Name:                    b.componentName,
-		Type:                    b.componentType,
-		Status:                  b.status.String(),
-		Image:                   b.componentImage,
-		Ports:                   b.ports,
-		Secrets:                 b.secrets,
-		Variables:               variables,
-		Replicas:                b.podNames,
-		ReplicaList:             b.replicaSummaryList,
-		SchedulerPort:           b.schedulerPort,
-		ScheduledJobPayloadPath: b.scheduledJobPayloadPath,
-		AuxiliaryResource:       b.auxResource,
-		Identity:                b.identity,
-		Notifications:           b.notifications,
+		Name:                     b.componentName,
+		Type:                     b.componentType,
+		Status:                   b.status.String(),
+		Image:                    b.componentImage,
+		Ports:                    b.ports,
+		Secrets:                  b.secrets,
+		Variables:                variables,
+		Replicas:                 b.podNames,
+		ReplicaList:              b.replicaSummaryList,
+		SchedulerPort:            b.schedulerPort,
+		ScheduledJobPayloadPath:  b.scheduledJobPayloadPath,
+		AuxiliaryResource:        b.auxResource,
+		Identity:                 b.identity,
+		Notifications:            b.notifications,
+		HorizontalScalingSummary: b.hpa,
 	}, b.buildError()
 }
 

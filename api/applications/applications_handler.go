@@ -13,17 +13,17 @@ import (
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/kubequery"
+	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
@@ -68,39 +68,34 @@ func (ah *ApplicationHandler) getServiceAccount() models.Account {
 
 // GetApplication handler for GetApplication
 func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string) (*applicationModels.Application, error) {
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	rr, err := kubequery.GetRadixRegistration(ctx, ah.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	ra, err := kubequery.GetRadixApplication(ctx, ah.accounts.UserAccount.RadixClient, appName)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return nil, err
+	}
+	reList, err := kubequery.GetRadixEnvironments(ctx, ah.accounts.ServiceAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	rjList, err := kubequery.GetRadixJobs(ctx, ah.getUserAccount().RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	envNames := slice.Map(reList, func(re v1.RadixEnvironment) string { return re.Spec.EnvName })
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, ah.accounts.UserAccount.RadixClient, appName, envNames, 10)
+	if err != nil {
+		return nil, err
+	}
+	ingressList, err := kubequery.GetIngressesForEnvironments(ctx, ah.accounts.UserAccount.Client, appName, envNames, 10)
 	if err != nil {
 		return nil, err
 	}
 
-	applicationRegistrationBuilder := applicationModels.NewApplicationRegistrationBuilder()
-	applicationRegistration := applicationRegistrationBuilder.
-		WithRadixRegistration(radixRegistration).
-		Build()
-
-	jobs, err := ah.jobHandler.GetApplicationJobs(ctx, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	environments, err := ah.environmentHandler.GetEnvironmentSummary(ctx, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	appAlias, err := ah.getAppAlias(ctx, appName, environments)
-	if err != nil {
-		return nil, err
-	}
-
-	return &applicationModels.Application{
-		Name:         applicationRegistration.Name,
-		Registration: applicationRegistration,
-		Jobs:         jobs,
-		Environments: environments,
-		AppAlias:     appAlias,
-		Owner:        applicationRegistration.Owner,
-		Creator:      applicationRegistration.Creator}, nil
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList)
+	return application, nil
 }
 
 // RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
@@ -587,30 +582,6 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 	}
 
 	return validators
-}
-
-func (ah *ApplicationHandler) getAppAlias(ctx context.Context, appName string, environments []*environmentModels.EnvironmentSummary) (*applicationModels.ApplicationAlias, error) {
-	for _, environment := range environments {
-		environmentNamespace := crdUtils.GetEnvironmentNamespace(appName, environment.Name)
-
-		ingresses, err := ah.getUserAccount().Client.NetworkingV1().Ingresses(environmentNamespace).List(ctx, metav1.ListOptions{
-			LabelSelector: labelselector.ForIsAppAlias().String(),
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		if len(ingresses.Items) > 0 {
-			// Will only be one alias, if any exists
-			componentName := ingresses.Items[0].Labels[kube.RadixComponentLabel]
-			environmentName := environment.Name
-			url := ingresses.Items[0].Spec.Rules[0].Host
-			return &applicationModels.ApplicationAlias{ComponentName: componentName, EnvironmentName: environmentName, URL: url}, nil
-		}
-	}
-
-	return nil, nil
 }
 
 func (ah *ApplicationHandler) getMachineUserForApp(ctx context.Context, appName string) (*applicationModels.MachineUser, error) {

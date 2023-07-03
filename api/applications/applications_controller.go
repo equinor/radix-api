@@ -150,7 +150,9 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -207,7 +209,9 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -278,7 +282,9 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -329,7 +335,9 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -375,7 +383,9 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -431,7 +441,9 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -475,7 +487,9 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -519,7 +533,9 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -574,7 +590,9 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -633,7 +651,9 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -686,7 +706,9 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -758,7 +780,9 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -805,7 +829,9 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -852,7 +878,9 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -899,7 +927,9 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
