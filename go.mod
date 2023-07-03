@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/equinor/radix-common v1.3.0
 	github.com/equinor/radix-job-scheduler v1.7.10
-	github.com/equinor/radix-operator v1.38.3
+	github.com/equinor/radix-operator v1.38.5
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.7
@@ -23,13 +23,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tektoncd/pipeline v0.41.0
+	github.com/tektoncd/pipeline v0.41.3
 	github.com/urfave/negroni/v3 v3.0.0
 	golang.org/x/sync v0.1.0
-	k8s.io/api v0.25.8
-	k8s.io/apimachinery v0.25.8
-	k8s.io/client-go v0.25.8
-	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
+	k8s.io/api v0.25.9
+	k8s.io/apimachinery v0.25.9
+	k8s.io/client-go v0.25.9
+	knative.dev/pkg v0.0.0-20230221152827-2d84369c105d
 	sigs.k8s.io/secrets-store-csi-driver v1.3.2
 )
 
