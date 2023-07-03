@@ -121,6 +121,6 @@ require (
 )
 
 replace (
-	"github.com/equinor/radix-operator" v1.38.1 => "/radix-operator"
-	// "github.com/equinor/radix-operator" v1.38.1 => "/home/anneli/GolandProjects/radix-operator"
+	// "github.com/equinor/radix-operator" v1.38.1 => "/radix-operator"
+	"github.com/equinor/radix-operator" v1.38.1 => "/home/anneli/GolandProjects/radix-operator"
 )
