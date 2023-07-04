@@ -13,21 +13,18 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetTektonPipelineRunTaskStepLogs Get logs of a pipeline run task for a pipeline job
 func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	taskRunsMap, err := tekton.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, jobModels.PipelineRunNotFoundError(appName, jobName, pipelineRunName)
-		}
 		return nil, err
 	}
-	podName, containerName, err := jh.getTaskPodAndContainerName(pipelineRun, taskName, stepName)
+	podName, containerName, err := jh.getTaskPodAndContainerName(taskRunsMap, taskName, stepName)
 	if err != nil {
 		return nil, err
 	}
@@ -38,30 +35,20 @@ func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appNa
 	return podHandler.HandleGetAppPodLog(ctx, appName, podName, containerName, sinceTime, logLines)
 }
 
-func (jh JobHandler) getTaskPodAndContainerName(pipelineRun *v1beta1.PipelineRun, taskRealName, stepName string) (string, string, error) {
-	taskRealNameToNameMap := tekton.GetTaskRealNameToNameMap(pipelineRun)
-	taskName, ok := taskRealNameToNameMap[taskRealName]
-	if !ok {
-		return "", "", fmt.Errorf("task %s is not executed", taskRealName)
-	}
-
+func (jh JobHandler) getTaskPodAndContainerName(taskRunsMap map[string]*pipelinev1.TaskRun, taskRealName, stepName string) (string, string, error) {
 	var podName, containerName string
-	for _, taskRun := range pipelineRun.Status.PipelineRunStatusFields.TaskRuns {
-		if !strings.EqualFold(taskRun.PipelineTaskName, taskName) || taskRun.Status == nil {
-			continue
-		}
+	if taskRun, ok := taskRunsMap[taskRealName]; ok {
 		podName = taskRun.Status.PodName
 		for _, step := range taskRun.Status.TaskRunStatusFields.Steps {
 			if !strings.EqualFold(step.Name, stepName) {
 				continue
 			}
-			containerName = step.ContainerName
-			break
+			return podName, step.Container, nil
 		}
-		break
+		return "", "", fmt.Errorf("missing step %s in the task %s", stepName, taskRealName)
 	}
 	if len(podName) == 0 || len(containerName) == 0 {
-		return "", "", fmt.Errorf("missing task %s or step %s", taskName, stepName)
+		return "", "", fmt.Errorf("missing task %s or step %s", taskRealName, stepName)
 	}
 	return podName, containerName, nil
 }
