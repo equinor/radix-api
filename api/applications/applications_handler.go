@@ -512,6 +512,15 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Context, appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
+	userAccount := ah.getUserAccount()
+	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
+	if err != nil {
+		return nil, err
+	}
+	if !userIsAdmin {
+		return nil, fmt.Errorf("user is not allowed to trigger pipeline for app %s", appName)
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
 	}
@@ -532,7 +541,6 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	// Check if branch is mapped
 	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
-		userAccount := ah.getUserAccount()
 		application, err := utils.CreateApplicationConfig(ctx, &userAccount, appName)
 		if err != nil {
 			return nil, err

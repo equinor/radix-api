@@ -2,6 +2,7 @@ package privateimagehubs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -49,6 +50,14 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 
 // UpdatePrivateImageHubValue updates the private image hub value with new password
 func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
+
+	userIsAdmin, err := utils.UserIsAdmin(ctx, &ph.userAccount, appName)
+	if err != nil {
+		return err
+	}
+	if !userIsAdmin {
+		return fmt.Errorf("user is not allowed to update private image hubs for %s", appName)
+	}
 	application, err := utils.CreateApplicationConfig(ctx, &ph.userAccount, appName)
 	if err != nil {
 		return err

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"github.com/equinor/radix-api/models"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
@@ -16,15 +15,6 @@ func CreateApplicationConfig(ctx context.Context, user *models.Account, appName 
 	radixApp, err := user.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
-	}
-
-	// review comment: this block adds an extra request to the API server
-	userIsAdmin, err := UserIsAdmin(ctx, user, appName)
-	if err != nil {
-		return nil, err
-	}
-	if !userIsAdmin {
-		return nil, fmt.Errorf("user is not allowed to create application config for %s", appName)
 	}
 
 	registration, err := user.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
