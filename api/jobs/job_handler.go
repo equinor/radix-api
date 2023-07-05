@@ -227,7 +227,8 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 
 func getTaskRunByName(pipelineRun *pipelinev1.PipelineRun, taskNameToTaskRunMap map[string]*pipelinev1.TaskRun, taskName string) (*pipelinev1.TaskRun, error) {
 	for _, taskRef := range pipelineRun.Status.ChildReferences {
-		if taskRun, ok := taskNameToTaskRunMap[taskRef.PipelineTaskName]; ok && strings.EqualFold(taskRun.Name, taskName) {
+		if taskRun, ok := taskNameToTaskRunMap[taskRef.PipelineTaskName]; ok &&
+			taskRun.Spec.TaskRef != nil && strings.EqualFold(taskRun.Spec.TaskRef.Name, taskName) {
 			return taskRun, nil
 		}
 	}
