@@ -931,10 +931,11 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
-	<-responseChannel
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
-	response := <-responseChannel
+	response = <-responseChannel
 
 	application := applicationModels.Application{}
 	controllertest.GetResponseBody(response, &application)
@@ -1143,7 +1144,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	anyAppName := "any-app"
 	configBranch := "magic"
 
-	rr := builders.ARadixRegistration().WithConfigBranch(configBranch)
+	rr := builders.ARadixRegistration().WithConfigBranch(configBranch).WithAdGroups([]string{"adminGroup"})
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithRadixRegistration(rr).
@@ -1161,7 +1162,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := applicationModels.UnmatchedBranchToEnvironment(unmappedBranch)
+	expectedError := applicationModels.UserNotAllowedToTriggerPipelineError(anyAppName)
 	assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 	// Mapped branch should start job

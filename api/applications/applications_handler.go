@@ -218,16 +218,6 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
 
-	// Make check that this is an existing application and that the user has access to it
-	userAccount := ah.getUserAccount()
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, application.Name)
-	if err != nil {
-		return nil, err
-	}
-	if !userIsAdmin {
-		return nil, fmt.Errorf("user is not allowed to change registration details for %s", appName)
-	}
-
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -275,15 +265,6 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	// Make check that this is an existing application and that the user has access to it
-	userAccount := ah.getUserAccount()
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
-	if err != nil {
-		return nil, err
-	}
-	if !userIsAdmin {
-		return nil, fmt.Errorf("user is not allowed to modify registration details for %s", appName)
-	}
 
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
@@ -518,7 +499,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, err
 	}
 	if !userIsAdmin {
-		return nil, fmt.Errorf("user is not allowed to trigger pipeline for app %s", appName)
+		return nil, applicationModels.UserNotAllowedToTriggerPipelineError(appName)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
