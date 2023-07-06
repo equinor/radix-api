@@ -15,7 +15,6 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/go-openapi/errors"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +119,7 @@ func (jh JobHandler) GetTektonPipelineRunTasks(ctx context.Context, appName, job
 }
 
 func (jh JobHandler) getPipelineRunWithTasks(ctx context.Context, appName string, jobName string, pipelineRunName string) (*pipelinev1.PipelineRun, map[string]*pipelinev1.TaskRun, error) {
-	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	pipelineRun, err := jh.getPipelineRunWithRef(ctx, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,14 +127,23 @@ func (jh JobHandler) getPipelineRunWithTasks(ctx context.Context, appName string
 	if err != nil {
 		return nil, nil, err
 	}
-	if pipelineRun.Spec.PipelineRef == nil || len(pipelineRun.Spec.PipelineRef.Name) == 0 {
-		return nil, nil, fmt.Errorf("the Pipeline Run %s does not have reference to the Pipeline", pipelineRunName)
-	}
-	return pipelineRun, getPipelineTaskNameToTaskRunMap(pipelineRun, taskRunsMap), nil
+	taskNameToTaskRunMap := getPipelineTaskNameToTaskRunMap(pipelineRun.Status.PipelineSpec.Tasks, taskRunsMap)
+	return pipelineRun, taskNameToTaskRunMap, nil
 }
 
-func getPipelineTaskNameToTaskRunMap(pipelineRun *pipelinev1.PipelineRun, taskRunsMap map[string]*pipelinev1.TaskRun) map[string]*pipelinev1.TaskRun {
-	return slice.Reduce(pipelineRun.Status.PipelineSpec.Tasks, make(map[string]*pipelinev1.TaskRun), func(acc map[string]*pipelinev1.TaskRun, task pipelinev1.PipelineTask) map[string]*pipelinev1.TaskRun {
+func (jh JobHandler) getPipelineRunWithRef(ctx context.Context, appName string, jobName string, pipelineRunName string) (*pipelinev1.PipelineRun, error) {
+	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	if err != nil {
+		return nil, err
+	}
+	if pipelineRun.Spec.PipelineRef == nil || len(pipelineRun.Spec.PipelineRef.Name) == 0 {
+		return nil, fmt.Errorf("the Pipeline Run %s does not have reference to the Pipeline", pipelineRunName)
+	}
+	return pipelineRun, nil
+}
+
+func getPipelineTaskNameToTaskRunMap(pipelineTasks []pipelinev1.PipelineTask, taskRunsMap map[string]*pipelinev1.TaskRun) map[string]*pipelinev1.TaskRun {
+	return slice.Reduce(pipelineTasks, make(map[string]*pipelinev1.TaskRun), func(acc map[string]*pipelinev1.TaskRun, task pipelinev1.PipelineTask) map[string]*pipelinev1.TaskRun {
 		if task.TaskRef == nil {
 			return acc
 		}
@@ -165,11 +173,11 @@ func (jh JobHandler) GetTektonPipelineRunTaskSteps(ctx context.Context, appName,
 }
 
 func (jh JobHandler) getPipelineRunAndTaskRun(ctx context.Context, appName string, jobName string, pipelineRunName string, taskName string) (*pipelinev1.PipelineRun, *pipelinev1.TaskRun, error) {
-	pipelineRun, taskNameToTaskRunMap, err := jh.getPipelineRunWithTasks(ctx, appName, jobName, pipelineRunName)
+	pipelineRun, err := jh.getPipelineRunWithRef(ctx, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, nil, err
 	}
-	taskRun, err := getTaskRunByName(pipelineRun, taskNameToTaskRunMap, taskName)
+	taskRun, err := tekton.GetTektonPipelineTaskRunByTaskName(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName, taskName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -223,16 +231,6 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 		pipelineTaskModel.StatusMessage = pipelineTaskModel.StatusMessage[0:logEmbeddedCommandIndex]
 	}
 	return &pipelineTaskModel
-}
-
-func getTaskRunByName(pipelineRun *pipelinev1.PipelineRun, taskNameToTaskRunMap map[string]*pipelinev1.TaskRun, taskName string) (*pipelinev1.TaskRun, error) {
-	for _, taskRef := range pipelineRun.Status.ChildReferences {
-		if taskRun, ok := taskNameToTaskRunMap[taskRef.PipelineTaskName]; ok &&
-			taskRun.Spec.TaskRef != nil && strings.EqualFold(taskRun.Spec.TaskRef.Name, taskName) {
-			return taskRun, nil
-		}
-	}
-	return nil, errors.NotFound("task %s not found", taskName)
 }
 
 func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.PipelineRunTaskStep {
