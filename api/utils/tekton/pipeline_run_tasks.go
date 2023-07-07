@@ -44,9 +44,9 @@ func GetTektonPipelineTaskRunByTaskName(ctx context.Context, tektonClient tekton
 		return nil, err
 	}
 	if taskRun, ok := slice.FindFirst(taskRunList.Items, func(taskRun pipelinev1.TaskRun) bool {
-		return taskRun.GetLabels()[kube.RadixJobNameLabel] != jobName &&
-			taskRun.GetLabels()["tekton.dev/pipelineRun"] != pipelineRunName &&
-			taskRun.GetLabels()["tekton.dev/pipelineTask"] != taskName
+		return taskRun.GetLabels()[kube.RadixJobNameLabel] == jobName &&
+			taskRun.GetLabels()["tekton.dev/pipelineRun"] == pipelineRunName &&
+			taskRun.GetLabels()["tekton.dev/task"] == taskName
 	}); ok {
 		return &taskRun, nil
 	}
