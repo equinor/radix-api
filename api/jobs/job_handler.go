@@ -201,15 +201,13 @@ func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.Pipelin
 }
 
 func getPipelineRunTaskModels(pipelineRun *pipelinev1.PipelineRun, taskNameToTaskRunMap map[string]*pipelinev1.TaskRun) []jobModels.PipelineRunTask {
-
-	var taskModels []jobModels.PipelineRunTask
-	for _, taskRunSpec := range pipelineRun.Status.ChildReferences {
+	return slice.Reduce(pipelineRun.Status.ChildReferences, make([]jobModels.PipelineRunTask, 0), func(acc []jobModels.PipelineRunTask, taskRunSpec pipelinev1.ChildStatusReference) []jobModels.PipelineRunTask {
 		if taskRun, ok := taskNameToTaskRunMap[taskRunSpec.PipelineTaskName]; ok {
 			pipelineTaskModel := getPipelineRunTaskModelByTaskSpec(pipelineRun, taskRun)
-			taskModels = append(taskModels, *pipelineTaskModel)
+			acc = append(acc, *pipelineTaskModel)
 		}
-	}
-	return taskModels
+		return acc
+	})
 }
 
 func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, taskRun *pipelinev1.TaskRun) *jobModels.PipelineRunTask {
