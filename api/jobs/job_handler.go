@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"sort"
 	"strings"
 
@@ -31,11 +30,10 @@ const (
 
 // JobHandler Instance variables
 type JobHandler struct {
-	accounts               models.Accounts
-	userAccount            models.Account
-	serviceAccount         models.Account
-	deploy                 deployments.DeployHandler
-	authorizationValidator authorizationvalidator.Interface
+	accounts       models.Accounts
+	userAccount    models.Account
+	serviceAccount models.Account
+	deploy         deployments.DeployHandler
 }
 
 // Init Constructor

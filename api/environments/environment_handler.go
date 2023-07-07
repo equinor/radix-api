@@ -56,7 +56,7 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 	}
 }
 
-func WithTLSSecretValidator(validator tlsvalidator.Interface) EnvironmentHandlerOptions {
+func WithTLSSecretValidator(validator tlsvalidator.TLSSecretValidator) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.tlsSecretValidator = validator
 	}
@@ -85,7 +85,7 @@ type EnvironmentHandler struct {
 	accounts                  models.Accounts
 	kubeUtil                  *kube.Kube
 	kubeUtilForServiceAccount *kube.Kube
-	tlsSecretValidator        tlsvalidator.Interface
+	tlsSecretValidator        tlsvalidator.TLSSecretValidator
 }
 
 var validaStatusesToScaleComponent []string
