@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 	"strings"
 	"time"
@@ -42,19 +43,21 @@ type patch struct {
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler         job.JobHandler
-	environmentHandler environments.EnvironmentHandler
-	accounts           models.Accounts
-	config             ApplicationHandlerConfig
+	jobHandler             job.JobHandler
+	environmentHandler     environments.EnvironmentHandler
+	accounts               models.Accounts
+	config                 ApplicationHandlerConfig
+	authorizationValidator authorizationvalidator.Interface
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, authorizationValidator authorizationvalidator.Interface) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:           accounts,
-		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
-		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
-		config:             config,
+		accounts:               accounts,
+		jobHandler:             job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler:     environments.Init(environments.WithAccounts(accounts)),
+		config:                 config,
+		authorizationValidator: authorizationValidator,
 	}
 }
 
@@ -382,7 +385,8 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 func (ah *ApplicationHandler) DeleteApplication(ctx context.Context, appName string) error {
 	// Make check that this is an existing application and that the user has access to it
 	userAccount := ah.getUserAccount()
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
+	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
+	// userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
 	if err != nil {
 		return err
 	}
@@ -453,7 +457,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +487,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +498,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Context, appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
 	userAccount := ah.getUserAccount()
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
+	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +546,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
 	if err != nil {
 		return nil, err
 	}
@@ -640,7 +644,7 @@ func (ah *ApplicationHandler) getMachineUserServiceAccount(ctx context.Context, 
 func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
 	// Make check that this is an existing application and that the user has access to it
 	userAccount := ah.getUserAccount()
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
+	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
 	if err != nil {
 		return err
 	}

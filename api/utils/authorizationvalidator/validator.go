@@ -1,4 +1,4 @@
-package utils
+package authorizationvalidator
 
 import (
 	"context"
@@ -8,7 +8,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func UserIsAdmin(ctx context.Context, user *models.Account, appName string) (bool, error) {
+var defaultValidator = validator{}
+
+func DefaultValidator() Interface {
+	return &defaultValidator
+}
+
+type validator struct{}
+
+func (v *validator) UserIsAdmin(ctx context.Context, user *models.Account, appName string) (bool, error) {
 	review, err := user.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1.SelfSubjectAccessReview{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: uuid.New().String(),

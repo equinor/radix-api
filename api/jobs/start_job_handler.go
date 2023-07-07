@@ -3,7 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"os"
 	"strings"
 	"time"
@@ -28,8 +28,8 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &jh.userAccount, appName)
+func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters, authorizationValidator authorizationvalidator.Interface) (*jobModels.JobSummary, error) {
+	userIsAdmin, err := authorizationValidator.UserIsAdmin(ctx, &jh.userAccount, appName)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package privateimagehubs
 
 import (
 	"encoding/json"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
@@ -14,12 +15,15 @@ import (
 const rootPath = "/applications/{appName}"
 
 type privateImageHubController struct {
+	authorizationValidator authorizationvalidator.Interface
 	*models.DefaultController
 }
 
 // NewPrivateImageHubController Constructor
-func NewPrivateImageHubController() models.Controller {
-	return &privateImageHubController{}
+func NewPrivateImageHubController(authorizationValidator authorizationvalidator.Interface) models.Controller {
+	return &privateImageHubController{
+		authorizationValidator: authorizationValidator,
+	}
 }
 
 // GetRoutes List the supported routes of this handler
@@ -28,12 +32,12 @@ func (dc *privateImageHubController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/privateimagehubs",
 			Method:      "GET",
-			HandlerFunc: GetPrivateImageHubs,
+			HandlerFunc: dc.GetPrivateImageHubs,
 		},
 		models.Route{
 			Path:        rootPath + "/privateimagehubs/{serverName}",
 			Method:      "PUT",
-			HandlerFunc: ChangePrivateImageHubSecret,
+			HandlerFunc: dc.ChangePrivateImageHubSecret,
 		},
 	}
 
@@ -41,7 +45,7 @@ func (dc *privateImageHubController) GetRoutes() models.Routes {
 }
 
 // GetPrivateImageHubs Lists private image hubs
-func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *privateImageHubController) GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/privateimagehubs application getPrivateImageHubs
 	// ---
 	// summary: Lists the application private image hubs
@@ -76,7 +80,7 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	privateImageHubHandler := Init(accounts)
+	privateImageHubHandler := Init(accounts, dc.authorizationValidator)
 	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(r.Context(), appName)
 
 	if err != nil {
@@ -88,7 +92,7 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 }
 
 // ChangePrivateImageHubSecret Modifies an application private image hub secret
-func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/privateimagehubs/{serverName} application updatePrivateImageHubsSecretValue
 	// ---
 	// summary: Update an application private image hub secret
@@ -141,7 +145,7 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 		return
 	}
 
-	privateImageHubHandler := Init(accounts)
+	privateImageHubHandler := Init(accounts, authorizationvalidator.DefaultValidator())
 	err := privateImageHubHandler.UpdatePrivateImageHubValue(r.Context(), appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {

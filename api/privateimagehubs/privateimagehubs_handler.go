@@ -3,6 +3,7 @@ package privateimagehubs
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -11,16 +12,19 @@ import (
 
 // PrivateImageHubHandler Instance variables
 type PrivateImageHubHandler struct {
-	userAccount    sharedModels.Account
-	serviceAccount sharedModels.Account
+	userAccount            sharedModels.Account
+	serviceAccount         sharedModels.Account
+	authorizationValidator authorizationvalidator.Interface
 }
 
 // Init Constructor
-func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
+func Init(accounts sharedModels.Accounts, authorizationValidator authorizationvalidator.Interface) PrivateImageHubHandler {
 
 	return PrivateImageHubHandler{
-		userAccount:    accounts.UserAccount,
-		serviceAccount: accounts.ServiceAccount}
+		userAccount:            accounts.UserAccount,
+		serviceAccount:         accounts.ServiceAccount,
+		authorizationValidator: authorizationValidator,
+	}
 }
 
 // GetPrivateImageHubs returns all private image hubs defined for app
@@ -51,7 +55,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 // UpdatePrivateImageHubValue updates the private image hub value with new password
 func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
 
-	userIsAdmin, err := utils.UserIsAdmin(ctx, &ph.userAccount, appName)
+	userIsAdmin, err := ph.authorizationValidator.UserIsAdmin(ctx, &ph.userAccount, appName)
 	if err != nil {
 		return err
 	}

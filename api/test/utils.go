@@ -71,8 +71,6 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	req, _ := http.NewRequest(method, endpoint, reader)
 	req.Header.Add("Authorization", getFakeToken())
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Impersonate-Group", "adminGroup")
-	req.Header.Add("Impersonate-User", "someUser")
 
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
