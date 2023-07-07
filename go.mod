@@ -11,6 +11,7 @@ require (
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/marstr/guid v1.1.0
@@ -59,7 +60,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-containerregistry v0.12.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -120,5 +120,5 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-// "github.com/equinor/radix-operator" v1.38.1 => "/radix-operator"
+//replace github.com/equinor/radix-operator v1.38.3 => /radix-operator
 replace github.com/equinor/radix-operator v1.38.3 => /home/anneli/GolandProjects/radix-operator
