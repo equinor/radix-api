@@ -1764,7 +1764,7 @@ func (c *environmentController) RestartBatch(accounts models.Accounts, w http.Re
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := c.environmentHandlerFactory(accounts)
-	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	err := eh.RestartBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

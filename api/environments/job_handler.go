@@ -14,7 +14,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -92,15 +91,34 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 
 // RestartJob Start running or stopped job by name
 func (eh EnvironmentHandler) RestartJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
-	batch, jobId, _, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
+	batch, jobIdx, _, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
 	if err != nil {
 		return err
 	}
 
-	batch.Spec.Jobs[jobId].Stop = pointers.Ptr(false)
-	batch.Spec.Jobs[jobId].Restart = radixutils.FormatTimestamp(time.Now())
+	setRestartJobTimeout(batch, jobIdx, radixutils.FormatTimestamp(time.Now()))
 	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
 	return err
+}
+
+// RestartBatch Restart a scheduled or stopped batch
+func (eh EnvironmentHandler) RestartBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return err
+	}
+
+	restartTimestamp := radixutils.FormatTimestamp(time.Now())
+	for jobIdx := 0; jobIdx < len(batch.Spec.Jobs); jobIdx++ {
+		setRestartJobTimeout(batch, jobIdx, restartTimestamp)
+	}
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
+	return err
+}
+
+func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestamp string) {
+	batch.Spec.Jobs[jobIdx].Stop = nil
+	batch.Spec.Jobs[jobIdx].Restart = restartTimestamp
 }
 
 // DeleteJob Delete job by name
@@ -209,11 +227,6 @@ func (eh EnvironmentHandler) StopBatch(ctx context.Context, appName, envName, jo
 
 	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
 	return err
-}
-
-// RestartBatch Restart a scheduled or stopped batch
-func (eh EnvironmentHandler) RestartBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) error {
-	return fmt.Errorf("not implemented")
 }
 
 // DeleteBatch Delete batch by name
