@@ -479,6 +479,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
 		summary.FailedCount = status.Failed
+		summary.Restart = status.Restart
 	}
 
 	return summary
