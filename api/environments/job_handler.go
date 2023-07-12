@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -73,19 +74,9 @@ func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobCo
 
 // StopJob Stop job by name
 func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
-	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
-	if !ok {
-		return jobNotFoundError(jobName)
-	}
-
-	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
+	batch, jobId, batchJobName, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
 	if err != nil {
 		return err
-	}
-
-	idx := slice.FindIndex(batch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName })
-	if idx == -1 {
-		return jobNotFoundError(jobName)
 	}
 
 	nonStoppableJob := slice.FindAll(batch.Status.JobStatuses, func(js radixv1.RadixBatchJobStatus) bool { return js.Name == batchJobName && !isBatchJobStoppable(js) })
@@ -93,9 +84,41 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 		return radixhttp.ValidationError(jobName, fmt.Sprintf("invalid job running state=%s", nonStoppableJob[0].Phase))
 	}
 
-	batch.Spec.Jobs[idx].Stop = radixutils.BoolPtr(true)
+	batch.Spec.Jobs[jobId].Stop = radixutils.BoolPtr(true)
 	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
 	return err
+}
+
+// RestartJob Start running or stopped job by name
+func (eh EnvironmentHandler) RestartJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
+	batch, jobIdx, _, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
+	if err != nil {
+		return err
+	}
+
+	setRestartJobTimeout(batch, jobIdx, radixutils.FormatTimestamp(time.Now()))
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
+	return err
+}
+
+// RestartBatch Restart a scheduled or stopped batch
+func (eh EnvironmentHandler) RestartBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) error {
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return err
+	}
+
+	restartTimestamp := radixutils.FormatTimestamp(time.Now())
+	for jobIdx := 0; jobIdx < len(batch.Spec.Jobs); jobIdx++ {
+		setRestartJobTimeout(batch, jobIdx, restartTimestamp)
+	}
+	_, err = eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Update(ctx, batch, metav1.UpdateOptions{})
+	return err
+}
+
+func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestamp string) {
+	batch.Spec.Jobs[jobIdx].Stop = nil
+	batch.Spec.Jobs[jobIdx].Restart = restartTimestamp
 }
 
 // DeleteJob Delete job by name
@@ -456,6 +479,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
 		summary.FailedCount = status.Failed
+		summary.Restart = status.Restart
 	}
 
 	return summary
@@ -549,4 +573,22 @@ func parseBatchAndJobNameFromScheduledJobName(scheduleJobName string) (batchName
 	batchJobName = scheduleJobNameParts[len(scheduleJobNameParts)-1]
 	ok = true
 	return
+}
+
+func (eh EnvironmentHandler) getBatchJob(ctx context.Context, appName string, envName string, jobComponentName string, jobName string) (*radixv1.RadixBatch, int, string, error) {
+	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
+	if !ok {
+		return nil, 0, "", jobNotFoundError(jobName)
+	}
+
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
+	if err != nil {
+		return nil, 0, "", err
+	}
+
+	idx := slice.FindIndex(batch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName })
+	if idx == -1 {
+		return nil, 0, "", jobNotFoundError(jobName)
+	}
+	return batch, idx, batchJobName, err
 }
