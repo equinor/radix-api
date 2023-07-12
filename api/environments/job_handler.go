@@ -556,11 +556,6 @@ func isBatchJobStoppable(status radixv1.RadixBatchJobStatus) bool {
 	return status.Phase == "" || status.Phase == radixv1.BatchJobPhaseActive || status.Phase == radixv1.BatchJobPhaseWaiting
 }
 
-// check if batch job is stopped
-func isBatchJobStopped(status radixv1.RadixBatchJobStatus) bool {
-	return status.Phase == radixv1.BatchJobPhaseStopped
-}
-
 func batchNotFoundError(batchName string) error {
 	return radixhttp.NotFoundError(fmt.Sprintf("batch %s not found", batchName))
 }
