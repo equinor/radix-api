@@ -18,7 +18,7 @@ import (
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
-	"github.com/equinor/radix-api/api/utils/tlsvalidator/mock"
+	tlsvalidatormock "github.com/equinor/radix-api/api/utils/tlsvalidator/mock"
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -823,7 +823,7 @@ func Test_ExternalDnsAliasSecretTestSuite(t *testing.T) {
 
 type externalDnsAliasSecretTestSuite struct {
 	suite.Suite
-	tlsValidator          *mock.MockTLSSecretValidator
+	tlsValidator          *tlsvalidatormock.MockInterface
 	commonTestUtils       *commontest.Utils
 	envvironmentTestUtils *controllertest.Utils
 	kubeClient            kubernetes.Interface
@@ -867,7 +867,7 @@ func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN stri
 
 func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
-	s.tlsValidator = mock.NewMockTLSSecretValidator(ctrl)
+	s.tlsValidator = tlsvalidatormock.NewMockInterface(ctrl)
 	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest([]EnvironmentHandlerOptions{WithTLSSecretValidator(s.tlsValidator)})
 
 	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"

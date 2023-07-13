@@ -14,6 +14,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +29,8 @@ type DeployHandler interface {
 	GetComponentsForDeploymentName(ctx context.Context, appName, deploymentID string) ([]*deploymentModels.Component, error)
 	GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error)
 	GetLatestDeploymentForApplicationEnvironment(ctx context.Context, appName, environment string) (*deploymentModels.DeploymentSummary, error)
-	GetDeploymentsForJob(ctx context.Context, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error)
+	GetDeploymentsForPipelineJob(context.Context, string, string) ([]*deploymentModels.DeploymentSummary, error)
+	GetDeploymentsForJobComponent(context.Context, string, string, string) ([]*deploymentModels.ComponentDeploymentSummary, error)
 }
 
 // DeployHandler Instance variables
@@ -105,14 +107,42 @@ func (deploy *deployHandler) GetDeploymentsForApplicationEnvironment(ctx context
 	return deployments, err
 }
 
-// GetDeploymentsForJob Lists deployments for job name
-func (deploy *deployHandler) GetDeploymentsForJob(ctx context.Context, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
+// GetDeploymentsForPipelineJob Lists deployments for pipeline job name
+func (deploy *deployHandler) GetDeploymentsForPipelineJob(ctx context.Context, appName, jobName string) ([]*deploymentModels.DeploymentSummary, error) {
 	environments, err := deploy.getEnvironmentNames(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 
 	return deploy.getDeployments(ctx, appName, environments, jobName, false)
+}
+
+// GetDeploymentsForJobComponent Lists deployments for application job component name
+func (deploy *deployHandler) GetDeploymentsForJobComponent(ctx context.Context, appName, environment, componentName string) ([]*deploymentModels.ComponentDeploymentSummary, error) {
+	ns := operatorUtils.GetEnvironmentNamespace(appName, environment)
+	radixDeploymentList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: radixLabels.Merge(
+		radixLabels.ForApplicationName(appName), radixLabels.ForEnvironmentName(environment)).String()})
+	if err != nil {
+		return nil, err
+	}
+	rds := sortRdsByActiveFromDesc(radixDeploymentList.Items)
+
+	var deploymentSummaries []*deploymentModels.ComponentDeploymentSummary
+	for _, rd := range rds {
+		builder := deploymentModels.NewComponentDeploymentSummaryBuilder().WithRadixDeployment(&rd)
+		for _, jobComponent := range rd.Spec.Jobs {
+			if jobComponent.Name != componentName {
+				continue
+			}
+			summary, err := builder.WithRadixDeployComponent(&jobComponent).Build()
+			if err != nil {
+				return nil, err
+			}
+			deploymentSummaries = append(deploymentSummaries, summary)
+			break
+		}
+	}
+	return deploymentSummaries, nil
 }
 
 // GetDeploymentWithName Handler for GetDeploymentWithName

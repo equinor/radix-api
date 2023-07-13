@@ -129,6 +129,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/deployments",
+			Method:      "GET",
+			HandlerFunc: c.GetJobComponentRadixDeployments,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
 			Method:      "GET",
 			HandlerFunc: c.GetJobs,
@@ -1210,6 +1215,63 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	} else {
 		radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 	}
+}
+
+// GetJobComponentRadixDeployments Get list of RadixDeployments for the job component
+func (c *environmentController) GetJobComponentRadixDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/deployments job GetJobComponentRadixDeployments
+	// ---
+	// summary: Get list of RadixDeployments for the job component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Radix component deployments"
+	//     schema:
+	//        type: array
+	//        items:
+	//          "$ref": "#/definitions/ComponentDeploymentSummary"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	jobComponentDeployments, err := eh.deployHandler.GetDeploymentsForJobComponent(r.Context(), appName, envName, jobComponentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobComponentDeployments)
 }
 
 // GetJobs Get list of scheduled jobs
