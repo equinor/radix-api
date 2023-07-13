@@ -144,6 +144,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.StopJob,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart",
+			Method:      "POST",
+			HandlerFunc: c.RestartJob,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
 			Method:      "DELETE",
 			HandlerFunc: c.DeleteJob,
@@ -167,6 +172,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
 			Method:      "POST",
 			HandlerFunc: c.StopBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart",
+			Method:      "POST",
+			HandlerFunc: c.RestartBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
@@ -212,7 +222,9 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -274,7 +286,9 @@ func (c *environmentController) CreateEnvironment(accounts models.Accounts, w ht
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -321,7 +335,9 @@ func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -372,7 +388,9 @@ func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w ht
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -415,7 +433,9 @@ func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, 
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -465,7 +485,9 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -521,7 +543,9 @@ func (c *environmentController) StopComponent(accounts models.Accounts, w http.R
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -574,7 +598,9 @@ func (c *environmentController) StartComponent(accounts models.Accounts, w http.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -631,7 +657,9 @@ func (c *environmentController) RestartComponent(accounts models.Accounts, w htt
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -679,7 +707,9 @@ func (c *environmentController) StopEnvironment(accounts models.Accounts, w http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -726,7 +756,9 @@ func (c *environmentController) StartEnvironment(accounts models.Accounts, w htt
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -777,7 +809,9 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -819,7 +853,9 @@ func (c *environmentController) StopApplication(accounts models.Accounts, w http
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -860,7 +896,9 @@ func (c *environmentController) StartApplication(accounts models.Accounts, w htt
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -905,7 +943,9 @@ func (c *environmentController) RestartApplication(accounts models.Accounts, w h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -956,7 +996,9 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1044,7 +1086,9 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1131,7 +1175,9 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1195,7 +1241,9 @@ func (c *environmentController) GetJobs(accounts models.Accounts, w http.Respons
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1255,7 +1303,9 @@ func (c *environmentController) GetJob(accounts models.Accounts, w http.Response
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1314,7 +1364,9 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1335,6 +1387,71 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopJob(r.Context(), appName, envName, jobComponentName, jobName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RestartJob Start a running or stopped scheduled job
+func (c *environmentController) RestartJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart job restartJob
+	// ---
+	// summary: Restart a running or stopped scheduled job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid job"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.RestartJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1377,7 +1494,9 @@ func (c *environmentController) DeleteJob(accounts models.Accounts, w http.Respo
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1435,7 +1554,9 @@ func (c *environmentController) GetBatches(accounts models.Accounts, w http.Resp
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1495,7 +1616,9 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1554,7 +1677,9 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1575,6 +1700,71 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RestartBatch Restart a scheduled or stopped batch
+func (c *environmentController) RestartBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart job restartBatch
+	// ---
+	// summary: Restart a scheduled or stopped batch
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.RestartBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1617,7 +1807,9 @@ func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.Res
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -1698,7 +1890,9 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1774,7 +1968,9 @@ func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.R
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -1833,7 +2029,9 @@ func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "204":

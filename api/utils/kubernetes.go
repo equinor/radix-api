@@ -101,7 +101,7 @@ func getOutClusterClientConfig(token string, impersonation radixmodels.Impersona
 	if impersonation.PerformImpersonation() {
 		impersonationConfig := restclient.ImpersonationConfig{
 			UserName: impersonation.User,
-			Groups:   []string{impersonation.Group},
+			Groups:   impersonation.Groups,
 		}
 
 		kubeConfig.Impersonate = impersonationConfig

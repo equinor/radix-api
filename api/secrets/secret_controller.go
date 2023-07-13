@@ -84,7 +84,9 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -162,7 +164,9 @@ func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWri
 	// - name: Impersonate-Group
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: string
+	//   type: array
+	//   items:
+	//     type: string
 	//   required: false
 	// responses:
 	//   "200":

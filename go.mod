@@ -3,9 +3,9 @@ module github.com/equinor/radix-api
 go 1.19
 
 require (
-	github.com/equinor/radix-common v1.2.12
+	github.com/equinor/radix-common v1.3.0
 	github.com/equinor/radix-job-scheduler v1.7.10
-	github.com/equinor/radix-operator v1.38.3
+	github.com/equinor/radix-operator v1.39.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.7
@@ -30,7 +30,7 @@ require (
 	k8s.io/apimachinery v0.25.8
 	k8s.io/client-go v0.25.8
 	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
-	sigs.k8s.io/secrets-store-csi-driver v1.3.2
+	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
 
 require (
