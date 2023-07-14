@@ -77,7 +77,7 @@ func (jh JobHandler) GetApplicationJob(ctx context.Context, appName, jobName str
 		return nil, err
 	}
 
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(ctx, appName, jobName)
+	jobDeployments, err := jh.deploy.GetDeploymentsForPipelineJob(ctx, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *v1beta1.PipelineRun, taskRun
 		}
 	}
 	logEmbeddedCommandIndex := strings.Index(pipelineTaskModel.StatusMessage, "for logs run")
-	if logEmbeddedCommandIndex >= 0 { //Avoid to publish kubectl command, provided by Tekton component after "for logs run" prefix for failed task step
+	if logEmbeddedCommandIndex >= 0 { // Avoid to publish kubectl command, provided by Tekton component after "for logs run" prefix for failed task step
 		pipelineTaskModel.StatusMessage = pipelineTaskModel.StatusMessage[0:logEmbeddedCommandIndex]
 	}
 	return &pipelineTaskModel

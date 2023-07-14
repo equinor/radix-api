@@ -10,31 +10,31 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockTLSSecretValidator is a mock of TLSSecretValidator interface.
-type MockTLSSecretValidator struct {
+// MockInterface is a mock of Interface interface.
+type MockInterface struct {
 	ctrl     *gomock.Controller
-	recorder *MockTLSSecretValidatorMockRecorder
+	recorder *MockInterfaceMockRecorder
 }
 
-// MockTLSSecretValidatorMockRecorder is the mock recorder for MockTLSSecretValidator.
-type MockTLSSecretValidatorMockRecorder struct {
-	mock *MockTLSSecretValidator
+// MockInterfaceMockRecorder is the mock recorder for MockInterface.
+type MockInterfaceMockRecorder struct {
+	mock *MockInterface
 }
 
-// NewMockTLSSecretValidator creates a new mock instance.
-func NewMockTLSSecretValidator(ctrl *gomock.Controller) *MockTLSSecretValidator {
-	mock := &MockTLSSecretValidator{ctrl: ctrl}
-	mock.recorder = &MockTLSSecretValidatorMockRecorder{mock}
+// NewMockInterface creates a new mock instance.
+func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
+	mock := &MockInterface{ctrl: ctrl}
+	mock.recorder = &MockInterfaceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTLSSecretValidator) EXPECT() *MockTLSSecretValidatorMockRecorder {
+func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
 // ValidateTLSCertificate mocks base method.
-func (m *MockTLSSecretValidator) ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (bool, []string) {
+func (m *MockInterface) ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (bool, []string) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateTLSCertificate", certBytes, keyBytes, dnsName)
 	ret0, _ := ret[0].(bool)
@@ -43,13 +43,13 @@ func (m *MockTLSSecretValidator) ValidateTLSCertificate(certBytes, keyBytes []by
 }
 
 // ValidateTLSCertificate indicates an expected call of ValidateTLSCertificate.
-func (mr *MockTLSSecretValidatorMockRecorder) ValidateTLSCertificate(certBytes, keyBytes, dnsName interface{}) *gomock.Call {
+func (mr *MockInterfaceMockRecorder) ValidateTLSCertificate(certBytes, keyBytes, dnsName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateTLSCertificate", reflect.TypeOf((*MockTLSSecretValidator)(nil).ValidateTLSCertificate), certBytes, keyBytes, dnsName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateTLSCertificate", reflect.TypeOf((*MockInterface)(nil).ValidateTLSCertificate), certBytes, keyBytes, dnsName)
 }
 
 // ValidateTLSKey mocks base method.
-func (m *MockTLSSecretValidator) ValidateTLSKey(keyBytes []byte) (bool, []string) {
+func (m *MockInterface) ValidateTLSKey(keyBytes []byte) (bool, []string) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateTLSKey", keyBytes)
 	ret0, _ := ret[0].(bool)
@@ -58,7 +58,7 @@ func (m *MockTLSSecretValidator) ValidateTLSKey(keyBytes []byte) (bool, []string
 }
 
 // ValidateTLSKey indicates an expected call of ValidateTLSKey.
-func (mr *MockTLSSecretValidatorMockRecorder) ValidateTLSKey(keyBytes interface{}) *gomock.Call {
+func (mr *MockInterfaceMockRecorder) ValidateTLSKey(keyBytes interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateTLSKey", reflect.TypeOf((*MockTLSSecretValidator)(nil).ValidateTLSKey), keyBytes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateTLSKey", reflect.TypeOf((*MockInterface)(nil).ValidateTLSKey), keyBytes)
 }

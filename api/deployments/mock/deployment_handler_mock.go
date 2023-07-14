@@ -97,19 +97,34 @@ func (mr *MockDeployHandlerMockRecorder) GetDeploymentsForApplicationEnvironment
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentsForApplicationEnvironment", reflect.TypeOf((*MockDeployHandler)(nil).GetDeploymentsForApplicationEnvironment), ctx, appName, environment, latest)
 }
 
-// GetDeploymentsForJob mocks base method.
-func (m *MockDeployHandler) GetDeploymentsForJob(ctx context.Context, appName, jobName string) ([]*models.DeploymentSummary, error) {
+// GetDeploymentsForPipelineJob mocks base method.
+func (m *MockDeployHandler) GetDeploymentsForPipelineJob(arg0 context.Context, arg1, arg2 string) ([]*models.DeploymentSummary, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeploymentsForJob", ctx, appName, jobName)
+	ret := m.ctrl.Call(m, "GetDeploymentsForPipelineJob", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*models.DeploymentSummary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetDeploymentsForJob indicates an expected call of GetDeploymentsForJob.
-func (mr *MockDeployHandlerMockRecorder) GetDeploymentsForJob(ctx, appName, jobName interface{}) *gomock.Call {
+// GetDeploymentsForPipelineJob indicates an expected call of GetDeploymentsForPipelineJob.
+func (mr *MockDeployHandlerMockRecorder) GetDeploymentsForPipelineJob(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentsForJob", reflect.TypeOf((*MockDeployHandler)(nil).GetDeploymentsForJob), ctx, appName, jobName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeploymentsForPipelineJob", reflect.TypeOf((*MockDeployHandler)(nil).GetDeploymentsForPipelineJob), arg0, arg1, arg2)
+}
+
+// GetJobComponentDeployments mocks base method.
+func (m *MockDeployHandler) GetJobComponentDeployments(arg0 context.Context, arg1, arg2, arg3 string) ([]*models.DeploymentItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetJobComponentDeployments", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*models.DeploymentItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetJobComponentDeployments indicates an expected call of GetJobComponentDeployments.
+func (mr *MockDeployHandlerMockRecorder) GetJobComponentDeployments(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobComponentDeployments", reflect.TypeOf((*MockDeployHandler)(nil).GetJobComponentDeployments), arg0, arg1, arg2, arg3)
 }
 
 // GetLatestDeploymentForApplicationEnvironment mocks base method.
