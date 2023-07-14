@@ -73,19 +73,14 @@ type DeploymentSummary struct {
 	GitTags string `json:"gitTags,omitempty"`
 }
 
-// ComponentDeploymentSummary describe a component deployment
-// swagger:model ComponentDeploymentSummary
-type ComponentDeploymentSummary struct {
+// DeploymentItem describe a deployment short info
+// swagger:model DeploymentItem
+type DeploymentItem struct {
 	// Name the unique name of the Radix application deployment
 	//
 	// required: true
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
-
-	// Name of the component
-	//
-	// required: true
-	ComponentName string `json:"componentName"`
 
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
@@ -104,9 +99,4 @@ type ComponentDeploymentSummary struct {
 	// required: false
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	GitCommitHash string `json:"gitCommitHash,omitempty"`
-
-	// Condition the condition of the component
-	//
-	// required: false
-	Condition string `json:"condition,omitempty"`
 }

@@ -131,7 +131,7 @@ func (c *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/deployments",
 			Method:      "GET",
-			HandlerFunc: c.GetJobComponentRadixDeployments,
+			HandlerFunc: c.GetJobComponentDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
@@ -1217,11 +1217,11 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	}
 }
 
-// GetJobComponentRadixDeployments Get list of RadixDeployments for the job component
-func (c *environmentController) GetJobComponentRadixDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/deployments job GetJobComponentRadixDeployments
+// GetJobComponentDeployments Get list of deployments for the job component
+func (c *environmentController) GetJobComponentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/deployments job GetJobComponentDeployments
 	// ---
-	// summary: Get list of RadixDeployments for the job component
+	// summary: Get list of deployments for the job component
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -1252,11 +1252,11 @@ func (c *environmentController) GetJobComponentRadixDeployments(accounts models.
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Radix component deployments"
+	//     description: "Radix deployments"
 	//     schema:
 	//        type: array
 	//        items:
-	//          "$ref": "#/definitions/ComponentDeploymentSummary"
+	//          "$ref": "#/definitions/DeploymentItem"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -1264,7 +1264,7 @@ func (c *environmentController) GetJobComponentRadixDeployments(accounts models.
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 
 	eh := c.environmentHandlerFactory(accounts)
-	jobComponentDeployments, err := eh.deployHandler.GetDeploymentsForJobComponent(r.Context(), appName, envName, jobComponentName)
+	jobComponentDeployments, err := eh.deployHandler.GetJobComponentDeployments(r.Context(), appName, envName, jobComponentName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

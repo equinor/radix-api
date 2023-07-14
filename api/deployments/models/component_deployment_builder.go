@@ -7,44 +7,34 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
-// ComponentDeploymentSummaryBuilder Builds DTOs
-type ComponentDeploymentSummaryBuilder interface {
-	WithRadixDeployment(*v1.RadixDeployment) ComponentDeploymentSummaryBuilder
-	WithRadixDeployComponent(component v1.RadixCommonDeployComponent) ComponentDeploymentSummaryBuilder
-	Build() (*ComponentDeploymentSummary, error)
+// DeploymentItemBuilder Builds DTOs
+type DeploymentItemBuilder interface {
+	WithRadixDeployment(*v1.RadixDeployment) DeploymentItemBuilder
+	Build() (*DeploymentItem, error)
 }
 
-type componentDeploymentSummaryBuilder struct {
-	component       v1.RadixCommonDeployComponent
+type deploymentItemBuilder struct {
 	radixDeployment *v1.RadixDeployment
 }
 
-// NewComponentDeploymentSummaryBuilder Constructor for application ComponentDeploymentSummaryBuilder
-func NewComponentDeploymentSummaryBuilder() ComponentDeploymentSummaryBuilder {
-	return &componentDeploymentSummaryBuilder{}
+// NewDeploymentItemBuilder Constructor for application DeploymentItemBuilder
+func NewDeploymentItemBuilder() DeploymentItemBuilder {
+	return &deploymentItemBuilder{}
 }
 
-// WithRadixDeployComponent With RadixDeployComponent
-func (b *componentDeploymentSummaryBuilder) WithRadixDeployComponent(component v1.RadixCommonDeployComponent) ComponentDeploymentSummaryBuilder {
-	b.component = component
-	return b
-}
-
-func (b *componentDeploymentSummaryBuilder) WithRadixDeployment(rd *v1.RadixDeployment) ComponentDeploymentSummaryBuilder {
+func (b *deploymentItemBuilder) WithRadixDeployment(rd *v1.RadixDeployment) DeploymentItemBuilder {
 	b.radixDeployment = rd
 	return b
 }
 
-func (b *componentDeploymentSummaryBuilder) Build() (*ComponentDeploymentSummary, error) {
-	if b.component == nil || b.radixDeployment == nil {
-		return nil, fmt.Errorf("component or RadixDeployment are empty")
+func (b *deploymentItemBuilder) Build() (*DeploymentItem, error) {
+	if b.radixDeployment == nil {
+		return nil, fmt.Errorf("RadixDeployment is empty")
 	}
-	return &ComponentDeploymentSummary{
+	return &DeploymentItem{
 		Name:          b.radixDeployment.GetName(),
-		ComponentName: b.component.GetName(),
 		ActiveFrom:    radixutils.FormatTimestamp(b.radixDeployment.Status.ActiveFrom.Time),
 		ActiveTo:      radixutils.FormatTimestamp(b.radixDeployment.Status.ActiveTo.Time),
-		Condition:     string(b.radixDeployment.Status.Condition),
 		GitCommitHash: b.radixDeployment.GetLabels()[kube.RadixCommitLabel],
 	}, nil
 }

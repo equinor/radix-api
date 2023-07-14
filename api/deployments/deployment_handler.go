@@ -30,7 +30,7 @@ type DeployHandler interface {
 	GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error)
 	GetLatestDeploymentForApplicationEnvironment(ctx context.Context, appName, environment string) (*deploymentModels.DeploymentSummary, error)
 	GetDeploymentsForPipelineJob(context.Context, string, string) ([]*deploymentModels.DeploymentSummary, error)
-	GetDeploymentsForJobComponent(context.Context, string, string, string) ([]*deploymentModels.ComponentDeploymentSummary, error)
+	GetJobComponentDeployments(context.Context, string, string, string) ([]*deploymentModels.DeploymentItem, error)
 }
 
 // DeployHandler Instance variables
@@ -117,8 +117,8 @@ func (deploy *deployHandler) GetDeploymentsForPipelineJob(ctx context.Context, a
 	return deploy.getDeployments(ctx, appName, environments, jobName, false)
 }
 
-// GetDeploymentsForJobComponent Lists deployments for application job component name
-func (deploy *deployHandler) GetDeploymentsForJobComponent(ctx context.Context, appName, environment, componentName string) ([]*deploymentModels.ComponentDeploymentSummary, error) {
+// GetJobComponentDeployments Lists deployments for job component
+func (deploy *deployHandler) GetJobComponentDeployments(ctx context.Context, appName, environment, componentName string) ([]*deploymentModels.DeploymentItem, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, environment)
 	radixDeploymentList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: radixLabels.Merge(
 		radixLabels.ForApplicationName(appName), radixLabels.ForEnvironmentName(environment)).String()})
@@ -127,22 +127,21 @@ func (deploy *deployHandler) GetDeploymentsForJobComponent(ctx context.Context, 
 	}
 	rds := sortRdsByActiveFromDesc(radixDeploymentList.Items)
 
-	var deploymentSummaries []*deploymentModels.ComponentDeploymentSummary
+	var deploymentItems []*deploymentModels.DeploymentItem
 	for _, rd := range rds {
-		builder := deploymentModels.NewComponentDeploymentSummaryBuilder().WithRadixDeployment(&rd)
 		for _, jobComponent := range rd.Spec.Jobs {
 			if jobComponent.Name != componentName {
 				continue
 			}
-			summary, err := builder.WithRadixDeployComponent(&jobComponent).Build()
+			deploymentItem, err := deploymentModels.NewDeploymentItemBuilder().WithRadixDeployment(&rd).Build()
 			if err != nil {
 				return nil, err
 			}
-			deploymentSummaries = append(deploymentSummaries, summary)
+			deploymentItems = append(deploymentItems, deploymentItem)
 			break
 		}
 	}
-	return deploymentSummaries, nil
+	return deploymentItems, nil
 }
 
 // GetDeploymentWithName Handler for GetDeploymentWithName
@@ -226,11 +225,11 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	var radixDeploymentList []v1.RadixDeployment
 	namespaces := slice.Map(environments, func(env string) string { return operatorUtils.GetEnvironmentNamespace(appName, env) })
 	for _, ns := range namespaces {
-		rdlist, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
+		rdList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
 		if err != nil {
 			return nil, err
 		}
-		radixDeploymentList = append(radixDeploymentList, rdlist.Items...)
+		radixDeploymentList = append(radixDeploymentList, rdList.Items...)
 	}
 
 	appNamespace := operatorUtils.GetAppNamespace(appName)
