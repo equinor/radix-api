@@ -14,7 +14,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,8 +119,8 @@ func (deploy *deployHandler) GetDeploymentsForPipelineJob(ctx context.Context, a
 // GetJobComponentDeployments Lists deployments for job component
 func (deploy *deployHandler) GetJobComponentDeployments(ctx context.Context, appName, environment, componentName string) ([]*deploymentModels.DeploymentItem, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, environment)
-	radixDeploymentList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: radixLabels.Merge(
-		radixLabels.ForApplicationName(appName), radixLabels.ForEnvironmentName(environment)).String()})
+	radixDeploymentList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: radixlabels.Merge(
+		radixlabels.ForApplicationName(appName), radixlabels.ForEnvironmentName(environment)).String()})
 	if err != nil {
 		return nil, err
 	}
