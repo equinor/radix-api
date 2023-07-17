@@ -184,6 +184,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.RestartBatch,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/copy",
+			Method:      "POST",
+			HandlerFunc: c.CopyBatch,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
 			Method:      "DELETE",
 			HandlerFunc: c.DeleteBatch,
@@ -1794,6 +1799,77 @@ func (c *environmentController) RestartBatch(accounts models.Accounts, w http.Re
 	// - name: batchName
 	//   in: path
 	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.RestartBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// CopyBatch Create a copy of existing scheduled batch with optional changes
+func (c *environmentController) CopyBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/copy job copyBatch
+	// ---
+	// summary: Create a copy of existing scheduled batch with optional changes
+	// parameters:
+	// - name: jobDescription
+	//   in: body
+	//   description: Request for creating a scheduled job
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ApplicationRegistrationRequest"
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch to be copied
 	//   type: string
 	//   required: true
 	// - name: Impersonate-User
