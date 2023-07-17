@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
+	environmentsModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -1851,7 +1853,7 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	//   description: Request for creating a scheduled job
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/ApplicationRegistrationRequest"
+	//       "$ref": "#/definitions/ScheduledJobRequest"
 	// - name: appName
 	//   in: path
 	//   description: Name of application
@@ -1900,9 +1902,14 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	envName := mux.Vars(r)["envName"]
 	jobComponentName := mux.Vars(r)["jobComponentName"]
 	batchName := mux.Vars(r)["batchName"]
+	var scheduledJobRequest environmentsModels.ScheduledJobRequest
+	if err := json.NewDecoder(r.Body).Decode(&scheduledJobRequest); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	err := eh.RestartBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledJobRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

@@ -15,6 +15,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
+	jobsSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -237,6 +238,14 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 	}
 
 	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(ctx, batch.GetName(), metav1.DeleteOptions{})
+}
+
+// CopyBatch Copy batch by name
+func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledJobRequest environmentModels.ScheduledJobRequest) error {
+	jobSchedulerHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, scheduledJobRequest.DeploymentName))
+	// jobSchedulerHandler.CopyBatch()//TODO
+
+	return nil
 }
 
 // GetBatch Gets batch by name
@@ -591,4 +600,13 @@ func (eh EnvironmentHandler) getBatchJob(ctx context.Context, appName string, en
 		return nil, 0, "", jobNotFoundError(jobName)
 	}
 	return batch, idx, batchJobName, err
+}
+
+func getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName string) *jobsSchedulerModels.Env {
+	return &jobsSchedulerModels.Env{
+		RadixComponentName:                           jobComponentName,
+		RadixDeploymentName:                          deploymentName,
+		RadixDeploymentNamespace:                     operatorUtils.GetEnvironmentNamespace(appName, envName),
+		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
+	}
 }
