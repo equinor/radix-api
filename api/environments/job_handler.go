@@ -17,6 +17,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	jobsSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
+	jobSchedulerV1Models "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -241,11 +242,13 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 }
 
 // CopyBatch Copy batch by name
-func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledJobRequest environmentModels.ScheduledJobRequest) error {
-	jobSchedulerHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, scheduledJobRequest.DeploymentName))
-	// jobSchedulerHandler.CopyBatch()//TODO
-
-	return nil
+func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledBatchSummary, error) {
+	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, scheduledJobRequest.DeploymentName))
+	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, scheduledJobRequest.DeploymentName, nil)
+	if err != nil {
+		return nil, err
+	}
+	return eh.getScheduledBatchSummary2(batchStatus, scheduledJobRequest.DeploymentName), nil
 }
 
 // GetBatch Gets batch by name
@@ -416,6 +419,18 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *radixv1.RadixBatch)
 		Created:        radixutils.FormatTimestamp(batch.GetCreationTimestamp().Time),
 		Started:        radixutils.FormatTime(batch.Status.Condition.ActiveTime),
 		Ended:          radixutils.FormatTime(batch.Status.Condition.CompletionTime),
+	}
+}
+
+func (eh EnvironmentHandler) getScheduledBatchSummary2(batchStatus *jobSchedulerV1Models.BatchStatus, deploymentName string) *deploymentModels.ScheduledBatchSummary {
+	return &deploymentModels.ScheduledBatchSummary{
+		Name:           batchStatus.Name,
+		DeploymentName: deploymentName,
+		Status:         batchStatus.Status,
+		TotalJobCount:  len(batchStatus.JobStatuses),
+		Created:        batchStatus.Created,
+		Started:        batchStatus.Started,
+		Ended:          batchStatus.Ended,
 	}
 }
 

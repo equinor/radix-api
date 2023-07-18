@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/equinor/radix-common v1.3.0
-	github.com/equinor/radix-job-scheduler v1.7.11-0.20230717133616-80b31d05df76
+	github.com/equinor/radix-job-scheduler v1.7.11-0.20230717145904-3379eeff7bb2
 	github.com/equinor/radix-operator v1.39.1
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/errors v0.20.3
@@ -32,6 +32,8 @@ require (
 	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
 	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
+
+replace github.com/equinor/radix-job-scheduler => ../radix-job-scheduler
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect

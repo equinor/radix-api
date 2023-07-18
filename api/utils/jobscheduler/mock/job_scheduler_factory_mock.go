@@ -38,7 +38,7 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 // CreateJobSchedulerHandlerForEnv mocks base method.
 func (m *MockInterface) CreateJobSchedulerHandlerForEnv(arg0 *models.Env) apiv2.Handler {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJobSchedulerHandlerForEnv", arg0)
+	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", arg0)
 	ret0, _ := ret[0].(apiv2.Handler)
 	return ret0
 }
@@ -46,5 +46,5 @@ func (m *MockInterface) CreateJobSchedulerHandlerForEnv(arg0 *models.Env) apiv2.
 // CreateJobSchedulerHandlerForEnv indicates an expected call of CreateJobSchedulerHandlerForEnv.
 func (mr *MockInterfaceMockRecorder) CreateJobSchedulerHandlerForEnv(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerHandlerForEnv", reflect.TypeOf((*MockInterface)(nil).CreateJobSchedulerHandlerForEnv), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerBatchHandlerForEnv", reflect.TypeOf((*MockInterface)(nil).CreateJobSchedulerHandlerForEnv), arg0)
 }

@@ -1909,7 +1909,7 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledJobRequest)
+	_, err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledJobRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
