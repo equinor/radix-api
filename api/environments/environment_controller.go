@@ -129,6 +129,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/deployments",
+			Method:      "GET",
+			HandlerFunc: c.GetJobComponentDeployments,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
 			Method:      "GET",
 			HandlerFunc: c.GetJobs,
@@ -142,6 +147,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
 			Method:      "POST",
 			HandlerFunc: c.StopJob,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart",
+			Method:      "POST",
+			HandlerFunc: c.RestartJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
@@ -167,6 +177,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
 			Method:      "POST",
 			HandlerFunc: c.StopBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart",
+			Method:      "POST",
+			HandlerFunc: c.RestartBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
@@ -1202,6 +1217,63 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	}
 }
 
+// GetJobComponentDeployments Get list of deployments for the job component
+func (c *environmentController) GetJobComponentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/deployments job GetJobComponentDeployments
+	// ---
+	// summary: Get list of deployments for the job component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Radix deployments"
+	//     schema:
+	//        type: array
+	//        items:
+	//          "$ref": "#/definitions/DeploymentItem"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	jobComponentDeployments, err := eh.deployHandler.GetJobComponentDeployments(r.Context(), appName, envName, jobComponentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobComponentDeployments)
+}
+
 // GetJobs Get list of scheduled jobs
 func (c *environmentController) GetJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs job getJobs
@@ -1377,6 +1449,71 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopJob(r.Context(), appName, envName, jobComponentName, jobName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RestartJob Start a running or stopped scheduled job
+func (c *environmentController) RestartJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart job restartJob
+	// ---
+	// summary: Restart a running or stopped scheduled job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid job"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	jobName := mux.Vars(r)["jobName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.RestartJob(r.Context(), appName, envName, jobComponentName, jobName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
@@ -1625,6 +1762,71 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RestartBatch Restart a scheduled or stopped batch
+func (c *environmentController) RestartBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart job restartBatch
+	// ---
+	// summary: Restart a scheduled or stopped batch
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.RestartBatch(r.Context(), appName, envName, jobComponentName, batchName)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return

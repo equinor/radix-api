@@ -398,6 +398,10 @@ type ScheduledJobSummary struct {
 	// required: true
 	// example: 1
 	FailedCount int32 `json:"failedCount"`
+
+	// Timestamp of the job restart, if applied.
+	// +optional
+	Restart string
 }
 
 // Node Defines node attributes, where pod should be scheduled
