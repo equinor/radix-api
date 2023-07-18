@@ -386,7 +386,6 @@ func (ah *ApplicationHandler) DeleteApplication(ctx context.Context, appName str
 	// Make check that this is an existing application and that the user has access to it
 	userAccount := ah.getUserAccount()
 	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
-	// userIsAdmin, err := utils.UserIsAdmin(ctx, &userAccount, appName)
 	if err != nil {
 		return err
 	}
