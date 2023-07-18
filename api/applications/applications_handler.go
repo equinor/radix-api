@@ -642,15 +642,6 @@ func (ah *ApplicationHandler) getMachineUserServiceAccount(ctx context.Context, 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
 func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
 	// Make check that this is an existing application and that the user has access to it
-	userAccount := ah.getUserAccount()
-	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
-	if err != nil {
-		return err
-	}
-	if !userIsAdmin {
-		return fmt.Errorf("user is not allowed to regenerate deploy key for %s", appName)
-	}
-
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -684,11 +675,11 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 		if err != nil {
 			return fmt.Errorf("failed to derive public key from private key: %v", err)
 		}
-		exisingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+		existingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		newSecret := exisingSecret.DeepCopy()
+		newSecret := existingSecret.DeepCopy()
 		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
 		_, err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
 		if err != nil {
