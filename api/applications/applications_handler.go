@@ -383,14 +383,10 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 
 // DeleteApplication handler for DeleteApplication
 func (ah *ApplicationHandler) DeleteApplication(ctx context.Context, appName string) error {
-	// Make check that this is an existing application and that the user has access to it
-	userAccount := ah.getUserAccount()
-	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
+	// Make check that this is an existing application
+	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return err
-	}
-	if !userIsAdmin {
-		return fmt.Errorf("user is not allowed to delete registration %s", appName)
 	}
 
 	err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Delete(ctx, appName, metav1.DeleteOptions{})
