@@ -3,6 +3,7 @@ package jobs_test
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"testing"
 
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -73,7 +74,7 @@ func TestGetApplicationJob(t *testing.T) {
 	handler := Init(accounts, deployments.Init(accounts))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters)
+	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters, authorizationvalidator.MockAuthorizationValidator())
 	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 
 	// Test

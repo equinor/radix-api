@@ -3,7 +3,6 @@ package environments
 import (
 	"context"
 	"encoding/json"
-	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"io"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-api/models"
@@ -59,7 +59,7 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 }
 
 // WithTLSSecretValidator configures the tlsSecretValidator used by EnvironmentHandler
-func WithTLSSecretValidator(validator tlsvalidator.Interface) EnvironmentHandlerOptions {
+func WithTLSSecretValidator(validator tlsvalidator.TLSSecretValidator) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.tlsSecretValidator = validator
 	}
@@ -97,7 +97,7 @@ type EnvironmentHandler struct {
 	accounts                   models.Accounts
 	kubeUtil                   *kube.Kube
 	kubeUtilForServiceAccount  *kube.Kube
-	tlsSecretValidator         tlsvalidator.Interface
+	tlsSecretValidator         tlsvalidator.TLSSecretValidator
 	jobSchedulerHandlerFactory jobscheduler.Interface
 }
 

@@ -22,6 +22,7 @@ swaggerui_src/swagger.json
 
 __debug_bin
 .dccache
+Dockerfile.dev
 
 # binary created by goland with default settings
 main

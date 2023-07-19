@@ -1,7 +1,7 @@
 package tlsvalidator
 
-// Interface defines methods to validate certificate and private key for TLS
-type Interface interface {
+// TLSSecretValidator defines methods to validate certificate and private key for TLS
+type TLSSecretValidator interface {
 	// ValidateTLSKey validates the private key
 	// keyBytes must be in PEM format
 	// Returns false is keyBytes is invalid, along with a list of validation error messages
