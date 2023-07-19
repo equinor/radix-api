@@ -248,7 +248,7 @@ func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return nil, err
 	}
-	return eh.getScheduledBatchSummary2(batchStatus, scheduledJobRequest.DeploymentName), nil
+	return eh.getScheduledBatchStatus(batchStatus, scheduledJobRequest.DeploymentName), nil
 }
 
 // GetBatch Gets batch by name
@@ -422,7 +422,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *radixv1.RadixBatch)
 	}
 }
 
-func (eh EnvironmentHandler) getScheduledBatchSummary2(batchStatus *jobSchedulerV1Models.BatchStatus, deploymentName string) *deploymentModels.ScheduledBatchSummary {
+func (eh EnvironmentHandler) getScheduledBatchStatus(batchStatus *jobSchedulerV1Models.BatchStatus, deploymentName string) *deploymentModels.ScheduledBatchSummary {
 	return &deploymentModels.ScheduledBatchSummary{
 		Name:           batchStatus.Name,
 		DeploymentName: deploymentName,

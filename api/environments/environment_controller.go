@@ -1702,14 +1702,14 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := c.environmentHandlerFactory(accounts)
-	jobSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	batchSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, jobSummary)
+	radixhttp.JSONResponse(w, r, batchSummary)
 }
 
 // StopBatch Stop a scheduled batch
@@ -1887,6 +1887,10 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	//     type: string
 	//   required: false
 	// responses:
+	//   "200":
+	//     description: "scheduled batch"
+	//     schema:
+	//        "$ref": "#/definitions/ScheduledBatchSummary"
 	//   "204":
 	//     description: "Success"
 	//   "400":
@@ -1909,13 +1913,13 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	_, err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledJobRequest)
+	batchSummary, err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledJobRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	radixhttp.JSONResponse(w, r, batchSummary)
 }
 
 // DeleteBatch Delete a batch
