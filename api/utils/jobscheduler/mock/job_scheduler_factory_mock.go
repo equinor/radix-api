@@ -7,44 +7,44 @@ package mock
 import (
 	reflect "reflect"
 
-	apiv2 "github.com/equinor/radix-job-scheduler/api/v2"
+	batchesv1 "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	models "github.com/equinor/radix-job-scheduler/models"
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockInterface is a mock of Interface interface.
-type MockInterface struct {
+// MockHandlerFactoryInterface is a mock of HandlerFactoryInterface interface.
+type MockHandlerFactoryInterface struct {
 	ctrl     *gomock.Controller
-	recorder *MockInterfaceMockRecorder
+	recorder *MockHandlerFactoryInterfaceMockRecorder
 }
 
-// MockInterfaceMockRecorder is the mock recorder for MockInterface.
-type MockInterfaceMockRecorder struct {
-	mock *MockInterface
+// MockHandlerFactoryInterfaceMockRecorder is the mock recorder for MockHandlerFactoryInterface.
+type MockHandlerFactoryInterfaceMockRecorder struct {
+	mock *MockHandlerFactoryInterface
 }
 
-// NewMockInterface creates a new mock instance.
-func NewMockInterface(ctrl *gomock.Controller) *MockInterface {
-	mock := &MockInterface{ctrl: ctrl}
-	mock.recorder = &MockInterfaceMockRecorder{mock}
+// NewMockHandlerFactoryInterface creates a new mock instance.
+func NewMockHandlerFactoryInterface(ctrl *gomock.Controller) *MockHandlerFactoryInterface {
+	mock := &MockHandlerFactoryInterface{ctrl: ctrl}
+	mock.recorder = &MockHandlerFactoryInterfaceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
+func (m *MockHandlerFactoryInterface) EXPECT() *MockHandlerFactoryInterfaceMockRecorder {
 	return m.recorder
 }
 
-// CreateJobSchedulerHandlerForEnv mocks base method.
-func (m *MockInterface) CreateJobSchedulerHandlerForEnv(arg0 *models.Env) apiv2.Handler {
+// CreateJobSchedulerBatchHandlerForEnv mocks base method.
+func (m *MockHandlerFactoryInterface) CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batchesv1.BatchHandler {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", arg0)
-	ret0, _ := ret[0].(apiv2.Handler)
+	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", env)
+	ret0, _ := ret[0].(batchesv1.BatchHandler)
 	return ret0
 }
 
-// CreateJobSchedulerHandlerForEnv indicates an expected call of CreateJobSchedulerHandlerForEnv.
-func (mr *MockInterfaceMockRecorder) CreateJobSchedulerHandlerForEnv(arg0 interface{}) *gomock.Call {
+// CreateJobSchedulerBatchHandlerForEnv indicates an expected call of CreateJobSchedulerBatchHandlerForEnv.
+func (mr *MockHandlerFactoryInterfaceMockRecorder) CreateJobSchedulerBatchHandlerForEnv(env interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerBatchHandlerForEnv", reflect.TypeOf((*MockInterface)(nil).CreateJobSchedulerHandlerForEnv), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerBatchHandlerForEnv", reflect.TypeOf((*MockHandlerFactoryInterface)(nil).CreateJobSchedulerBatchHandlerForEnv), env)
 }

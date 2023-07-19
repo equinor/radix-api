@@ -823,7 +823,7 @@ func Test_ExternalDnsAliasSecretTestSuite(t *testing.T) {
 
 type externalDnsAliasSecretTestSuite struct {
 	suite.Suite
-	tlsValidator          *tlsvalidatormock.MockInterface
+	tlsValidator          *tlsvalidatormock.MockTLSSecretValidator
 	commonTestUtils       *commontest.Utils
 	envvironmentTestUtils *controllertest.Utils
 	kubeClient            kubernetes.Interface
@@ -867,7 +867,7 @@ func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN stri
 
 func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
-	s.tlsValidator = tlsvalidatormock.NewMockInterface(ctrl)
+	s.tlsValidator = tlsvalidatormock.NewMockTLSSecretValidator(ctrl)
 	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest([]EnvironmentHandlerOptions{WithTLSSecretValidator(s.tlsValidator)})
 
 	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"

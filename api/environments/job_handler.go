@@ -244,7 +244,7 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 // CopyBatch Copy batch by name
 func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledBatchSummary, error) {
 	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, scheduledJobRequest.DeploymentName))
-	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, scheduledJobRequest.DeploymentName, nil)
+	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, scheduledJobRequest.DeploymentName)
 	if err != nil {
 		return nil, err
 	}

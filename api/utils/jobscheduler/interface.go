@@ -5,8 +5,8 @@ import (
 	"github.com/equinor/radix-job-scheduler/models"
 )
 
-// Interface defines methods to validate certificate and private key for TLS
-type Interface interface {
+// HandlerFactoryInterface defines methods for creating job scheduler batch handler
+type HandlerFactoryInterface interface {
 	// CreateJobSchedulerBatchHandlerForEnv Created Job Scheduler batch handler for an environment
 	CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batchesv1.BatchHandler
 }

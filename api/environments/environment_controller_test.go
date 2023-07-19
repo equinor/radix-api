@@ -1294,7 +1294,7 @@ func Test_GetJobs_Status(t *testing.T) {
 
 	// Setup
 	ctrl := gomock.NewController(t)
-	jobSchedulerFactoryMock := mock.NewMockInterface(ctrl)
+	jobSchedulerFactoryMock := mock.NewMockHandlerFactoryInterface(ctrl)
 	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest([]EnvironmentHandlerOptions{WithJobSchedulerHandlerFactory(jobSchedulerFactoryMock)})
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().

@@ -66,7 +66,7 @@ func WithTLSSecretValidator(validator tlsvalidator.TLSSecretValidator) Environme
 }
 
 // WithJobSchedulerHandlerFactory configures the jobSchedulerHandlerFactory used by EnvironmentHandler
-func WithJobSchedulerHandlerFactory(jobSchedulerHandlerFactory jobscheduler.Interface) EnvironmentHandlerOptions {
+func WithJobSchedulerHandlerFactory(jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.jobSchedulerHandlerFactory = jobSchedulerHandlerFactory
 	}
@@ -98,7 +98,7 @@ type EnvironmentHandler struct {
 	kubeUtil                   *kube.Kube
 	kubeUtilForServiceAccount  *kube.Kube
 	tlsSecretValidator         tlsvalidator.TLSSecretValidator
-	jobSchedulerHandlerFactory jobscheduler.Interface
+	jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface
 }
 
 var validaStatusesToScaleComponent []string

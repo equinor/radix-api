@@ -15,6 +15,6 @@ func (f *factory) CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batchesv
 }
 
 // NewFactory Constructor for factory
-func NewFactory(kubeUtil *kube.Kube) Interface {
+func NewFactory(kubeUtil *kube.Kube) HandlerFactoryInterface {
 	return &factory{kubeUtil}
 }
