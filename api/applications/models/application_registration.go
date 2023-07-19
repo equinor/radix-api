@@ -27,7 +27,7 @@ type ApplicationRegistration struct {
 
 	// ReaderAdGroups the groups that should be able to read the application
 	//
-	// required: true
+	// required: false
 	ReaderAdGroups []string `json:"readerAdGroups"`
 
 	// Owner of the application (email). Can be a single person or a shared group email
