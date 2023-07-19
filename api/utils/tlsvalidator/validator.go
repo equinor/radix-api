@@ -13,7 +13,7 @@ import (
 
 var defaultValidator = validator{}
 
-func DefaultValidator() Interface {
+func DefaultValidator() TLSSecretValidator {
 	return &defaultValidator
 }
 

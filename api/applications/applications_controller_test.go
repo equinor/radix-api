@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,6 +70,7 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 			},
 			NewApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
+				authorizationvalidator.MockAuthorizationValidator(),
 			),
 		),
 	)
@@ -92,7 +94,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			NewApplicationController(
 				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 					return false, nil
-				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
+				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -105,7 +107,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -118,7 +120,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -186,7 +188,7 @@ func TestSearchApplications(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
-		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
+		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
@@ -260,7 +262,7 @@ func TestSearchApplications(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel
@@ -914,6 +916,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		WithRepository("https://github.com/Equinor/a-repo").
 		WithSharedSecret("").
 		WithAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
+		WithReaderAdGroups([]string{"d5df55c1-78b7-4330-9d2c-f1b1aa5584ca"}).
 		WithOwner("AN_OWNER@equinor.com").
 		WithWBS("T.O123A.AZ.45678").
 		WithConfigBranch("main1").
@@ -930,10 +933,11 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	}
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
-	<-responseChannel
+	response := <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
-	response := <-responseChannel
+	response = <-responseChannel
 
 	application := applicationModels.Application{}
 	controllertest.GetResponseBody(response, &application)
@@ -942,6 +946,23 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
 	assert.Equal(t, "main1", application.Registration.ConfigBranch)
 	assert.Equal(t, "ci-initial", application.Registration.ConfigurationItem)
+
+	// Test
+	anyNewReaderAdGroup := []string{"44643b96-0f6d-4bdc-af2c-a4f596d821eb"}
+	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
+		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+			ReaderAdGroups: &anyNewReaderAdGroup,
+		},
+	}
+
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+	<-responseChannel
+
+	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+	response = <-responseChannel
+
+	controllertest.GetResponseBody(response, &application)
+	assert.Equal(t, anyNewReaderAdGroup, application.Registration.ReaderAdGroups)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
@@ -1125,7 +1146,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	anyAppName := "any-app"
 	configBranch := "magic"
 
-	rr := builders.ARadixRegistration().WithConfigBranch(configBranch)
+	rr := builders.ARadixRegistration().WithConfigBranch(configBranch).WithAdGroups([]string{"adminGroup"})
 	commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithRadixRegistration(rr).
@@ -1574,6 +1595,7 @@ func anApplicationRegistration() applicationModels.ApplicationRegistrationBuilde
 		WithRepository("https://github.com/Equinor/my-app").
 		WithSharedSecret("AnySharedSecret").
 		WithAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+		WithReaderAdGroups([]string{"40e794dc-244c-4d0a-9f29-55fda1fe3972"}).
 		WithCreator("a_test_user@equinor.com").
 		WithConfigurationItem("2b0781a7db131784551ea1ea4b9619c9").
 		WithConfigBranch("main")
