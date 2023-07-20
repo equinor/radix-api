@@ -242,13 +242,33 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 }
 
 // CopyBatch Copy batch by name
-func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledBatchSummary, error) {
-	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, scheduledJobRequest.DeploymentName))
-	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, scheduledJobRequest.DeploymentName)
+func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledBatchRequest environmentModels.ScheduledBatchRequest) (*deploymentModels.ScheduledBatchSummary, error) {
+	deploymentName := scheduledBatchRequest.DeploymentName
+	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName))
+	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
-	return eh.getScheduledBatchStatus(batchStatus, scheduledJobRequest.DeploymentName), nil
+	return eh.getScheduledBatchStatus(batchStatus, deploymentName), nil
+}
+
+// CopyJob Copy job by name
+func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobComponentName, jobName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledJobSummary, error) {
+	deploymentName := scheduledJobRequest.DeploymentName
+	jobSchedulerJobHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerJobHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName))
+	jobStatus, err := jobSchedulerJobHandler.CopyJob(ctx, jobName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	batchStatus := deploymentModels.ScheduledJobSummary{
+		Name:           fmt.Sprintf("%s-%s", jobStatus.BatchName, jobStatus.Name),
+		DeploymentName: deploymentName,
+		BatchName:      jobStatus.BatchName,
+		JobId:          jobStatus.JobId,
+		Status:         jobStatus.Status,
+	}
+
+	return &batchStatus, nil
 }
 
 // GetBatch Gets batch by name
