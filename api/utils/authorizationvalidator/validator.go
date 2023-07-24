@@ -23,7 +23,7 @@ func (v *validator) UserIsAdmin(ctx context.Context, user *models.Account, appNa
 		},
 		Spec: corev1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &corev1.ResourceAttributes{
-				Verb:     "put",
+				Verb:     "patch",
 				Group:    "radix.equinor.com",
 				Resource: "radixregistrations",
 				Name:     appName,
