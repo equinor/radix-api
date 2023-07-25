@@ -11,7 +11,6 @@ require (
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
-	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/marstr/guid v1.1.0
@@ -118,4 +117,8 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
+)
+
+replace (
+  "github.com/equinor/radix-operator" v1.39.2 => "/home/anneli/GolandProjects/radix-operator"
 )
