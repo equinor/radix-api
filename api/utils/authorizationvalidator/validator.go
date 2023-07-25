@@ -19,7 +19,7 @@ func (v *validator) UserIsAdmin(ctx context.Context, user *models.Account, appNa
 	review, err := user.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1.SelfSubjectAccessReview{
 		Spec: corev1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &corev1.ResourceAttributes{
-				Verb:     "put",
+				Verb:     "patch",
 				Group:    "radix.equinor.com",
 				Resource: "radixregistrations",
 				Name:     appName,
