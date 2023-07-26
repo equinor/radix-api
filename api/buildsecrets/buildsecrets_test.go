@@ -20,10 +20,9 @@ import (
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	anyAppName        = "any-app"
-	egressIps         = "0.0.0.0"
+	clusterName = "AnyClusterName"
+	anyAppName  = "any-app"
+	egressIps   = "0.0.0.0"
 )
 
 func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
@@ -34,7 +33,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildSecretsController())

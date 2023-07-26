@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/equinor/radix-common v1.3.0
 	github.com/equinor/radix-job-scheduler v1.7.10
-	github.com/equinor/radix-operator v1.39.2
+	github.com/equinor/radix-operator v1.39.3
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.7
@@ -59,6 +59,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-containerregistry v0.12.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -117,8 +118,4 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-replace (
-  "github.com/equinor/radix-operator" v1.39.2 => "/home/anneli/GolandProjects/radix-operator"
 )

@@ -27,7 +27,6 @@ import (
 
 const (
 	clusterName        = "AnyClusterName"
-	containerRegistry  = "any.container.registry"
 	anyAppName         = "any-app"
 	anyComponentName   = "app"
 	anyJobName         = "job"
@@ -45,7 +44,7 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController())
