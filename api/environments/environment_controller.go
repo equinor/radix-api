@@ -835,6 +835,8 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 	//     description: "Environment started ok"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]

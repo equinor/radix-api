@@ -49,16 +49,15 @@ import (
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	anyAppName        = "any-app"
-	anyComponentName  = "app"
-	anyJobName        = "job"
-	anyBatchName      = "batch"
-	anyDeployment     = "deployment"
-	anyEnvironment    = "dev"
-	anySecretName     = "TEST_SECRET"
-	egressIps         = "0.0.0.0"
+	clusterName      = "AnyClusterName"
+	anyAppName       = "any-app"
+	anyComponentName = "app"
+	anyJobName       = "job"
+	anyBatchName     = "batch"
+	anyDeployment    = "deployment"
+	anyEnvironment   = "dev"
+	anySecretName    = "TEST_SECRET"
+	egressIps        = "0.0.0.0"
 )
 
 func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -70,7 +69,7 @@ func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())

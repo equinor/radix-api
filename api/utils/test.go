@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	egressIps         = "0.0.0.0"
+	clusterName = "AnyClusterName"
+	egressIps   = "0.0.0.0"
 )
 
 func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -31,7 +30,7 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 
 	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
 }

@@ -2,7 +2,6 @@ package privateimagehubs
 
 import (
 	"encoding/json"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
@@ -15,15 +14,12 @@ import (
 const rootPath = "/applications/{appName}"
 
 type privateImageHubController struct {
-	authorizationValidator authorizationvalidator.Interface
 	*models.DefaultController
 }
 
 // NewPrivateImageHubController Constructor
-func NewPrivateImageHubController(authorizationValidator authorizationvalidator.Interface) models.Controller {
-	return &privateImageHubController{
-		authorizationValidator: authorizationValidator,
-	}
+func NewPrivateImageHubController() models.Controller {
+	return &privateImageHubController{}
 }
 
 // GetRoutes List the supported routes of this handler
@@ -80,7 +76,7 @@ func (dc *privateImageHubController) GetPrivateImageHubs(accounts models.Account
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	privateImageHubHandler := Init(accounts, dc.authorizationValidator)
+	privateImageHubHandler := Init(accounts)
 	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(r.Context(), appName)
 
 	if err != nil {
@@ -145,7 +141,7 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 		return
 	}
 
-	privateImageHubHandler := Init(accounts, authorizationvalidator.DefaultValidator())
+	privateImageHubHandler := Init(accounts)
 	err := privateImageHubHandler.UpdatePrivateImageHubValue(r.Context(), appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {
