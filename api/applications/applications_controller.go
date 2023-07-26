@@ -789,6 +789,8 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//     description: Successful trigger pipeline
 	//     schema:
 	//       "$ref": "#/definitions/JobSummary"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -838,6 +840,8 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	//     description: Successful trigger pipeline
 	//     schema:
 	//       "$ref": "#/definitions/JobSummary"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -887,6 +891,8 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	//     description: Successful trigger pipeline
 	//     schema:
 	//       "$ref": "#/definitions/JobSummary"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
