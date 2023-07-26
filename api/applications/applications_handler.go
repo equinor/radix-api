@@ -16,7 +16,6 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -42,21 +41,19 @@ type patch struct {
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler             job.JobHandler
-	environmentHandler     environments.EnvironmentHandler
-	accounts               models.Accounts
-	config                 ApplicationHandlerConfig
-	authorizationValidator authorizationvalidator.Interface
+	jobHandler         job.JobHandler
+	environmentHandler environments.EnvironmentHandler
+	accounts           models.Accounts
+	config             ApplicationHandlerConfig
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, authorizationValidator authorizationvalidator.Interface) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:               accounts,
-		jobHandler:             job.Init(accounts, deployments.Init(accounts)),
-		environmentHandler:     environments.Init(environments.WithAccounts(accounts)),
-		config:                 config,
-		authorizationValidator: authorizationValidator,
+		accounts:           accounts,
+		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
+		config:             config,
 	}
 }
 
@@ -451,7 +448,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, err
 	}
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +478,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -492,13 +489,6 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Context, appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
 	userAccount := ah.getUserAccount()
-	userIsAdmin, err := ah.authorizationValidator.UserIsAdmin(ctx, &userAccount, appName)
-	if err != nil {
-		return nil, err
-	}
-	if !userIsAdmin {
-		return nil, applicationModels.UserNotAllowedToTriggerPipelineError(appName)
-	}
 
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
@@ -513,7 +503,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +530,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters, ah.authorizationValidator)
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}

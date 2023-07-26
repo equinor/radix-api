@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,11 +39,10 @@ import (
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	dnsZone           = "dev.radix.equinor.com"
-	appAliasDNSZone   = "app.dev.radix.equinor.com"
-	egressIps         = "0.0.0.0"
+	clusterName     = "AnyClusterName"
+	dnsZone         = "dev.radix.equinor.com"
+	appAliasDNSZone = "app.dev.radix.equinor.com"
+	egressIps       = "0.0.0.0"
 )
 
 func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -56,7 +54,7 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
@@ -70,7 +68,6 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 			},
 			NewApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
-				authorizationvalidator.MockAuthorizationValidator(),
 			),
 		),
 	)
@@ -94,7 +91,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			NewApplicationController(
 				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 					return false, nil
-				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
+				}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -107,7 +104,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -120,7 +117,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -188,7 +185,7 @@ func TestSearchApplications(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
-		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
+		}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
@@ -262,7 +259,7 @@ func TestSearchApplications(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
-			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true}, authorizationvalidator.MockAuthorizationValidator())))
+			}, NewApplicationHandlerFactory(ApplicationHandlerConfig{true, true})))
 		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
 		response := <-responseChannel

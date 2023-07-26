@@ -8,9 +8,7 @@ The Radix API is meant to be the single point of entry for platform users to the
 
 ## Security
 
-Authentication and authorisation are performed through an HTTP bearer token, which is (in most cases) relayed to the Kubernetes API. The Kubernetes AAD integration then performs its authentication and resource authorisation checks, and the result is relayed to the the user.
-
-Some requests trigger more complex authorisation checks within the Radix API itself by using the `radix-api` [clusterrole](https://github.com/equinor/radix-operator/blob/master/docs/RBAC.md#api).
+Authentication and authorisation are performed through an HTTP bearer token, which is relayed to the Kubernetes API. The Kubernetes AAD integration then performs its authentication and resource authorisation checks, and the result is relayed to the user.
 
 ## Developing
 
@@ -68,7 +66,7 @@ If you are using VSCode, there is a convenient launch configuration in `.vscode`
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
 `radix-api` has three places to set version
 * `apiVersionRoute` in `api/router/server.go` and `BasePath`in `docs/docs.go` - API version, used in API's URL
-* `Version` in `docs/docs.go` - indicates changes in radix-api logic - to see (e.g in swagger), that the version in the environment corresponds with what you wanted
+* `Version` in `docs/docs.go` - indicates changes in radix-api logic - to see (e.g. in swagger), that the version in the environment corresponds with what you wanted
 
     Run following command to update version in `swagger.json`
     ```

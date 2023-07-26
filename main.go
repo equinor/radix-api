@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"net/http"
 	"os"
 	"strconv"
@@ -114,7 +113,7 @@ func getControllers() ([]models.Controller, error) {
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
 		environmentvariables.NewEnvVarsController(),
-		privateimagehubs.NewPrivateImageHubController(authorizationvalidator.DefaultValidator()),
+		privateimagehubs.NewPrivateImageHubController(),
 		buildsecrets.NewBuildSecretsController(),
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
@@ -127,7 +126,7 @@ func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, err
 	if err != nil {
 		return nil, err
 	}
-	return applications.NewApplicationHandlerFactory(cfg, authorizationvalidator.DefaultValidator()), nil
+	return applications.NewApplicationHandlerFactory(cfg), nil
 }
 
 func initializeFlagSet() *pflag.FlagSet {

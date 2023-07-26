@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/utils/authorizationvalidator"
 	"os"
 	"strings"
 	"time"
@@ -23,20 +22,11 @@ import (
 )
 
 const (
-	pipelineTagEnvironmentVariable       = "PIPELINE_IMG_TAG"
-	containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
+	pipelineTagEnvironmentVariable = "PIPELINE_IMG_TAG"
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters, authorizationValidator authorizationvalidator.Interface) (*jobModels.JobSummary, error) {
-	userIsAdmin, err := authorizationValidator.UserIsAdmin(ctx, &jh.userAccount, appName)
-	if err != nil {
-		return nil, err
-	}
-	if !userIsAdmin {
-		return nil, fmt.Errorf("user is not allowed to start pipeline job for application %s", appName)
-	}
-
+func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 
 	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
@@ -48,7 +38,7 @@ func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string,
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
+	job, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +64,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
 	}
-
-	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 
 	var buildSpec v1.RadixBuildSpec
 	var promoteSpec v1.RadixPromoteSpec
@@ -122,7 +110,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       getPipelineTag(),
-			DockerRegistry:      dockerRegistry,
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
