@@ -1976,8 +1976,6 @@ func (c *environmentController) CopyJob(accounts models.Accounts, w http.Respons
 	//     description: "Success
 	//     schema:
 	//        "$ref": "#/definitions/ScheduledJobSummary"
-	//   "204":
-	//     description: "Success"
 	//   "400":
 	//     description: "Invalid batch"
 	//   "401":
