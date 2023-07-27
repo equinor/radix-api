@@ -260,15 +260,7 @@ func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return nil, err
 	}
-	batchStatus := deploymentModels.ScheduledJobSummary{
-		Name:           fmt.Sprintf("%s-%s", jobStatus.BatchName, jobStatus.Name),
-		DeploymentName: deploymentName,
-		BatchName:      jobStatus.BatchName,
-		JobId:          jobStatus.JobId,
-		Status:         jobStatus.Status,
-	}
-
-	return &batchStatus, nil
+	return eh.getScheduledJobStatus(jobStatus, deploymentName), nil
 }
 
 // GetBatch Gets batch by name
@@ -451,6 +443,16 @@ func (eh EnvironmentHandler) getScheduledBatchStatus(batchStatus *jobSchedulerV1
 		Created:        batchStatus.Created,
 		Started:        batchStatus.Started,
 		Ended:          batchStatus.Ended,
+	}
+}
+
+func (eh EnvironmentHandler) getScheduledJobStatus(jobStatus *jobSchedulerV1Models.JobStatus, deploymentName string) *deploymentModels.ScheduledJobSummary {
+	return &deploymentModels.ScheduledJobSummary{
+		Name:           fmt.Sprintf("%s-%s", jobStatus.BatchName, jobStatus.Name),
+		DeploymentName: deploymentName,
+		BatchName:      jobStatus.BatchName,
+		JobId:          jobStatus.JobId,
+		Status:         jobStatus.Status,
 	}
 }
 
