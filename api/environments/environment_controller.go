@@ -1973,7 +1973,7 @@ func (c *environmentController) CopyJob(accounts models.Accounts, w http.Respons
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "Success
+	//     description: "Success"
 	//     schema:
 	//        "$ref": "#/definitions/ScheduledJobSummary"
 	//   "400":
