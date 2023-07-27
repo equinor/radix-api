@@ -1898,8 +1898,6 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	//     description: "scheduled batch"
 	//     schema:
 	//        "$ref": "#/definitions/ScheduledBatchSummary"
-	//   "204":
-	//     description: "Success"
 	//   "400":
 	//     description: "Invalid batch"
 	//   "401":
