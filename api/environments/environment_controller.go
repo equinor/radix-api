@@ -1895,7 +1895,7 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	//   required: false
 	// responses:
 	//   "200":
-	//     description: "scheduled batch"
+	//     description: "Success"
 	//     schema:
 	//        "$ref": "#/definitions/ScheduledBatchSummary"
 	//   "400":
