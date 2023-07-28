@@ -58,6 +58,7 @@ docker-build: $(addsuffix -image,$(IMAGES))
 docker-push: $(addsuffix -push,$(IMAGES))
 
 %-push:
+	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/$*-server:$(IMAGE_TAG)
 
 HAS_GOMETALINTER := $(shell command -v gometalinter;)
