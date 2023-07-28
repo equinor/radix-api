@@ -715,6 +715,8 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	//     description: "Application deleted ok"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -793,8 +795,9 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
+	//panic("panic")
 	appName := mux.Vars(r)["appName"]
-
+	log.Errorf("in controller. Triggering build pipeline for application %s", appName)
 	handler := ac.applicationHandlerFactory(accounts)
 	jobSummary, err := handler.TriggerPipelineBuild(r.Context(), appName, r)
 
