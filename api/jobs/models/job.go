@@ -65,6 +65,24 @@ type Job struct {
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 
+	// PromotedDeploymentName the name of the deployment that was promoted
+	//
+	// required: false
+	// example: component-6hznh
+	PromotedDeploymentName string `json:"promotedDeploymentName,omitempty"`
+
+	// PromotedFromEnvironment the name of the environment that was promoted from
+	//
+	// required: false
+	// example: dev
+	PromotedFromEnvironment string `json:"promotedFromEnvironment,omitempty"`
+
+	// PromotedToEnvironment the name of the environment that was promoted to
+	//
+	// required: false
+	// example: qa
+	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
+
 	// Array of steps
 	//
 	// required: false
@@ -108,7 +126,7 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		jobComponents = jobDeployments[0].Components
 	}
 
-	return &Job{
+	jobModel := Job{
 		Name:        job.GetName(),
 		Branch:      job.Spec.Build.Branch,
 		CommitID:    job.Spec.Build.CommitID,
@@ -122,6 +140,13 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		Components:  jobComponents,
 		TriggeredBy: job.Spec.TriggeredBy,
 	}
+	if job.Spec.PipeLineType == v1.Promote {
+		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
+		jobModel.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
+		jobModel.PromotedDeploymentName = job.Spec.Promote.DeploymentName
+	}
+
+	return &jobModel
 }
 
 // GetJobStepsFromRadixJob Gets the steps from a Radix job
