@@ -795,7 +795,6 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
-	//panic("panic")
 	appName := mux.Vars(r)["appName"]
 	log.Errorf("in controller. Triggering build pipeline for application %s", appName)
 	handler := ac.applicationHandlerFactory(accounts)
