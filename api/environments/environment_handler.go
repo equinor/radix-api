@@ -14,6 +14,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-api/models"
@@ -46,6 +47,7 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.kubeUtil = kubeUtil
 		kubeUtilsForServiceAccount, _ := kube.New(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, accounts.ServiceAccount.SecretProviderClient)
 		eh.kubeUtilForServiceAccount = kubeUtilsForServiceAccount
+		eh.jobSchedulerHandlerFactory = jobscheduler.NewFactory(kubeUtil)
 	}
 }
 
@@ -56,14 +58,24 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 	}
 }
 
-func WithTLSSecretValidator(validator tlsvalidator.Interface) EnvironmentHandlerOptions {
+// WithTLSSecretValidator configures the tlsSecretValidator used by EnvironmentHandler
+func WithTLSSecretValidator(validator tlsvalidator.TLSSecretValidator) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.tlsSecretValidator = validator
 	}
 }
 
+// WithJobSchedulerHandlerFactory configures the jobSchedulerHandlerFactory used by EnvironmentHandler
+func WithJobSchedulerHandlerFactory(jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.jobSchedulerHandlerFactory = jobSchedulerHandlerFactory
+	}
+}
+
+// EnvironmentHandlerFactory defines a factory function for EnvironmentHandler
 type EnvironmentHandlerFactory func(accounts models.Accounts) EnvironmentHandler
 
+// NewEnvironmentHandlerFactory creates a new EnvironmentHandlerFactory
 func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) EnvironmentHandlerFactory {
 	return func(accounts models.Accounts) EnvironmentHandler {
 		// We must make a new slice and copy values from opts into it.
@@ -78,14 +90,15 @@ func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) Environment
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client                    kubernetes.Interface
-	radixclient               radixclient.Interface
-	deployHandler             deployments.DeployHandler
-	eventHandler              events.EventHandler
-	accounts                  models.Accounts
-	kubeUtil                  *kube.Kube
-	kubeUtilForServiceAccount *kube.Kube
-	tlsSecretValidator        tlsvalidator.Interface
+	client                     kubernetes.Interface
+	radixclient                radixclient.Interface
+	deployHandler              deployments.DeployHandler
+	eventHandler               events.EventHandler
+	accounts                   models.Accounts
+	kubeUtil                   *kube.Kube
+	kubeUtilForServiceAccount  *kube.Kube
+	tlsSecretValidator         tlsvalidator.TLSSecretValidator
+	jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface
 }
 
 var validaStatusesToScaleComponent []string

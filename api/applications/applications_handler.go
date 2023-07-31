@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
@@ -30,6 +28,7 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -218,7 +217,6 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 		return nil, radixhttp.ValidationError("Radix Registration", fmt.Sprintf("App name %s does not correspond with application name %s", appName, application.Name))
 	}
 
-	// Make check that this is an existing application
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -235,6 +233,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 	updatedRegistration.Spec.CloneURL = radixRegistration.Spec.CloneURL
 	updatedRegistration.Spec.SharedSecret = radixRegistration.Spec.SharedSecret
 	updatedRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
+	updatedRegistration.Spec.ReaderAdGroups = radixRegistration.Spec.ReaderAdGroups
 	updatedRegistration.Spec.Owner = radixRegistration.Spec.Owner
 	updatedRegistration.Spec.WBS = radixRegistration.Spec.WBS
 	updatedRegistration.Spec.ConfigurationItem = radixRegistration.Spec.ConfigurationItem
@@ -265,7 +264,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 
 // ModifyRegistrationDetails handler for ModifyRegistrationDetails
 func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, appName string, applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	// Make check that this is an existing application
+
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -280,6 +279,11 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
+		runUpdate = true
+	}
+	if patchRequest.ReaderAdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdGroups, *patchRequest.ReaderAdGroups) {
+		updatedRegistration.Spec.ReaderAdGroups = *patchRequest.ReaderAdGroups
+		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdGroups", Value: *patchRequest.ReaderAdGroups})
 		runUpdate = true
 	}
 
@@ -484,6 +488,8 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Context, appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
+	userAccount := ah.getUserAccount()
+
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
 	}
@@ -497,14 +503,14 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	radixRegistration, err := ah.getServiceAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if branch is mapped
 	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
-		application, err := utils.CreateApplicationConfig(ctx, ah.getUserAccount().Client, ah.getUserAccount().RadixClient, ah.getUserAccount().SecretProviderClient, appName)
+		application, err := utils.CreateApplicationConfig(ctx, &userAccount, appName)
 		if err != nil {
 			return nil, err
 		}
@@ -620,7 +626,7 @@ func (ah *ApplicationHandler) getMachineUserServiceAccount(ctx context.Context, 
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
 func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
-	// Make check that this is an existing application and user has access to it
+	// Make check that this is an existing application and that the user has access to it
 	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -654,11 +660,11 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 		if err != nil {
 			return fmt.Errorf("failed to derive public key from private key: %v", err)
 		}
-		exisingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+		existingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		newSecret := exisingSecret.DeepCopy()
+		newSecret := existingSecret.DeepCopy()
 		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
 		_, err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
 		if err != nil {

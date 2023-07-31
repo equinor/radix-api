@@ -1,6 +1,8 @@
 package applications
 
-import "github.com/equinor/radix-api/models"
+import (
+	"github.com/equinor/radix-api/models"
+)
 
 // ApplicationHandlerFactory defines a factory function for creating an ApplicationHandler
 type ApplicationHandlerFactory func(accounts models.Accounts) ApplicationHandler

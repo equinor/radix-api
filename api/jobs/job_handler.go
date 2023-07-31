@@ -77,7 +77,7 @@ func (jh JobHandler) GetApplicationJob(ctx context.Context, appName, jobName str
 		return nil, err
 	}
 
-	jobDeployments, err := jh.deploy.GetDeploymentsForJob(ctx, appName, jobName)
+	jobDeployments, err := jh.deploy.GetDeploymentsForPipelineJob(ctx, appName, jobName)
 	if err != nil {
 		return nil, err
 	}

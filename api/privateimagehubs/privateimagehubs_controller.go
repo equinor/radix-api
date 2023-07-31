@@ -28,12 +28,12 @@ func (dc *privateImageHubController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/privateimagehubs",
 			Method:      "GET",
-			HandlerFunc: GetPrivateImageHubs,
+			HandlerFunc: dc.GetPrivateImageHubs,
 		},
 		models.Route{
 			Path:        rootPath + "/privateimagehubs/{serverName}",
 			Method:      "PUT",
-			HandlerFunc: ChangePrivateImageHubSecret,
+			HandlerFunc: dc.ChangePrivateImageHubSecret,
 		},
 	}
 
@@ -41,7 +41,7 @@ func (dc *privateImageHubController) GetRoutes() models.Routes {
 }
 
 // GetPrivateImageHubs Lists private image hubs
-func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *privateImageHubController) GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/privateimagehubs application getPrivateImageHubs
 	// ---
 	// summary: Lists the application private image hubs
@@ -88,7 +88,7 @@ func GetPrivateImageHubs(accounts models.Accounts, w http.ResponseWriter, r *htt
 }
 
 // ChangePrivateImageHubSecret Modifies an application private image hub secret
-func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/privateimagehubs/{serverName} application updatePrivateImageHubsSecretValue
 	// ---
 	// summary: Update an application private image hub secret
@@ -128,6 +128,8 @@ func ChangePrivateImageHubSecret(accounts models.Accounts, w http.ResponseWriter
 	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	//   "409":

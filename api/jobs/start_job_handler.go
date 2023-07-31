@@ -22,8 +22,7 @@ import (
 )
 
 const (
-	pipelineTagEnvironmentVariable       = "PIPELINE_IMG_TAG"
-	containerRegistryEnvironmentVariable = "RADIX_CONTAINER_REGISTRY"
+	pipelineTagEnvironmentVariable = "PIPELINE_IMG_TAG"
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
@@ -39,7 +38,7 @@ func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string,
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err = jh.serviceAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
+	job, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +64,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
 	}
-
-	dockerRegistry := os.Getenv(containerRegistryEnvironmentVariable)
 
 	var buildSpec v1.RadixBuildSpec
 	var promoteSpec v1.RadixPromoteSpec
@@ -113,7 +110,6 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       getPipelineTag(),
-			DockerRegistry:      dockerRegistry,
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,

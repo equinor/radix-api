@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (eh EnvironmentHandler) getRadixDeployment(ctx context.Context, appName string, envName string) (*deploymentModels.DeploymentSummary, *v1.RadixDeployment, error) {
+func (eh EnvironmentHandler) getRadixDeployment(ctx context.Context, appName, envName string) (*deploymentModels.DeploymentSummary, *v1.RadixDeployment, error) {
 	envNs := operatorutils.GetEnvironmentNamespace(appName, envName)
 	deploymentSummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(ctx, appName, envName)
 	if err != nil {

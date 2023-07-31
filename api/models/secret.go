@@ -21,7 +21,7 @@ import (
 const secretDefaultData = "xx"
 
 // BuildSecrets builds a list of Secret models.
-func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.Interface) []secretModels.Secret {
+func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.TLSSecretValidator) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	secrets = append(secrets, getSecretsForDeployment(secretList, rd)...)
 	secrets = append(secrets, getSecretsForTLSCertificates(secretList, rd, tlsValidator)...)
@@ -89,7 +89,7 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 	return secretDTOsMap
 }
 
-func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.Interface) []secretModels.Secret {
+func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.TLSSecretValidator) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	if tlsValidator == nil {
 		tlsValidator = tlsvalidator.DefaultValidator()

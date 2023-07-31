@@ -19,13 +19,14 @@ func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
 
 	return PrivateImageHubHandler{
 		userAccount:    accounts.UserAccount,
-		serviceAccount: accounts.ServiceAccount}
+		serviceAccount: accounts.ServiceAccount,
+	}
 }
 
 // GetPrivateImageHubs returns all private image hubs defined for app
 func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appName string) ([]models.ImageHubSecret, error) {
 	var imageHubSecrets []models.ImageHubSecret
-	application, err := utils.CreateApplicationConfig(ctx, ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
+	application, err := utils.CreateApplicationConfig(ctx, &ph.userAccount, appName)
 	if err != nil {
 		return []models.ImageHubSecret{}, nil
 	}
@@ -49,7 +50,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 
 // UpdatePrivateImageHubValue updates the private image hub value with new password
 func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
-	application, err := utils.CreateApplicationConfig(ctx, ph.userAccount.Client, ph.userAccount.RadixClient, ph.userAccount.SecretProviderClient, appName)
+	application, err := utils.CreateApplicationConfig(ctx, &ph.userAccount, appName)
 	if err != nil {
 		return err
 	}
