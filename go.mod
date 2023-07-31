@@ -7,7 +7,6 @@ require (
 	github.com/equinor/radix-job-scheduler v1.8.2
 	github.com/equinor/radix-operator v1.40.0
 	github.com/evanphx/json-patch/v5 v5.6.0
-	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
@@ -29,7 +28,7 @@ require (
 	k8s.io/api v0.26.7
 	k8s.io/apimachinery v0.26.7
 	k8s.io/client-go v0.26.7
-	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
+	knative.dev/pkg v0.0.0-20221011175852-714b7630a836
 	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
 
@@ -50,6 +49,7 @@ require (
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-openapi/errors v0.20.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/go-containerregistry v0.12.0 // indirect
+	github.com/google/go-containerregistry v0.12.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
