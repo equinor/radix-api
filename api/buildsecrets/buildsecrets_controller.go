@@ -128,6 +128,8 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	//   "409":

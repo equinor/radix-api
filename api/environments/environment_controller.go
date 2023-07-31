@@ -1,6 +1,7 @@
 package environments
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
+	environmentsModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -129,6 +131,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/deployments",
+			Method:      "GET",
+			HandlerFunc: c.GetJobComponentDeployments,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
 			Method:      "GET",
 			HandlerFunc: c.GetJobs,
@@ -147,6 +154,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart",
 			Method:      "POST",
 			HandlerFunc: c.RestartJob,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/copy",
+			Method:      "POST",
+			HandlerFunc: c.CopyJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
@@ -177,6 +189,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart",
 			Method:      "POST",
 			HandlerFunc: c.RestartBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/copy",
+			Method:      "POST",
+			HandlerFunc: c.CopyBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
@@ -818,6 +835,8 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 	//     description: "Environment started ok"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -1210,6 +1229,63 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	} else {
 		radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
 	}
+}
+
+// GetJobComponentDeployments Get list of deployments for the job component
+func (c *environmentController) GetJobComponentDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/deployments job GetJobComponentDeployments
+	// ---
+	// summary: Get list of deployments for the job component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Radix deployments"
+	//     schema:
+	//        type: array
+	//        items:
+	//          "$ref": "#/definitions/DeploymentItem"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	jobComponentDeployments, err := eh.deployHandler.GetJobComponentDeployments(r.Context(), appName, envName, jobComponentName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobComponentDeployments)
 }
 
 // GetJobs Get list of scheduled jobs
@@ -1633,14 +1709,14 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 	batchName := mux.Vars(r)["batchName"]
 
 	eh := c.environmentHandlerFactory(accounts)
-	jobSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
+	batchSummary, err := eh.GetBatch(r.Context(), appName, envName, jobComponentName, batchName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, jobSummary)
+	radixhttp.JSONResponse(w, r, batchSummary)
 }
 
 // StopBatch Stop a scheduled batch
@@ -1771,6 +1847,162 @@ func (c *environmentController) RestartBatch(accounts models.Accounts, w http.Re
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// CopyBatch Create a copy of existing scheduled batch with optional changes
+func (c *environmentController) CopyBatch(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/copy job copyBatch
+	// ---
+	// summary: Create a copy of existing scheduled batch with optional changes
+	// parameters:
+	// - name: scheduledBatchRequest
+	//   in: body
+	//   description: Request for creating a scheduled batch
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ScheduledBatchRequest"
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: batchName
+	//   in: path
+	//   description: Name of batch to be copied
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Success"
+	//     schema:
+	//        "$ref": "#/definitions/ScheduledBatchSummary"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	batchName := mux.Vars(r)["batchName"]
+	var scheduledBatchRequest environmentsModels.ScheduledBatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&scheduledBatchRequest); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	eh := c.environmentHandlerFactory(accounts)
+	batchSummary, err := eh.CopyBatch(r.Context(), appName, envName, jobComponentName, batchName, scheduledBatchRequest)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, batchSummary)
+}
+
+// CopyJob Create a copy of existing scheduled job with optional changes
+func (c *environmentController) CopyJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/copy job copyJob
+	// ---
+	// summary: Create a copy of existing scheduled job with optional changes
+	// parameters:
+	// - name: scheduledJobRequest
+	//   in: body
+	//   description: Request for creating a scheduled job
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/ScheduledJobRequest"
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of job to be copied
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Success"
+	//     schema:
+	//        "$ref": "#/definitions/ScheduledJobSummary"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+	jobName := mux.Vars(r)["jobName"]
+	var scheduledJobRequest environmentsModels.ScheduledJobRequest
+	if err := json.NewDecoder(r.Body).Decode(&scheduledJobRequest); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	eh := c.environmentHandlerFactory(accounts)
+	jobSummary, err := eh.CopyJob(r.Context(), appName, envName, jobComponentName, jobName, scheduledJobRequest)
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, jobSummary)
 }
 
 // DeleteBatch Delete a batch

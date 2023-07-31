@@ -2,7 +2,6 @@ package environments
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -193,7 +192,7 @@ func (eh EnvironmentHandler) patch(ctx context.Context, namespace, name string, 
 	if patchBytes != nil {
 		_, err := eh.radixclient.RadixV1().RadixDeployments(namespace).Patch(ctx, name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to patch deployment object: %v", err)
+			return err
 		}
 	}
 

@@ -72,3 +72,31 @@ type DeploymentSummary struct {
 	// example: "v1.22.1 v1.22.3"
 	GitTags string `json:"gitTags,omitempty"`
 }
+
+// DeploymentItem describe a deployment short info
+// swagger:model DeploymentItem
+type DeploymentItem struct {
+	// Name the unique name of the Radix application deployment
+	//
+	// required: true
+	// example: radix-canary-golang-tzbqi
+	Name string `json:"name"`
+
+	// ActiveFrom Timestamp when the deployment starts (or created)
+	//
+	// required: true
+	// example: 2006-01-02T15:04:05Z
+	ActiveFrom string `json:"activeFrom"`
+
+	// ActiveTo Timestamp when the deployment ends
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	ActiveTo string `json:"activeTo,omitempty"`
+
+	// GitCommitHash the hash of the git commit from which radixconfig.yaml was parsed
+	//
+	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	GitCommitHash string `json:"gitCommitHash,omitempty"`
+}

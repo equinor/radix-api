@@ -119,12 +119,12 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		s.Nil(actualJob)
 	})
 
-	s.Run("deployHandle.GetDeploymentsForJob return error", func() {
+	s.Run("deployHandle.GetDeploymentsForPipelineJob return error", func() {
 		ctrl := gomock.NewController(s.T())
 		defer ctrl.Finish()
 
 		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(context.Background(), appName, jobName).Return(nil, assert.AnError).Times(1)
+		dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), appName, jobName).Return(nil, assert.AnError).Times(1)
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(context.Background(), appName, jobName)
@@ -138,7 +138,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 
 		deployList := []*deploymentModels.DeploymentSummary{&deploySummary}
 		dh := deployMock.NewMockDeployHandler(ctrl)
-		dh.EXPECT().GetDeploymentsForJob(context.Background(), appName, jobName).Return(deployList, nil).Times(1)
+		dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), appName, jobName).Return(deployList, nil).Times(1)
 		h := Init(s.accounts, dh)
 
 		actualJob, actualErr := h.GetApplicationJob(context.Background(), appName, jobName)
@@ -181,7 +181,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			defer ctrl.Finish()
 
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			dh.EXPECT().GetDeploymentsForJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+			dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
 			rj := v1.RadixJob{ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName), CreationTimestamp: scenario.creationTimestamp}}
 			if scenario.jobStatusCreated != emptyTime {
@@ -212,7 +212,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 			defer ctrl.Finish()
 
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			dh.EXPECT().GetDeploymentsForJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+			dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
 			rj := v1.RadixJob{
 				ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName)},

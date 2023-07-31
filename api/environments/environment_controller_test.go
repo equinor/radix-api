@@ -8,19 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-api/api/secrets"
-	secretModels "github.com/equinor/radix-api/api/secrets/models"
-	"github.com/equinor/radix-api/api/secrets/suffix"
-	"github.com/equinor/radix-api/api/utils"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
 	eventMock "github.com/equinor/radix-api/api/events/mock"
 	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/secrets"
+	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/jobscheduler/mock"
 	"github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -46,19 +44,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
-	clusterName       = "AnyClusterName"
-	containerRegistry = "any.container.registry"
-	anyAppName        = "any-app"
-	anyComponentName  = "app"
-	anyJobName        = "job"
-	anyBatchName      = "batch"
-	anyDeployment     = "deployment"
-	anyEnvironment    = "dev"
-	anySecretName     = "TEST_SECRET"
-	egressIps         = "0.0.0.0"
+	clusterName      = "AnyClusterName"
+	anyAppName       = "any-app"
+	anyComponentName = "app"
+	anyJobName       = "job"
+	anyBatchName     = "batch"
+	anyDeployment    = "deployment"
+	anyEnvironment   = "dev"
+	anySecretName    = "TEST_SECRET"
+	egressIps        = "0.0.0.0"
 )
 
 func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -70,7 +69,7 @@ func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, containerRegistry, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())
@@ -1293,7 +1292,9 @@ func Test_GetJobs_Status(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest(nil)
+	ctrl := gomock.NewController(t)
+	jobSchedulerFactoryMock := mock.NewMockHandlerFactoryInterface(ctrl)
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _ := setupTest([]EnvironmentHandlerOptions{WithJobSchedulerHandlerFactory(jobSchedulerFactoryMock)})
 	commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
