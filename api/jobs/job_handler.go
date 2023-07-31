@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	knative "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/apis/duck/v1"
 )
 
 const (
@@ -252,7 +252,7 @@ func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.Pip
 	return stepsModels
 }
 
-func getLastReadyCondition(conditions knative.Conditions) *apis.Condition {
+func getLastReadyCondition(conditions []apis.Condition) *apis.Condition {
 	if len(conditions) == 1 {
 		return &conditions[0]
 	}
@@ -268,7 +268,7 @@ func getLastReadyCondition(conditions knative.Conditions) *apis.Condition {
 	return nil
 }
 
-func sortPipelineTaskStatusConditionsDesc(conditions knative.Conditions) knative.Conditions {
+func sortPipelineTaskStatusConditionsDesc(conditions []apis.Condition) v1.Conditions {
 	sort.Slice(conditions, func(i, j int) bool {
 		if conditions[i].LastTransitionTime.Inner.IsZero() || conditions[j].LastTransitionTime.Inner.IsZero() {
 			return false
