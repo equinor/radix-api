@@ -128,6 +128,8 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 	//     description: "Invalid application"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	//   "409":
