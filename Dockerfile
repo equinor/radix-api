@@ -6,13 +6,8 @@ RUN apk update && \
     apk add --no-cache gcc musl-dev
 
 RUN go install honnef.co/go/tools/cmd/staticcheck@2023.1.3 && \
-    go install github.com/rakyll/statik@v0.1.7
-
-# Install go-swagger - 108115901=v0.30.5 - get release id from https://api.github.com/repos/go-swagger/go-swagger/releases
-RUN download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/108115901 | \
-    jq -r '.assets[] | select(.name | contains("'"$(uname | tr '[:upper:]' '[:lower:]')"'_amd64")) | .browser_download_url') && \
-    curl -o /usr/local/bin/swagger -L'#' "$download_url" && \
-    chmod +x /usr/local/bin/swagger
+    go install github.com/rakyll/statik@v0.1.7 && \
+    go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
 
 WORKDIR /go/src/github.com/equinor/radix-api/
 
