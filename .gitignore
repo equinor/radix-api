@@ -26,3 +26,5 @@ Dockerfile.dev
 
 # binary created by goland with default settings
 main
+radix-common
+radix-operator
