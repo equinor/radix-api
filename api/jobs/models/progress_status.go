@@ -41,7 +41,10 @@ func (p ProgressStatus) String() string {
 
 // GetStatusFromRadixJobStatus Returns job status as string
 func GetStatusFromRadixJobStatus(jobStatus v1.RadixJobStatus, specStop bool) string {
-	if specStop && string(jobStatus.Condition) != Stopped.String() {
+	if specStop {
+		if string(jobStatus.Condition) == Stopped.String() || string(jobStatus.Condition) == Failed.String() || string(jobStatus.Condition) == Succeeded.String() {
+			return Stopped.String()
+		}
 		return Stopping.String()
 	}
 

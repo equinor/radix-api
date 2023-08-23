@@ -18,7 +18,6 @@ import (
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
@@ -138,11 +137,8 @@ func (eh SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envN
 	}
 
 	secretObject, err := eh.userAccount.Client.CoreV1().Secrets(ns).Get(ctx, secretObjName, metav1.GetOptions{})
-	if err != nil && k8sErrors.IsNotFound(err) {
-		return radixhttp.TypeMissingError("Secret object does not exist", err)
-	}
 	if err != nil {
-		return radixhttp.UnexpectedError("Failed getting secret object", err)
+		return err
 	}
 
 	if secretObject.Data == nil {
