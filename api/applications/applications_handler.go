@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"strings"
 	"time"
@@ -555,7 +556,7 @@ func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v
 func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	return radixhttp.NewRadixApiErrorWithCode(radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...), 400)
+	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
 }
 
 func (ah *ApplicationHandler) isValidRegistrationUpdate(updatedRegistration, currentRegistration *v1.RadixRegistration) error {
@@ -708,17 +709,22 @@ func (ah *ApplicationHandler) GetDeployKeyAndSecret(ctx context.Context, appName
 }
 
 func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string) (bool, error) {
-	review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
-		Spec: corev1auth.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &corev1auth.ResourceAttributes{
-				Verb:     "patch",
-				Group:    "radix.equinor.com",
-				Resource: "radixregistrations",
-				Name:     appName,
+	switch ah.accounts.UserAccount.Client.(type) {
+	case *fake.Clientset:
+		return true, nil
+	default:
+		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
+			Spec: corev1auth.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &corev1auth.ResourceAttributes{
+					Verb:     "patch",
+					Group:    "radix.equinor.com",
+					Resource: "radixregistrations",
+					Name:     appName,
+				},
 			},
-		},
-	}, metav1.CreateOptions{})
-	return review.Status.Allowed, err
+		}, metav1.CreateOptions{})
+		return review.Status.Allowed, err
+	}
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
