@@ -12,3 +12,4 @@ charts
 
 debug
 swaggerui_src/swagger.json
+swaggerui/statik.go
