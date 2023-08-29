@@ -12,4 +12,3 @@ charts
 
 debug
 swaggerui_src/swagger.json
-build-deploy.sh
