@@ -27,6 +27,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	corev1auth "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,7 +94,12 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList)
+	userIsAdmin, err := ah.userIsAppAdmin(ctx, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin)
 	return application, nil
 }
 
@@ -549,7 +555,7 @@ func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v
 func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
 	// to run a full validation
-	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
+	return radixhttp.NewRadixApiErrorWithCode(radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...), 400)
 }
 
 func (ah *ApplicationHandler) isValidRegistrationUpdate(updatedRegistration, currentRegistration *v1.RadixRegistration) error {
@@ -699,6 +705,20 @@ func (ah *ApplicationHandler) GetDeployKeyAndSecret(ctx context.Context, appName
 		PublicDeployKey: publicKey,
 		SharedSecret:    sharedSecret,
 	}, nil
+}
+
+func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string) (bool, error) {
+	review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
+		Spec: corev1auth.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &corev1auth.ResourceAttributes{
+				Verb:     "patch",
+				Group:    "radix.equinor.com",
+				Resource: "radixregistrations",
+				Name:     appName,
+			},
+		},
+	}, metav1.CreateOptions{})
+	return review.Status.Allowed, err
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {

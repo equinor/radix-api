@@ -33,4 +33,9 @@ type Application struct {
 	//
 	// required: false
 	AppAlias *ApplicationAlias `json:"appAlias,omitempty"`
+
+	// UserIsAdmin if user is member of application's admin groups
+	//
+	// required: true
+	UserIsAdmin bool `json:"userIsAdmin"`
 }
