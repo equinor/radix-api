@@ -113,6 +113,8 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//           "$ref": "#/definitions/JobSummary"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -163,6 +165,8 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	//        "$ref": "#/definitions/Job"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -212,6 +216,8 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	//     description: "Job stopped ok"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -265,6 +271,8 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 	//           "$ref": "#/definitions/PipelineRun"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -321,6 +329,8 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 	//       "$ref": "#/definitions/PipelineRun"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -380,6 +390,8 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 	//           "$ref": "#/definitions/PipelineRunTask"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -442,6 +454,8 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 	//        $ref: "#/definitions/PipelineRunTask"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -507,6 +521,8 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 	//           "$ref": "#/definitions/PipelineRunTaskStep"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -593,6 +609,8 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	//        type: "string"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
@@ -680,6 +698,8 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	//        type: "string"
 	//   "401":
 	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
