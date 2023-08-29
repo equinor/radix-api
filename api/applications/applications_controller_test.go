@@ -954,10 +954,12 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
 	<-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 
+	assert.Equal(t, http.StatusOK, response.Code)
 	controllertest.GetResponseBody(response, &application)
 	assert.Equal(t, anyNewReaderAdGroup, application.Registration.ReaderAdGroups)
 

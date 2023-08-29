@@ -8,7 +8,7 @@ import (
 )
 
 // BuildApplication builds an Application model.
-func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, ingressList []networkingv1.Ingress) *applicationModels.Application {
+func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, ingressList []networkingv1.Ingress, userIsAdmin bool) *applicationModels.Application {
 	var environments []*environmentModels.EnvironmentSummary
 	if ra != nil {
 		environments = BuildEnvironmentSummaryList(rr, ra, reList, rdList, rjList)
@@ -23,5 +23,6 @@ func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 		Jobs:         jobs,
 		Environments: environments,
 		AppAlias:     appAlias,
+		UserIsAdmin:  userIsAdmin,
 	}
 }

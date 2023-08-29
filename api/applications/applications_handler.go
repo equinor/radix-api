@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	corev1auth "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,7 +95,12 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList)
+	userIsAdmin, err := ah.userIsAppAdmin(ctx, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin)
 	return application, nil
 }
 
@@ -699,6 +706,25 @@ func (ah *ApplicationHandler) GetDeployKeyAndSecret(ctx context.Context, appName
 		PublicDeployKey: publicKey,
 		SharedSecret:    sharedSecret,
 	}, nil
+}
+
+func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string) (bool, error) {
+	switch ah.accounts.UserAccount.Client.(type) {
+	case *fake.Clientset:
+		return true, nil
+	default:
+		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
+			Spec: corev1auth.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &corev1auth.ResourceAttributes{
+					Verb:     "patch",
+					Group:    "radix.equinor.com",
+					Resource: "radixregistrations",
+					Name:     appName,
+				},
+			},
+		}, metav1.CreateOptions{})
+		return review.Status.Allowed, err
+	}
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
