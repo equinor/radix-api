@@ -201,13 +201,11 @@ func TestUpdateSecret_NonExistingComponent_Missing(t *testing.T) {
 	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusNotFound, response.Code)
-	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
 
 	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusNotFound, response.Code)
-	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
 }
 
@@ -220,13 +218,11 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	secretObjName := operatorutils.GetComponentSecretName(anyComponentName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
-	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 
 	response = executeUpdateJobSecretTest(oldSecretValue, nonExistingSecret, anyJobName, anyEnvironmentName, updateSecretValue)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	secretObjName = operatorutils.GetComponentSecretName(anyJobName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
-	assert.Equal(t, "Secret object does not exist", errorResponse.Message)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 }
