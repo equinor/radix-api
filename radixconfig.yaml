@@ -10,9 +10,6 @@ spec:
     - name: qa
       build:
         from: master
-    - name: vite
-      build:
-        from: master
   components:
     - name: "server"
       src: "."
