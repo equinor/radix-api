@@ -34,7 +34,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o 
 RUN addgroup -S -g 1000 api-user
 RUN adduser -S -u 1000 -G api-user api-user
 
-FROM docker.io/scratch
+FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
