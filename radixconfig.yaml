@@ -4,7 +4,7 @@ metadata:
   name: radix-api-buildah-test
 spec:
   build:
-    useBuildKit: "true"
+    useBuildKit: true
   environments:
     - name: qa
       build:
