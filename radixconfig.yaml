@@ -38,17 +38,3 @@ spec:
           variables:
             PIPELINE_IMG_TAG: "master-latest"
             GOMAXPROCS: "1"
-        - environment: prod
-          runAsNonRoot: true
-          replicas: 2
-          monitoring: true
-          resources:
-            requests:
-              memory: "700M"
-              cpu: "250m"
-            limits:
-              memory: "1Gi"
-              cpu: "2000m"
-          variables:
-            PIPELINE_IMG_TAG: "release-latest"
-            GOMAXPROCS: "2"
