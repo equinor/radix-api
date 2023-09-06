@@ -8,7 +8,7 @@ spec:
   environments:
     - name: qa
       build:
-        from: master
+        from: buildah-test
   components:
     - name: "server"
       src: "."
