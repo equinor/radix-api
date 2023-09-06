@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine3.18 as builder
+FROM docker.io/golang:1.20-alpine3.18 as builder
 ENV GO111MODULE=on
 
 RUN apk update && \
@@ -34,7 +34,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o 
 RUN addgroup -S -g 1000 api-user
 RUN adduser -S -u 1000 -G api-user api-user
 
-FROM scratch
+FROM docker.io/scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
