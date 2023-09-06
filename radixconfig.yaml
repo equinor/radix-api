@@ -1,12 +1,11 @@
 apiVersion: radix.equinor.com/v1
 kind: RadixApplication
 metadata:
-  name: radix-api
+  name: radix-api-buildah-test
 spec:
+  build:
+    useBuildKit: "true"
   environments:
-    - name: prod
-      build:
-        from: release
     - name: qa
       build:
         from: master
