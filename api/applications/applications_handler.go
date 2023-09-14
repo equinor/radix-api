@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -33,6 +33,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 type patch struct {
@@ -47,6 +48,7 @@ type ApplicationHandler struct {
 	environmentHandler environments.EnvironmentHandler
 	accounts           models.Accounts
 	config             ApplicationHandlerConfig
+	namespace          string
 }
 
 // NewApplicationHandler Constructor
@@ -56,7 +58,18 @@ func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerCo
 		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
 		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
 		config:             config,
+		namespace:          getApiNamespace(),
 	}
+}
+
+func getApiNamespace() string {
+	if buff, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
+		return string(buff)
+	}
+	if namespace := os.Getenv("RADIX_API_NAMESPACE"); len(namespace) > 0 {
+		return namespace
+	}
+	panic("radix-api namespace not found in downwardAPI or environment variable")
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -284,6 +297,9 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+		if err := ah.validateUserIsMemberOfAdGroups(patchRequest.AdGroups); err != nil {
+			return nil, radixhttp.ValidationError("Radix Registration", "User is not member of all AD groups")
+		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
@@ -725,6 +741,18 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 		}, metav1.CreateOptions{})
 		return review.Status.Allowed, err
 	}
+}
+
+func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(adGroups *[]string) error {
+	if len(*adGroups) == 0 {
+		return nil
+	}
+
+	name := radixutils.RandString(10)
+	_, err := ah.accounts.UserAccount.Client.CoreV1().ConfigMaps(ah.namespace).Create(context.Background(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+	}, metav1.CreateOptions{DryRun: []string{"All"}})
+	return err
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
