@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -17,6 +16,8 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/rolebindings"
+	"github.com/equinor/radix-api/api/utils/roles"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -58,18 +59,15 @@ func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerCo
 		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
 		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
 		config:             config,
-		namespace:          getApiNamespace(),
+		namespace:          getApiNamespace(config),
 	}
 }
 
-func getApiNamespace() string {
-	if buff, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
-		return string(buff)
-	}
-	if namespace := os.Getenv("RADIX_API_NAMESPACE"); len(namespace) > 0 {
+func getApiNamespace(config ApplicationHandlerConfig) string {
+	if namespace := crdUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
 		return namespace
 	}
-	panic("radix-api namespace not found in downwardAPI or environment variable")
+	panic("missing RADIX_APP or RADIX_ENVIRONMENT environment variables")
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -290,15 +288,19 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 		return nil, err
 	}
 
-	payload := []patch{}
+	payload := make([]patch, 0)
 	runUpdate := false
 	updatedRegistration := currentRegistration.DeepCopy()
 
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
-		if err := ah.validateUserIsMemberOfAdGroups(patchRequest.AdGroups); err != nil {
-			return nil, radixhttp.ValidationError("Radix Registration", "User is not member of all AD groups")
+		err, valid := ah.validateUserIsMemberOfAdGroups(ctx, appName, patchRequest.AdGroups)
+		if err != nil {
+			return nil, err
+		}
+		if !valid {
+			return nil, radixhttp.ValidationError("Radix Registration", "User should be a member of at least one admin AD group or their sub-members")
 		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
@@ -570,7 +572,7 @@ func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v
 }
 
 func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
-	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
+	// Need to use in-cluster client of the API server, because the user might not have enough privileges
 	// to run a full validation
 	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
 }
@@ -743,16 +745,28 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	}
 }
 
-func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(adGroups *[]string) error {
+func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups *[]string) (error, bool) {
 	if len(*adGroups) == 0 {
-		return nil
+		return nil, false
 	}
-
-	name := radixutils.RandString(10)
-	_, err := ah.accounts.UserAccount.Client.CoreV1().ConfigMaps(ah.namespace).Create(context.Background(), &corev1.ConfigMap{
+	name := fmt.Sprintf("access-validation-%s", appName)
+	defer func() {
+		_ = roles.DeleteRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name)
+		_ = rolebindings.DeleteRoleBinding(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name)
+	}()
+	err := roles.EnsureRoleCreateConfigMapExists(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, name)
+	if err != nil {
+		return err, false
+	}
+	err = rolebindings.EnsureRoleBindingExists(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, name, adGroups)
+	if err != nil {
+		return err, false
+	}
+	// dry-run of creating a config map
+	_, err = ah.accounts.UserAccount.Client.CoreV1().ConfigMaps(ah.namespace).Create(context.Background(), &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 	}, metav1.CreateOptions{DryRun: []string{"All"}})
-	return err
+	return nil, err == nil
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {

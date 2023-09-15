@@ -20,7 +20,8 @@
                 "RADIX_ACTIVE_CLUSTER_EGRESS_IPS": "104.45.84.1",
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true",
                 "REQUIRE_APP_AD_GROUPS": "true",
-                "RADIX_API_NAMESPACE": "radix-api-qa"
+                "RADIX_ENVIRONMENT":"qa",
+                "RADIX_APP":"radix-api"
             },
             "args": [
                 "--useOutClusterClient=false"
