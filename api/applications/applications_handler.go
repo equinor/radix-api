@@ -16,24 +16,27 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/rolebindings"
-	"github.com/equinor/radix-api/api/utils/roles"
+	"github.com/equinor/radix-api/api/utils/access"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/defaults/k8s"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
+	authorizationapi "k8s.io/api/authorization/v1"
 	corev1auth "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -295,7 +298,7 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
-		err, valid := ah.validateUserIsMemberOfAdGroups(ctx, appName, patchRequest.AdGroups)
+		valid, err := ah.validateUserIsMemberOfAdGroups(ctx, appName, patchRequest.AdGroups)
 		if err != nil {
 			return nil, err
 		}
@@ -745,28 +748,35 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	}
 }
 
-func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups *[]string) (error, bool) {
+func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups *[]string) (bool, error) {
 	if len(*adGroups) == 0 {
-		return nil, false
+		return false, nil
 	}
 	name := fmt.Sprintf("access-validation-%s", appName)
+	labels := map[string]string{"radix-access-validation": "true"}
+	configMapName := fmt.Sprintf("%s-%s", name, crdUtils.RandString(6))
+	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
+	if err != nil {
+		return false, err
+	}
 	defer func() {
-		_ = roles.DeleteRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name)
-		_ = rolebindings.DeleteRoleBinding(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name)
+		_ = deleteRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
 	}()
-	err := roles.EnsureRoleCreateConfigMapExists(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, name)
+	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
 	if err != nil {
-		return err, false
+		return false, err
 	}
-	err = rolebindings.EnsureRoleBindingExists(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, name, adGroups)
-	if err != nil {
-		return err, false
-	}
-	// dry-run of creating a config map
-	_, err = ah.accounts.UserAccount.Client.CoreV1().ConfigMaps(ah.namespace).Create(context.Background(), &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-	}, metav1.CreateOptions{DryRun: []string{"All"}})
-	return nil, err == nil
+	defer func() {
+		_ = deleteRoleBinding(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+	}()
+
+	return access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
+		Verb:     "get",
+		Group:    "",
+		Resource: "configmaps",
+		Version:  "*",
+		Name:     configMapName,
+	})
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
@@ -776,4 +786,58 @@ func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistrati
 	}
 	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
 	return true
+}
+
+func createRoleToGetConfigMap(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleName string, labels map[string]string, configMapName string) (*rbacv1.Role, error) {
+	return kubeClient.RbacV1().Roles(namespace).Create(ctx, &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{GenerateName: roleName, Labels: labels},
+		Rules: []rbacv1.PolicyRule{{
+			Verbs:         []string{"get"},
+			APIGroups:     []string{""},
+			Resources:     []string{"configmaps"},
+			ResourceNames: []string{configMapName},
+		}},
+	}, metav1.CreateOptions{})
+}
+
+func deleteRole(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleName string) error {
+	deletionPropagation := metav1.DeletePropagationBackground
+	return kubeClient.RbacV1().Roles(namespace).Delete(ctx, roleName, metav1.DeleteOptions{
+		PropagationPolicy: &deletionPropagation,
+	})
+}
+
+func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interface, namespace string, role *rbacv1.Role, roleBindingName string, adGroups *[]string, labels map[string]string) (*rbacv1.RoleBinding, error) {
+	var subjects []rbacv1.Subject
+	for _, adGroup := range *adGroups {
+		subjects = append(subjects, rbacv1.Subject{
+			Kind:     k8s.KindGroup,
+			Name:     adGroup,
+			APIGroup: k8s.RbacApiGroup,
+		})
+	}
+	newRoleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: roleBindingName,
+			Labels:       labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: k8s.RbacApiVersion,
+					Kind:       k8s.KindRole,
+					Name:       role.GetName(),
+					UID:        role.GetUID(),
+				},
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: k8s.RbacApiGroup,
+			Kind:     k8s.KindRole,
+			Name:     role.GetName(),
+		}, Subjects: subjects,
+	}
+	return kubeClient.RbacV1().RoleBindings(namespace).Create(ctx, newRoleBinding, metav1.CreateOptions{})
+}
+
+func deleteRoleBinding(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleBindingName string) error {
+	return kubeClient.RbacV1().RoleBindings(namespace).Delete(ctx, roleBindingName, metav1.DeleteOptions{})
 }

@@ -10,6 +10,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/utils/access"
 	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
@@ -212,25 +213,11 @@ func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixr
 
 // cannot run as test - does not return correct values
 func hasAccess(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
-	sar := authorizationapi.SelfSubjectAccessReview{
-		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationapi.ResourceAttributes{
-				Verb:     "get",
-				Group:    "radix.equinor.com",
-				Resource: "radixregistrations",
-				Version:  "*",
-				Name:     rr.GetName(),
-			},
-		},
-	}
-
-	r, err := postSelfSubjectAccessReviews(ctx, client, sar)
-	if err != nil {
-		return false, err
-	}
-	return r.Status.Allowed, nil
-}
-
-func postSelfSubjectAccessReviews(ctx context.Context, client kubernetes.Interface, sar authorizationapi.SelfSubjectAccessReview) (*authorizationapi.SelfSubjectAccessReview, error) {
-	return client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &sar, metav1.CreateOptions{})
+	return access.HasAccess(ctx, client, &authorizationapi.ResourceAttributes{
+		Verb:     "get",
+		Group:    "radix.equinor.com",
+		Resource: "radixregistrations",
+		Version:  "*",
+		Name:     rr.GetName(),
+	})
 }
