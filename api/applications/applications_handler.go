@@ -754,20 +754,20 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	}
 	name := fmt.Sprintf("access-validation-%s", appName)
 	labels := map[string]string{"radix-access-validation": "true"}
-	configMapName := fmt.Sprintf("%s-%s", name, crdUtils.RandString(6))
+	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(crdUtils.RandString(6)))
 	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
 	if err != nil {
 		return false, err
 	}
 	defer func() {
-		_ = deleteRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		_ = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
 	}()
 	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
 	if err != nil {
 		return false, err
 	}
 	defer func() {
-		_ = deleteRoleBinding(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		_ = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
 	}()
 
 	return access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
