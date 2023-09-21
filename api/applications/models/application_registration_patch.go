@@ -11,7 +11,7 @@ type ApplicationRegistrationPatch struct {
 	// ReaderAdGroups the groups that should be able to read the application
 	//
 	// required: false
-	ReaderAdGroups *[]string `json:"ReaderAdGroups,omitempty"`
+	ReaderAdGroups *[]string `json:"readerAdGroups,omitempty"`
 
 	// Owner of the application - should be an email
 	//
