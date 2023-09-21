@@ -771,11 +771,12 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	}()
 
 	return access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
-		Verb:     "get",
-		Group:    "",
-		Resource: "configmaps",
-		Version:  "*",
-		Name:     configMapName,
+		Verb:      "get",
+		Group:     "",
+		Resource:  "configmaps",
+		Version:   "*",
+		Namespace: ah.namespace,
+		Name:      configMapName,
 	})
 }
 
