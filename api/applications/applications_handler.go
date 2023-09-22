@@ -763,14 +763,20 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		return err
 	}
 	defer func() {
-		_ = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		if err != nil {
+			log.Warnf("Failed to delete role %s: %v", role.GetName(), err)
+		}
 	}()
 	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		_ = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		if err != nil {
+			log.Warnf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
+		}
 	}()
 
 	valid, err := access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
