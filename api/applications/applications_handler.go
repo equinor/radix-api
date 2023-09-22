@@ -16,7 +16,6 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/access"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -45,23 +44,27 @@ type patch struct {
 	Value interface{} `json:"value"`
 }
 
+type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler         job.JobHandler
-	environmentHandler environments.EnvironmentHandler
-	accounts           models.Accounts
-	config             ApplicationHandlerConfig
-	namespace          string
+	jobHandler              job.JobHandler
+	environmentHandler      environments.EnvironmentHandler
+	accounts                models.Accounts
+	config                  ApplicationHandlerConfig
+	namespace               string
+	hasAccessToGetConfigMap func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:           accounts,
-		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
-		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
-		config:             config,
-		namespace:          getApiNamespace(config),
+		accounts:                accounts,
+		jobHandler:              job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
+		config:                  config,
+		namespace:               getApiNamespace(config),
+		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
 	}
 }
 
@@ -301,6 +304,10 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, updatedRegistration.Spec.AdGroups)
+		if err != nil {
+			return nil, err
+		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
@@ -372,10 +379,6 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	}
 
 	if runUpdate {
-		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, updatedRegistration.Spec.AdGroups)
-		if err != nil {
-			return nil, err
-		}
 		err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
 		if err != nil {
 			return nil, err
@@ -779,14 +782,7 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		}
 	}()
 
-	valid, err := access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
-		Verb:      "get",
-		Group:     "",
-		Resource:  "configmaps",
-		Version:   "*",
-		Namespace: ah.namespace,
-		Name:      configMapName,
-	})
+	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, ah.namespace, configMapName)
 	if err != nil {
 		return err
 	}
