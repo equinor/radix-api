@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/utils/pointers"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,6 +48,15 @@ const (
 )
 
 func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
+	return setupTestWithFactory(newTestApplicationHandlerFactory(
+		ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
+		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+			return true, nil
+		},
+	))
+}
+
+func setupTestWithFactory(handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -67,12 +77,7 @@ func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontes
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
 			},
-			newTestApplicationHandlerFactory(
-				ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
-				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-					return true, nil
-				},
-			),
+			handlerFactory,
 		),
 	)
 
@@ -1158,6 +1163,104 @@ func TestModifyApplication_IgnoreRequireADGroupValidationWhenRequiredButCurrentI
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
+func TestModifyApplication_UpdateADGroupValidation(t *testing.T) {
+	type scenario struct {
+		requireAppADGroups   bool
+		name                 string
+		hasAccessToAdGroups  bool
+		expectedResponseCode int
+		adminAdGroups        []string
+	}
+	scenarios := []scenario{
+		{
+			name:                 "Require ADGroups, has groups and has access to them",
+			requireAppADGroups:   true,
+			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
+			hasAccessToAdGroups:  true,
+			expectedResponseCode: http.StatusOK,
+		},
+		{
+			name:                 "Require ADGroups, has no groups and has access to them",
+			requireAppADGroups:   true,
+			adminAdGroups:        []string{},
+			hasAccessToAdGroups:  true,
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		{
+			name:                 "Require ADGroups, has groups and has no access to them",
+			requireAppADGroups:   true,
+			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
+			hasAccessToAdGroups:  false,
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		{
+			name:                 "Require ADGroups, has no groups and has no access to them",
+			requireAppADGroups:   true,
+			adminAdGroups:        []string{},
+			hasAccessToAdGroups:  false,
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		{
+			name:                 "Not require ADGroups, has groups and has access to them",
+			requireAppADGroups:   false,
+			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
+			hasAccessToAdGroups:  true,
+			expectedResponseCode: http.StatusOK,
+		},
+		{
+			name:                 "Not require ADGroups, has no groups and has access to them",
+			requireAppADGroups:   false,
+			adminAdGroups:        []string{},
+			hasAccessToAdGroups:  true,
+			expectedResponseCode: http.StatusOK,
+		},
+		{
+			name:                 "Not require ADGroups, has groups and has no access to them",
+			requireAppADGroups:   false,
+			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
+			hasAccessToAdGroups:  false,
+			expectedResponseCode: http.StatusBadRequest,
+		},
+		{
+			name:                 "Not require ADGroups, has no groups and has no access to them",
+			requireAppADGroups:   false,
+			adminAdGroups:        []string{},
+			hasAccessToAdGroups:  false,
+			expectedResponseCode: http.StatusOK,
+		},
+	}
+
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			_, controllerTestUtils, _, radixClient, _, _ := setupTestWithFactory(newTestApplicationHandlerFactory(
+				ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: ts.requireAppADGroups},
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return ts.hasAccessToAdGroups, nil
+				},
+			))
+
+			rr, err := anApplicationRegistration().
+				WithName("any-name").
+				WithAdGroups([]string{"e654757d-c789-11e8-bbad-045007777777"}).
+				BuildRR()
+			require.NoError(t, err)
+			_, err = radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			// Test
+			patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
+				ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
+					AdGroups: pointers.Ptr(ts.adminAdGroups),
+				},
+			}
+
+			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
+			response := <-responseChannel
+			assert.Equal(t, ts.expectedResponseCode, response.Code, fmt.Sprintf("Expected response code %d but got %d", ts.expectedResponseCode, response.Code))
+		})
+	}
+}
+
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(true, true)
@@ -1631,7 +1734,7 @@ type testApplicationHandlerFactory struct {
 	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
 }
 
-func newTestApplicationHandlerFactory(config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandlerFactory {
+func newTestApplicationHandlerFactory(config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) *testApplicationHandlerFactory {
 	return &testApplicationHandlerFactory{
 		config:                  config,
 		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
