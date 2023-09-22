@@ -30,7 +30,6 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1"
-	corev1auth "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -193,6 +192,10 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 			return upsertResponse, err
 		}
 	}
+	err = ah.validateUserIsMemberOfAdGroups(ctx, applicationRegistrationRequest.ApplicationRegistration.Name, applicationRegistrationRequest.ApplicationRegistration.AdGroups)
+	if err != nil {
+		return nil, err
+	}
 
 	radixRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{})
 	if err != nil {
@@ -298,13 +301,6 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
-		valid, err := ah.validateUserIsMemberOfAdGroups(ctx, appName, patchRequest.AdGroups)
-		if err != nil {
-			return nil, err
-		}
-		if !valid {
-			return nil, radixhttp.ValidationError("Radix Registration", "User should be a member of at least one admin AD group or their sub-members")
-		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
@@ -376,6 +372,10 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	}
 
 	if runUpdate {
+		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, updatedRegistration.Spec.AdGroups)
+		if err != nil {
+			return nil, err
+		}
 		err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
 		if err != nil {
 			return nil, err
@@ -734,9 +734,9 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	case *fake.Clientset:
 		return true, nil
 	default:
-		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
-			Spec: corev1auth.SelfSubjectAccessReviewSpec{
-				ResourceAttributes: &corev1auth.ResourceAttributes{
+		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &authorizationapi.SelfSubjectAccessReview{
+			Spec: authorizationapi.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationapi.ResourceAttributes{
 					Verb:     "patch",
 					Group:    "radix.equinor.com",
 					Resource: "radixregistrations",
@@ -748,29 +748,32 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	}
 }
 
-func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups *[]string) (bool, error) {
-	if len(*adGroups) == 0 {
-		return false, nil
+func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups []string) error {
+	if len(adGroups) == 0 {
+		if ah.config.RequireAppADGroups {
+			return userShouldBeMemberOfAdminAdGroupError()
+		}
+		return nil
 	}
 	name := fmt.Sprintf("access-validation-%s", appName)
 	labels := map[string]string{"radix-access-validation": "true"}
 	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(crdUtils.RandString(6)))
 	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
 	if err != nil {
-		return false, err
+		return err
 	}
 	defer func() {
 		_ = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
 	}()
 	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
 	if err != nil {
-		return false, err
+		return err
 	}
 	defer func() {
 		_ = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
 	}()
 
-	return access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
+	valid, err := access.HasAccess(ctx, ah.accounts.UserAccount.Client, &authorizationapi.ResourceAttributes{
 		Verb:      "get",
 		Group:     "",
 		Resource:  "configmaps",
@@ -778,6 +781,13 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		Namespace: ah.namespace,
 		Name:      configMapName,
 	})
+	if err != nil {
+		return err
+	}
+	if valid {
+		return nil
+	}
+	return userShouldBeMemberOfAdminAdGroupError()
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
@@ -808,9 +818,9 @@ func deleteRole(ctx context.Context, kubeClient kubernetes.Interface, namespace,
 	})
 }
 
-func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interface, namespace string, role *rbacv1.Role, roleBindingName string, adGroups *[]string, labels map[string]string) (*rbacv1.RoleBinding, error) {
+func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interface, namespace string, role *rbacv1.Role, roleBindingName string, adGroups []string, labels map[string]string) (*rbacv1.RoleBinding, error) {
 	var subjects []rbacv1.Subject
-	for _, adGroup := range *adGroups {
+	for _, adGroup := range adGroups {
 		subjects = append(subjects, rbacv1.Subject{
 			Kind:     k8s.KindGroup,
 			Name:     adGroup,
