@@ -304,7 +304,7 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
-		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, updatedRegistration.Spec.AdGroups)
+		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, *patchRequest.AdGroups)
 		if err != nil {
 			return nil, err
 		}
