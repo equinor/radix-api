@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"strings"
 	"time"
@@ -23,16 +22,20 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/defaults/k8s"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
-	corev1auth "k8s.io/api/authorization/v1"
+	authorizationapi "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 type patch struct {
@@ -41,22 +44,35 @@ type patch struct {
 	Value interface{} `json:"value"`
 }
 
+type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler         job.JobHandler
-	environmentHandler environments.EnvironmentHandler
-	accounts           models.Accounts
-	config             ApplicationHandlerConfig
+	jobHandler              job.JobHandler
+	environmentHandler      environments.EnvironmentHandler
+	accounts                models.Accounts
+	config                  ApplicationHandlerConfig
+	namespace               string
+	hasAccessToGetConfigMap func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:           accounts,
-		jobHandler:         job.Init(accounts, deployments.Init(accounts)),
-		environmentHandler: environments.Init(environments.WithAccounts(accounts)),
-		config:             config,
+		accounts:                accounts,
+		jobHandler:              job.Init(accounts, deployments.Init(accounts)),
+		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
+		config:                  config,
+		namespace:               getApiNamespace(config),
+		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
 	}
+}
+
+func getApiNamespace(config ApplicationHandlerConfig) string {
+	if namespace := crdUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
+		return namespace
+	}
+	panic("missing RADIX_APP or RADIX_ENVIRONMENT environment variables")
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -179,6 +195,10 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 			return upsertResponse, err
 		}
 	}
+	err = ah.validateUserIsMemberOfAdGroups(ctx, applicationRegistrationRequest.ApplicationRegistration.Name, applicationRegistrationRequest.ApplicationRegistration.AdGroups)
+	if err != nil {
+		return nil, err
+	}
 
 	radixRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{})
 	if err != nil {
@@ -277,13 +297,17 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 		return nil, err
 	}
 
-	payload := []patch{}
+	payload := make([]patch, 0)
 	runUpdate := false
 	updatedRegistration := currentRegistration.DeepCopy()
 
 	// Only these fields can change over time
 	patchRequest := applicationRegistrationPatchRequest.ApplicationRegistrationPatch
 	if patchRequest.AdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdGroups, *patchRequest.AdGroups) {
+		err := ah.validateUserIsMemberOfAdGroups(ctx, appName, *patchRequest.AdGroups)
+		if err != nil {
+			return nil, err
+		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
@@ -554,7 +578,7 @@ func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v
 }
 
 func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
-	// Need to use in-cluster client of the API server, because the user might not have enough priviledges
+	// Need to use in-cluster client of the API server, because the user might not have enough privileges
 	// to run a full validation
 	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
 }
@@ -713,9 +737,9 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	case *fake.Clientset:
 		return true, nil
 	default:
-		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &corev1auth.SelfSubjectAccessReview{
-			Spec: corev1auth.SelfSubjectAccessReviewSpec{
-				ResourceAttributes: &corev1auth.ResourceAttributes{
+		review, err := ah.accounts.UserAccount.Client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &authorizationapi.SelfSubjectAccessReview{
+			Spec: authorizationapi.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationapi.ResourceAttributes{
 					Verb:     "patch",
 					Group:    "radix.equinor.com",
 					Resource: "radixregistrations",
@@ -727,6 +751,47 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 	}
 }
 
+func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups []string) error {
+	if len(adGroups) == 0 {
+		if ah.config.RequireAppADGroups {
+			return userShouldBeMemberOfAdminAdGroupError()
+		}
+		return nil
+	}
+	name := fmt.Sprintf("access-validation-%s", appName)
+	labels := map[string]string{"radix-access-validation": "true"}
+	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(crdUtils.RandString(6)))
+	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		if err != nil {
+			log.Warnf("Failed to delete role %s: %v", role.GetName(), err)
+		}
+	}()
+	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		if err != nil {
+			log.Warnf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
+		}
+	}()
+
+	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, ah.namespace, configMapName)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return userShouldBeMemberOfAdminAdGroupError()
+	}
+	return nil
+}
+
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
 	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
 	if len(strings.TrimSpace(existingRegistration.Spec.ConfigBranch)) > 0 {
@@ -734,4 +799,58 @@ func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistrati
 	}
 	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
 	return true
+}
+
+func createRoleToGetConfigMap(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleName string, labels map[string]string, configMapName string) (*rbacv1.Role, error) {
+	return kubeClient.RbacV1().Roles(namespace).Create(ctx, &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{GenerateName: roleName, Labels: labels},
+		Rules: []rbacv1.PolicyRule{{
+			Verbs:         []string{"get"},
+			APIGroups:     []string{""},
+			Resources:     []string{"configmaps"},
+			ResourceNames: []string{configMapName},
+		}},
+	}, metav1.CreateOptions{})
+}
+
+func deleteRole(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleName string) error {
+	deletionPropagation := metav1.DeletePropagationBackground
+	return kubeClient.RbacV1().Roles(namespace).Delete(ctx, roleName, metav1.DeleteOptions{
+		PropagationPolicy: &deletionPropagation,
+	})
+}
+
+func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interface, namespace string, role *rbacv1.Role, roleBindingName string, adGroups []string, labels map[string]string) (*rbacv1.RoleBinding, error) {
+	var subjects []rbacv1.Subject
+	for _, adGroup := range adGroups {
+		subjects = append(subjects, rbacv1.Subject{
+			Kind:     k8s.KindGroup,
+			Name:     adGroup,
+			APIGroup: k8s.RbacApiGroup,
+		})
+	}
+	newRoleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: roleBindingName,
+			Labels:       labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: k8s.RbacApiVersion,
+					Kind:       k8s.KindRole,
+					Name:       role.GetName(),
+					UID:        role.GetUID(),
+				},
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: k8s.RbacApiGroup,
+			Kind:     k8s.KindRole,
+			Name:     role.GetName(),
+		}, Subjects: subjects,
+	}
+	return kubeClient.RbacV1().RoleBindings(namespace).Create(ctx, newRoleBinding, metav1.CreateOptions{})
+}
+
+func deleteRoleBinding(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleBindingName string) error {
+	return kubeClient.RbacV1().RoleBindings(namespace).Delete(ctx, roleBindingName, metav1.DeleteOptions{})
 }

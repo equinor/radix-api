@@ -178,7 +178,7 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 		matcher = applicationModels.MatchBySSHRepoFunc(sshRepo)
 	}
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrations, err := handler.GetApplications(r.Context(), matcher, ac.hasAccessToRR, GetApplicationsOptions{})
 
 	if err != nil {
@@ -243,7 +243,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		return
 	}
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	matcher := applicationModels.MatchByNamesFunc(appNamesRequest.Names)
 
 	appRegistrations, err := handler.GetApplications(
@@ -304,7 +304,7 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 
 	appName := mux.Vars(r)["appName"]
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 
 	application, err := handler.GetApplication(r.Context(), appName)
 
@@ -404,7 +404,7 @@ func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts mode
 	//     description: "Internal server error"
 
 	appName := mux.Vars(r)["appName"]
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	machineUser, err := handler.RegenerateMachineUserToken(r.Context(), appName)
 
 	if err != nil {
@@ -453,7 +453,7 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyAndSecretData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecretAndPrivateKey); err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -501,7 +501,7 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	deployKeyAndSecret, err := handler.GetDeployKeyAndSecret(r.Context(), appName)
 
 	if err != nil {
@@ -555,7 +555,7 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.RegisterApplication(r.Context(), applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -616,7 +616,7 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(r.Context(), appName, applicationRegistrationRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -677,7 +677,7 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 	}
 
 	// Need in cluster Radix client in order to validate registration using sufficient privileges
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(r.Context(), appName, applicationRegistrationPatchRequest)
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
@@ -721,7 +721,7 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	err := handler.DeleteApplication(r.Context(), appName)
 
 	if err != nil {
@@ -752,7 +752,7 @@ func (ac *applicationController) ListPipelines(accounts models.Accounts, w http.
 	//           type: string
 
 	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	supportedPipelines := handler.GetSupportedPipelines()
 	radixhttp.JSONResponse(w, r, supportedPipelines)
 }
@@ -796,7 +796,7 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelineBuild(r.Context(), appName, r)
 
 	if err != nil {
@@ -847,7 +847,7 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelineBuildDeploy(r.Context(), appName, r)
 
 	if err != nil {
@@ -898,7 +898,7 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelineDeploy(r.Context(), appName, r)
 
 	if err != nil {
@@ -947,7 +947,7 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := ac.applicationHandlerFactory(accounts)
+	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelinePromote(r.Context(), appName, r)
 
 	if err != nil {

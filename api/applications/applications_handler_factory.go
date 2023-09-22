@@ -1,15 +1,41 @@
 package applications
 
 import (
+	"context"
+	"github.com/equinor/radix-api/api/utils/access"
 	"github.com/equinor/radix-api/models"
+	authorizationapi "k8s.io/api/authorization/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // ApplicationHandlerFactory defines a factory function for creating an ApplicationHandler
-type ApplicationHandlerFactory func(accounts models.Accounts) ApplicationHandler
+type ApplicationHandlerFactory interface {
+	Create(accounts models.Accounts) ApplicationHandler
+}
+
+type applicationHandlerFactory struct {
+	config ApplicationHandlerConfig
+}
 
 // NewApplicationHandlerFactory creates a new ApplicationHandlerFactory
 func NewApplicationHandlerFactory(config ApplicationHandlerConfig) ApplicationHandlerFactory {
-	return func(accounts models.Accounts) ApplicationHandler {
-		return NewApplicationHandler(accounts, config)
+	return &applicationHandlerFactory{
+		config: config,
 	}
+}
+
+// Create creates a new ApplicationHandler
+func (f *applicationHandlerFactory) Create(accounts models.Accounts) ApplicationHandler {
+	return NewApplicationHandler(accounts, f.config, hasAccessToGetConfigMap)
+}
+
+func hasAccessToGetConfigMap(ctx context.Context, kubeClient kubernetes.Interface, namespace, configMapName string) (bool, error) {
+	return access.HasAccess(ctx, kubeClient, &authorizationapi.ResourceAttributes{
+		Verb:      "get",
+		Group:     "",
+		Resource:  "configmaps",
+		Version:   "*",
+		Namespace: namespace,
+		Name:      configMapName,
+	})
 }
