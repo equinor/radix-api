@@ -790,10 +790,10 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	if err != nil {
 		return err
 	}
-	if valid {
-		return nil
+	if !valid {
+		return userShouldBeMemberOfAdminAdGroupError()
 	}
-	return userShouldBeMemberOfAdminAdGroupError()
+	return nil
 }
 
 func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
