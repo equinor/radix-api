@@ -1169,7 +1169,6 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), anyEnvironment)
 	eventHandler.EXPECT().
 		GetEvents(context.Background(), controllertest.EqualsNamespaceFunc(nsFunc)).
-		Return(make([]*eventModels.Event, 0), fmt.Errorf("err")).
 		Return([]*eventModels.Event{{}, {}}, nil).
 		Times(1)
 
