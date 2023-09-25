@@ -222,7 +222,7 @@ func (h *handler) validateUpdateSlackConfig(slackConfig *alertModels.UpdateSlack
 func (h *handler) waitForRadixAlertReconciled(ctx context.Context, source *radixv1.RadixAlert) (*radixv1.RadixAlert, bool) {
 	var reconciledAlert *radixv1.RadixAlert
 
-	hasReconciled := func() (bool, error) {
+	hasReconciled := func(ctx context.Context) (bool, error) {
 		radixAlert, err := h.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(source.Namespace).Get(ctx, source.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -233,9 +233,10 @@ func (h *handler) waitForRadixAlertReconciled(ctx context.Context, source *radix
 		return radixAlert.Status.Reconciled != nil, nil
 	}
 
-	if err := wait.PollImmediate(h.reconcilePollInterval, h.reconcilePollTimeout, hasReconciled); err != nil {
+	if err := wait.PollUntilContextTimeout(ctx, h.reconcilePollInterval, h.reconcilePollTimeout, true, hasReconciled); err != nil {
 		return nil, false
 	}
+
 	return reconciledAlert, true
 }
 
