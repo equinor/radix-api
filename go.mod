@@ -25,9 +25,9 @@ require (
 	github.com/tektoncd/pipeline v0.41.0
 	github.com/urfave/negroni/v3 v3.0.0
 	golang.org/x/sync v0.2.0
-	k8s.io/api v0.26.7
+	k8s.io/api v0.27.6
 	k8s.io/apimachinery v0.27.6
-	k8s.io/client-go v0.26.7
+	k8s.io/client-go v0.27.6
 	knative.dev/pkg v0.0.0-20221011175852-714b7630a836
 	sigs.k8s.io/secrets-store-csi-driver v1.3.3
 )
