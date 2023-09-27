@@ -40,11 +40,6 @@ type ApplicationRegistration struct {
 	// required: true
 	Creator string `json:"creator"`
 
-	// MachineUser is on/off toggle of machine user for the application
-	//
-	// required: false
-	MachineUser bool `json:"machineUser"`
-
 	// WBS information
 	//
 	// required: false

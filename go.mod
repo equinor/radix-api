@@ -4,8 +4,8 @@ go 1.21
 
 require (
 	github.com/equinor/radix-common v1.5.0
-	github.com/equinor/radix-job-scheduler v1.8.2
-	github.com/equinor/radix-operator v1.40.5
+	github.com/equinor/radix-job-scheduler v1.8.3
+	github.com/equinor/radix-operator v1.43.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -110,7 +110,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.7 // indirect
+	k8s.io/apiextensions-apiserver v0.27.6 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect

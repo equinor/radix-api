@@ -18,13 +18,6 @@ type ApplicationRegistrationPatch struct {
 	// required: false
 	Owner *string `json:"owner,omitempty"`
 
-	// MachineUser is used for interacting directly with Radix API
-	//
-	// required: false
-	// Extensions:
-	// x-nullable: true
-	MachineUser *bool `json:"machineUser,omitempty"`
-
 	// Repository the github repository
 	//
 	// required: false
