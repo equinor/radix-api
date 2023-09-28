@@ -27,8 +27,10 @@ func LoadApplicationHandlerConfig(args []string) (ApplicationHandlerConfig, erro
 }
 
 type ApplicationHandlerConfig struct {
-	RequireAppConfigurationItem bool `cfg:"require_app_configuration_item" flag:"require-app-configuration-item"`
-	RequireAppADGroups          bool `cfg:"require_app_ad_groups" flag:"require-app-ad-groups"`
+	RequireAppConfigurationItem bool   `cfg:"require_app_configuration_item" flag:"require-app-configuration-item"`
+	RequireAppADGroups          bool   `cfg:"require_app_ad_groups" flag:"require-app-ad-groups"`
+	AppName                     string `cfg:"radix_app" flag:"radix-app"`
+	EnvironmentName             string `cfg:"radix_environment" flag:"radix-environment"`
 }
 
 func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
@@ -36,5 +38,7 @@ func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
 	flagset.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
 	flagset.Bool("require-app-configuration-item", true, "Require configuration item for application")
 	flagset.Bool("require-app-ad-groups", true, "Require AD groups for application")
+	flagset.String("radix-app", "", "Application name")
+	flagset.String("radix-environment", "", "Environment name")
 	return flagset
 }
