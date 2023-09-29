@@ -15,7 +15,6 @@ type ApplicationRegistrationBuilder interface {
 	WithAdGroups([]string) ApplicationRegistrationBuilder
 	WithReaderAdGroups([]string) ApplicationRegistrationBuilder
 	WithCloneURL(string) ApplicationRegistrationBuilder
-	WithMachineUser(bool) ApplicationRegistrationBuilder
 	WithWBS(string) ApplicationRegistrationBuilder
 	WithConfigBranch(string) ApplicationRegistrationBuilder
 	WithConfigurationItem(string) ApplicationRegistrationBuilder
@@ -35,7 +34,6 @@ type applicationBuilder struct {
 	adGroups            []string
 	readerAdGroups      []string
 	cloneURL            string
-	machineUser         bool
 	wbs                 string
 	configBranch        string
 	configurationItem   string
@@ -64,7 +62,6 @@ func (rb *applicationBuilder) WithRadixRegistration(radixRegistration *v1.RadixR
 	rb.WithReaderAdGroups(radixRegistration.Spec.ReaderAdGroups)
 	rb.WithOwner(radixRegistration.Spec.Owner)
 	rb.WithCreator(radixRegistration.Spec.Creator)
-	rb.WithMachineUser(radixRegistration.Spec.MachineUser)
 	rb.WithWBS(radixRegistration.Spec.WBS)
 	rb.WithConfigBranch(radixRegistration.Spec.ConfigBranch)
 	rb.WithRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName)
@@ -114,11 +111,6 @@ func (rb *applicationBuilder) WithReaderAdGroups(readerAdGroups []string) Applic
 	return rb
 }
 
-func (rb *applicationBuilder) WithMachineUser(machineUser bool) ApplicationRegistrationBuilder {
-	rb.machineUser = machineUser
-	return rb
-}
-
 func (rb *applicationBuilder) WithWBS(wbs string) ApplicationRegistrationBuilder {
 	rb.wbs = wbs
 	return rb
@@ -153,7 +145,6 @@ func (rb *applicationBuilder) Build() ApplicationRegistration {
 		ReaderAdGroups:      rb.readerAdGroups,
 		Owner:               rb.owner,
 		Creator:             rb.creator,
-		MachineUser:         rb.machineUser,
 		WBS:                 rb.wbs,
 		ConfigBranch:        rb.configBranch,
 		RadixConfigFullName: rb.radixConfigFullName,
@@ -172,7 +163,6 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithReaderAdGroups(rb.readerAdGroups).
 		WithOwner(rb.owner).
 		WithCreator(rb.creator).
-		WithMachineUser(rb.machineUser).
 		WithWBS(rb.wbs).
 		WithConfigBranch(rb.configBranch).
 		WithRadixConfigFullName(rb.radixConfigFullName).
