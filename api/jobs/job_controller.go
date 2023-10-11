@@ -10,6 +10,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -40,6 +41,11 @@ func (jc *jobController) GetRoutes() models.Routes {
 			Path:        rootPath + "/jobs/{jobName}/stop",
 			Method:      "POST",
 			HandlerFunc: StopApplicationJob,
+		},
+		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/rerun",
+			Method:      "POST",
+			HandlerFunc: RerunApplicationJob,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns",
@@ -217,8 +223,58 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
+	log.Infof("Stop the pipeline job %s in the application %s", jobName, appName)
 	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.StopJob(r.Context(), appName, jobName)
+
+	if err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RerunApplicationJob Reruns the pipeline job
+func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/jobs/{jobName}/restart pipeline-job rerunApplicationJob
+	// ---
+	// summary: Reruns the pipeline job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: name of job
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
+	//   type: array
+	//   items:
+	//     type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Job rerun ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	log.Infof("Ru-run the pipeline job %s in the application %s", jobName, appName)
+	handler := Init(accounts, deployments.Init(accounts))
+	err := handler.RerunJob(r.Context(), appName, jobName)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)
