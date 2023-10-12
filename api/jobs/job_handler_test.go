@@ -2,18 +2,17 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
-
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/models"
-	radixmodels "github.com/equinor/radix-common/models"
+	models2 "github.com/equinor/radix-common/models"
 	radixutils "github.com/equinor/radix-common/utils"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -23,6 +22,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 type JobHandlerTestSuite struct {
@@ -52,14 +52,38 @@ type jobStatusScenario struct {
 	expectedStatus string
 }
 
+type jobProperties struct {
+	name      string
+	condition v1.RadixJobCondition
+	stop      bool
+}
+
+type jobRerunScenario struct {
+	scenarioName   string
+	existingJob    *jobProperties
+	jobNameToRerun string
+	expectedError  error
+}
+
 func TestRunJobHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(JobHandlerTestSuite))
 }
 
 func (s *JobHandlerTestSuite) SetupTest() {
+	s.setupTest()
+}
+
+func (s *JobHandlerTestSuite) setupTest() {
 	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, s.inSecretProviderClient, s.outSecretProviderClient = s.getUtils()
-	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", models2.Impersonation{})
 	s.accounts = accounts
+}
+
+func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset, inSecretProviderClient *secretproviderfake.Clientset, outSecretProviderClient *secretproviderfake.Clientset) {
+	inKubeClient, outKubeClient = kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
+	inRadixClient, outRadixClient = radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
+	inSecretProviderClient, outSecretProviderClient = secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
+	return
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
@@ -90,7 +114,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 			},
 		},
 	}
-	s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
+	_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
+	s.NoError(err)
 
 	deploymentName := "a_deployment"
 	comp1Name, comp1Type, comp1Image := "comp1", "type1", "image1"
@@ -229,9 +254,76 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 	}
 }
 
-func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset, inSecretProviderClient *secretproviderfake.Clientset, outSecretProviderClient *secretproviderfake.Clientset) {
-	inKubeClient, outKubeClient = kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
-	inRadixClient, outRadixClient = radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
-	inSecretProviderClient, outSecretProviderClient = secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
-	return
+func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
+	appName := "anyApp"
+	namespace := utils.GetAppNamespace(appName)
+	tests := []jobRerunScenario{
+		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: v1.JobFailed}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: v1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobRunning)},
+		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: v1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobStoppedNoChanges)},
+		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: v1.JobQueued}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobQueued)},
+		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: v1.JobSucceeded}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobSucceeded)},
+		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: v1.JobWaiting}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobWaiting)},
+		{scenarioName: "not existing job", existingJob: nil, jobNameToRerun: "job1", expectedError: jobModels.PipelineNotFoundError(appName, "job1")},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+			s.setupTest()
+			ctrl := gomock.NewController(s.T())
+			defer ctrl.Finish()
+			dh := deployMock.NewMockDeployHandler(ctrl)
+			jh := JobHandler{
+				accounts:       s.accounts,
+				userAccount:    s.accounts.UserAccount,
+				serviceAccount: s.accounts.ServiceAccount,
+				deploy:         dh,
+			}
+			if tt.existingJob != nil {
+				_, err := s.inRadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &v1.RadixJob{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
+					Spec:       v1.RadixJobSpec{Stop: tt.existingJob.stop},
+					Status:     v1.RadixJobStatus{Condition: tt.existingJob.condition},
+				}, metav1.CreateOptions{})
+				s.NoError(err)
+			}
+
+			err := jh.RerunJob(context.Background(), appName, tt.jobNameToRerun)
+			s.Equal(tt.expectedError, err)
+		})
+	}
+}
+
+func (s *JobHandlerTestSuite) TestJobHandler_StopJob() {
+	type args struct {
+		ctx     context.Context
+		appName string
+		jobName string
+	}
+	// appName := "anyApp"
+	tests := []struct {
+		name     string
+		setMocks func(s *JobHandlerTestSuite, deployHandlerMock *deployMock.MockDeployHandler)
+		args     args
+		wantErr  assert.ErrorAssertionFunc
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(s.T())
+			defer ctrl.Finish()
+			dh := deployMock.NewMockDeployHandler(ctrl)
+			jh := JobHandler{
+				accounts:       s.accounts,
+				userAccount:    s.accounts.UserAccount,
+				serviceAccount: s.accounts.ServiceAccount,
+				deploy:         dh,
+			}
+
+			tt.setMocks(s, dh)
+
+			tt.wantErr(t, jh.StopJob(tt.args.ctx, tt.args.appName, tt.args.jobName), fmt.Sprintf("StopJob(%v, %v, %v)", tt.args.ctx, tt.args.appName, tt.args.jobName))
+		})
+	}
 }

@@ -6,11 +6,14 @@ import (
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-common/utils/slice"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var jobConditionsAllowedForRerun = []v1.RadixJobCondition{v1.JobFailed, v1.JobStopped}
 
 // StopJob Stops an application job
 func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error {
@@ -32,18 +35,21 @@ func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error
 // RerunJob Reruns the pipeline job as a copy
 func (jh JobHandler) RerunJob(ctx context.Context, appName, srcJobName string) error {
 	log.Infof("Rerunning the job %s in the application %s", srcJobName, appName)
-	srcRadixJob, err := jh.getPipelineJob(ctx, appName, srcJobName)
+	radixJob, err := jh.getPipelineJob(ctx, appName, srcJobName)
 	if err != nil {
 		return err
 	}
-
-	destRadixJob := jh.buildPipelineJobRerunFrom(srcRadixJob)
-	_, err = jh.createPipelineJob(ctx, appName, destRadixJob)
-	if err != nil {
-		return fmt.Errorf("failed to create a job %s to rerun: %v", srcRadixJob.GetName(), err)
+	if !slice.Any(jobConditionsAllowedForRerun, func(condition v1.RadixJobCondition) bool { return condition == radixJob.Status.Condition }) {
+		return jobModels.JobHasInvalidConditionToRerunError(appName, srcJobName, radixJob.Status.Condition)
 	}
 
-	log.Infof("reran the job %s as a new job %s in the application %s", srcRadixJob.GetName(), destRadixJob.GetName(), appName)
+	copiedRadixJob := jh.buildPipelineJobRerunFrom(radixJob)
+	_, err = jh.createPipelineJob(ctx, appName, copiedRadixJob)
+	if err != nil {
+		return fmt.Errorf("failed to create a job %s to rerun: %v", radixJob.GetName(), err)
+	}
+
+	log.Infof("reran the job %s as a new job %s in the application %s", radixJob.GetName(), copiedRadixJob.GetName(), appName)
 	return nil
 }
 
@@ -56,6 +62,9 @@ func (jh JobHandler) buildPipelineJobRerunFrom(srcRadixJob *v1.RadixJob) *v1.Rad
 			Annotations: srcRadixJob.Annotations,
 		},
 		Spec: srcRadixJob.Spec,
+	}
+	if destRadixJob.ObjectMeta.Annotations == nil {
+		destRadixJob.ObjectMeta.Annotations = make(map[string]string)
 	}
 	destRadixJob.ObjectMeta.Annotations[jobModels.RadixPipelineJobRerunAnnotation] = srcRadixJob.GetName()
 	if len(destRadixJob.Spec.Build.ImageTag) > 0 {
