@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -273,12 +272,7 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 			ctrl := gomock.NewController(s.T())
 			defer ctrl.Finish()
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			jh := JobHandler{
-				accounts:       s.accounts,
-				userAccount:    s.accounts.UserAccount,
-				serviceAccount: s.accounts.ServiceAccount,
-				deploy:         dh,
-			}
+			jh := s.getJobHandler(dh)
 			if tt.existingJob != nil {
 				_, err := s.inRadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &v1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
@@ -295,35 +289,46 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 }
 
 func (s *JobHandlerTestSuite) TestJobHandler_StopJob() {
-	type args struct {
-		ctx     context.Context
-		appName string
-		jobName string
-	}
-	// appName := "anyApp"
-	tests := []struct {
-		name     string
-		setMocks func(s *JobHandlerTestSuite, deployHandlerMock *deployMock.MockDeployHandler)
-		args     args
-		wantErr  assert.ErrorAssertionFunc
-	}{
-		// TODO: Add test cases.
+	appName := "anyApp"
+	namespace := utils.GetAppNamespace(appName)
+	tests := []jobRerunScenario{
+		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: v1.JobFailed}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobFailed)},
+		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: v1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToStopError(appName, "job1", v1.JobStopped)},
+		{scenarioName: "existing running job with stop in spec", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobAlreadyRequestedToStopError(appName, "job1")},
+		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: v1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobStoppedNoChanges)},
+		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: v1.JobQueued}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: v1.JobSucceeded}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: v1.JobWaiting}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "not existing job", existingJob: nil, jobNameToRerun: "job1", expectedError: jobModels.PipelineNotFoundError(appName, "job1")},
 	}
 	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+			s.setupTest()
 			ctrl := gomock.NewController(s.T())
 			defer ctrl.Finish()
 			dh := deployMock.NewMockDeployHandler(ctrl)
-			jh := JobHandler{
-				accounts:       s.accounts,
-				userAccount:    s.accounts.UserAccount,
-				serviceAccount: s.accounts.ServiceAccount,
-				deploy:         dh,
+			jh := s.getJobHandler(dh)
+			if tt.existingJob != nil {
+				_, err := s.inRadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &v1.RadixJob{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
+					Spec:       v1.RadixJobSpec{Stop: tt.existingJob.stop},
+					Status:     v1.RadixJobStatus{Condition: tt.existingJob.condition},
+				}, metav1.CreateOptions{})
+				s.NoError(err)
 			}
 
-			tt.setMocks(s, dh)
-
-			tt.wantErr(t, jh.StopJob(tt.args.ctx, tt.args.appName, tt.args.jobName), fmt.Sprintf("StopJob(%v, %v, %v)", tt.args.ctx, tt.args.appName, tt.args.jobName))
+			err := jh.StopJob(context.Background(), appName, tt.jobNameToRerun)
+			s.Equal(tt.expectedError, err)
 		})
+	}
+}
+
+func (s *JobHandlerTestSuite) getJobHandler(dh *deployMock.MockDeployHandler) JobHandler {
+	return JobHandler{
+		accounts:       s.accounts,
+		userAccount:    s.accounts.UserAccount,
+		serviceAccount: s.accounts.ServiceAccount,
+		deploy:         dh,
 	}
 }

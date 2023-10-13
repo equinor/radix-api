@@ -13,19 +13,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var jobConditionsAllowedForRerun = []v1.RadixJobCondition{v1.JobFailed, v1.JobStopped}
+var (
+	jobConditionsInValidForJobStop = []v1.RadixJobCondition{v1.JobFailed, v1.JobStopped, v1.JobStoppedNoChanges}
+	jobConditionsValidForJobRerun  = []v1.RadixJobCondition{v1.JobFailed, v1.JobStopped}
+)
 
 // StopJob Stops an application job
 func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error {
 	log.Infof("Stopping the job: %s, %s", jobName, appName)
-	job, err := jh.getPipelineJob(ctx, appName, jobName)
+	radixJob, err := jh.getPipelineJob(ctx, appName, jobName)
 	if err != nil {
 		return err
 	}
+	if radixJob.Spec.Stop {
+		return jobModels.JobAlreadyRequestedToStopError(appName, jobName)
+	}
+	if slice.Any(jobConditionsInValidForJobStop, func(condition v1.RadixJobCondition) bool { return condition == radixJob.Status.Condition }) {
+		return jobModels.JobHasInvalidConditionToStopError(appName, jobName, radixJob.Status.Condition)
+	}
 
-	job.Spec.Stop = true
+	radixJob.Spec.Stop = true
 
-	_, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(job.GetNamespace()).Update(ctx, job, metav1.UpdateOptions{})
+	_, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(radixJob.GetNamespace()).Update(ctx, radixJob, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to patch job object: %v", err)
 	}
@@ -33,14 +42,14 @@ func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error
 }
 
 // RerunJob Reruns the pipeline job as a copy
-func (jh JobHandler) RerunJob(ctx context.Context, appName, srcJobName string) error {
-	log.Infof("Rerunning the job %s in the application %s", srcJobName, appName)
-	radixJob, err := jh.getPipelineJob(ctx, appName, srcJobName)
+func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) error {
+	log.Infof("Rerunning the job %s in the application %s", jobName, appName)
+	radixJob, err := jh.getPipelineJob(ctx, appName, jobName)
 	if err != nil {
 		return err
 	}
-	if !slice.Any(jobConditionsAllowedForRerun, func(condition v1.RadixJobCondition) bool { return condition == radixJob.Status.Condition }) {
-		return jobModels.JobHasInvalidConditionToRerunError(appName, srcJobName, radixJob.Status.Condition)
+	if !slice.Any(jobConditionsValidForJobRerun, func(condition v1.RadixJobCondition) bool { return condition == radixJob.Status.Condition }) {
+		return jobModels.JobHasInvalidConditionToRerunError(appName, jobName, radixJob.Status.Condition)
 	}
 
 	copiedRadixJob := jh.buildPipelineJobRerunFrom(radixJob)
