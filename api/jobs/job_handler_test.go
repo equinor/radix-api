@@ -9,9 +9,9 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/models"
-	models2 "github.com/equinor/radix-common/models"
+	radixmodels "github.com/equinor/radix-common/models"
 	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -46,14 +46,14 @@ type jobCreatedScenario struct {
 type jobStatusScenario struct {
 	scenarioName   string
 	jobName        string
-	condition      v1.RadixJobCondition
+	condition      radixv1.RadixJobCondition
 	stop           bool
 	expectedStatus string
 }
 
 type jobProperties struct {
 	name      string
-	condition v1.RadixJobCondition
+	condition radixv1.RadixJobCondition
 	stop      bool
 }
 
@@ -74,7 +74,7 @@ func (s *JobHandlerTestSuite) SetupTest() {
 
 func (s *JobHandlerTestSuite) setupTest() {
 	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, s.inSecretProviderClient, s.outSecretProviderClient = s.getUtils()
-	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", models2.Impersonation{})
+	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 
@@ -86,28 +86,28 @@ func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRa
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
-	jobName, appName, branch, commitId, pipeline, triggeredBy := "a_job", "an_app", "a_branch", "a_commitid", v1.BuildDeploy, "a_user"
+	jobName, appName, branch, commitId, pipeline, triggeredBy := "a_job", "an_app", "a_branch", "a_commitid", radixv1.BuildDeploy, "a_user"
 	started, ended := metav1.NewTime(time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local)), metav1.NewTime(time.Date(2020, 1, 2, 0, 0, 0, 0, time.Local))
-	step1Name, step1Pod, step1Condition, step1Started, step1Ended, step1Components := "step1_name", "step1_pod", v1.JobRunning, metav1.Now(), metav1.NewTime(time.Now().Add(1*time.Hour)), []string{"step1_comp1", "step1_comp2"}
+	step1Name, step1Pod, step1Condition, step1Started, step1Ended, step1Components := "step1_name", "step1_pod", radixv1.JobRunning, metav1.Now(), metav1.NewTime(time.Now().Add(1*time.Hour)), []string{"step1_comp1", "step1_comp2"}
 	step2Name := "step2_name"
 
-	rj := &v1.RadixJob{
+	rj := &radixv1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: utils.GetAppNamespace(appName),
 		},
-		Spec: v1.RadixJobSpec{
-			Build: v1.RadixBuildSpec{
+		Spec: radixv1.RadixJobSpec{
+			Build: radixv1.RadixBuildSpec{
 				Branch:   branch,
 				CommitID: commitId,
 			},
 			PipeLineType: pipeline,
 			TriggeredBy:  triggeredBy,
 		},
-		Status: v1.RadixJobStatus{
+		Status: radixv1.RadixJobStatus{
 			Started: &started,
 			Ended:   &ended,
-			Steps: []v1.RadixJobStep{
+			Steps: []radixv1.RadixJobStep{
 				{Name: step1Name, PodName: step1Pod, Condition: step1Condition, Started: &step1Started, Ended: &step1Ended, Components: step1Components},
 				{Name: step2Name},
 			},
@@ -207,7 +207,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
-			rj := v1.RadixJob{ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName), CreationTimestamp: scenario.creationTimestamp}}
+			rj := radixv1.RadixJob{ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName), CreationTimestamp: scenario.creationTimestamp}}
 			if scenario.jobStatusCreated != emptyTime {
 				rj.Status.Created = &scenario.jobStatusCreated
 			}
@@ -223,10 +223,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 	appName := "any_app"
 	scenarios := []jobStatusScenario{
-		{scenarioName: "status is set to condition when stop is false", jobName: "job1", condition: v1.JobFailed, stop: false, expectedStatus: jobModels.Failed.String()},
-		{scenarioName: "status is Stopping when stop is true and condition is not Stopped", jobName: "job2", condition: v1.JobRunning, stop: true, expectedStatus: jobModels.Stopping.String()},
-		{scenarioName: "status is Stopped when stop is true and condition is Stopped", jobName: "job3", condition: v1.JobStopped, stop: true, expectedStatus: jobModels.Stopped.String()},
-		{scenarioName: "status is JobStoppedNoChanges when there is no changes", jobName: "job4", condition: v1.JobStoppedNoChanges, stop: false, expectedStatus: jobModels.StoppedNoChanges.String()},
+		{scenarioName: "status is set to condition when stop is false", jobName: "job1", condition: radixv1.JobFailed, stop: false, expectedStatus: jobModels.Failed.String()},
+		{scenarioName: "status is Stopping when stop is true and condition is not Stopped", jobName: "job2", condition: radixv1.JobRunning, stop: true, expectedStatus: jobModels.Stopping.String()},
+		{scenarioName: "status is Stopped when stop is true and condition is Stopped", jobName: "job3", condition: radixv1.JobStopped, stop: true, expectedStatus: jobModels.Stopped.String()},
+		{scenarioName: "status is JobStoppedNoChanges when there is no changes", jobName: "job4", condition: radixv1.JobStoppedNoChanges, stop: false, expectedStatus: jobModels.StoppedNoChanges.String()},
 		{scenarioName: "status is Waiting when condition is empty", jobName: "job5", expectedStatus: jobModels.Waiting.String()},
 	}
 
@@ -238,10 +238,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			dh.EXPECT().GetDeploymentsForPipelineJob(context.Background(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 			h := Init(s.accounts, dh)
-			rj := v1.RadixJob{
+			rj := radixv1.RadixJob{
 				ObjectMeta: metav1.ObjectMeta{Name: scenario.jobName, Namespace: utils.GetAppNamespace(appName)},
-				Spec:       v1.RadixJobSpec{Stop: scenario.stop},
-				Status:     v1.RadixJobStatus{Condition: scenario.condition},
+				Spec:       radixv1.RadixJobSpec{Stop: scenario.stop},
+				Status:     radixv1.RadixJobStatus{Condition: scenario.condition},
 			}
 
 			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
@@ -257,13 +257,13 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 	appName := "anyApp"
 	namespace := utils.GetAppNamespace(appName)
 	tests := []jobRerunScenario{
-		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: v1.JobFailed}, jobNameToRerun: "job1", expectedError: nil},
-		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: v1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: nil},
-		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobRunning)},
-		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: v1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobStoppedNoChanges)},
-		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: v1.JobQueued}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobQueued)},
-		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: v1.JobSucceeded}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobSucceeded)},
-		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: v1.JobWaiting}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobWaiting)},
+		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobFailed}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobRunning}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", radixv1.JobRunning)},
+		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", radixv1.JobStoppedNoChanges)},
+		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobQueued}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", radixv1.JobQueued)},
+		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobSucceeded}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", radixv1.JobSucceeded)},
+		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobWaiting}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", radixv1.JobWaiting)},
 		{scenarioName: "not existing job", existingJob: nil, jobNameToRerun: "job1", expectedError: jobModels.PipelineNotFoundError(appName, "job1")},
 	}
 	for _, tt := range tests {
@@ -274,10 +274,10 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			jh := s.getJobHandler(dh)
 			if tt.existingJob != nil {
-				_, err := s.inRadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &v1.RadixJob{
+				_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
-					Spec:       v1.RadixJobSpec{Stop: tt.existingJob.stop},
-					Status:     v1.RadixJobStatus{Condition: tt.existingJob.condition},
+					Spec:       radixv1.RadixJobSpec{Stop: tt.existingJob.stop},
+					Status:     radixv1.RadixJobStatus{Condition: tt.existingJob.condition},
 				}, metav1.CreateOptions{})
 				s.NoError(err)
 			}
@@ -292,14 +292,14 @@ func (s *JobHandlerTestSuite) TestJobHandler_StopJob() {
 	appName := "anyApp"
 	namespace := utils.GetAppNamespace(appName)
 	tests := []jobRerunScenario{
-		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: v1.JobFailed}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobFailed)},
-		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: v1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToStopError(appName, "job1", v1.JobStopped)},
-		{scenarioName: "existing running job with stop in spec", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobAlreadyRequestedToStopError(appName, "job1")},
-		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: v1.JobRunning}, jobNameToRerun: "job1", expectedError: nil},
-		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: v1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToRerunError(appName, "job1", v1.JobStoppedNoChanges)},
-		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: v1.JobQueued}, jobNameToRerun: "job1", expectedError: nil},
-		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: v1.JobSucceeded}, jobNameToRerun: "job1", expectedError: nil},
-		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: v1.JobWaiting}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing failed job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobFailed}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToStopError(appName, "job1", radixv1.JobFailed)},
+		{scenarioName: "existing stopped job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobStopped, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobAlreadyRequestedToStopError(appName, "job1")},
+		{scenarioName: "existing running job with stop in spec", existingJob: &jobProperties{name: "job1", condition: radixv1.JobRunning, stop: true}, jobNameToRerun: "job1", expectedError: jobModels.JobAlreadyRequestedToStopError(appName, "job1")},
+		{scenarioName: "existing running job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobRunning}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing stopped-no-changes job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobStoppedNoChanges}, jobNameToRerun: "job1", expectedError: jobModels.JobHasInvalidConditionToStopError(appName, "job1", radixv1.JobStoppedNoChanges)},
+		{scenarioName: "existing queued job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobQueued}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing succeeded job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobSucceeded}, jobNameToRerun: "job1", expectedError: nil},
+		{scenarioName: "existing waiting job", existingJob: &jobProperties{name: "job1", condition: radixv1.JobWaiting}, jobNameToRerun: "job1", expectedError: nil},
 		{scenarioName: "not existing job", existingJob: nil, jobNameToRerun: "job1", expectedError: jobModels.PipelineNotFoundError(appName, "job1")},
 	}
 	for _, tt := range tests {
@@ -310,10 +310,10 @@ func (s *JobHandlerTestSuite) TestJobHandler_StopJob() {
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			jh := s.getJobHandler(dh)
 			if tt.existingJob != nil {
-				_, err := s.inRadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &v1.RadixJob{
+				_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
-					Spec:       v1.RadixJobSpec{Stop: tt.existingJob.stop},
-					Status:     v1.RadixJobStatus{Condition: tt.existingJob.condition},
+					Spec:       radixv1.RadixJobSpec{Stop: tt.existingJob.stop},
+					Status:     radixv1.RadixJobStatus{Condition: tt.existingJob.condition},
 				}, metav1.CreateOptions{})
 				s.NoError(err)
 			}

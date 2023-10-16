@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	radixhttp "github.com/equinor/radix-common/net/http"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // PipelineNotFoundError Pipeline job not found
@@ -18,16 +18,16 @@ func PipelineStepNotFoundError(appName, jobName, stepName string) error {
 }
 
 // JobHasInvalidConditionToRerunError Pipeline job cannot be rerun due to invalid condition
-func JobHasInvalidConditionToRerunError(appName, jobName string, jobCondition v1.RadixJobCondition) error {
+func JobHasInvalidConditionToRerunError(appName, jobName string, jobCondition radixv1.RadixJobCondition) error {
 	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("only Failed or Stopped pipeline jobs can be rerun, the job %s for the app %s has status %s", appName, jobName, jobCondition))
 }
 
 // JobAlreadyRequestedToStopError Pipeline job was already requested to stop
 func JobAlreadyRequestedToStopError(appName, jobName string) error {
-	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("job %s for the app %s is already requested to stop", appName, jobName))
+	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("job %s for the app %s has being already requested to be stopped", appName, jobName))
 }
 
 // JobHasInvalidConditionToStopError Pipeline job cannot be stopped due to invalid condition
-func JobHasInvalidConditionToStopError(appName, jobName string, jobCondition v1.RadixJobCondition) error {
+func JobHasInvalidConditionToStopError(appName, jobName string, jobCondition radixv1.RadixJobCondition) error {
 	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("only not Failed or Stopped pipeline jobs can be stopped, the job %s for the app %s has status %s", appName, jobName, jobCondition))
 }
