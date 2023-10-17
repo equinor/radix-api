@@ -270,7 +270,6 @@ func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
-	log.Infof("Rerun the pipeline job %s in the application %s", jobName, appName)
 	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.RerunJob(r.Context(), appName, jobName)
 
