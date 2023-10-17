@@ -6,6 +6,10 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
+const (
+	RadixPipelineJobRerunAnnotation = "radix.equinor.com/rerun-pipeline-job-from"
+)
+
 // Job holds general information about job
 // swagger:model Job
 type Job struct {
@@ -38,6 +42,12 @@ type Job struct {
 	// required: false
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy"`
+
+	// RerunFromJob The source name of the job if this job was restarted from it
+	//
+	// required: false
+	// example: radix-pipeline-20231011104617-urynf
+	RerunFromJob string `json:"rerunFromJob"`
 
 	// Started timestamp
 	//
@@ -127,18 +137,19 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 	}
 
 	jobModel := Job{
-		Name:        job.GetName(),
-		Branch:      job.Spec.Build.Branch,
-		CommitID:    job.Spec.Build.CommitID,
-		Created:     created,
-		Started:     radixutils.FormatTime(job.Status.Started),
-		Ended:       radixutils.FormatTime(job.Status.Ended),
-		Status:      GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
-		Pipeline:    string(job.Spec.PipeLineType),
-		Steps:       steps,
-		Deployments: jobDeployments,
-		Components:  jobComponents,
-		TriggeredBy: job.Spec.TriggeredBy,
+		Name:         job.GetName(),
+		Branch:       job.Spec.Build.Branch,
+		CommitID:     job.Spec.Build.CommitID,
+		Created:      created,
+		Started:      radixutils.FormatTime(job.Status.Started),
+		Ended:        radixutils.FormatTime(job.Status.Ended),
+		Status:       GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
+		Pipeline:     string(job.Spec.PipeLineType),
+		Steps:        steps,
+		Deployments:  jobDeployments,
+		Components:   jobComponents,
+		TriggeredBy:  job.Spec.TriggeredBy,
+		RerunFromJob: job.Annotations[RadixPipelineJobRerunAnnotation],
 	}
 	if job.Spec.PipeLineType == v1.Promote {
 		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
