@@ -10,7 +10,6 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
