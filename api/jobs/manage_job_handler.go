@@ -90,11 +90,11 @@ func (jh JobHandler) buildPipelineJobToRerunFrom(radixJob *radixv1.RadixJob) *ra
 
 func (jh JobHandler) getPipelineJobByName(ctx context.Context, appName string, jobName string) (*radixv1.RadixJob, error) {
 	radixJob, err := kubequery.GetRadixJob(ctx, jh.userAccount.RadixClient, appName, jobName)
-	if err == nil {
-		return radixJob, nil
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = jobModels.PipelineNotFoundError(appName, jobName)
+		}
+		return nil, err
 	}
-	if errors.IsNotFound(err) {
-		return nil, jobModels.PipelineNotFoundError(appName, jobName)
-	}
-	return nil, err
+	return radixJob, nil
 }
