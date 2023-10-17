@@ -19,7 +19,7 @@ func PipelineStepNotFoundError(appName, jobName, stepName string) error {
 
 // JobHasInvalidConditionToRerunError Pipeline job cannot be rerun due to invalid condition
 func JobHasInvalidConditionToRerunError(appName, jobName string, jobCondition radixv1.RadixJobCondition) error {
-	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("only Failed or Stopped pipeline jobs can be rerun, the job %s for the app %s has status %s", appName, jobName, jobCondition))
+	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("only pipeline jobs that have the status Failed or Stopped can be rerun, but the job %s for the app %s has status %s", appName, jobName, jobCondition))
 }
 
 // JobAlreadyRequestedToStopError Pipeline job was already requested to stop
