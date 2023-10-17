@@ -223,7 +223,6 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	log.Infof("Stop the pipeline job %s in the application %s", jobName, appName)
 	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.StopJob(r.Context(), appName, jobName)
 
