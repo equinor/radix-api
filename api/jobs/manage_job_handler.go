@@ -58,7 +58,6 @@ func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) erro
 		return fmt.Errorf("failed to create a job %s to rerun: %v", radixJob.GetName(), err)
 	}
 
-	log.Infof("reran the job %s as a new job %s in the application %s", radixJob.GetName(), copiedRadixJob.GetName(), appName)
 	return nil
 }
 
