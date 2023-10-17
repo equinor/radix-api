@@ -24,7 +24,7 @@ func JobHasInvalidConditionToRerunError(appName, jobName string, jobCondition ra
 
 // JobAlreadyRequestedToStopError Pipeline job was already requested to stop
 func JobAlreadyRequestedToStopError(appName, jobName string) error {
-	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("job %s for the app %s has being already requested to be stopped", appName, jobName))
+	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("job %s for the app %s has already been requested to be stopped", appName, jobName))
 }
 
 // JobHasInvalidConditionToStopError Pipeline job cannot be stopped due to invalid condition
