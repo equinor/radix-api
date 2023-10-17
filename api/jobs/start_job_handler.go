@@ -26,7 +26,7 @@ const (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
-func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	radixRegistration, _ := jh.userAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 
 	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
@@ -34,7 +34,7 @@ func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string,
 		return nil, err
 	}
 
-	job := jh.createPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobSpec)
+	job := jh.createPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobParameters)
 
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
@@ -92,6 +92,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 		deploySpec = v1.RadixDeploySpec{
 			ToEnvironment: jobSpec.ToEnvironment,
 			ImageTagNames: jobSpec.ImageTagNames,
+			CommitID:      jobSpec.CommitID,
 		}
 	}
 
