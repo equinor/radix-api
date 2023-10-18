@@ -34,16 +34,19 @@ func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string,
 		return nil, err
 	}
 
-	job := jh.createPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobSpec)
+	job := jh.buildPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobSpec)
+	return jh.createPipelineJob(ctx, appName, job)
+}
 
+func (jh JobHandler) createPipelineJob(ctx context.Context, appName string, job *v1.RadixJob) (*jobModels.JobSummary, error) {
 	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
-	job, err = jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	metrics.AddJobTriggered(appName, string(pipeline.Type))
+	metrics.AddJobTriggered(appName, string(job.Spec.PipeLineType))
 
 	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
 	return jobModels.GetSummaryFromRadixJob(job), nil
@@ -59,7 +62,7 @@ func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, er
 	return radixRegistration.Spec.RadixConfigFullName, nil
 }
 
-func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
 	jobName, imageTag := getUniqueJobName(workerImage)
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -69,7 +72,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
 
-	triggeredBy, err := jh.getTriggeredBy(jobSpec)
+	triggeredBy, err := jh.getTriggeredBy(jobSpec.TriggeredBy)
 	if err != nil {
 		log.Warnf("failed to get triggeredBy: %v", err)
 	}
@@ -121,8 +124,7 @@ func (jh JobHandler) createPipelineJob(appName, cloneURL, radixConfigFullName st
 	return &job
 }
 
-func (jh JobHandler) getTriggeredBy(jobSpec *jobModels.JobParameters) (string, error) {
-	triggeredBy := jobSpec.TriggeredBy
+func (jh JobHandler) getTriggeredBy(triggeredBy string) (string, error) {
 	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy, nil
 	}
