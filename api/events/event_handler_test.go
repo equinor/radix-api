@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -86,7 +87,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 
 func createKubernetesEvent(client *kubefake.Clientset, namespace,
 	name, eventType, involvedObjectName, involvedObjectKind string) {
-	client.CoreV1().Events(namespace).CreateWithEventNamespace(&v1.Event{
+	_, err := client.CoreV1().Events(namespace).CreateWithEventNamespace(&v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -97,6 +98,9 @@ func createKubernetesEvent(client *kubefake.Clientset, namespace,
 		},
 		Type: eventType,
 	})
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func createKubernetesPod(client *kubefake.Clientset, name, namespace string,
