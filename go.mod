@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/equinor/radix-common v1.5.0
 	github.com/equinor/radix-job-scheduler v1.8.3
-	github.com/equinor/radix-operator v1.43.0
+	github.com/equinor/radix-operator v1.43.9
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang-jwt/jwt/v4 v4.5.0

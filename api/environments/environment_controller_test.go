@@ -58,6 +58,7 @@ const (
 	anyEnvironment   = "dev"
 	anySecretName    = "TEST_SECRET"
 	egressIps        = "0.0.0.0"
+	subscriptionId   = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
 func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -69,7 +70,7 @@ func setupTest(envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
 	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())

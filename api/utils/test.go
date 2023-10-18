@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	clusterName = "AnyClusterName"
-	egressIps   = "0.0.0.0"
+	clusterName    = "AnyClusterName"
+	egressIps      = "0.0.0.0"
+	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
 func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -30,7 +31,7 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 
 	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
 }
@@ -53,8 +54,8 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 	kubeUtils, _ := kube.New(client, radixclient, nil)
 	commonTestUtils.ApplyApplication(applicationBuilder)
 
-	applicationconfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	applicationconfig.OnSync()
+	applicationConfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	applicationConfig.OnSync()
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
@@ -66,6 +67,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deployment := deployment.NewDeployment(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, "123456", 443, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
+	deployment := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
 	_ = deployment.OnSync()
 }
