@@ -2,7 +2,6 @@ package models
 
 import (
 	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -129,7 +128,6 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 		pipelineJob.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		pipelineJob.CommitID = job.Spec.Deploy.CommitID
 	case radixv1.Promote:
-		pipelineJob.CommitID = job.ObjectMeta.GetLabels()[kube.RadixCommitLabel]
 		pipelineJob.PromotedFromDeployment = job.Spec.Promote.DeploymentName
 		pipelineJob.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
 		pipelineJob.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
