@@ -6217,7 +6217,7 @@
       "type": "object",
       "properties": {
         "branch": {
-          "description": "Branch branch to build from",
+          "description": "Branch to build from",
           "type": "string",
           "x-go-name": "Branch",
           "example": "master"
@@ -6256,6 +6256,15 @@
           "x-go-name": "Ended",
           "example": "2006-01-02T15:04:05Z"
         },
+        "imageTagNames": {
+          "description": "Image tags names for components - if empty will use default logic",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "ImageTagNames",
+          "example": "component1: tag1,component2: tag2"
+        },
         "name": {
           "description": "Name of the job",
           "type": "string",
@@ -6276,6 +6285,11 @@
           "type": "string",
           "x-go-name": "PromotedDeploymentName",
           "example": "component-6hznh"
+        },
+        "promotedFromDeployment": {
+          "description": "RadixDeployment name, which is promoted",
+          "type": "string",
+          "x-go-name": "PromotedFromDeployment"
         },
         "promotedFromEnvironment": {
           "description": "PromotedFromEnvironment the name of the environment that was promoted from",
@@ -6344,7 +6358,7 @@
           "example": "radix-pipeline-20181029135644-algpv-6hznh"
         },
         "branch": {
-          "description": "Branch branch to build from",
+          "description": "Branch to build from",
           "type": "string",
           "x-go-name": "Branch",
           "example": "master"
@@ -6379,6 +6393,15 @@
             "qa"
           ]
         },
+        "imageTagNames": {
+          "description": "Image tags names for components - if empty will use default logic",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "ImageTagNames",
+          "example": "component1: tag1,component2: tag2"
+        },
         "name": {
           "description": "Name of the job",
           "type": "string",
@@ -6394,6 +6417,21 @@
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
+        },
+        "promotedFromDeployment": {
+          "description": "RadixDeployment name, which is promoted",
+          "type": "string",
+          "x-go-name": "PromotedFromDeployment"
+        },
+        "promotedFromEnvironment": {
+          "description": "Environment name, from which the Radix deployment is promoted",
+          "type": "string",
+          "x-go-name": "PromotedFromEnvironment"
+        },
+        "promotedToEnvironment": {
+          "description": "Environment name, to which the Radix deployment is promoted",
+          "type": "string",
+          "x-go-name": "PromotedToEnvironment"
         },
         "started": {
           "description": "Started timestamp",

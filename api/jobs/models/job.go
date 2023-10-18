@@ -3,7 +3,7 @@ package models
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	radixutils "github.com/equinor/radix-common/utils"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 const (
@@ -19,7 +19,7 @@ type Job struct {
 	// example: radix-pipeline-20181029135644-algpv-6hznh
 	Name string `json:"name"`
 
-	// Branch branch to build from
+	// Branch to build from
 	//
 	// required: false
 	// example: master
@@ -30,6 +30,12 @@ type Job struct {
 	// required: false
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
+
+	// Image tags names for components - if empty will use default logic
+	//
+	// required: false
+	// Example: component1: tag1,component2: tag2
+	ImageTagNames map[string]string `json:"imageTagNames,omitempty"`
 
 	// Created timestamp
 	//
@@ -74,6 +80,11 @@ type Job struct {
 	// Enum: build-deploy
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
+
+	// RadixDeployment name, which is promoted
+	//
+	// required: false
+	PromotedFromDeployment string `json:"promotedFromDeployment,omitempty"`
 
 	// PromotedDeploymentName the name of the deployment that was promoted
 	//
@@ -121,7 +132,7 @@ type Job struct {
 }
 
 // GetJobFromRadixJob Gets job from a radix job
-func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
+func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
 	steps := GetJobStepsFromRadixJob(job)
 
 	created := radixutils.FormatTime(&job.CreationTimestamp)
@@ -138,8 +149,6 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 
 	jobModel := Job{
 		Name:         job.GetName(),
-		Branch:       job.Spec.Build.Branch,
-		CommitID:     job.Spec.Build.CommitID,
 		Created:      created,
 		Started:      radixutils.FormatTime(job.Status.Started),
 		Ended:        radixutils.FormatTime(job.Status.Ended),
@@ -151,17 +160,24 @@ func GetJobFromRadixJob(job *v1.RadixJob, jobDeployments []*deploymentModels.Dep
 		TriggeredBy:  job.Spec.TriggeredBy,
 		RerunFromJob: job.Annotations[RadixPipelineJobRerunAnnotation],
 	}
-	if job.Spec.PipeLineType == v1.Promote {
+	switch job.Spec.PipeLineType {
+	case radixv1.Build, radixv1.BuildDeploy:
+		jobModel.Branch = job.Spec.Build.Branch
+		jobModel.CommitID = job.Spec.Build.CommitID
+	case radixv1.Deploy:
+		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
+		jobModel.CommitID = job.Spec.Deploy.CommitID
+	case radixv1.Promote:
+		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName
 		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
 		jobModel.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
-		jobModel.PromotedDeploymentName = job.Spec.Promote.DeploymentName
+		jobModel.CommitID = job.Spec.Promote.CommitID
 	}
-
 	return &jobModel
 }
 
 // GetJobStepsFromRadixJob Gets the steps from a Radix job
-func GetJobStepsFromRadixJob(job *v1.RadixJob) []Step {
+func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 	var steps []Step
 	for _, jobStep := range job.Status.Steps {
 		step := Step{

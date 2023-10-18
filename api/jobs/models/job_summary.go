@@ -2,7 +2,8 @@ package models
 
 import (
 	radixutils "github.com/equinor/radix-common/utils"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // JobSummary holds general information about job
@@ -20,7 +21,7 @@ type JobSummary struct {
 	// example: radix-pipeline-20181029135644-algpv-6hznh
 	AppName string `json:"appName"`
 
-	// Branch branch to build from
+	// Branch to build from
 	//
 	// required: false
 	// example: master
@@ -31,6 +32,12 @@ type JobSummary struct {
 	// required: false
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
+
+	// Image tags names for components - if empty will use default logic
+	//
+	// required: false
+	// Example: component1: tag1,component2: tag2
+	ImageTagNames map[string]string `json:"imageTagNames,omitempty"`
 
 	// Created timestamp
 	//
@@ -75,10 +82,25 @@ type JobSummary struct {
 	// required: false
 	// example: ["dev", "qa"]
 	Environments []string `json:"environments,omitempty"`
+
+	// RadixDeployment name, which is promoted
+	//
+	// required: false
+	PromotedFromDeployment string `json:"promotedFromDeployment,omitempty"`
+
+	// Environment name, from which the Radix deployment is promoted
+	//
+	// required: false
+	PromotedFromEnvironment string `json:"promotedFromEnvironment,omitempty"`
+
+	// Environment name, to which the Radix deployment is promoted
+	//
+	// required: false
+	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
-func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
+func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	status := job.Status
 	ended := radixutils.FormatTime(status.Ended)
 	created := radixutils.FormatTime(&job.CreationTimestamp)
@@ -91,8 +113,6 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 	pipelineJob := &JobSummary{
 		Name:         job.Name,
 		AppName:      job.Spec.AppName,
-		Branch:       job.Spec.Build.Branch,
-		CommitID:     job.Spec.Build.CommitID,
 		Status:       GetStatusFromRadixJobStatus(status, job.Spec.Stop),
 		Created:      created,
 		Started:      radixutils.FormatTime(status.Started),
@@ -100,6 +120,20 @@ func GetSummaryFromRadixJob(job *v1.RadixJob) *JobSummary {
 		Pipeline:     string(job.Spec.PipeLineType),
 		Environments: job.Status.TargetEnvs,
 		TriggeredBy:  job.Spec.TriggeredBy,
+	}
+	switch job.Spec.PipeLineType {
+	case radixv1.Build, radixv1.BuildDeploy:
+		pipelineJob.Branch = job.Spec.Build.Branch
+		pipelineJob.CommitID = job.Spec.Build.CommitID
+	case radixv1.Deploy:
+		pipelineJob.ImageTagNames = job.Spec.Deploy.ImageTagNames
+		pipelineJob.CommitID = job.Spec.Deploy.CommitID
+	case radixv1.Promote:
+		pipelineJob.CommitID = job.ObjectMeta.GetLabels()[kube.RadixCommitLabel]
+		pipelineJob.PromotedFromDeployment = job.Spec.Promote.DeploymentName
+		pipelineJob.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
+		pipelineJob.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
+		pipelineJob.CommitID = job.Spec.Promote.CommitID
 	}
 
 	return pipelineJob

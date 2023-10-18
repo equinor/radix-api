@@ -90,6 +90,7 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			DeploymentName:  jobSpec.DeploymentName,
 			FromEnvironment: jobSpec.FromEnvironment,
 			ToEnvironment:   jobSpec.ToEnvironment,
+			CommitID:        jobSpec.CommitID,
 		}
 	case v1.Deploy:
 		deploySpec = v1.RadixDeploySpec{

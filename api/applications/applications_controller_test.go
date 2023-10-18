@@ -12,18 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-common/utils/pointers"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
@@ -1393,26 +1393,44 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 }
 
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
-	_, controllerTestUtils, _, radixclient, _, _ := setupTest(true, true)
+	commonTestUtils, controllerTestUtils, _, radixclient, _, _ := setupTest(true, true)
 
-	appName := "an-app"
+	const (
+		appName         = "an-app"
+		commitId        = "475f241c-478b-49da-adfb-3c336aaab8d2"
+		deploymentName  = "a-deployment"
+		fromEnvironment = "origin"
+		toEnvironment   = "target"
+	)
 
 	parameters := applicationModels.PipelineParametersPromote{
-		FromEnvironment: "origin",
-		ToEnvironment:   "target",
-		DeploymentName:  "a-deployment",
+		FromEnvironment: fromEnvironment,
+		ToEnvironment:   toEnvironment,
+		DeploymentName:  deploymentName,
 	}
+	_, err := commonTestUtils.ApplyDeployment(builders.
+		ARadixDeployment().
+		WithAppName(appName).
+		WithDeploymentName(deploymentName).
+		WithEnvironment(fromEnvironment).
+		WithLabel(kube.RadixCommitLabel, commitId).
+		WithCondition(v1.DeploymentInactive))
+	require.NoError(t, err)
+
 	registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
 	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Promote), parameters)
 	<-responseChannel
 
 	appNamespace := fmt.Sprintf("%s-app", appName)
-	jobs, _ := getJobsInNamespace(radixclient, appNamespace)
+	jobs, err := getJobsInNamespace(radixclient, appNamespace)
+	require.NoError(t, err)
 
-	assert.Equal(t, jobs[0].Spec.Promote.FromEnvironment, "origin")
-	assert.Equal(t, jobs[0].Spec.Promote.ToEnvironment, "target")
-	assert.Equal(t, jobs[0].Spec.Promote.DeploymentName, "a-deployment")
+	require.Len(t, jobs, 1)
+	assert.Equal(t, jobs[0].Spec.Promote.FromEnvironment, fromEnvironment)
+	assert.Equal(t, jobs[0].Spec.Promote.ToEnvironment, toEnvironment)
+	assert.Equal(t, jobs[0].Spec.Promote.DeploymentName, deploymentName)
+	assert.Equal(t, jobs[0].Spec.Promote.CommitID, commitId)
 }
 
 func TestIsDeployKeyValid(t *testing.T) {
