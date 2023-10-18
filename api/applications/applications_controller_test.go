@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-common/utils/pointers"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/utils/pointers"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
@@ -45,6 +46,7 @@ const (
 	dnsZone         = "dev.radix.equinor.com"
 	appAliasDNSZone = "app.dev.radix.equinor.com"
 	egressIps       = "0.0.0.0"
+	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
 func setupTest(requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface) {
@@ -65,7 +67,7 @@ func setupTestWithFactory(handlerFactory ApplicationHandlerFactory) (*commontest
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
