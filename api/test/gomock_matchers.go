@@ -31,17 +31,8 @@ func (m namespaceFuncMatcher) Matches(arg interface{}) bool {
 		return false
 	}
 
-	// Not equal if function pointer is different
-	if argv.Pointer() != fv.Pointer() {
-		return false
-	}
-
-	// Not equal if functions return different value
-	if m.f() != arg.(event.NamespaceFunc)() {
-		return false
-	}
-
-	return true
+	// equal if functions return same value
+	return m.f() == arg.(event.NamespaceFunc)()
 }
 
 func (m namespaceFuncMatcher) String() string {

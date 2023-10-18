@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -114,11 +112,6 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        appPath + "/deploy-key-and-secret",
 			Method:      "GET",
 			HandlerFunc: ac.GetDeployKeyAndSecret,
-		},
-		models.Route{
-			Path:        appPath + "/regenerate-machine-user-token",
-			Method:      "POST",
-			HandlerFunc: ac.RegenerateMachineUserTokenHandler,
 		},
 		models.Route{
 			Path:        appPath + "/regenerate-deploy-key",
@@ -362,58 +355,6 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	}
 
 	radixhttp.ErrorResponse(w, r, err)
-}
-
-// RegenerateMachineUserTokenHandler Deletes the secret holding the token to force refresh and returns the new token
-func (ac *applicationController) RegenerateMachineUserTokenHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/regenerate-machine-user-token application regenerateMachineUserToken
-	// ---
-	// summary: Regenerates machine user token
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: name of application
-	//   type: string
-	//   required: true
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: Successful regenerate machine-user token
-	//     schema:
-	//       "$ref": "#/definitions/MachineUser"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "403":
-	//     description: "Forbidden"
-	//   "404":
-	//     description: "Not found"
-	//   "409":
-	//     description: "Conflict"
-	//   "500":
-	//     description: "Internal server error"
-
-	appName := mux.Vars(r)["appName"]
-	handler := ac.applicationHandlerFactory.Create(accounts)
-	machineUser, err := handler.RegenerateMachineUserToken(r.Context(), appName)
-
-	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
-		return
-	}
-
-	log.Debugf("re-generated machine user token for app %s", appName)
-	radixhttp.JSONResponse(w, r, &machineUser)
 }
 
 // RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key

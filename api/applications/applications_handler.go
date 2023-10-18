@@ -4,10 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strings"
-	"time"
-
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
@@ -29,13 +25,14 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1"
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"net/http"
+	"strings"
 )
 
 type patch struct {
@@ -118,40 +115,6 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 
 	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin)
 	return application, nil
-}
-
-// RegenerateMachineUserToken Deletes the secret holding the token to force refresh and returns the new token
-func (ah *ApplicationHandler) RegenerateMachineUserToken(ctx context.Context, appName string) (*applicationModels.MachineUser, error) {
-	log.Debugf("regenerate machine user token for app: %s", appName)
-	namespace := crdUtils.GetAppNamespace(appName)
-	machineUserSA, err := ah.getMachineUserServiceAccount(ctx, appName, namespace)
-	if err != nil {
-		return nil, err
-	}
-	if len(machineUserSA.Secrets) == 0 {
-		return nil, fmt.Errorf("unable to get secrets on machine user service account")
-	}
-
-	tokenName := machineUserSA.Secrets[0].Name
-	log.Debugf("delete service account for app %s and machine user token: %s", appName, tokenName)
-	if err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Delete(ctx, tokenName, metav1.DeleteOptions{}); err != nil {
-		return nil, err
-	}
-
-	queryTimeout := time.NewTimer(time.Duration(5) * time.Second)
-	queryInterval := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-queryInterval.C:
-			machineUser, err := ah.getMachineUserForApp(ctx, appName)
-			if err == nil {
-				return machineUser, nil
-			}
-			log.Debugf("waiting to get machine user for app %s of namespace %s, error: %v", appName, namespace, err)
-		case <-queryTimeout.C:
-			return nil, fmt.Errorf("timeout getting user machine token secret")
-		}
-	}
 }
 
 // RegisterApplication handler for RegisterApplication
@@ -328,15 +291,6 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
 		updatedRegistration.Spec.CloneURL = cloneURL
 		payload = append(payload, patch{Op: "replace", Path: "/spec/cloneURL", Value: cloneURL})
-		runUpdate = true
-	}
-
-	if patchRequest.MachineUser != nil && *patchRequest.MachineUser != currentRegistration.Spec.MachineUser {
-		if *patchRequest.MachineUser {
-			return nil, fmt.Errorf("machine user token is deprecated. Please use AD Service principal access token https://radix.equinor.com/guides/deploy-only/#ad-service-principal-access-token")
-		}
-		updatedRegistration.Spec.MachineUser = *patchRequest.MachineUser
-		payload = append(payload, patch{Op: "replace", Path: "/spec/machineUser", Value: patchRequest.MachineUser})
 		runUpdate = true
 	}
 
@@ -613,46 +567,6 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 	}
 
 	return validators
-}
-
-func (ah *ApplicationHandler) getMachineUserForApp(ctx context.Context, appName string) (*applicationModels.MachineUser, error) {
-	namespace := crdUtils.GetAppNamespace(appName)
-
-	log.Debugf("get service account for machine user in app %s of namespace %s", appName, namespace)
-	machineUserSA, err := ah.getMachineUserServiceAccount(ctx, appName, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(machineUserSA.Secrets) == 0 {
-		return nil, fmt.Errorf("unable to get secrets on machine user service account")
-	}
-
-	tokenName := machineUserSA.Secrets[0].Name
-	log.Debugf("get secrets for machine user token %s in app %s of namespace %s", tokenName, appName, namespace)
-	token, err := ah.getUserAccount().Client.CoreV1().Secrets(namespace).Get(ctx, tokenName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	tokenStringData := string(token.Data["token"])
-	log.Debugf("token length: %v", len(tokenStringData))
-	tokenString := &tokenStringData
-
-	return &applicationModels.MachineUser{
-		Token: *tokenString,
-	}, nil
-}
-
-func (ah *ApplicationHandler) getMachineUserServiceAccount(ctx context.Context, appName, namespace string) (*corev1.ServiceAccount, error) {
-	machineUserName := defaults.GetMachineUserRoleName(appName)
-	log.Debugf("get service account for app %s in namespace %s and machine user: %s", appName, namespace, machineUserName)
-	machineUserSA, err := ah.getServiceAccount().Client.CoreV1().ServiceAccounts(namespace).Get(ctx, machineUserName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return machineUserSA, nil
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key

@@ -100,3 +100,11 @@ If radix-operator is updated to a new tag, `go.mod` should be updated as follows
 ## Pull request checking
 
 Radix API makes use of [GitHub Actions](https://github.com/features/actions) for build checking in every pull request to the `master` branch. Refer to the [configuration file](https://github.com/equinor/radix-api/blob/master/.github/workflows/radix-api-pr.yml) of the workflow for more details.
+
+## Contributing
+
+Read our [contributing guidelines](./CONTRIBUTING.md)
+
+------------------
+
+[Security notification](./SECURITY.md)
