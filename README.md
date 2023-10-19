@@ -1,6 +1,8 @@
+prod ![prod](https://api.radix.equinor.com/api/v1/applications/radix-api//environments/prod/buildstatus)  
+qa ![qa](https://api.radix.equinor.com/api/v1/applications/radix-api//environments/qa/buildstatus)
 # Radix API
 
-The Radix API is an HTTP server for accessing functionality on the [Radix](https://www.radix.equinor.com) platform. This document is for Radix developers, or anyone interested in poking around. Please see [Development practices](./development-practices.md) for more information on the release process.
+The Radix API is an HTTP server for accessing functionality on the [Radix](https://www.radix.equinor.com) platform. This document is for Radix developers, or anyone interested in poking around. 
 
 ## Purpose
 
