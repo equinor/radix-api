@@ -4364,7 +4364,7 @@
         }
       }
     },
-    "/applications/{appName}/jobs/{jobName}/restart": {
+    "/applications/{appName}/jobs/{jobName}/rerun": {
       "post": {
         "tags": [
           "pipeline-job"
