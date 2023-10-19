@@ -26,6 +26,7 @@ const (
 	dnsZone         = "dev.radix.equinor.com"
 	appAliasDNSZone = "app.dev.radix.equinor.com"
 	egressIps       = "0.0.0.0"
+	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
 func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secretproviderfake.Clientset) {
@@ -36,7 +37,7 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secr
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps)
+	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	return &commonTestUtils, kubeclient, radixclient, secretproviderclient
@@ -50,32 +51,32 @@ func TestGetBuildStatus(t *testing.T) {
 	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
-			WithBranch("master").WithJobName("bd-test-1").WithPipeline(v1.BuildDeploy).WithAppName("my-app").
+			WithBranch("master").WithJobName("bd-test-1").WithPipelineType(v1.BuildDeploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
-			WithBranch("master").WithJobName("bd-test-2").WithPipeline(v1.BuildDeploy).WithAppName("my-app").
+			WithBranch("master").WithJobName("bd-test-2").WithPipelineType(v1.BuildDeploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobRunning).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
-			WithBranch("master").WithJobName("d-test-1").WithPipeline(v1.Deploy).WithAppName("my-app").
+			WithBranch("master").WithJobName("d-test-1").WithPipelineType(v1.Deploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
-			WithBranch("master").WithJobName("d-test-2").WithPipeline(v1.Deploy).WithAppName("my-app").
+			WithBranch("master").WithJobName("d-test-2").WithPipelineType(v1.Deploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
-			WithBranch("master").WithJobName("p-test-1").WithPipeline(v1.Promote).WithAppName("my-app").
+			WithBranch("master").WithJobName("p-test-1").WithPipelineType(v1.Promote).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobStopped).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
 	commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
-			WithBranch("master").WithJobName("p-test-2").WithPipeline(v1.Promote).WithAppName("my-app").
+			WithBranch("master").WithJobName("p-test-2").WithPipelineType(v1.Promote).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
 

@@ -116,6 +116,12 @@ type PipelineParametersDeploy struct {
 	//
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy,omitempty"`
+
+	// CommitID the commit ID of the branch
+	// OPTIONAL for information only
+	//
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	CommitID string `json:"commitID"`
 }
 
 // MapPipelineParametersDeployToJobParameter maps to JobParameter
@@ -124,5 +130,6 @@ func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobPara
 		ToEnvironment: deployParam.ToEnvironment,
 		TriggeredBy:   deployParam.TriggeredBy,
 		ImageTagNames: deployParam.ImageTagNames,
+		CommitID:      deployParam.CommitID,
 	}
 }
