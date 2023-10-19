@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -123,8 +123,6 @@ func (s *tlsCertificateTestSuite) buildCert(certCN, issuerCN string, notBefore, 
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
-	if err != nil {
-		log.Print(err)
-	}
+	require.NoError(s.T(), err)
 	return certPEM.Bytes()
 }

@@ -3,7 +3,6 @@ package environments
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"testing"
@@ -744,9 +743,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 				Name: eventName,
 			},
 		})
-		if err != nil {
-			log.Print(err)
-		}
+		require.NoError(t, err)
 	}
 	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, envName), "ev1")
 	createEvent(operatorutils.GetEnvironmentNamespace(anyAppName, envName), "ev2")
