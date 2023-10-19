@@ -235,7 +235,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 
 // RerunApplicationJob Reruns the pipeline job
 func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/jobs/{jobName}/restart pipeline-job rerunApplicationJob
+	// swagger:operation POST /applications/{appName}/jobs/{jobName}/rerun pipeline-job rerunApplicationJob
 	// ---
 	// summary: Reruns the pipeline job
 	// parameters:

@@ -12,6 +12,7 @@ import (
 )
 
 // embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
+//
 //go:embed badges/build-status.svg
 var defaultBadgeTemplate string
 
@@ -86,9 +87,12 @@ func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.R
 	}
 
 	svgTemplate := template.New("status-badge.svg")
-	svgTemplate.Parse(rbs.badgeTemplate)
+	_, err := svgTemplate.Parse(rbs.badgeTemplate)
+	if err != nil {
+		return nil, err
+	}
 	var buff bytes.Buffer
-	err := svgTemplate.Execute(&buff, &badgeData)
+	err = svgTemplate.Execute(&buff, &badgeData)
 	if err != nil {
 		return nil, errors.New("failed to create SVG template")
 	}

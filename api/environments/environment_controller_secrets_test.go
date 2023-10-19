@@ -28,6 +28,7 @@ import (
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -872,12 +873,14 @@ func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 
 	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"
 
-	s.deployment, _ = s.commonTestUtils.ApplyDeployment(operatorutils.
+	deployment, err := s.commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(s.appName).
 		WithEnvironment(s.environmentName).
 		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(s.componentName).WithDNSExternalAlias(s.alias)).
 		WithImageTag("master"))
+	require.NoError(s.T(), err)
+	s.deployment = deployment
 
 	s.commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
@@ -1232,7 +1235,9 @@ func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, app
 		ObjectMeta: metav1.ObjectMeta{Name: envNamespace},
 		Spec:       v1.RadixEnvironmentSpec{AppName: appName, EnvName: envName},
 	}
-	radixClient.RadixV1().RadixEnvironments().Create(context.Background(), re, metav1.CreateOptions{})
+	_, err := radixClient.RadixV1().RadixEnvironments().Create(context.Background(), re, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+
 	radixDeployment := v1.RadixDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
 		Spec: v1.RadixDeploymentSpec{

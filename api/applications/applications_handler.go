@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
@@ -19,10 +22,11 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/defaults/k8s"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -31,8 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"net/http"
-	"strings"
 )
 
 type patch struct {
@@ -66,7 +68,7 @@ func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerCo
 }
 
 func getApiNamespace(config ApplicationHandlerConfig) string {
-	if namespace := crdUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
+	if namespace := operatorUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
 		return namespace
 	}
 	panic("missing RADIX_APP or RADIX_ENVIRONMENT environment variables")
@@ -288,7 +290,7 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	}
 
 	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
-		cloneURL := crdUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
+		cloneURL := operatorUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
 		updatedRegistration.Spec.CloneURL = cloneURL
 		payload = append(payload, patch{Op: "replace", Path: "/spec/cloneURL", Value: cloneURL})
 		runUpdate = true
@@ -433,6 +435,15 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, err
 	}
 
+	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, fromEnvironment, deploymentName)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, fmt.Errorf("deployment %s not found in the app %s, environment %s", deploymentName, appName, fromEnvironment)
+		}
+		return nil, fmt.Errorf("failed to get deployment %s for the app %s, environment %s: %v", deploymentName, appName, fromEnvironment, err)
+	}
+
+	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
@@ -601,23 +612,23 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 
 	if regenerateDeployKeyAndSecretData.PrivateKey != "" {
 		// Deriving the public key from the private key in order to test it for validity
-		_, err := crdUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey)
+		_, err := operatorUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey)
 		if err != nil {
 			return fmt.Errorf("failed to derive public key from private key: %v", err)
 		}
-		existingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+		existingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		newSecret := existingSecret.DeepCopy()
 		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
-		_, err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
+		_, err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 	} else {
 		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
-		err = ah.getUserAccount().Client.CoreV1().Secrets(crdUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
+		err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -627,7 +638,7 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 }
 
 func (ah *ApplicationHandler) GetDeployKeyAndSecret(ctx context.Context, appName string) (*applicationModels.DeployKeyAndSecret, error) {
-	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(crdUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
+	cm, err := ah.getUserAccount().Client.CoreV1().ConfigMaps(operatorUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPublicKeyConfigMapName, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, err
 	}
@@ -674,7 +685,7 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	}
 	name := fmt.Sprintf("access-validation-%s", appName)
 	labels := map[string]string{"radix-access-validation": "true"}
-	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(crdUtils.RandString(6)))
+	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(operatorUtils.RandString(6)))
 	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
 	if err != nil {
 		return err
