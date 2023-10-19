@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -118,9 +119,10 @@ func (s *tlsCertificateTestSuite) buildCert(certCN, issuerCN string, notBefore, 
 	certPrivKey, _ := rsa.GenerateKey(rand.Reader, 4096)
 	certBytes, _ := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	certPEM := new(bytes.Buffer)
-	pem.Encode(certPEM, &pem.Block{
+	err := pem.Encode(certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
+	require.NoError(s.T(), err)
 	return certPEM.Bytes()
 }
