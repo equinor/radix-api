@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -598,6 +599,9 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 		updatedRegistration.Spec.DeployKeyPublic = ""
 		updatedRegistration.Spec.DeployKey = ""
 		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+		if reflect.DeepEqual(updatedRegistration, currentRegistration) {
+			return nil
+		}
 		if err := ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration); err != nil {
 			return err
 		}
