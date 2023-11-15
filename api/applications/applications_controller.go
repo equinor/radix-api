@@ -393,6 +393,8 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//     description: "Unauthorized"
 	//   "404":
 	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyAndSecretData
