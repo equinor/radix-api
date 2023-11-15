@@ -609,7 +609,10 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 
 	if regenerateDeployKeyAndSecretData.PrivateKey == "" {
 		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
-		return ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
+		err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
+		if !k8serrors.IsNotFound(err) {
+			return err
+		}
 	}
 	// Deriving the public key from the private key in order to test it for validity
 	if _, err := operatorUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey); err != nil {
