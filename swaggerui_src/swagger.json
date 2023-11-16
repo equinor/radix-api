@@ -4884,6 +4884,9 @@
           },
           "404": {
             "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
           }
         }
       }
@@ -6956,6 +6959,12 @@
         "name"
       ],
       "properties": {
+        "containerStarted": {
+          "description": "Container started timestamp",
+          "type": "string",
+          "x-go-name": "ContainerStarted",
+          "example": "2006-01-02T15:04:05Z"
+        },
         "created": {
           "description": "Created timestamp",
           "type": "string",

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/util/retry"
 )
 
 type patch struct {
@@ -582,40 +584,45 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
 func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
-	// Make check that this is an existing application and that the user has access to it
-	currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
 	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
-	updatedRegistration := currentRegistration.DeepCopy()
-	if len(sharedKey) != 0 {
-		updatedRegistration.Spec.SharedSecret = sharedKey
-	}
-
-	// Deleting SSH keys from RRs where these deprecated fields are populated
-	updatedRegistration.Spec.DeployKeyPublic = ""
-	updatedRegistration.Spec.DeployKey = ""
-
-	setConfigBranchToFallbackWhenEmpty(updatedRegistration)
-
-	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
-	if err != nil {
-		return err
-	}
-
-	_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	if regenerateDeployKeyAndSecretData.PrivateKey != "" {
-		// Deriving the public key from the private key in order to test it for validity
-		_, err := operatorUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey)
+	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Make check that this is an existing application and that the user has access to it
+		currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to derive public key from private key: %v", err)
+			return err
 		}
+		updatedRegistration := currentRegistration.DeepCopy()
+		if len(sharedKey) != 0 {
+			updatedRegistration.Spec.SharedSecret = sharedKey
+		}
+		// Deleting SSH keys from RRs where these deprecated fields are populated
+		updatedRegistration.Spec.DeployKeyPublic = ""
+		updatedRegistration.Spec.DeployKey = ""
+		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+		if reflect.DeepEqual(updatedRegistration, currentRegistration) {
+			return nil
+		}
+		if err := ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration); err != nil {
+			return err
+		}
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
+		return err
+	}); err != nil {
+		return err
+	}
+
+	if regenerateDeployKeyAndSecretData.PrivateKey == "" {
+		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
+		err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
+		if !k8serrors.IsNotFound(err) {
+			return err
+		}
+	}
+	// Deriving the public key from the private key in order to test it for validity
+	if _, err := operatorUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey); err != nil {
+		return fmt.Errorf("failed to derive public key from private key: %v", err)
+	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existingSecret, err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -623,18 +630,8 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 		newSecret := existingSecret.DeepCopy()
 		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
 		_, err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
-	} else {
-		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
-		err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return err
+	})
 }
 
 func (ah *ApplicationHandler) GetDeployKeyAndSecret(ctx context.Context, appName string) (*applicationModels.DeployKeyAndSecret, error) {

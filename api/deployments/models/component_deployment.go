@@ -221,6 +221,12 @@ type ReplicaSummary struct {
 	// example: 2006-01-02T15:04:05Z
 	Created string `json:"created"`
 
+	// Container started timestamp
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	ContainerStarted string `json:"containerStarted,omitempty"`
+
 	// Status describes the component container status
 	//
 	// required: false
@@ -338,7 +344,7 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	// Set default Pending status
 	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
 
-	if len(pod.Status.ContainerStatuses) <= 0 {
+	if len(pod.Status.ContainerStatuses) == 0 {
 		condition := getLastReadyCondition(pod.Status.Conditions)
 		if condition != nil {
 			replicaSummary.Status = ReplicaStatus{Status: getReplicaStatusByPodStatus(pod.Status.Phase)}
@@ -357,6 +363,7 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 		}
 	}
 	if containerState.Running != nil {
+		replicaSummary.ContainerStarted = radixutils.FormatTimestamp(containerState.Running.StartedAt.Time)
 		if containerStatus.Ready {
 			replicaSummary.Status = ReplicaStatus{Status: Running.String()}
 		} else {
