@@ -142,10 +142,8 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -201,10 +199,8 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -274,10 +270,8 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -327,10 +321,8 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -381,10 +373,8 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -429,10 +419,8 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -475,10 +463,8 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -532,10 +518,8 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -593,10 +577,8 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -648,10 +630,8 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -724,10 +704,8 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -774,10 +752,8 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -825,10 +801,8 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -876,10 +850,8 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
