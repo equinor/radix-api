@@ -41,11 +41,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -100,11 +97,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -152,11 +146,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -211,11 +202,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -274,11 +262,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -325,11 +310,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -379,11 +361,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -432,11 +411,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -492,11 +468,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -548,11 +521,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -604,11 +574,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -660,11 +627,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -726,11 +690,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -779,11 +740,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -826,11 +784,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -891,11 +846,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -948,11 +900,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1002,11 +951,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1098,11 +1044,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1142,11 +1085,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1199,11 +1139,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1251,11 +1188,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1297,11 +1231,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1348,11 +1279,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1415,11 +1343,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1478,11 +1403,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1541,11 +1463,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1684,11 +1603,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1751,11 +1667,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1818,11 +1731,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1889,11 +1799,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -1994,11 +1901,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2052,11 +1956,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2117,11 +2018,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2194,11 +2092,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2286,11 +2181,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2356,11 +2248,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2414,11 +2303,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2471,11 +2357,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2528,11 +2411,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2589,11 +2469,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2657,11 +2534,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2720,11 +2594,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2800,11 +2671,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2874,11 +2742,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -2945,11 +2810,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3009,11 +2871,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3070,11 +2929,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3138,11 +2994,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3201,11 +3054,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3281,11 +3131,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3355,11 +3202,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3420,11 +3264,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3491,11 +3332,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3583,11 +3421,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3634,11 +3469,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3688,11 +3520,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3739,11 +3568,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3783,11 +3609,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3840,11 +3663,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3922,11 +3742,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -3976,11 +3793,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4040,11 +3854,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4101,11 +3912,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4172,11 +3980,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4268,11 +4073,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4336,11 +4138,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4393,11 +4192,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4444,11 +4240,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4526,11 +4319,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4582,11 +4372,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4638,11 +4425,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4694,11 +4478,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4738,11 +4519,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4804,11 +4582,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4866,11 +4641,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4913,11 +4685,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -4957,11 +4726,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }
@@ -5001,11 +4767,8 @@
             "in": "header"
           },
           {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)",
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
             "name": "Impersonate-Group",
             "in": "header"
           }

@@ -76,10 +76,8 @@ func (controller *envVarsController) GetComponentEnvVars(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -139,10 +137,8 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
