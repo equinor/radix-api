@@ -6097,8 +6097,9 @@
         },
         "lastTimestamp": {
           "description": "The time (ISO8601) at which the event was last recorded",
-          "x-go-name": "LastTimestamp",
-          "example": "2020-11-05T13:25:07.000Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "LastTimestamp"
         },
         "message": {
           "description": "A human-readable description of the status of this event",
@@ -7437,13 +7438,15 @@
         },
         "notAfter": {
           "description": "NotAfter defines the uppdater date/time validity boundary",
-          "x-go-name": "NotAfter",
-          "example": "2023-08-25T23:59:59Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "NotAfter"
         },
         "notBefore": {
           "description": "NotBefore defines the lower date/time validity boundary",
-          "x-go-name": "NotBefore",
-          "example": "2022-08-09T00:00:00Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "NotBefore"
         },
         "subject": {
           "description": "Subject contains the distinguished name for the certificate",
