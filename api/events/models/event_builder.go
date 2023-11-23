@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/go-openapi/strfmt"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -94,7 +93,7 @@ func (eb *eventBuilder) WithMessage(v string) EventBuilder {
 
 func (eb *eventBuilder) Build() *Event {
 	return &Event{
-		LastTimestamp:           strfmt.DateTime(eb.lastTimestamp),
+		LastTimestamp:           eb.lastTimestamp,
 		InvolvedObjectKind:      eb.involvedObjectKind,
 		InvolvedObjectNamespace: eb.involvedObjectNamespace,
 		InvolvedObjectName:      eb.involvedObjectName,
