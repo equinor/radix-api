@@ -34,12 +34,12 @@ func (ec *secretController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: GetAzureKeyVaultSecretVersions,
 		},
-		//TODO reimplement change-secrets individually for each secret type
-		//models.Route{
+		// TODO reimplement change-secrets individually for each secret type
+		// models.Route{
 		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{azureKeyVaultName}",
 		//    Method:      "PUT",
 		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
-		//},
+		// },
 	}
 	return routes
 }
@@ -83,10 +83,8 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -163,10 +161,8 @@ func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWri
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":

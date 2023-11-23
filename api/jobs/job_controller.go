@@ -104,10 +104,8 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -156,10 +154,8 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -207,10 +203,8 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -256,10 +250,8 @@ func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *htt
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -304,10 +296,8 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -362,10 +352,8 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -419,10 +407,8 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -483,10 +469,8 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -546,10 +530,8 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -634,10 +616,8 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -721,10 +701,8 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":

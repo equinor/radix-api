@@ -80,10 +80,8 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -144,10 +142,8 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -195,10 +191,8 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -279,10 +273,8 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
