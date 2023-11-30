@@ -6109,7 +6109,10 @@
           "description": "Name of the pipeline",
           "type": "string",
           "enum": [
-            "build-deploy"
+            "build",
+            "build-deploy",
+            "promote",
+            "deploy"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
@@ -6246,8 +6249,10 @@
           "description": "Name of the pipeline",
           "type": "string",
           "enum": [
+            "build",
             "build-deploy",
-            " build"
+            "promote",
+            "deploy"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
