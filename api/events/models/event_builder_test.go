@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +17,7 @@ func Test_EventBuilder_FluentApi_SingleField(t *testing.T) {
 		e := NewEventBuilder().
 			WithLastTimestamp(v).
 			Build()
-		assert.Equal(t, strfmt.DateTime(v), e.LastTimestamp)
+		assert.Equal(t, v, e.LastTimestamp)
 	})
 
 	t.Run("WithMessage", func(t *testing.T) {
@@ -96,7 +95,7 @@ func Test_EventBuilder_FluentApi_WithKubernetes_LastTimestamp(t *testing.T) {
 		WithKubernetesEvent(v).
 		Build()
 
-	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
+	assert.Equal(t, lastTs, e.LastTimestamp)
 	assert.Equal(t, v.Message, e.Message)
 	assert.Equal(t, v.InvolvedObject.Kind, e.InvolvedObjectKind)
 	assert.Equal(t, v.InvolvedObject.Name, e.InvolvedObjectName)
@@ -123,7 +122,7 @@ func Test_EventBuilder_FluentApi_WithKubernetes_EventTime(t *testing.T) {
 		WithKubernetesEvent(v).
 		Build()
 
-	assert.Equal(t, strfmt.DateTime(lastTs), e.LastTimestamp)
+	assert.Equal(t, lastTs, e.LastTimestamp)
 	assert.Equal(t, v.Message, e.Message)
 	assert.Equal(t, v.InvolvedObject.Kind, e.InvolvedObjectKind)
 	assert.Equal(t, v.InvolvedObject.Name, e.InvolvedObjectName)

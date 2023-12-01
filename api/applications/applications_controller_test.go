@@ -21,6 +21,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -182,13 +183,17 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	})
 }
 
-func TestSearchApplications(t *testing.T) {
+func TestSearchApplicationsPost(t *testing.T) {
 	// Setup
 	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest(true, true)
 	appNames := []string{"app-1", "app-2"}
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[0]))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appNames[1]))
+	for _, appName := range appNames {
+		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+	}
+
+	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 	commonTestUtils.ApplyDeployment(
 		builders.
 			ARadixDeployment().
@@ -198,9 +203,6 @@ func TestSearchApplications(t *testing.T) {
 					NewDeployComponentBuilder(),
 			),
 	)
-
-	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
@@ -212,8 +214,8 @@ func TestSearchApplications(t *testing.T) {
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		params := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -223,8 +225,8 @@ func TestSearchApplications(t *testing.T) {
 	})
 
 	t.Run("search for both apps", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: appNames}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		params := applicationModels.ApplicationsSearchRequest{Names: appNames}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -233,8 +235,8 @@ func TestSearchApplications(t *testing.T) {
 	})
 
 	t.Run("empty appname list", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{}}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		params := applicationModels.ApplicationsSearchRequest{Names: []string{}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -243,13 +245,13 @@ func TestSearchApplications(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[1]+" - with includeFields 'LatestJobSummary'", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{
+		params := applicationModels.ApplicationsSearchRequest{
 			Names: []string{appNames[1]},
 			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
 				LatestJobSummary: true,
 			},
 		}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -261,13 +263,13 @@ func TestSearchApplications(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[1]+" - with includeFields 'EnvironmentActiveComponents'", func(t *testing.T) {
-		searchParam := applicationModels.ApplicationsSearchRequest{
+		params := applicationModels.ApplicationsSearchRequest{
 			Names: []string{appNames[1]},
 			IncludeFields: applicationModels.ApplicationSearchIncludeFields{
 				EnvironmentActiveComponents: true,
 			},
 		}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -286,8 +288,8 @@ func TestSearchApplications(t *testing.T) {
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				})))
-		searchParam := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
-		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+		params := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
+		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
@@ -296,53 +298,204 @@ func TestSearchApplications(t *testing.T) {
 	})
 }
 
-func TestSearchApplications_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
+func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(true, true)
-	appNames := []string{"app-1", "app-2", "app-3"}
+	apps := []applicationModels.Application{
+		{Name: "app-1", Jobs: []*jobModels.JobSummary{
+			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
+		}},
+		{Name: "app-2", Jobs: []*jobModels.JobSummary{
+			{Name: "app-2-job-1", Started: "2018-11-12T12:30:14Z"},
+			{Name: "app-2-job-2", Started: "2018-11-20T09:00:00Z"},
+			{Name: "app-2-job-3", Started: "2018-11-20T09:00:01Z"},
+		}},
+		{Name: "app-3"},
+	}
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName(appNames[0]))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName(appNames[1]))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName(appNames[2]))
+	for _, app := range apps {
+		commontest.CreateAppNamespace(kubeclient, app.Name)
+		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+			WithName(app.Name))
 
-	commontest.CreateAppNamespace(kubeclient, appNames[0])
-	commontest.CreateAppNamespace(kubeclient, appNames[1])
-	commontest.CreateAppNamespace(kubeclient, appNames[2])
-
-	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
-	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
-	app2Job2Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
-	app2Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:01Z")
-
-	createRadixJob(commonTestUtils, appNames[0], "app-1-job-1", app1Job1Started)
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-2", app2Job2Started)
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-3", app2Job3Started)
+		for _, job := range app.Jobs {
+			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
+				createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+			}
+		}
+	}
 
 	// Test
-	searchParam := applicationModels.ApplicationsSearchRequest{
-		Names: appNames,
+	params := applicationModels.ApplicationsSearchRequest{
+		Names: slice.Reduce(apps, []string{}, func(names []string, app applicationModels.Application) []string { return append(names, app.Name) }),
 		IncludeFields: applicationModels.ApplicationSearchIncludeFields{
 			LatestJobSummary: true,
 		},
 	}
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &searchParam)
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 	response := <-responseChannel
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
 	controllertest.GetResponseBody(response, &applications)
 
 	for _, application := range applications {
-		if strings.EqualFold(application.Name, appNames[0]) {
+		if app, _ := slice.FindFirst(apps, func(app applicationModels.Application) bool { return strings.EqualFold(application.Name, app.Name) }); app.Jobs != nil {
 			assert.NotNil(t, application.LatestJob)
-			assert.Equal(t, "app-1-job-1", application.LatestJob.Name)
-		} else if strings.EqualFold(application.Name, appNames[1]) {
+			assert.Equal(t, app.Jobs[len(app.Jobs)-1].Name, application.LatestJob.Name)
+		} else {
+			assert.Nil(t, application.LatestJob)
+		}
+	}
+}
+
+func TestSearchApplicationsGet(t *testing.T) {
+	// Setup
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest(true, true)
+	appNames := []string{"app-1", "app-2"}
+
+	for _, appName := range appNames {
+		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+	}
+
+	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
+	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
+	commonTestUtils.ApplyDeployment(
+		builders.
+			ARadixDeployment().
+			WithAppName(appNames[1]).
+			WithComponent(
+				builders.
+					NewDeployComponentBuilder(),
+			),
+	)
+
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+			return true, nil
+		}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+				return true, nil
+			})))
+
+	// Tests
+	t.Run("search for "+appNames[0], func(t *testing.T) {
+		params := "apps=" + appNames[0]
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+params)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, appNames[0], applications[0].Name)
+	})
+
+	t.Run("search for both apps", func(t *testing.T) {
+		params := "apps=" + strings.Join(appNames, ",")
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+params)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 2, len(applications))
+	})
+
+	t.Run("empty appname list", func(t *testing.T) {
+		params := "apps="
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+params)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 0, len(applications))
+	})
+
+	t.Run("search for "+appNames[1]+" - with includeFields 'LatestJobSummary'", func(t *testing.T) {
+		params := []string{"apps=" + appNames[1], "includeLatestJobSummary=true"}
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+strings.Join(params, "&"))
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, appNames[1], applications[0].Name)
+		assert.NotNil(t, applications[0].LatestJob)
+		assert.Nil(t, applications[0].EnvironmentActiveComponents)
+	})
+
+	t.Run("search for "+appNames[1]+" - with includeFields 'EnvironmentActiveComponents'", func(t *testing.T) {
+		params := []string{"apps=" + appNames[1], "includeEnvironmentActiveComponents=true"}
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+strings.Join(params, "&"))
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 1, len(applications))
+		assert.Equal(t, appNames[1], applications[0].Name)
+		assert.Nil(t, applications[0].LatestJob)
+		assert.NotNil(t, applications[0].EnvironmentActiveComponents)
+	})
+
+	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return false, nil
+			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				})))
+		params := "apps=" + appNames[0]
+		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+params)
+		response := <-responseChannel
+
+		applications := make([]applicationModels.ApplicationSummary, 0)
+		controllertest.GetResponseBody(response, &applications)
+		assert.Equal(t, 0, len(applications))
+	})
+}
+
+func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(true, true)
+	apps := []applicationModels.Application{
+		{Name: "app-1", Jobs: []*jobModels.JobSummary{
+			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
+		}},
+		{Name: "app-2", Jobs: []*jobModels.JobSummary{
+			{Name: "app-2-job-1", Started: "2018-11-12T12:30:14Z"},
+			{Name: "app-2-job-2", Started: "2018-11-20T09:00:00Z"},
+			{Name: "app-2-job-3", Started: "2018-11-20T09:00:01Z"},
+		}},
+		{Name: "app-3"},
+	}
+
+	for _, app := range apps {
+		commontest.CreateAppNamespace(kubeclient, app.Name)
+		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+			WithName(app.Name))
+
+		for _, job := range app.Jobs {
+			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
+				createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+			}
+		}
+	}
+
+	// Test
+	params := []string{
+		"apps=" + strings.Join(slice.Reduce(apps, []string{}, func(names []string, app applicationModels.Application) []string { return append(names, app.Name) }), ","),
+		"includeLatestJobSummary=true",
+	}
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+strings.Join(params, "&"))
+	response := <-responseChannel
+
+	applications := make([]*applicationModels.ApplicationSummary, 0)
+	controllertest.GetResponseBody(response, &applications)
+
+	for _, application := range applications {
+		if app, _ := slice.FindFirst(apps, func(app applicationModels.Application) bool { return strings.EqualFold(application.Name, app.Name) }); app.Jobs != nil {
 			assert.NotNil(t, application.LatestJob)
-			assert.Equal(t, "app-2-job-3", application.LatestJob.Name)
-		} else if strings.EqualFold(application.Name, appNames[2]) {
+			assert.Equal(t, app.Jobs[len(app.Jobs)-1].Name, application.LatestJob.Name)
+		} else {
 			assert.Nil(t, application.LatestJob)
 		}
 	}

@@ -77,7 +77,7 @@ type Job struct {
 	// Name of the pipeline
 	//
 	// required: false
-	// Enum: build-deploy
+	// Enum: build,build-deploy,promote,deploy
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 

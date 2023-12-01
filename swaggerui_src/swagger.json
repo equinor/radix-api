@@ -123,12 +123,79 @@
       }
     },
     "/applications/_search": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments",
+        "operationId": "getSearchApplications",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Comma separated list of application names to search for",
+            "name": "apps",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "true to include LatestJobSummary",
+            "name": "includeLatestJobSummary",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "true to include ActiveComponents in Environments",
+            "name": "includeEnvironmentActiveComponents",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ApplicationSummary"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
       "post": {
         "tags": [
           "platform"
         ],
         "summary": "Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments",
         "operationId": "searchApplications",
+        "deprecated": true,
         "parameters": [
           {
             "description": "List of application names to search for",
@@ -5860,8 +5927,9 @@
         },
         "lastTimestamp": {
           "description": "The time (ISO8601) at which the event was last recorded",
-          "x-go-name": "LastTimestamp",
-          "example": "2020-11-05T13:25:07.000Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "LastTimestamp"
         },
         "message": {
           "description": "A human-readable description of the status of this event",
@@ -6041,7 +6109,10 @@
           "description": "Name of the pipeline",
           "type": "string",
           "enum": [
-            "build-deploy"
+            "build",
+            "build-deploy",
+            "promote",
+            "deploy"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
@@ -6178,8 +6249,10 @@
           "description": "Name of the pipeline",
           "type": "string",
           "enum": [
+            "build",
             "build-deploy",
-            " build"
+            "promote",
+            "deploy"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
@@ -7200,13 +7273,15 @@
         },
         "notAfter": {
           "description": "NotAfter defines the uppdater date/time validity boundary",
-          "x-go-name": "NotAfter",
-          "example": "2023-08-25T23:59:59Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "NotAfter"
         },
         "notBefore": {
           "description": "NotBefore defines the lower date/time validity boundary",
-          "x-go-name": "NotBefore",
-          "example": "2022-08-09T00:00:00Z"
+          "type": "string",
+          "format": "date",
+          "x-go-name": "NotBefore"
         },
         "subject": {
           "description": "Subject contains the distinguished name for the certificate",
