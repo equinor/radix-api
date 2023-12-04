@@ -31,7 +31,7 @@ type ApplicationHandlerConfig struct {
 	RequireAppADGroups          bool   `cfg:"require_app_ad_groups" flag:"require-app-ad-groups"`
 	AppName                     string `cfg:"radix_app" flag:"radix-app"`
 	EnvironmentName             string `cfg:"radix_environment" flag:"radix-environment"`
-	DNSZone                     string `cfg:"radix_dns_zone" flag:"radix_dns_zone"`
+	DNSZone                     string `cfg:"radix_dns_zone" flag:"radix-dns-zone"`
 }
 
 func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
