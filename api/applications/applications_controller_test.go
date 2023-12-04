@@ -515,7 +515,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: app name cannot be empty", errorResponse.Message)
+	assert.Equal(t, "Error: app name is empty: resource name cannot be empty", errorResponse.Message)
 }
 
 func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *testing.T) {
@@ -535,7 +535,7 @@ func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyError("configuration item")
+	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("configuration item")
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
@@ -574,7 +574,7 @@ func TestCreateApplication_WhenRequiredAdGroupsIsNotSet_ReturnError(t *testing.T
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyError("AD groups")
+	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("AD groups")
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
@@ -615,7 +615,7 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyError("branch name")
+	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("branch name")
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
@@ -637,7 +637,7 @@ func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.InvalidConfigBranchName(configBranch)
+	expectedError := radixvalidators.InvalidConfigBranchNameWithMessage(configBranch)
 	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
 }
 
@@ -725,7 +725,8 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err := controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, applicationRegistrationUpsertResponse.Warnings)
 	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is used in other application(s)")
 }
@@ -787,7 +788,8 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err := controllertest.GetResponseBody(response, &application)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Registration.Repository)
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
@@ -801,8 +803,9 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 func TestGetApplication_WithJobs(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(true, true)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("any-name"))
+	assert.NoError(t, err)
 
 	commontest.CreateAppNamespace(kubeclient, "any-name")
 	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
@@ -818,7 +821,8 @@ func TestGetApplication_WithJobs(t *testing.T) {
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	assert.NoError(t, err)
 	assert.Equal(t, 3, len(application.Jobs))
 }
 

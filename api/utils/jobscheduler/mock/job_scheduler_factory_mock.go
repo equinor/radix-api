@@ -7,7 +7,7 @@ package mock
 import (
 	reflect "reflect"
 
-	batchesv1 "github.com/equinor/radix-job-scheduler/api/v1/batches"
+	batches "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	jobs "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	models "github.com/equinor/radix-job-scheduler/models"
 	gomock "github.com/golang/mock/gomock"
@@ -37,10 +37,10 @@ func (m *MockHandlerFactoryInterface) EXPECT() *MockHandlerFactoryInterfaceMockR
 }
 
 // CreateJobSchedulerBatchHandlerForEnv mocks base method.
-func (m *MockHandlerFactoryInterface) CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batchesv1.BatchHandler {
+func (m *MockHandlerFactoryInterface) CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batches.BatchHandler {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", env)
-	ret0, _ := ret[0].(batchesv1.BatchHandler)
+	ret0, _ := ret[0].(batches.BatchHandler)
 	return ret0
 }
 

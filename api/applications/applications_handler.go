@@ -15,7 +15,6 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -117,7 +116,11 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin)
+	radixDNSAliasList, err := kubequery.GetRadixDNSAliases(ctx, ah.accounts.ServiceAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin, radixDNSAliasList, ah.config.DNSZone)
 	return application, nil
 }
 
@@ -508,13 +511,12 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	// Check if branch is mapped
 	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
-		application, err := utils.CreateApplicationConfig(ctx, &userAccount, appName)
+		ra, err := userAccount.RadixClient.RadixV1().RadixApplications(operatorUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		isThereAnythingToDeploy, _ := application.IsThereAnythingToDeploy(branch)
-
-		if !isThereAnythingToDeploy {
+		targetEnvironments := applicationconfig.GetTargetEnvironments(branch, ra)
+		if len(targetEnvironments) == 0 {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
 	}

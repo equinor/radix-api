@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 
@@ -18,25 +19,18 @@ import (
 	"github.com/spf13/pflag"
 
 	// Controllers
-	"github.com/equinor/radix-api/api/admissioncontrollers"
 	"github.com/equinor/radix-api/api/alerting"
 	"github.com/equinor/radix-api/api/applications"
 	"github.com/equinor/radix-api/api/buildsecrets"
+	build_models "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	"github.com/equinor/radix-api/api/jobs"
 	"github.com/equinor/radix-api/api/privateimagehubs"
-
-	build_models "github.com/equinor/radix-api/api/buildstatus/models"
-
-	router "github.com/equinor/radix-api/api/router"
-	"github.com/equinor/radix-api/models"
-
+	"github.com/equinor/radix-api/api/router"
 	"github.com/equinor/radix-api/api/utils"
-
-	_ "net/http/pprof"
-
 	_ "github.com/equinor/radix-api/docs"
+	"github.com/equinor/radix-api/models"
 )
 
 const (
@@ -107,7 +101,6 @@ func getControllers() ([]models.Controller, error) {
 	}
 
 	return []models.Controller{
-		admissioncontrollers.NewAdmissionController(),
 		applications.NewApplicationController(nil, applicationHandlerFactory),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),

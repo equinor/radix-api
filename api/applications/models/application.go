@@ -29,6 +29,11 @@ type Application struct {
 	// required: false
 	Jobs []*jobModels.JobSummary `json:"jobs"`
 
+	// DNS alias showing nicer endpoint for application, without "app." subdomain domain
+	//
+	// required: false
+	DNSAliases []DNSAlias `json:"dnsAlias,omitempty"`
+
 	// App alias showing nicer endpoint for application
 	//
 	// required: false

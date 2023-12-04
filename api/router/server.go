@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/equinor/radix-api/api/defaults"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
 	_ "github.com/equinor/radix-api/swaggerui" // statik files
@@ -16,11 +17,8 @@ import (
 )
 
 const (
-	apiVersionRoute                 = "/api/v1"
-	admissionControllerRootPath     = "/admissioncontrollers"
-	buildstatusControllerRootPath   = "/buildstatus"
-	healthControllerPath            = "/health/"
-	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
+	apiVersionRoute      = "/api/v1"
+	healthControllerPath = "/health/"
 )
 
 // NewServer Constructor function
@@ -44,16 +42,11 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 		negroni.Wrap(router),
 	))
 
-	serveMux.Handle(fmt.Sprintf("%s/", admissionControllerRootPath), negroni.New(
-		negroni.Wrap(router),
-	))
-
 	serveMux.Handle("/api/", negroni.New(
 		negroni.Wrap(router),
 	))
 
-	// TODO: We should maybe have oauth to stop any non-radix user from beeing
-	// able to see the API
+	// TODO: We should maybe have oauth to stop any non-radix user from being able to see the API
 	serveMux.Handle("/swaggerui/", negroni.New(
 		negroni.Wrap(router),
 	))
@@ -74,7 +67,7 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 }
 
 func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClient bool) http.Handler {
-	radixDNSZone := os.Getenv(radixDNSZoneEnvironmentVariable)
+	radixDNSZone := os.Getenv(defaults.RadixDNSZoneEnvironmentVariable)
 
 	corsOptions := cors.Options{
 		AllowedOrigins: []string{

@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -64,7 +65,7 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 	var secretDTOsMap []secretModels.Secret
 	for componentName, secretNamesMap := range componentSecretsMap {
 		secretObjectName := operatorutils.GetComponentSecretName(componentName)
-		secret, ok := slice.FindFirst(secretList, isSecretWithName(secretObjectName))
+		secr, ok := slice.FindFirst(secretList, isSecretWithName(secretObjectName))
 		if !ok {
 			// Mark secrets as Pending (exist in config, does not exist in cluster) due to no secret object in the cluster
 			for secretName := range secretNamesMap {
@@ -79,7 +80,7 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 			continue
 		}
 
-		clusterSecretEntriesMap := secret.Data
+		clusterSecretEntriesMap := secr.Data
 		for secretName := range secretNamesMap {
 			status := secretModels.Consistent.String()
 			if _, exists := clusterSecretEntriesMap[secretName]; !exists {
@@ -292,12 +293,12 @@ func getSecretsForComponentAuthentication(secretList []corev1.Secret, component 
 
 func getSecretsForComponentAuthenticationClientCertificate(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
-	if auth := component.GetAuthentication(); auth != nil && component.IsPublic() && operatordeployment.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
+	if auth := component.GetAuthentication(); auth != nil && component.IsPublic() && ingress.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
 		secretName := operatorutils.GetComponentClientCertificateSecretName(component.GetName())
 		secretStatus := secretModels.Consistent.String()
 
-		if secret, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
-			secretValue := strings.TrimSpace(string(secret.Data["ca.crt"]))
+		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+			secretValue := strings.TrimSpace(string(secr.Data["ca.crt"]))
 			if strings.EqualFold(secretValue, secretDefaultData) {
 				secretStatus = secretModels.Pending.String()
 			}
@@ -330,14 +331,14 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 		redisPasswordStatus := secretModels.Consistent.String()
 
 		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
-		if secret, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
-			if secretValue, found := secret.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
+		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+			if secretValue, found := secr.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				clientSecretStatus = secretModels.Pending.String()
 			}
-			if secretValue, found := secret.Data[defaults.OAuthCookieSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
+			if secretValue, found := secr.Data[defaults.OAuthCookieSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				cookieSecretStatus = secretModels.Pending.String()
 			}
-			if secretValue, found := secret.Data[defaults.OAuthRedisPasswordKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
+			if secretValue, found := secr.Data[defaults.OAuthRedisPasswordKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				redisPasswordStatus = secretModels.Pending.String()
 			}
 		} else {

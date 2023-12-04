@@ -2,7 +2,9 @@ package utils
 
 import (
 	"context"
+
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -23,5 +25,5 @@ func CreateApplicationConfig(ctx context.Context, user *models.Account, appName 
 	}
 
 	kubeUtils, _ := kube.New(user.Client, user.RadixClient, user.SecretProviderClient)
-	return applicationconfig.NewApplicationConfig(user.Client, kubeUtils, user.RadixClient, registration, radixApp)
+	return applicationconfig.NewApplicationConfig(user.Client, kubeUtils, user.RadixClient, registration, radixApp, &dnsalias.DNSConfig{}), nil
 }
