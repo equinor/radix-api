@@ -9,6 +9,7 @@ type DeploymentSummaryPipelineJobInfo struct {
 	// Type of pipeline job
 	//
 	// required: false
+	// enum: build,build-deploy,promote,deploy
 	// example: build-deploy
 	PipelineJobType string `json:"pipelineJobType,omitempty"`
 

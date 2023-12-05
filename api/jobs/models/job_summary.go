@@ -35,7 +35,7 @@ type JobSummary struct {
 	// Image tags names for components - if empty will use default logic
 	//
 	// required: false
-	// Example: component1: tag1,component2: tag2
+	// example: component1: tag1,component2: tag2
 	ImageTagNames map[string]string `json:"imageTagNames,omitempty"`
 
 	// Created timestamp
@@ -65,14 +65,14 @@ type JobSummary struct {
 	// Status of the job
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed,StoppedNoChanges
+	// enum: Queued,Waiting,Running,Succeeded,Failed,Stopped,Stopping,StoppedNoChanges
 	// example: Waiting
 	Status string `json:"status"`
 
 	// Name of the pipeline
 	//
 	// required: false
-	// Enum: build,build-deploy,promote,deploy
+	// enum: build,build-deploy,promote,deploy
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 

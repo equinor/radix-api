@@ -21,6 +21,7 @@ type Component struct {
 	// Type of component
 	//
 	// required: true
+	// enum: component,job
 	// example: component
 	Type string `json:"type"`
 
@@ -30,6 +31,7 @@ type Component struct {
 	// - Consistent = Component is consistent with config
 	// - Restarting = User has triggered restart, but this is not reconciled
 	//
+	// enum: Stopped,Consistent,Reconciling,Restarting,Outdated
 	// example: Consistent
 	Status string `json:"status"`
 
@@ -159,6 +161,7 @@ type AuxiliaryResourceDeployment struct {
 	// - Reconciling: Waiting for new replicas to enter desired state
 	// - Stopped: Replica count is set to 0
 	//
+	// enum: Stopped,Consistent,Reconciling
 	// example: Consistent
 	Status string `json:"status"`
 
@@ -196,6 +199,7 @@ type ComponentSummary struct {
 	// Type of component
 	//
 	// required: true
+	// enum: component,job
 	// example: component
 	Type string `json:"type"`
 
@@ -269,8 +273,8 @@ type ReplicaStatus struct {
 	// - Running = Container in Running state
 	// - Terminated = Container in Terminated state
 	//
-	// Enum: Pending,Failing,Running,Terminated,Starting
 	// required: true
+	// enum: Pending,Failing,Running,Terminated,Starting
 	// example: Running
 	Status string `json:"status"`
 }

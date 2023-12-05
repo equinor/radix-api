@@ -26,6 +26,7 @@ type ImageHubSecret struct {
 	// - Consistent = Secret value is set
 	//
 	// required: false
+	// enum: Pending,Consistent
 	// example: Consistent
 	Status string `json:"status"`
 }
