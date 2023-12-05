@@ -4928,6 +4928,14 @@
         "appAlias": {
           "$ref": "#/definitions/ApplicationAlias"
         },
+        "dnsAlias": {
+          "description": "DNS aliases showing nicer endpoint for application, without \"app.\" subdomain domain",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DNSAlias"
+          },
+          "x-go-name": "DNSAlias"
+        },
         "environments": {
           "description": "Environments List of environments for this application",
           "type": "array",
@@ -5521,6 +5529,52 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "DNSAlias": {
+      "description": "DNSAlias holds public DNS alias information",
+      "type": "object",
+      "required": [
+        "url",
+        "componentName",
+        "environmentName"
+      ],
+      "properties": {
+        "Status": {
+          "$ref": "#/definitions/DNSAliasStatus"
+        },
+        "componentName": {
+          "description": "ComponentName the component exposing the endpoint",
+          "type": "string",
+          "x-go-name": "ComponentName",
+          "example": "frontend"
+        },
+        "environmentName": {
+          "description": "EnvironmentName the environment hosting the endpoint",
+          "type": "string",
+          "x-go-name": "EnvironmentName",
+          "example": "prod"
+        },
+        "url": {
+          "description": "URL the public endpoint",
+          "type": "string",
+          "x-go-name": "URL",
+          "example": "https://my-app.radix.equinor.com"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "DNSAliasStatus": {
+      "description": "DNSAliasStatus Status of the DNSAlias",
+      "type": "object",
+      "properties": {
+        "Condition": {
+          "type": "string"
+        },
+        "Message": {
+          "type": "string"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "DeployKeyAndSecret": {
       "description": "DeployKeyAndSecret Holds generated public deploy key and shared secret",

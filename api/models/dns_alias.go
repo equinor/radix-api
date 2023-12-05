@@ -8,7 +8,7 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
-// BuildDNSAlias builds an DNSAliases model for the application
+// BuildDNSAlias builds an DNSAlias model for the application
 func BuildDNSAlias(ra *radixv1.RadixApplication, radixDNSAliasList []radixv1.RadixDNSAlias, radixDNSZone string) []applicationModels.DNSAlias {
 	var dnsAliases []applicationModels.DNSAlias
 	radixDNSAliasMap := slice.Reduce(radixDNSAliasList, make(map[string]*radixv1.RadixDNSAlias), func(acc map[string]*radixv1.RadixDNSAlias, radixDNSAlias radixv1.RadixDNSAlias) map[string]*radixv1.RadixDNSAlias {
