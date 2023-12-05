@@ -19,7 +19,7 @@ type EnvironmentSummary struct {
 	// - Orphan = Environment does not exist in Radix config, but exists in cluster
 	//
 	// required: false
-	// Enum: Pending,Consistent,Orphan
+	// enum: Pending,Consistent,Orphan
 	// example: Consistent
 	Status string `json:"status"`
 

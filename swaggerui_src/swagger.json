@@ -5272,6 +5272,11 @@
         "status": {
           "description": "Status of the auxiliary resource's deployment",
           "type": "string",
+          "enum": [
+            "Stopped",
+            "Consistent",
+            "Reconciling"
+          ],
           "x-go-name": "Status",
           "example": "Consistent"
         }
@@ -5377,6 +5382,10 @@
         "status": {
           "description": "Status of the secret\nPending = Secret value is not set\nConsistent = Secret value is set",
           "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent"
+          ],
           "x-go-name": "Status",
           "example": "Consistent"
         }
@@ -5472,12 +5481,23 @@
         "status": {
           "description": "Status of the component",
           "type": "string",
+          "enum": [
+            "Stopped",
+            "Consistent",
+            "Reconciling",
+            "Restarting",
+            "Outdated"
+          ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
         "type": {
           "description": "Type of component",
           "type": "string",
+          "enum": [
+            "component",
+            "job"
+          ],
           "x-go-name": "Type",
           "example": "component"
         },
@@ -5516,6 +5536,10 @@
         "type": {
           "description": "Type of component",
           "type": "string",
+          "enum": [
+            "component",
+            "job"
+          ],
           "x-go-name": "Type",
           "example": "component"
         }
@@ -5717,6 +5741,12 @@
         "pipelineJobType": {
           "description": "Type of pipeline job",
           "type": "string",
+          "enum": [
+            "build",
+            "build-deploy",
+            "promote",
+            "deploy"
+          ],
           "x-go-name": "PipelineJobType",
           "example": "build-deploy"
         },
@@ -5746,6 +5776,12 @@
         "pipelineJobType": {
           "description": "Type of pipeline job",
           "type": "string",
+          "enum": [
+            "build",
+            "build-deploy",
+            "promote",
+            "deploy"
+          ],
           "x-go-name": "PipelineJobType",
           "example": "build-deploy"
         },
@@ -6034,6 +6070,10 @@
         "status": {
           "description": "Status of the secret\nPending = Secret value is not set\nConsistent = Secret value is set",
           "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent"
+          ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
@@ -6156,12 +6196,13 @@
           "description": "Status of the job",
           "type": "string",
           "enum": [
+            "Queued",
             "Waiting",
             "Running",
             "Succeeded",
-            "Stopping",
-            "Stopped",
             "Failed",
+            "Stopped",
+            "Stopping",
             "StoppedNoChanges"
           ],
           "x-go-name": "Status",
@@ -6282,12 +6323,13 @@
           "description": "Status of the job",
           "type": "string",
           "enum": [
+            "Queued",
             "Waiting",
             "Running",
             "Succeeded",
-            "Stopping",
-            "Stopped",
             "Failed",
+            "Stopped",
+            "Stopping",
             "StoppedNoChanges"
           ],
           "x-go-name": "Status",
@@ -6509,14 +6551,8 @@
         "status": {
           "description": "Status of the step",
           "type": "string",
-          "enum": [
-            "Waiting",
-            "Running",
-            "Succeeded",
-            "Failed"
-          ],
           "x-go-name": "Status",
-          "example": "Waiting"
+          "example": "Started"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -6575,14 +6611,8 @@
         "status": {
           "description": "Status of the task",
           "type": "string",
-          "enum": [
-            "Waiting",
-            "Running",
-            "Succeeded",
-            "Failed"
-          ],
           "x-go-name": "Status",
-          "example": "Waiting"
+          "example": "Running"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -6620,14 +6650,8 @@
         "status": {
           "description": "Status of the task",
           "type": "string",
-          "enum": [
-            "Waiting",
-            "Running",
-            "Succeeded",
-            "Failed"
-          ],
           "x-go-name": "Status",
-          "example": "Waiting"
+          "example": "Completed"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -7067,12 +7091,12 @@
           "description": "Status of the job",
           "type": "string",
           "enum": [
-            "Waiting",
             "Running",
             "Succeeded",
+            "Failed",
+            "Waiting",
             "Stopping",
-            "Stopped",
-            "Failed"
+            "Stopped"
           ],
           "x-go-name": "Status",
           "example": "Waiting"
@@ -7127,6 +7151,12 @@
         "status": {
           "description": "Status of the secret\nPending = Secret exists in Radix config, but not in cluster\nConsistent = Secret exists in Radix config and in cluster\nNotAvailable = Secret is available in external secret configuration but not in cluster",
           "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent",
+            "NotAvailable",
+            "Invalid"
+          ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
@@ -7236,10 +7266,13 @@
           "description": "Status of the step",
           "type": "string",
           "enum": [
+            "Queued",
             "Waiting",
             "Running",
             "Succeeded",
-            "Failed"
+            "Failed",
+            "Stopped",
+            "StoppedNoChanges"
           ],
           "x-go-name": "Status",
           "example": "Waiting"

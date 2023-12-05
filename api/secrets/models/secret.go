@@ -20,7 +20,8 @@ type Secret struct {
 	// Type of the secret
 	//
 	// required: false
-	// example: csi-az-blob
+	// enum: generic,client-cert,azure-blob-fuse-volume,csi-azure-blob-volume,csi-azure-key-vault-creds,csi-azure-key-vault-item,client-cert-auth,oauth2-proxy
+	// example: client-cert
 	Type SecretType `json:"type,omitempty"`
 
 	// Resource of the secrets
@@ -47,6 +48,7 @@ type Secret struct {
 	// - NotAvailable = Secret is available in external secret configuration but not in cluster
 	//
 	// required: false
+	// enum: Pending,Consistent,NotAvailable,Invalid
 	// example: Consistent
 	Status string `json:"status,omitempty"`
 
