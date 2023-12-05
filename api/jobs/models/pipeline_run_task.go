@@ -30,8 +30,7 @@ type PipelineRunTask struct {
 	// Status of the task
 	//
 	// required: false
-	// Enum: Waiting,Running,Succeeded,Failed
-	// example: Waiting
+	// example: Running
 	Status string `json:"status"`
 
 	// StatusMessage of the task
