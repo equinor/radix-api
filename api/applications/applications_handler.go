@@ -748,9 +748,9 @@ func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interfa
 	var subjects []rbacv1.Subject
 	for _, adGroup := range adGroups {
 		subjects = append(subjects, rbacv1.Subject{
-			Kind:     k8s.KindGroup,
+			Kind:     rbacv1.GroupKind,
 			Name:     adGroup,
-			APIGroup: k8s.RbacApiGroup,
+			APIGroup: rbacv1.GroupName,
 		})
 	}
 	newRoleBinding := &rbacv1.RoleBinding{
@@ -759,7 +759,7 @@ func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interfa
 			Labels:       labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion: k8s.RbacApiVersion,
+					APIVersion: rbacv1.SchemeGroupVersion.Identifier(),
 					Kind:       k8s.KindRole,
 					Name:       role.GetName(),
 					UID:        role.GetUID(),
@@ -767,7 +767,7 @@ func createRoleBindingForRole(ctx context.Context, kubeClient kubernetes.Interfa
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
-			APIGroup: k8s.RbacApiGroup,
+			APIGroup: rbacv1.GroupName,
 			Kind:     k8s.KindRole,
 			Name:     role.GetName(),
 		}, Subjects: subjects,

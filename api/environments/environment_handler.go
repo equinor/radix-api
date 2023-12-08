@@ -14,13 +14,13 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -105,7 +105,7 @@ var validaStatusesToScaleComponent []string
 
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' EnvironmentHandler.
-// EnvironmentHandlerOptions are processed in the seqeunce they are passed to this function.
+// EnvironmentHandlerOptions are processed in the sequence they are passed to this function.
 func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 	validaStatusesToScaleComponent = []string{deploymentModels.ConsistentComponent.String(), deploymentModels.StoppedComponent.String()}
 
@@ -439,7 +439,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 	baseUpdater.componentToPatch = componentToPatch
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(ctx, appName)
-	baseUpdater.environmentConfig = configUtils.GetComponentEnvironmentConfig(ra, envName, componentName)
+	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
 	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch)
 	if err != nil {
 		return nil, err
@@ -454,7 +454,9 @@ func (eh EnvironmentHandler) commit(ctx context.Context, updater radixDeployComm
 		return err
 	}
 
-	commitFunc(updater)
+	if err := commitFunc(updater); err != nil {
+		return err
+	}
 	newJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
