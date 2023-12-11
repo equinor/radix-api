@@ -22,7 +22,7 @@ jobs:
         run: go install honnef.co/go/tools/cmd/staticcheck@2023.1.6
 
       - name: golangci-lint
-        run: golangci-lint run --timeout=30m --max-same-issues=0 --out-format=github-actions
+        run: golangci-lint run --timeout=30m --max-same-issues=0 --out-format=github-actions --new
 
       # Add legacy checks since golangci-lint only tests changed files for now
       - name: StaticCheck
@@ -43,7 +43,7 @@ jobs:
         run: go test -cover `go list ./... | grep -v 'pkg/client'`
 
   test-swagger:
-    name: Test
+    name: Test Swagger
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -53,8 +53,8 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Install Swagger
-        run: go install github.com/go-swagger/go-swagger/cmd/swagger
-      - name: Run Tests
+        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
+      - name: Generate Swagger
         run: make swagger
       - name: Validate no changes
         run: git diff --exit-code ./swaggerui/html/swagger.json
