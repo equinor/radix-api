@@ -7267,7 +7267,16 @@
         },
         "status": {
           "description": "Status of the step",
-          "type": "number",
+          "type": "string",
+          "enum": [
+            "Queued",
+            "Waiting",
+            "Running",
+            "Succeeded",
+            "Failed",
+            "Stopped",
+            "StoppedNoChanges"
+          ],
           "x-go-name": "Status",
           "example": "Waiting"
         }
