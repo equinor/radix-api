@@ -38,11 +38,9 @@ build-kaniko:
 # we also do make swagger inside Dockerfile
 .PHONY: swagger
 swagger:
-	rm -f ./swaggerui_src/swagger.json ./swaggerui/statik.go
 	swagger generate spec -o ./swagger.json --scan-models --exclude-deps
 	swagger validate ./swagger.json
-	mv swagger.json ./swaggerui_src/swagger.json
-	statik -src=./swaggerui_src/ -p swaggerui
+	mv swagger.json ./swaggerui/html/swagger.json
 
 .PHONY: $(BINS)
 $(BINS): vendor
@@ -85,7 +83,7 @@ endif
 
 ifndef HAS_STATIK
 	go get github.com/rakyll/statik
-endif 
+endif
 
 .PHONY: bootstrap
 bootstrap: vendor
