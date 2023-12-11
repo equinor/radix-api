@@ -58,6 +58,21 @@ jobs:
         run: make swagger
       - name: Validate no changes
         run: git diff --exit-code ./swaggerui/html/swagger.json
+      - name: Check breaking changes
+        id: breaking
+        run: |
+          echo "diff=$(swagger diff --quiet --break <(git show HEAD~1:swaggerui/html/swagger.json) ./swaggerui/html/swagger.json)\n" >> $GITHUB_OUTPUT
+      - name: Add comment
+        if: always()
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            Swagger have breaking changes:
+            ```text
+            ${{ steps.breaking.outputs.diff }}
+            ```
+          
+        
 
   build:
     name: Build

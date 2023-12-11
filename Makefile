@@ -37,6 +37,7 @@ build-kaniko:
 # This make command is only needed for local testing now
 # we also do make swagger inside Dockerfile
 .PHONY: swagger
+swagger: SHELL:=/bin/bash
 swagger:
 	swagger generate spec -o ./swagger.json --scan-models --exclude-deps
 	swagger validate ./swagger.json

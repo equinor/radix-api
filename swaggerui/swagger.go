@@ -21,6 +21,8 @@ import (
 	// _ "github.com/go-swagger/go-swagger/cmd/swagger/commands"
 	// _ "github.com/go-swagger/go-swagger/codescan"
 	// _ "github.com/go-swagger/go-swagger/generator"
+
+	_ "github.com/go-swagger/go-swagger"
 )
 
 //go:embed html
