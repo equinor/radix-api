@@ -23,6 +23,8 @@ func Test_GetSecretsForEnvironment(t *testing.T) {
 
 	expected := []corev1.Secret{matched1, matched2}
 	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
+	require.NoError(t, err)
+
 	actual, err := GetSecretsForEnvironment(context.Background(), client, "app1", "env1", *noJobPayloadReq)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expected, actual)
