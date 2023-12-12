@@ -29,6 +29,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -188,7 +190,12 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-	secretList, err := kubequery.GetSecretsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName)
+
+	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
+	if err != nil {
+		return nil, err
+	}
+	secretList, err := kubequery.GetSecretsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName, *noJobPayloadReq)
 	if err != nil {
 		return nil, err
 	}

@@ -498,7 +498,9 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	//   "200":
 	//     description: "Successful get environment events"
 	//     schema:
-	//        "$ref": "#/definitions/Event"
+	//        type: "array"
+	//        items:
+	//          "$ref": "#/definitions/Event"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "404":
