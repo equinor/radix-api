@@ -18,7 +18,8 @@ CX_ARCHS	= amd64
 .PHONY: build
 build: $(BINS)
 
-mocks:
+.PHONY: mocks
+mocks: bootstrap
 	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
 	mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
 	mockgen -source ./api/environments/job_handler.go -destination ./api/environments/mock/job_handler_mock.go -package mock
