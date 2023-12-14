@@ -18,10 +18,6 @@ CX_ARCHS	= amd64
 .PHONY: build
 build: $(BINS)
 
-.PHONY: test
-test:
-	go test -cover `go list ./...`
-
 mocks:
 	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
 	mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
@@ -31,6 +27,15 @@ mocks:
 	mockgen -source ./api/utils/jobscheduler/interface.go -destination ./api/utils/jobscheduler/mock/job_scheduler_factory_mock.go -package mock
 	mockgen -source ./api/events/event_handler.go -destination ./api/events/mock/event_handler_mock.go -package mock
 
+.PHONY: test
+test:
+	go test -cover `go list ./...`
+
+.PHONY: lint
+lint: bootstrap
+	golangci-lint run --max-same-issues 0 --new
+	staticcheck ./...
+
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:latest --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
 
@@ -38,13 +43,13 @@ build-kaniko:
 # we also do make swagger inside Dockerfile
 .PHONY: swagger
 swagger: SHELL:=/bin/bash
-swagger:
+swagger: bootstrap
 	swagger generate spec -o ./swagger.json --scan-models --exclude-deps
 	swagger validate ./swagger.json
 	mv swagger.json ./swaggerui/html/swagger.json
 
 .PHONY: $(BINS)
-$(BINS): vendor
+$(BINS): bootstrap
 	go build -ldflags '$(LDFLAGS)' -o bin/$@ .
 
 .PHONY: docker-build
@@ -60,34 +65,21 @@ docker-push: $(addsuffix -push,$(IMAGES))
 	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/$*-server:$(IMAGE_TAG)
 
-HAS_GOMETALINTER := $(shell command -v gometalinter;)
-HAS_DEP          := $(shell command -v dep;)
-HAS_GIT          := $(shell command -v git;)
-HAS_SWAGGER      := $(shell command -v swagger;)
-HAS_STATIK 		 := $(shell command -v statik;)
+HAS_SWAGGER       := $(shell command -v swagger;)
+HAS_STATICCHECK   := $(shell command -v staticcheck;)
+HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
+HAS_MOCKGEN       := $(shell command -v golangci-lint;)
 
-vendor:
-ifndef HAS_GIT
-	$(error You must install git)
-endif
-ifndef HAS_DEP
-	go get -u github.com/golang/dep/cmd/dep
-endif
-ifndef HAS_GOMETALINTER
-	go get -u github.com/alecthomas/gometalinter
-	gometalinter --install
-endif
-	dep ensure
+bootstrap:
 ifndef HAS_SWAGGER
-	go get -u github.com/go-swagger/go-swagger/cmd/swagger
+	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
 endif
-
-ifndef HAS_STATIK
-	go get github.com/rakyll/statik
+ifndef HAS_GOLANGCI_LINT
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@1.55.2
 endif
-
-.PHONY: bootstrap
-bootstrap: vendor
-
-staticcheck:
-	staticcheck ./...
+ifndef HAS_STATICCHECK
+	go install honnef.co/go/tools/cmd/staticcheck@v0.4.6
+endif
+ifndef HAS_MOCKGEN
+	go install github.com/golang/mock/mockgen@v1.6.0
+endif
