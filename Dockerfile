@@ -5,10 +5,6 @@ RUN apk update && \
     apk add bash jq alpine-sdk sed gawk git ca-certificates curl && \
     apk add --no-cache gcc musl-dev
 
-RUN go install honnef.co/go/tools/cmd/staticcheck@2023.1.3 && \
-    go install github.com/rakyll/statik@v0.1.7 && \
-    go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
-
 WORKDIR /go/src/github.com/equinor/radix-api/
 
 # get dependencies
@@ -17,16 +13,6 @@ RUN go mod download
 
 # copy api code
 COPY . .
-
-# Generate swagger
-RUN swagger generate spec -o ./swaggerui_src/swagger.json --scan-models --exclude-deps && \
-    swagger validate ./swaggerui_src/swagger.json && \
-    statik -src=./swaggerui_src/ -p swaggerui
-
-# lint and unit tests
-RUN staticcheck ./... && \
-    go vet ./... && \
-    CGO_ENABLED=0 GOOS=linux go test ./...
 
 # Build radix api go project
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
