@@ -17,7 +17,7 @@ func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 	if ra != nil {
 		application.Environments = BuildEnvironmentSummaryList(rr, ra, reList, rdList, rjList)
-		application.DNSAlias = BuildDNSAlias(ra, radixDNSAliasList, radixDNSZone)
+		application.DNSAliases = BuildDNSAlias(ra, radixDNSAliasList, radixDNSZone)
 	}
 	return &application
 }

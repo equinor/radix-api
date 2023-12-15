@@ -21,12 +21,12 @@ type DNSAlias struct {
 	// example: prod
 	EnvironmentName string `json:"environmentName"`
 
-	Status DNSAliasStatus `json:status`
+	Status DNSAliasStatus `json:"status,omitempty"`
 }
 
 // DNSAliasStatus Status of the DNSAlias
 // swagger:model DNSAliasStatus
 type DNSAliasStatus struct {
-	Condition string `json:statusCondition`
-	Message   string `json:statusMessage`
+	Condition string `json:"condition,omitempty"`
+	Message   string `json:"message,omitempty"`
 }

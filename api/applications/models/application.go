@@ -32,7 +32,7 @@ type Application struct {
 	// DNS aliases showing nicer endpoint for application, without "app." subdomain domain
 	//
 	// required: false
-	DNSAlias []DNSAlias `json:"dnsAlias,omitempty"`
+	DNSAliases []DNSAlias `json:"dnsAliases,omitempty"`
 
 	// App alias showing nicer endpoint for application
 	//
