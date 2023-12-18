@@ -116,7 +116,7 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	radixDNSAliasList, err := kubequery.GetRadixDNSAliases(ctx, ah.accounts.ServiceAccount.RadixClient, appName)
+	radixDNSAliasList, err := kubequery.GetRadixDNSAliases(ctx, ah.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
