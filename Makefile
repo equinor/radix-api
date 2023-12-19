@@ -69,14 +69,14 @@ docker-push: $(addsuffix -push,$(IMAGES))
 HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_STATICCHECK   := $(shell command -v staticcheck;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
-HAS_MOCKGEN       := $(shell command -v golangci-lint;)
+HAS_MOCKGEN       := $(shell command -v mockgen;)
 
 bootstrap:
 ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@1.55.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 endif
 ifndef HAS_STATICCHECK
 	go install honnef.co/go/tools/cmd/staticcheck@v0.4.6

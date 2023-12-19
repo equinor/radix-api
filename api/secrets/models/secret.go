@@ -20,7 +20,6 @@ type Secret struct {
 	// Type of the secret
 	//
 	// required: false
-	// enum: generic,client-cert,azure-blob-fuse-volume,csi-azure-blob-volume,csi-azure-key-vault-creds,csi-azure-key-vault-item,client-cert-auth,oauth2-proxy
 	// example: client-cert
 	Type SecretType `json:"type,omitempty"`
 
@@ -64,6 +63,7 @@ type Secret struct {
 	TLSCertificates []TLSCertificate `json:"tlsCertificates,omitempty"`
 }
 
+// swagger:enum SecretType
 type SecretType string
 
 const (
