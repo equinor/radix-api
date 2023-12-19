@@ -7,6 +7,7 @@ require (
 	github.com/equinor/radix-job-scheduler v1.8.4
 	github.com/equinor/radix-operator v1.99.1000-0.20231212112235-911f68b1106d
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/handlers v1.5.1
@@ -15,7 +16,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.64.1
 	github.com/prometheus/client_golang v1.16.0
-	github.com/rakyll/statik v0.1.7
 	github.com/rs/cors v1.8.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5

@@ -8,33 +8,28 @@ import (
 	"github.com/equinor/radix-api/api/defaults"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
-	_ "github.com/equinor/radix-api/swaggerui" // statik files
+	"github.com/equinor/radix-api/swaggerui"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rakyll/statik/fs"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni/v3"
 )
 
 const (
-	apiVersionRoute      = "/api/v1"
-	healthControllerPath = "/health/"
+	apiVersionRoute                 = "/api/v1"
+	admissionControllerRootPath     = "/admissioncontrollers"
+	buildstatusControllerRootPath   = "/buildstatus"
+	healthControllerPath            = "/health/"
+	radixDNSZoneEnvironmentVariable = "RADIX_DNS_ZONE"
+	swaggerUIPath                   = "/swaggerui"
 )
 
 // NewServer Constructor function
 func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
-	statikFS, err := fs.New()
-	if err != nil {
-		panic(err)
-	}
 
-	staticServer := http.FileServer(statikFS)
-	sh := http.StripPrefix("/swaggerui/", staticServer)
-	router.PathPrefix("/swaggerui/").Handler(sh)
-
+	initializeSwaggerUI(router)
 	initializeAPIServer(kubeUtil, router, controllers)
-
 	initializeHealthEndpoint(router)
 
 	serveMux := http.NewServeMux()
@@ -119,6 +114,12 @@ func initializeAPIServer(kubeUtil utils.KubeUtil, router *mux.Router, controller
 			addHandlerRoute(kubeUtil, router, route)
 		}
 	}
+}
+
+func initializeSwaggerUI(router *mux.Router) {
+	swaggerFsHandler := http.FileServer(http.FS(swaggerui.FS()))
+	swaggerui := http.StripPrefix(swaggerUIPath, swaggerFsHandler)
+	router.PathPrefix(swaggerUIPath).Handler(swaggerui)
 }
 
 func initializeHealthEndpoint(router *mux.Router) {
