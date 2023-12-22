@@ -7,6 +7,7 @@ import (
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -15,6 +16,7 @@ import (
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -64,7 +66,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 
 	t.Run("Return env-vars", func(t *testing.T) {
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		require.NoError(t, err)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
 			Return([]envvarsmodels.EnvVar{
 				{
@@ -87,7 +90,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		assert.Nil(t, errorResponse)
 
 		var envVars []envvarsmodels.EnvVar
-		controllertest.GetResponseBody(response, &envVars)
+		err = controllertest.GetResponseBody(response, &envVars)
+		require.NoError(t, err)
 
 		assert.NotNil(t, envVars)
 		assert.NotEmpty(t, envVars)
@@ -105,7 +109,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		require.NoError(t, err)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
 			Return(nil, fmt.Errorf("some-err"))
 
@@ -118,7 +123,8 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		assert.Equal(t, "Error: some-err", errorResponse.Message)
 
 		var envVars []envvarsmodels.EnvVar
-		controllertest.GetResponseBody(response, &envVars)
+		err = controllertest.GetResponseBody(response, &envVars)
+		require.NoError(t, err)
 		assert.Empty(t, envVars)
 	})
 }
@@ -145,7 +151,8 @@ func Test_ChangeEnvVar(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		require.NoError(t, err)
 
 		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
 			Return(nil)
@@ -162,7 +169,8 @@ func Test_ChangeEnvVar(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
-		setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
+		require.NoError(t, err)
 
 		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
 			Return(fmt.Errorf("some-err"))
@@ -177,12 +185,12 @@ func Test_ChangeEnvVar(t *testing.T) {
 	})
 }
 
-func setupDeployment(commonTestUtils *commontest.Utils, appName, environmentName, componentName string, modifyComponentBuilder func(builders.DeployComponentBuilder)) {
+func setupDeployment(commonTestUtils *commontest.Utils, appName, environmentName, componentName string, modifyComponentBuilder func(builders.DeployComponentBuilder)) (*radixv1.RadixDeployment, error) {
 	componentBuilder := builders.NewDeployComponentBuilder().WithName(componentName)
 	if modifyComponentBuilder != nil {
 		modifyComponentBuilder(componentBuilder)
 	}
-	commonTestUtils.ApplyDeployment(builders.
+	return commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
 		WithDeploymentName("some-depl").
 		WithAppName(appName).

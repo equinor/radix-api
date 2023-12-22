@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,26 +23,29 @@ func Test_GetEnvVars(t *testing.T) {
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap).
 				WithSecrets([]string{"SECRET1", "SECRET2"})
 		})
+		require.NoError(t, err)
 		handler := envVarsHandler{
 			kubeUtil:        commonTestUtils.GetKubeUtil(),
 			inClusterClient: nil,
 			accounts:        models.Accounts{},
 		}
 
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsConfigMapName(componentName)},
 			Data:       envVarsMap})
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		require.NoError(t, err)
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsMetadataConfigMapName(componentName)},
 			Data: map[string]string{
 				"metadata": `{
                             "VAR1": {"RadixConfigValue": "orig-val1"}
                         }`,
 			}})
+		require.NoError(t, err)
 
 		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
 
@@ -66,25 +70,28 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			"VAR2": "val2",
 			"VAR3": "val3",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
+		require.NoError(t, err)
 		handler := envVarsHandler{
 			kubeUtil:        commonTestUtils.GetKubeUtil(),
 			inClusterClient: nil,
 			accounts:        models.Accounts{},
 		}
 
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsConfigMapName(componentName)},
 			Data:       envVarsMap})
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		require.NoError(t, err)
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsMetadataConfigMapName(componentName)},
 			Data: map[string]string{
 				"metadata": `{
                             "VAR1": {"RadixConfigValue": "orig-val1"}
                         }`,
 			}})
+		require.NoError(t, err)
 
 		params := []envvarsmodels.EnvVarParameter{
 			{
@@ -96,7 +103,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 				Value: "new-val3",
 			},
 		}
-		err := handler.ChangeEnvVar(appName, environmentName, componentName, params)
+		err = handler.ChangeEnvVar(appName, environmentName, componentName, params)
 
 		assert.NoError(t, err)
 
@@ -119,25 +126,28 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
+		require.NoError(t, err)
 		handler := envVarsHandler{
 			kubeUtil:        commonTestUtils.GetKubeUtil(),
 			inClusterClient: nil,
 			accounts:        models.Accounts{},
 		}
 
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsConfigMapName(componentName)},
 			Data:       envVarsMap})
-		kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
+		require.NoError(t, err)
+		_, err = kubeUtil.CreateConfigMap(namespace, &corev1.ConfigMap{
 			ObjectMeta: meta.ObjectMeta{Name: kube.GetEnvVarsMetadataConfigMapName(componentName)},
 			Data: map[string]string{
 				"metadata": `{
                             "VAR1": {"RadixConfigValue": "orig-val1"}
                         }`,
 			}})
+		require.NoError(t, err)
 
 		params := []envvarsmodels.EnvVarParameter{
 			{
@@ -149,9 +159,9 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 				Value: "new-val2",
 			},
 		}
-		err := handler.ChangeEnvVar(appName, environmentName, componentName, params)
+		err = handler.ChangeEnvVar(appName, environmentName, componentName, params)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
 		assert.NoError(t, err)

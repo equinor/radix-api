@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	"github.com/equinor/radix-api/api/buildsecrets/models"
@@ -51,46 +52,52 @@ func TestGetBuildSecrets_ListsAll(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
 
-	utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret2))
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/buildsecrets", anyAppName))
 	response := <-responseChannel
 
 	buildSecrets := make([]models.BuildSecret, 0)
-	controllertest.GetResponseBody(response, &buildSecrets)
+	err = controllertest.GetResponseBody(response, &buildSecrets)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, anyBuildSecret2, buildSecrets[1].Name)
 
-	utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err = utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret2, anyBuildSecret3))
+	require.NoError(t, err)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/buildsecrets", anyAppName))
 	response = <-responseChannel
 
 	buildSecrets = make([]models.BuildSecret, 0)
-	controllertest.GetResponseBody(response, &buildSecrets)
+	err = controllertest.GetResponseBody(response, &buildSecrets)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, anyBuildSecret2, buildSecrets[1].Name)
 	assert.Equal(t, anyBuildSecret3, buildSecrets[2].Name)
 
-	utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err = utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret3))
+	require.NoError(t, err)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/buildsecrets", anyAppName))
 	response = <-responseChannel
 
 	buildSecrets = make([]models.BuildSecret, 0)
-	controllertest.GetResponseBody(response, &buildSecrets)
+	err = controllertest.GetResponseBody(response, &buildSecrets)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, anyBuildSecret3, buildSecrets[1].Name)
@@ -102,17 +109,19 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
 
-	utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1))
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/buildsecrets", anyAppName))
 	response := <-responseChannel
 
 	buildSecrets := make([]models.BuildSecret, 0)
-	controllertest.GetResponseBody(response, &buildSecrets)
+	err = controllertest.GetResponseBody(response, &buildSecrets)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, models.Pending.String(), buildSecrets[0].Status)
@@ -129,7 +138,8 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	response = <-responseChannel
 
 	buildSecrets = make([]models.BuildSecret, 0)
-	controllertest.GetResponseBody(response, &buildSecrets)
+	err = controllertest.GetResponseBody(response, &buildSecrets)
+	require.NoError(t, err)
 	assert.Equal(t, 1, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, models.Consistent.String(), buildSecrets[0].Status)

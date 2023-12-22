@@ -37,36 +37,49 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 }
 
 // ApplyRegistrationWithSync syncs based on registration builder
-func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder operatorutils.RegistrationBuilder) {
+func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder operatorutils.RegistrationBuilder) error {
 	kubeUtils, _ := kube.New(client, radixclient, nil)
-	commonTestUtils.ApplyRegistration(registrationBuilder)
+	_, err := commonTestUtils.ApplyRegistration(registrationBuilder)
+	if err != nil {
+		return err
+	}
 
 	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
-	registration.OnSync()
+	return registration.OnSync()
+
 }
 
 // ApplyApplicationWithSync syncs based on application builder, and default builder for registration.
-func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder operatorutils.ApplicationBuilder) {
+func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder operatorutils.ApplicationBuilder) error {
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
-	ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
+	err := ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
+	if err != nil {
+		return err
+	}
 
 	kubeUtils, _ := kube.New(client, radixclient, nil)
-	commonTestUtils.ApplyApplication(applicationBuilder)
+	_, err = commonTestUtils.ApplyApplication(applicationBuilder)
+	if err != nil {
+		return err
+	}
 
 	applicationConfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
-	applicationConfig.OnSync()
+	return applicationConfig.OnSync()
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) error {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
-	ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
+	err := ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
+	if err != nil {
+		return err
+	}
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
 	deployment := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
-	_ = deployment.OnSync()
+	return deployment.OnSync()
 }

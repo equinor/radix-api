@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +51,8 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 	s.Run("RadixAlert exist in namespace, incorrect appname label", func() {
 		incorrectLabelNs, incorrectLabelAppName := "incorrect-label-ns", "any-app"
 		incorrectlLabelRal := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "any-alert", Labels: map[string]string{kube.RadixAppLabel: incorrectLabelAppName}}}
-		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(incorrectLabelNs).Create(context.Background(), &incorrectlLabelRal, metav1.CreateOptions{})
+		_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(incorrectLabelNs).Create(context.Background(), &incorrectlLabelRal, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
 
 		sut := handler{accounts: s.accounts, namespace: incorrectLabelNs, appName: "other-app"}
 		config, err := sut.GetAlertingConfig(context.Background())
@@ -63,8 +65,10 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 		multipleAlertNs, multipleAlertApp := "multiple-alert-ns", "multiple-alert"
 		multipleRal1 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert1", Labels: map[string]string{kube.RadixAppLabel: multipleAlertApp}}}
 		multipleRal2 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert2", Labels: map[string]string{kube.RadixAppLabel: multipleAlertApp}}}
-		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(multipleAlertNs).Create(context.Background(), &multipleRal1, metav1.CreateOptions{})
-		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(multipleAlertNs).Create(context.Background(), &multipleRal2, metav1.CreateOptions{})
+		_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(multipleAlertNs).Create(context.Background(), &multipleRal1, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
+		_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(multipleAlertNs).Create(context.Background(), &multipleRal2, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
 
 		sut := handler{accounts: s.accounts, namespace: multipleAlertNs, appName: multipleAlertApp}
 		config, err := sut.GetAlertingConfig(context.Background())
@@ -75,7 +79,8 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 	s.Run("RadixAlert not reconciled", func() {
 		notReconciledNs, notReconciledApp := "not-reconciled-ns", "not-reconciled-app"
 		notReconciledRal := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert1", Labels: map[string]string{kube.RadixAppLabel: notReconciledApp}}}
-		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(notReconciledNs).Create(context.Background(), &notReconciledRal, metav1.CreateOptions{})
+		_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(notReconciledNs).Create(context.Background(), &notReconciledRal, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
 
 		sut := handler{accounts: s.accounts, namespace: notReconciledNs, appName: notReconciledApp}
 		config, err := sut.GetAlertingConfig(context.Background())
@@ -104,14 +109,16 @@ func (s *HandlerTestSuite) Test_GetAlertingConfig() {
 			},
 			Status: radixv1.RadixAlertStatus{Reconciled: &metav1.Time{Time: time.Now()}},
 		}
-		s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(appNs).Create(context.Background(), &ral, metav1.CreateOptions{})
+		_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(appNs).Create(context.Background(), &ral, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
 		secret := corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: operatoralert.GetAlertSecretName(alertName)},
 			Data: map[string][]byte{
 				operatoralert.GetSlackConfigSecretKeyName("receiver2"): []byte("data"),
 			},
 		}
-		s.accounts.UserAccount.Client.CoreV1().Secrets(appNs).Create(context.Background(), &secret, metav1.CreateOptions{})
+		_, err = s.accounts.UserAccount.Client.CoreV1().Secrets(appNs).Create(context.Background(), &secret, metav1.CreateOptions{})
+		require.NoError(s.T(), err)
 
 		sut := handler{accounts: s.accounts, namespace: appNs, appName: appName, validAlertNames: alertNames}
 		config, err := sut.GetAlertingConfig(context.Background())
@@ -154,11 +161,16 @@ func (s *HandlerTestSuite) Test_DisableAlerting() {
 	ral3 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert3", Labels: map[string]string{kube.RadixAppLabel: "another-app"}}}
 	ral4 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert4"}}
 	ral5 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert5", Labels: map[string]string{kube.RadixAppLabel: appName}}}
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral1, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral2, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral3, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral4, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts("another-ns").Create(context.Background(), &ral5, metav1.CreateOptions{})
+	_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral1, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral2, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral3, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &ral4, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts("another-ns").Create(context.Background(), &ral5, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
 
 	s.Run("disable alerting should delete expected RadixAlert resources", func() {
 		sut := handler{accounts: s.accounts, namespace: namespace, appName: appName}
@@ -190,11 +202,16 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 	app3Alert1 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "app3-alert1", Labels: map[string]string{kube.RadixAppLabel: appName3}}}
 	app4Alert1 := radixv1.RadixAlert{ObjectMeta: metav1.ObjectMeta{Name: "app4-alert1", Labels: map[string]string{kube.RadixAppLabel: appName4}}}
 
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app1Alert1, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app1Alert2, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts("another-ns").Create(context.Background(), &app2Alert1, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app3Alert1, metav1.CreateOptions{})
-	s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app4Alert1, metav1.CreateOptions{})
+	_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app1Alert1, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app1Alert2, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts("another-ns").Create(context.Background(), &app2Alert1, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app3Alert1, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
+	_, err = s.accounts.UserAccount.RadixClient.RadixV1().RadixAlerts(namespace).Create(context.Background(), &app4Alert1, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: operatoralert.GetAlertSecretName("app4-alert1")},
@@ -204,7 +221,8 @@ func (s *HandlerTestSuite) Test_UpdateAlertingConfig() {
 			operatoralert.GetSlackConfigSecretKeyName("receiver3"): []byte(aSecretValue),
 		},
 	}
-	s.accounts.UserAccount.Client.CoreV1().Secrets(namespace).Create(context.Background(), &secret, metav1.CreateOptions{})
+	_, err = s.accounts.UserAccount.Client.CoreV1().Secrets(namespace).Create(context.Background(), &secret, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
 
 	s.Run("multiple RadixAlert resources returns error", func() {
 		sut := handler{accounts: s.accounts, namespace: namespace, appName: appName1}

@@ -57,7 +57,8 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 	t.Run("ObjectState is nil for normal event type", func(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
-		createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
+		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
+		require.NoError(t, err)
 		eventHandler := Init(kubeClient)
 		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 		assert.Len(t, events, 1)
@@ -67,7 +68,8 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 	t.Run("ObjectState has Pod state for warning event type", func(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Warning", "pod1", "Pod")
-		createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
+		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
+		require.NoError(t, err)
 		eventHandler := Init(kubeClient)
 		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
 		assert.Len(t, events, 1)
@@ -101,10 +103,8 @@ func createKubernetesEvent(t *testing.T, client *kubefake.Clientset, namespace,
 	require.NoError(t, err)
 }
 
-func createKubernetesPod(client *kubefake.Clientset, name, namespace string,
-	started, ready bool,
-	restartCount int32) {
-	client.CoreV1().Pods(namespace).Create(context.Background(),
+func createKubernetesPod(client *kubefake.Clientset, name, namespace string, started, ready bool, restartCount int32) (*v1.Pod, error) {
+	return client.CoreV1().Pods(namespace).Create(context.Background(),
 		&v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
