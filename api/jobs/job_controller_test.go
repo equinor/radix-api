@@ -149,7 +149,8 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 		response := <-responseChannel
 
 		httpErr, err := controllertest.GetErrorResponse(response)
-		assert.NotNil(t, err)
+		require.NoError(t, err)
+		assert.NotNil(t, httpErr)
 		assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), httpErr.Message)
 
 		_, err = commonTestUtils.ApplyApplication(builders.ARadixApplication().
