@@ -32,8 +32,8 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest()
+func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest(t)
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
@@ -45,7 +45,7 @@ func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
-func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
+func setupTest(t *testing.T) (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -54,7 +54,8 @@ func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientse
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient
 }
 
@@ -65,7 +66,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 	url := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/envvars", appName, environmentName, componentName)
 
 	t.Run("Return env-vars", func(t *testing.T) {
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
@@ -108,7 +109,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
@@ -129,7 +130,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 }
 
 func Test_ChangeEnvVar(t *testing.T) {
-	// setupTestWithMockHandler()
+	// setupTestWithMockHandler(t, )
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -149,7 +150,7 @@ func Test_ChangeEnvVar(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 
@@ -167,7 +168,7 @@ func Test_ChangeEnvVar(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
-		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(mockCtrl)
+		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 

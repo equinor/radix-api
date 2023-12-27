@@ -1,13 +1,13 @@
 package logs
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/equinor/radix-common/utils"
-	commonErrors "github.com/equinor/radix-common/utils/errors"
 )
 
 // GetLogParams Gets parameters for a log output
@@ -51,5 +51,5 @@ func GetLogParams(r *http.Request) (time.Time, bool, *int64, error, bool) {
 		}
 		logLines = &val
 	}
-	return since, asFile, logLines, commonErrors.Concat(errs), previousLog
+	return since, asFile, logLines, errors.Join(errs...), previousLog
 }

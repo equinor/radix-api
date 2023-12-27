@@ -140,7 +140,7 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 	}
 
 	privateImageHubHandler := Init(accounts)
-	err := privateImageHubHandler.UpdatePrivateImageHubValue(r.Context(), appName, serverName, secretParameters.SecretValue)
+	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {
 		radixhttp.ErrorResponse(w, r, err)

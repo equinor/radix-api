@@ -3,23 +3,27 @@ package privateimagehubs
 import (
 	"context"
 
+	"github.com/equinor/radix-api/api/privateimagehubs/internal"
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
 	sharedModels "github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 )
 
 // PrivateImageHubHandler Instance variables
 type PrivateImageHubHandler struct {
 	userAccount    sharedModels.Account
 	serviceAccount sharedModels.Account
+	kubeUtil       *kube.Kube
 }
 
 // Init Constructor
 func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
-
+	kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
 	return PrivateImageHubHandler{
 		userAccount:    accounts.UserAccount,
 		serviceAccount: accounts.ServiceAccount,
+		kubeUtil:       kubeUtil,
 	}
 }
 
@@ -30,7 +34,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 	if err != nil {
 		return []models.ImageHubSecret{}, nil
 	}
-	pendingImageHubSecrets, err := application.GetPendingPrivateImageHubSecrets()
+	pendingImageHubSecrets, err := internal.GetPendingPrivateImageHubSecrets(ph.kubeUtil, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +53,8 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 }
 
 // UpdatePrivateImageHubValue updates the private image hub value with new password
-func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
-	application, err := utils.CreateApplicationConfig(ctx, &ph.userAccount, appName)
-	if err != nil {
-		return err
-	}
-	return application.UpdatePrivateImageHubsSecretsPassword(server, password)
+func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(appName, server, password string) error {
+	return internal.UpdatePrivateImageHubsSecretsPassword(ph.kubeUtil, appName, server, password)
 }
 
 func getImageHubSecretStatus(pendingImageHubSecrets []string, server string) models.ImageHubSecretStatus {

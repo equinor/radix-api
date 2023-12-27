@@ -4931,6 +4931,14 @@
         "appAlias": {
           "$ref": "#/definitions/ApplicationAlias"
         },
+        "dnsAliases": {
+          "description": "DNS aliases showing nicer endpoint for application, without \"app.\" subdomain domain",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DNSAlias"
+          },
+          "x-go-name": "DNSAliases"
+        },
         "environments": {
           "description": "Environments List of environments for this application",
           "type": "array",
@@ -5548,6 +5556,54 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "DNSAlias": {
+      "description": "DNSAlias holds public DNS alias information",
+      "type": "object",
+      "required": [
+        "url",
+        "componentName",
+        "environmentName"
+      ],
+      "properties": {
+        "componentName": {
+          "description": "ComponentName the component exposing the endpoint",
+          "type": "string",
+          "x-go-name": "ComponentName",
+          "example": "frontend"
+        },
+        "environmentName": {
+          "description": "EnvironmentName the environment hosting the endpoint",
+          "type": "string",
+          "x-go-name": "EnvironmentName",
+          "example": "prod"
+        },
+        "status": {
+          "$ref": "#/definitions/DNSAliasStatus"
+        },
+        "url": {
+          "description": "URL the public endpoint",
+          "type": "string",
+          "x-go-name": "URL",
+          "example": "https://my-app.radix.equinor.com"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "DNSAliasStatus": {
+      "description": "DNSAliasStatus Status of the DNSAlias",
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "x-go-name": "Condition"
+        },
+        "message": {
+          "type": "string",
+          "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "DeployKeyAndSecret": {
       "description": "DeployKeyAndSecret Holds generated public deploy key and shared secret",

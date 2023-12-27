@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
-	configUtils "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -76,7 +76,7 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
 
 	// TODO: Add interface for RA + EnvConfig
-	environmentConfig := configUtils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
+	environmentConfig := utils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
 
 	deploymentComponent, err := GetComponentStateFromSpec(ctx, deploy.accounts.UserAccount.Client, ra.Name, deployment, rd.Status, environmentConfig, component)
 	if err != nil {

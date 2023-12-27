@@ -3,9 +3,9 @@ module github.com/equinor/radix-api
 go 1.21
 
 require (
-	github.com/equinor/radix-common v1.5.0
-	github.com/equinor/radix-job-scheduler v1.8.3
-	github.com/equinor/radix-operator v1.43.10
+	github.com/equinor/radix-common v1.7.0
+	github.com/equinor/radix-job-scheduler v1.8.4
+	github.com/equinor/radix-operator v1.47.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -16,6 +16,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.64.1
 	github.com/prometheus/client_golang v1.16.0
+	github.com/rakyll/statik v0.1.7
 	github.com/rs/cors v1.8.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
@@ -23,7 +24,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tektoncd/pipeline v0.53.0
 	github.com/urfave/negroni/v3 v3.0.0
-	golang.org/x/sync v0.4.0
+	golang.org/x/sync v0.5.0
 	k8s.io/api v0.27.6
 	k8s.io/apimachinery v0.27.6
 	k8s.io/client-go v0.27.6
@@ -95,7 +96,7 @@ require (
 	golang.org/x/exp v0.0.0-20230307190834-24139beb5833 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

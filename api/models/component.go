@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	commonutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	operatorapplicationconfig "github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -70,7 +70,7 @@ func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radix
 }
 
 func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
-	environmentConfig := operatorapplicationconfig.GetComponentEnvironmentConfig(ra, rd.Spec.Environment, component.GetName())
+	environmentConfig := utils.GetComponentEnvironmentConfig(ra, rd.Spec.Environment, component.GetName())
 	if component.GetType() == radixv1.RadixComponentTypeComponent {
 		if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
 			!runningReplicaDiffersFromSpec(component, pods) &&
