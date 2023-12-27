@@ -1453,7 +1453,7 @@ func TestModifyApplication_UpdateADGroupValidation(t *testing.T) {
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			_, controllerTestUtils, _, radixClient, _, _ := setupTestWithFactory(nil, newTestApplicationHandlerFactory(
+			_, controllerTestUtils, _, radixClient, _, _ := setupTestWithFactory(t, newTestApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: ts.requireAppADGroups},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return ts.hasAccessToAdGroups, nil
