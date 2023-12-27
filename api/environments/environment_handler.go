@@ -461,7 +461,10 @@ func (eh EnvironmentHandler) commit(ctx context.Context, updater radixDeployComm
 		return err
 	}
 
-	commitFunc(updater)
+	err = commitFunc(updater)
+	if err != nil {
+		return err
+	}
 	newJSON, err := json.Marshal(rd)
 	if err != nil {
 		return err
