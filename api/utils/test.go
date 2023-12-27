@@ -3,7 +3,9 @@ package utils
 import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -58,7 +60,7 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 	}
 
 	kubeUtils, _ := kube.New(client, radixclient, nil)
-	_, err := commonTestUtils.ApplyApplication(applicationBuilder)
+	_, err = commonTestUtils.ApplyApplication(applicationBuilder)
 	if err != nil {
 		panic(err)
 	}
@@ -68,11 +70,6 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 	}
 
 	applicationConfig := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA(), &dnsalias.DNSConfig{DNSZone: "dev.radix.equinor.com"})
-	err = applicationConfig.OnSync()
-	if err != nil {
-		panic(err)
-	}
-	applicationConfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
 	return applicationConfig.OnSync()
 }
 
@@ -88,6 +85,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deployment := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
-	return deployment.OnSync()
+	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
+	return deploymentSyncer.OnSync()
 }
