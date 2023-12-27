@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -69,7 +70,7 @@ func setupTestWithFactory(handlerFactory ApplicationHandlerFactory) (*commontest
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
-	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
+	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(
@@ -90,10 +91,12 @@ func setupTestWithFactory(handlerFactory ApplicationHandlerFactory) (*commontest
 func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient := setupTest(true, true)
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-second-app.git").WithAdGroups([]string{"2"}).WithName("my-second-app"))
+	require.NoError(t, err)
 
 	t.Run("no access", func(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(
@@ -111,7 +114,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 
@@ -127,7 +131,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 	})
 
@@ -143,7 +148,8 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 2, len(applications))
 	})
 }
@@ -151,8 +157,9 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
+	require.NoError(t, err)
 
 	// Test
 	t.Run("matching repo", func(t *testing.T) {
@@ -160,7 +167,8 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 	})
 
@@ -169,7 +177,8 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]*applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 
@@ -178,7 +187,8 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]*applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err = controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 	})
 }
@@ -189,12 +199,14 @@ func TestSearchApplicationsPost(t *testing.T) {
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
-		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+		_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+		require.NoError(t, err)
 	}
 
 	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
-	commonTestUtils.ApplyDeployment(
+	err := createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyDeployment(
 		builders.
 			ARadixDeployment().
 			WithAppName(appNames[1]).
@@ -203,6 +215,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 					NewDeployComponentBuilder(),
 			),
 	)
+	require.NoError(t, err)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
@@ -219,7 +232,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[0], applications[0].Name)
 	})
@@ -230,7 +244,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 2, len(applications))
 	})
 
@@ -240,7 +255,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 
@@ -255,7 +271,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.NotNil(t, applications[0].LatestJob)
@@ -273,7 +290,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.Nil(t, applications[0].LatestJob)
@@ -293,7 +311,8 @@ func TestSearchApplicationsPost(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 }
@@ -315,12 +334,14 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 	for _, app := range apps {
 		commontest.CreateAppNamespace(kubeclient, app.Name)
-		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 			WithName(app.Name))
+		require.NoError(t, err)
 
 		for _, job := range app.Jobs {
 			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
-				createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+				err = createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+				require.NoError(t, err)
 			}
 		}
 	}
@@ -336,7 +357,8 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	response := <-responseChannel
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
-	controllertest.GetResponseBody(response, &applications)
+	err := controllertest.GetResponseBody(response, &applications)
+	require.NoError(t, err)
 
 	for _, application := range applications {
 		if app, _ := slice.FindFirst(apps, func(app applicationModels.Application) bool { return strings.EqualFold(application.Name, app.Name) }); app.Jobs != nil {
@@ -354,12 +376,14 @@ func TestSearchApplicationsGet(t *testing.T) {
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
-		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+		_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName))
+		require.NoError(t, err)
 	}
 
 	app2Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
-	createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
-	commonTestUtils.ApplyDeployment(
+	err := createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyDeployment(
 		builders.
 			ARadixDeployment().
 			WithAppName(appNames[1]).
@@ -368,6 +392,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 					NewDeployComponentBuilder(),
 			),
 	)
+	require.NoError(t, err)
 
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
@@ -384,7 +409,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[0], applications[0].Name)
 	})
@@ -395,7 +421,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 2, len(applications))
 	})
 
@@ -405,7 +432,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 
@@ -415,7 +443,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.NotNil(t, applications[0].LatestJob)
@@ -428,7 +457,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(applications))
 		assert.Equal(t, appNames[1], applications[0].Name)
 		assert.Nil(t, applications[0].LatestJob)
@@ -448,7 +478,8 @@ func TestSearchApplicationsGet(t *testing.T) {
 		response := <-responseChannel
 
 		applications := make([]applicationModels.ApplicationSummary, 0)
-		controllertest.GetResponseBody(response, &applications)
+		err := controllertest.GetResponseBody(response, &applications)
+		require.NoError(t, err)
 		assert.Equal(t, 0, len(applications))
 	})
 }
@@ -470,12 +501,14 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 	for _, app := range apps {
 		commontest.CreateAppNamespace(kubeclient, app.Name)
-		commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+		_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 			WithName(app.Name))
+		require.NoError(t, err)
 
 		for _, job := range app.Jobs {
 			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
-				createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+				err = createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+				require.NoError(t, err)
 			}
 		}
 	}
@@ -489,7 +522,8 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	response := <-responseChannel
 
 	applications := make([]*applicationModels.ApplicationSummary, 0)
-	controllertest.GetResponseBody(response, &applications)
+	err := controllertest.GetResponseBody(response, &applications)
+	require.NoError(t, err)
 
 	for _, application := range applications {
 		if app, _ := slice.FindFirst(apps, func(app applicationModels.Application) bool { return strings.EqualFold(application.Name, app.Name) }); app.Jobs != nil {
@@ -758,7 +792,8 @@ func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err := controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Empty(t, applicationRegistrationUpsertResponse.Warnings)
 	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
 }
@@ -805,16 +840,19 @@ func TestGetApplication_WithJobs(t *testing.T) {
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(true, true)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("any-name"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	commontest.CreateAppNamespace(kubeclient, "any-name")
 	app1Job1Started, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
 	app1Job2Started, _ := radixutils.ParseTimestamp("2018-11-12T12:30:14Z")
 	app1Job3Started, _ := radixutils.ParseTimestamp("2018-11-20T09:00:00Z")
 
-	createRadixJob(commonTestUtils, "any-name", "any-name-job-1", app1Job1Started)
-	createRadixJob(commonTestUtils, "any-name", "any-name-job-2", app1Job2Started)
-	createRadixJob(commonTestUtils, "any-name", "any-name-job-3", app1Job3Started)
+	err = createRadixJob(commonTestUtils, "any-name", "any-name-job-1", app1Job1Started)
+	require.NoError(t, err)
+	err = createRadixJob(commonTestUtils, "any-name", "any-name-job-2", app1Job2Started)
+	require.NoError(t, err)
+	err = createRadixJob(commonTestUtils, "any-name", "any-name-job-3", app1Job3Started)
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
@@ -822,7 +860,7 @@ func TestGetApplication_WithJobs(t *testing.T) {
 
 	application := applicationModels.Application{}
 	err = controllertest.GetResponseBody(response, &application)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(application.Jobs))
 }
 
@@ -833,37 +871,43 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
 
-	commonTestUtils.ApplyRegistration(builders.
+	_, err := commonTestUtils.ApplyRegistration(builders.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyApplication(builders.
+	_, err = commonTestUtils.ApplyApplication(builders.
 		NewRadixApplicationBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "master").
 		WithEnvironment("prod", "release"))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyDeployment(builders.
+	_, err = commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithImageTag("someimageindev"))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyDeployment(builders.
+	_, err = commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment(anyOrphanedEnvironment).
 		WithImageTag("someimageinfeature"))
+	require.NoError(t, err)
 
 	// Set RE statuses
 	devRe, err := radix.RadixV1().RadixEnvironments().Get(context.Background(), builders.GetEnvironmentNamespace(anyAppName, "dev"), metav1.GetOptions{})
 	require.NoError(t, err)
 	devRe.Status.Reconciled = metav1.Now()
-	radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), devRe, metav1.UpdateOptions{})
+	_, err = radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), devRe, metav1.UpdateOptions{})
+	require.NoError(t, err)
 	prodRe, err := radix.RadixV1().RadixEnvironments().Get(context.Background(), builders.GetEnvironmentNamespace(anyAppName, "prod"), metav1.GetOptions{})
 	require.NoError(t, err)
 	prodRe.Status.Reconciled = metav1.Time{}
-	radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), prodRe, metav1.UpdateOptions{})
+	_, err = radix.RadixV1().RadixEnvironments().UpdateStatus(context.Background(), prodRe, metav1.UpdateOptions{})
+	require.NoError(t, err)
 
 	orphanedRe, _ := commonTestUtils.ApplyEnvironment(builders.
 		NewEnvironmentBuilder().
@@ -872,14 +916,16 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironmentName(anyOrphanedEnvironment))
 	orphanedRe.Status.Reconciled = metav1.Now()
 	orphanedRe.Status.Orphaned = true
-	radix.RadixV1().RadixEnvironments().Update(context.Background(), orphanedRe, metav1.UpdateOptions{})
+	_, err = radix.RadixV1().RadixEnvironments().Update(context.Background(), orphanedRe, metav1.UpdateOptions{})
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", anyAppName))
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, 3, len(application.Environments))
 
 	for _, environment := range application.Environments {
@@ -936,7 +982,8 @@ func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	err := controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	require.NoError(t, err)
 	assert.NotEmpty(t, registrationUpsertResponse.Warnings)
 }
 
@@ -980,7 +1027,8 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	err := controllertest.GetResponseBody(response, &registrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Empty(t, registrationUpsertResponse.Warnings)
 	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
 	assert.Equal(t, http.StatusOK, response.Code)
@@ -1038,7 +1086,8 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	response := <-responseChannel
 
 	applicationRegistrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err := controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.NotEmpty(t, applicationRegistrationUpsertResponse.ApplicationRegistration)
 	assert.Equal(t, newRepository, applicationRegistrationUpsertResponse.ApplicationRegistration.Repository)
 
@@ -1050,7 +1099,8 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err = controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Equal(t, newSharedSecret, applicationRegistrationUpsertResponse.ApplicationRegistration.SharedSecret)
 
 	// Test WBS
@@ -1061,7 +1111,8 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err = controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Equal(t, newWbs, applicationRegistrationUpsertResponse.ApplicationRegistration.WBS)
 
 	// Test ConfigBranch
@@ -1072,7 +1123,8 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err = controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Equal(t, newConfigBranch, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigBranch)
 
 	// Test ConfigurationItem
@@ -1083,7 +1135,8 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
 	response = <-responseChannel
 	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
-	controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	err = controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
+	require.NoError(t, err)
 	assert.Equal(t, newConfigurationItem, applicationRegistrationUpsertResponse.ApplicationRegistration.ConfigurationItem)
 }
 
@@ -1120,7 +1173,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	response = <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err := controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
@@ -1143,7 +1197,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	response = <-responseChannel
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewReaderAdGroup, application.Registration.ReaderAdGroups)
 
 	// Test
@@ -1160,7 +1215,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, anyNewOwner, application.Registration.Owner)
 
@@ -1178,7 +1234,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewWBS, application.Registration.WBS)
 
 	// Test ConfigBranch
@@ -1195,7 +1252,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewConfigBranch, application.Registration.ConfigBranch)
 
 	// Test ConfigurationItem
@@ -1212,7 +1270,8 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
 	response = <-responseChannel
 
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewConfigurationItem, application.Registration.ConfigurationItem)
 }
 
@@ -1241,7 +1300,8 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err := controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, anyNewRepo, application.Registration.Repository)
 }
 
@@ -1253,7 +1313,8 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 		WithName(appName).
 		WithConfigurationItem("any").
 		WithConfigBranch("")
-	radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr.BuildRR(), metav1.CreateOptions{})
+	_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr.BuildRR(), metav1.CreateOptions{})
+	require.NoError(t, err)
 
 	// Test
 	anyNewRepo := "https://github.com/repo/updated-version"
@@ -1270,7 +1331,8 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 	assert.Equal(t, applicationconfig.ConfigBranchFallback, application.Registration.ConfigBranch)
 }
 
@@ -1427,13 +1489,14 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 	configBranch := "magic"
 
 	rr := builders.ARadixRegistration().WithConfigBranch(configBranch).WithAdGroups([]string{"adminGroup"})
-	commonTestUtils.ApplyApplication(builders.
+	_, err := commonTestUtils.ApplyApplication(builders.
 		ARadixApplication().
 		WithRadixRegistration(rr).
 		WithAppName(anyAppName).
 		WithEnvironment("dev", "dev").
 		WithEnvironment("prod", "release"),
 	)
+	require.NoError(t, err)
 
 	// Test
 	unmappedBranch := "feature"
@@ -1502,7 +1565,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	jobSummary := jobModels.JobSummary{}
-	controllertest.GetResponseBody(response, &jobSummary)
+	err := controllertest.GetResponseBody(response, &jobSummary)
+	require.NoError(t, err)
 	assert.Equal(t, "any-app", jobSummary.AppName)
 	assert.Equal(t, "maincfg", jobSummary.Branch)
 	assert.Equal(t, pushCommitID, jobSummary.CommitID)
@@ -1593,19 +1657,22 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 func TestIsDeployKeyValid(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(true, true)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
 		WithPrivateKey("some-private-key"))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err = commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app-missing-key").
 		WithPublicKey("").
 		WithPrivateKey(""))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err = commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app-missing-repository").
 		WithCloneURL(""))
+	require.NoError(t, err)
 
 	// Tests
 	t.Run("missing rr", func(t *testing.T) {
@@ -1637,7 +1704,8 @@ func TestIsDeployKeyValid(t *testing.T) {
 
 	t.Run("valid key", func(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
-		setStatusOfCloneJob(kubeclient, "some-app-app", true)
+		err := setStatusOfCloneJob(kubeclient, "some-app-app", true)
+		require.NoError(t, err)
 
 		response := <-responseChannel
 		assert.Equal(t, http.StatusOK, response.Code)
@@ -1645,7 +1713,8 @@ func TestIsDeployKeyValid(t *testing.T) {
 
 	t.Run("invalid key", func(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
-		setStatusOfCloneJob(kubeclient, "some-app-app", false)
+		err := setStatusOfCloneJob(kubeclient, "some-app-app", false)
+		require.NoError(t, err)
 
 		response := <-responseChannel
 		assert.Equal(t, http.StatusBadRequest, response.Code)
@@ -1687,7 +1756,7 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest(true, true)
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, builders.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithComponents(
@@ -1698,13 +1767,15 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 				WithDNSAppAlias(true),
 			builders.NewDeployComponentBuilder().
 				WithName("backend")))
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-app"))
 	response := <-responseChannel
 
 	application := applicationModels.Application{}
-	controllertest.GetResponseBody(response, &application)
+	err = controllertest.GetResponseBody(response, &application)
+	require.NoError(t, err)
 
 	assert.NotNil(t, application.AppAlias)
 	assert.Equal(t, "frontend", application.AppAlias.ComponentName)
@@ -1717,17 +1788,19 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(true, true)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
 		WithPrivateKey("some-private-key"))
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/pipelines", "some-app"))
 	response := <-responseChannel
 
 	pipelines := make([]string, 0)
-	controllertest.GetResponseBody(response, &pipelines)
+	err = controllertest.GetResponseBody(response, &pipelines)
+	require.NoError(t, err)
 	assert.Equal(t, len(supportedPipelines), len(pipelines))
 }
 
@@ -1753,7 +1826,8 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	response := <-responseChannel
 
 	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
-	controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	err := controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
 	assert.Empty(t, deployKeyAndSecret.SharedSecret)
@@ -1766,11 +1840,12 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
 
 	// Check that secret has been created
 	firstSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.GreaterOrEqual(t, len(firstSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 
 	// calling regenerate-deploy-key in order to delete secret
@@ -1780,7 +1855,8 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, response.Code)
 
 	// forcing resync of RR
-	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
 
 	// Check that secret has been re-created and is different from first secret
 	secondSecret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
@@ -1796,7 +1872,8 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
 
 	// make some valid private key
 	deployKey, err := builders.GenerateDeployKey()
@@ -1809,7 +1886,8 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	assert.Equal(t, http.StatusNoContent, response.Code)
 
 	// forcing resync of RR
-	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
 
 	// Check that secret has been re-created and is equal to the one in the web parameter
 	secret, err := kubeUtil.CoreV1().Secrets(builders.GetAppNamespace(appName)).Get(context.Background(), defaults.GitPrivateKeySecretName, metav1.GetOptions{})
@@ -1824,7 +1902,8 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
 
 	// calling regenerate-deploy-key with invalid private key, expecting error
 	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret", PrivateKey: "invalid key"}
@@ -1833,14 +1912,15 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 }
 
-func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) {
+func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) error {
 	timeout := time.After(1 * time.Second)
 	tick := time.Tick(200 * time.Millisecond)
+	var errs []error
 
 	for {
 		select {
 		case <-timeout:
-			return
+			return errors.Join(errs...)
 
 		case <-tick:
 			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.Background(), metav1.ListOptions{})
@@ -1853,14 +1933,17 @@ func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, s
 					job.Status.Failed = int32(1)
 				}
 
-				kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
+				_, le := kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
+				if le != nil {
+					errs = append(errs, le)
+				}
 			}
 		}
 	}
 }
 
-func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) {
-	commonTestUtils.ApplyJob(
+func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) error {
+	_, err := commonTestUtils.ApplyJob(
 		builders.ARadixBuildDeployJob().
 			WithAppName(appName).
 			WithJobName(jobName).
@@ -1876,6 +1959,7 @@ func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, 
 						WithCondition(v1.JobRunning).
 						WithStarted(started.UTC()).
 						WithEnded(started.Add(time.Second*time.Duration(100))))))
+	return err
 }
 
 func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {

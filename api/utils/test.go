@@ -3,9 +3,7 @@ package utils
 import (
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
-	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
-	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -39,30 +37,34 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 }
 
 // ApplyRegistrationWithSync syncs based on registration builder
-func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder operatorutils.RegistrationBuilder) {
+func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, registrationBuilder operatorutils.RegistrationBuilder) error {
 	kubeUtils, _ := kube.New(client, radixclient, nil)
 	_, err := commonTestUtils.ApplyRegistration(registrationBuilder)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
-	err = registration.OnSync()
-	if err != nil {
-		panic(err)
-	}
+	return registration.OnSync()
 }
 
 // ApplyApplicationWithSync syncs based on application builder, and default builder for registration.
-func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder operatorutils.ApplicationBuilder) {
+func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclient.Interface, commonTestUtils *commontest.Utils, applicationBuilder operatorutils.ApplicationBuilder) error {
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
-	ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
+	err := ApplyRegistrationWithSync(client, radixclient, commonTestUtils, registrationBuilder)
+	if err != nil {
+		return err
+	}
 
 	kubeUtils, _ := kube.New(client, radixclient, nil)
 	_, err := commonTestUtils.ApplyApplication(applicationBuilder)
 	if err != nil {
 		panic(err)
+	}
+	_, err = commonTestUtils.ApplyApplication(applicationBuilder)
+	if err != nil {
+		return err
 	}
 
 	applicationConfig := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA(), &dnsalias.DNSConfig{DNSZone: "dev.radix.equinor.com"})
@@ -70,20 +72,22 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 	if err != nil {
 		panic(err)
 	}
+	applicationConfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	return applicationConfig.OnSync()
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, prometheusClient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, prometheusClient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) error {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
-	ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
+	err := ApplyApplicationWithSync(client, radixclient, commonTestUtils, applicationBuilder)
+	if err != nil {
+		return err
+	}
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	depl := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
-	err := depl.OnSync()
-	if err != nil {
-		panic(err)
-	}
+	deployment := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
+	return deployment.OnSync()
 }

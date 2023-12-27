@@ -3,9 +3,11 @@ package deployments
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"strings"
 	"testing"
+
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
+	"github.com/stretchr/testify/require"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
@@ -42,9 +44,10 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 
 func TestGetComponents_non_existing_deployment(t *testing.T) {
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	commonTestUtils.ApplyApplication(operatorUtils.
+	_, err := commonTestUtils.ApplyApplication(operatorUtils.
 		ARadixApplication().
 		WithAppName(anyAppName))
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, "any-non-existing-deployment")
 
@@ -61,7 +64,7 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 func TestGetComponents_active_deployment(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job")).
@@ -70,10 +73,14 @@ func TestGetComponents_active_deployment(t *testing.T) {
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithDeploymentName(anyDeployName))
+	require.NoError(t, err)
 
-	createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	require.NoError(t, err)
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	require.NoError(t, err)
+	err = createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -83,7 +90,8 @@ func TestGetComponents_active_deployment(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -95,7 +103,7 @@ func TestGetComponents_active_deployment(t *testing.T) {
 func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -107,6 +115,7 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 				WithPublicPort("http").
 				WithDNSExternalAlias("some.alias.com").
 				WithDNSExternalAlias("another.alias.com")))
+	require.NoError(t, err)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -117,7 +126,8 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	frontend := getComponentByName("frontend", components)
 	assert.Equal(t, 4, len(frontend.Secrets))
@@ -130,7 +140,7 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -159,6 +169,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 						Path:      "some-path",
 					},
 				)))
+	require.NoError(t, err)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -169,7 +180,8 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	frontend := getComponentByName("frontend", components)
 	secrets := frontend.Secrets
@@ -187,7 +199,7 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -211,6 +223,7 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 						Path:      "some-path2",
 					},
 				)))
+	require.NoError(t, err)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -221,7 +234,8 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	secrets := components[0].Secrets
 	assert.Equal(t, 4, len(secrets))
@@ -234,7 +248,7 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 func TestGetComponents_OAuth2(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -245,6 +259,7 @@ func TestGetComponents_OAuth2(t *testing.T) {
 			operatorUtils.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
 			operatorUtils.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
 		))
+	require.NoError(t, err)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -255,7 +270,8 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	actualComponent := getComponentByName("c1", components)
 	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
@@ -281,7 +297,7 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	initialDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
 	activeDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-14T11:45:26Z")
 
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -296,8 +312,9 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 		WithCondition(v1.DeploymentInactive).
 		WithActiveFrom(initialDeploymentCreated).
 		WithActiveTo(activeDeploymentCreated))
+	require.NoError(t, err)
 
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err = commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -311,9 +328,12 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 		WithCreated(activeDeploymentCreated).
 		WithCondition(v1.DeploymentActive).
 		WithActiveFrom(activeDeploymentCreated))
+	require.NoError(t, err)
 
-	createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
-	createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	require.NoError(t, err)
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, "initial-deployment")
 
@@ -323,7 +343,8 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -332,9 +353,10 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	assert.Equal(t, 0, len(job.Replicas))
 }
 
-func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel string) {
+func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel string) error {
 	podSpec := getPodSpec(podName, radixComponentLabel)
-	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	_, err := kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	return err
 }
 
 func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
@@ -351,10 +373,11 @@ func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
 func TestGetComponents_success(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithDeploymentName(anyDeployName))
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -364,7 +387,8 @@ func TestGetComponents_success(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	assert.Nil(t, components[0].HorizontalScalingSummary)
@@ -374,7 +398,7 @@ func TestGetComponents_success(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -383,12 +407,16 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
+	require.NoError(t, err)
 
 	message1 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
-	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	require.NoError(t, err)
 	message2 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/job"
-	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -398,7 +426,8 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -415,7 +444,7 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -424,11 +453,15 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
+	require.NoError(t, err)
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
-	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -438,7 +471,8 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -455,7 +489,7 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -464,11 +498,15 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
+	require.NoError(t, err)
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
-	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
-	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -478,7 +516,8 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -495,7 +534,7 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest()
-	commonTestUtils.ApplyDeployment(operatorUtils.
+	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
@@ -504,11 +543,15 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 			operatorUtils.NewDeployComponentBuilder().WithName("app")).
 		WithJobComponents(
 			operatorUtils.NewDeployJobComponentBuilder().WithName("job")))
+	require.NoError(t, err)
 
 	message := ""
-	createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
-	createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
-	createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	require.NoError(t, err)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
+	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -518,7 +561,8 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
@@ -553,7 +597,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+			err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 				WithAppName(anyAppName).
 				WithEnvironment("prod").
 				WithDeploymentName(scenario.deploymentName).
@@ -564,6 +608,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 						WithPort("http", 8080).
 						WithPublicPort("http").
 						WithHorizontalScaling(&scenario.minReplicas, scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)))
+			require.NoError(t, err)
 
 			// Test
 			endpoint := createGetComponentsEndpoint(anyAppName, scenario.deploymentName)
@@ -573,7 +618,8 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			assert.Equal(t, 200, response.Code)
 
 			var components []deploymentModels.Component
-			controllertest.GetResponseBody(response, &components)
+			err = controllertest.GetResponseBody(response, &components)
+			require.NoError(t, err)
 
 			assert.NotNil(t, components[0].HorizontalScalingSummary)
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
@@ -590,7 +636,7 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest()
 
-	utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -612,6 +658,7 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 				WithSecretRefs(v1.RadixSecretRefs{AzureKeyVaults: []v1.RadixAzureKeyVault{{Name: "comp-key-vault3", Items: []v1.RadixAzureKeyVaultItem{{Name: "secret3"}}, UseAzureIdentity: operatorUtils.BoolPtr(true)}}}),
 			operatorUtils.NewDeployComponentBuilder().WithName("comp2"),
 		))
+	require.NoError(t, err)
 
 	// Test
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -622,7 +669,8 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	assert.Equal(t, 200, response.Code)
 
 	var components []deploymentModels.Component
-	controllertest.GetResponseBody(response, &components)
+	err = controllertest.GetResponseBody(response, &components)
+	require.NoError(t, err)
 
 	assert.Equal(t, &deploymentModels.Identity{Azure: &deploymentModels.AzureIdentity{ClientId: "job-clientid", ServiceAccountName: operatorUtils.GetComponentServiceAccountName("job1"), AzureKeyVaults: []string{"job-key-vault3"}}}, getComponentByName("job1", components).Identity)
 	assert.Nil(t, getComponentByName("job2", components).Identity)
@@ -630,7 +678,7 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	assert.Nil(t, getComponentByName("comp2", components).Identity)
 }
 
-func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) {
+func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) error {
 	podSpec := getPodSpec(podName, radixComponentLabel)
 	containerState := getContainerState(message, status)
 	podStatus := corev1.PodStatus{
@@ -643,7 +691,8 @@ func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podNa
 	}
 	podSpec.Status = podStatus
 
-	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	_, err := kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	return err
 }
 
 func getContainerState(message string, status deploymentModels.ContainerStatus) corev1.ContainerState {

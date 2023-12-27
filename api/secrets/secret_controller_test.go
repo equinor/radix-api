@@ -17,6 +17,7 @@ import (
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -53,28 +54,24 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
 
-func executeUpdateComponentSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
-	response := executeUpdateSecretTest(
+func executeUpdateComponentSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string) (*httptest.ResponseRecorder, error) {
+	return executeUpdateSecretTest(
 		oldSecretValue,
 		updateSecret,
 		updateComponent,
 		updateSecretName,
 		updateSecretValue,
 		configureApplicationComponentSecret)
-
-	return response
 }
 
-func executeUpdateJobSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string) *httptest.ResponseRecorder {
-	response := executeUpdateSecretTest(
+func executeUpdateJobSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string) (*httptest.ResponseRecorder, error) {
+	return executeUpdateSecretTest(
 		oldSecretValue,
 		updateSecret,
 		updateComponent,
 		updateSecretName,
 		updateSecretValue,
 		configureApplicationJobSecret)
-
-	return response
 }
 
 func configureApplicationComponentSecret(builder *operatorutils.ApplicationBuilder) {
@@ -93,7 +90,7 @@ func configureApplicationJobSecret(builder *operatorutils.ApplicationBuilder) {
 	)
 }
 
-func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *operatorutils.ApplicationBuilder)) *httptest.ResponseRecorder {
+func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, updateSecretName, updateSecretValue string, appConfigurator func(builder *operatorutils.ApplicationBuilder)) (*httptest.ResponseRecorder, error) {
 
 	// Setup
 	parameters := secretModels.SecretParameters{
@@ -106,7 +103,10 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		WithAppName(anyAppName)
 	appConfigurator(&appBuilder)
 
-	commonTestUtils.ApplyApplication(appBuilder)
+	_, err := commonTestUtils.ApplyApplication(appBuilder)
+	if err != nil {
+		return nil, err
+	}
 	ns := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	namespace := corev1.Namespace{
@@ -114,7 +114,10 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 			Name: ns,
 		},
 	}
-	kubeclient.CoreV1().Namespaces().Create(context.Background(), &namespace, metav1.CreateOptions{})
+	_, err = kubeclient.CoreV1().Namespaces().Create(context.Background(), &namespace, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	// Component secret
 	secretObject := corev1.Secret{
@@ -124,7 +127,10 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	_, err = kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	// Job secret
 	secretObject = corev1.Secret{
@@ -134,22 +140,27 @@ func executeUpdateSecretTest(oldSecretValue, updateSecret, updateComponent, upda
 		},
 		Data: map[string][]byte{anyEnvironmentName: []byte(oldSecretValue)},
 	}
-	kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	_, err = kubeclient.CoreV1().Secrets(ns).Create(context.Background(), &secretObject, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, updateSecret, updateComponent, updateSecretName), parameters)
 	response := <-responseChannel
-	return response
+	return response, nil
 }
 
 func TestUpdateSecret_OK(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -158,10 +169,12 @@ func TestUpdateSecret_NonExistingEnvironment_Missing2(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, nonExistingSecretName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, nonExistingSecretName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, nonExistingSecretName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, nonExistingSecretName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -169,13 +182,15 @@ func TestUpdateSecret_EmptySecretValue_ValidationError(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := ""
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	assert.Equal(t, "New secret value is empty", errorResponse.Message)
 	assert.Equal(t, "Secret failed validation", errorResponse.Err.Error())
 
-	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusBadRequest, response.Code)
 	assert.Equal(t, "New secret value is empty", errorResponse.Message)
@@ -186,10 +201,12 @@ func TestUpdateSecret_NoUpdate_NoError(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "oldvalue"
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, anyComponentName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 
-	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, anyJobName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -199,12 +216,14 @@ func TestUpdateSecret_NonExistingComponent_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
 
-	response = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, anyEnvironment, nonExistingComponent, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", nonExistingSecretObjName), errorResponse.Err.Error())
@@ -215,13 +234,15 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	oldSecretValue := "oldvalue"
 	updateSecretValue := "newvalue"
 
-	response := executeUpdateComponentSecretTest(oldSecretValue, nonExistingSecret, anyComponentName, anyEnvironmentName, updateSecretValue)
+	response, err := executeUpdateComponentSecretTest(oldSecretValue, nonExistingSecret, anyComponentName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ := controllertest.GetErrorResponse(response)
 	secretObjName := operatorutils.GetComponentSecretName(anyComponentName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
 
-	response = executeUpdateJobSecretTest(oldSecretValue, nonExistingSecret, anyJobName, anyEnvironmentName, updateSecretValue)
+	response, err = executeUpdateJobSecretTest(oldSecretValue, nonExistingSecret, anyJobName, anyEnvironmentName, updateSecretValue)
+	require.NoError(t, err)
 	errorResponse, _ = controllertest.GetErrorResponse(response)
 	secretObjName = operatorutils.GetComponentSecretName(anyJobName)
 	assert.Equal(t, http.StatusNotFound, response.Code)

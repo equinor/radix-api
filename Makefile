@@ -34,8 +34,7 @@ test:
 
 .PHONY: lint
 lint: bootstrap
-	golangci-lint run --max-same-issues 0 --new
-	staticcheck ./...
+	golangci-lint run --max-same-issues 0
 
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:latest --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
@@ -67,19 +66,15 @@ docker-push: $(addsuffix -push,$(IMAGES))
 	docker push $(DOCKER_REGISTRY)/$*-server:$(IMAGE_TAG)
 
 HAS_SWAGGER       := $(shell command -v swagger;)
-HAS_STATICCHECK   := $(shell command -v staticcheck;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
-HAS_MOCKGEN       := $(shell command -v golangci-lint;)
+HAS_MOCKGEN       := $(shell command -v mockgen;)
 
 bootstrap:
 ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@1.55.2
-endif
-ifndef HAS_STATICCHECK
-	go install honnef.co/go/tools/cmd/staticcheck@v0.4.6
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0
