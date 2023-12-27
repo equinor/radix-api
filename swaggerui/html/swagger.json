@@ -7180,7 +7180,21 @@
           "x-go-name": "TLSCertificates"
         },
         "type": {
-          "$ref": "#/definitions/SecretType"
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "type": "string",
+          "enum": [
+            "generic",
+            "client-cert",
+            "azure-blob-fuse-volume",
+            "csi-azure-blob-volume",
+            "csi-azure-key-vault-creds",
+            "csi-azure-key-vault-item",
+            "client-cert-auth",
+            "oauth2-proxy"
+          ],
+          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-name": "Type",
+          "example": "client-cert"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
@@ -7199,13 +7213,23 @@
           "example": "p4$sW0rDz"
         },
         "type": {
-          "$ref": "#/definitions/SecretType"
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "type": "string",
+          "enum": [
+            "generic",
+            "client-cert",
+            "azure-blob-fuse-volume",
+            "csi-azure-blob-volume",
+            "csi-azure-key-vault-creds",
+            "csi-azure-key-vault-item",
+            "client-cert-auth",
+            "oauth2-proxy"
+          ],
+          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-name": "Type",
+          "example": "azure-blob-fuse-volume"
         }
       },
-      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
-    },
-    "SecretType": {
-      "type": "string",
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
     },
     "SlackConfig": {

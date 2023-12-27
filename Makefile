@@ -67,14 +67,14 @@ docker-push: $(addsuffix -push,$(IMAGES))
 
 HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
-HAS_MOCKGEN       := $(shell command -v golangci-lint;)
+HAS_MOCKGEN       := $(shell command -v mockgen;)
 
 bootstrap:
 ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@1.55.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0
