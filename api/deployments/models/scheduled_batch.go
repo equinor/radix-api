@@ -30,7 +30,7 @@ type ScheduledJobSummary struct {
 	// Status of the job
 	//
 	// required: true
-	// Enum: Waiting,Running,Succeeded,Stopping,Stopped,Failed
+	// enum: Running,Succeeded,Failed,Waiting,Stopping,Stopped
 	// example: Waiting
 	Status string `json:"status"`
 
@@ -125,7 +125,7 @@ type ScheduledBatchSummary struct {
 	// Status of the job
 	//
 	// required: true
-	// Enum: Waiting,Running,Succeeded,Failed
+	// enum: Waiting,Running,Succeeded,Failed
 	// example: Waiting
 	Status string `json:"status"`
 

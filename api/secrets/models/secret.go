@@ -20,7 +20,7 @@ type Secret struct {
 	// Type of the secret
 	//
 	// required: false
-	// example: csi-az-blob
+	// example: client-cert
 	Type SecretType `json:"type,omitempty"`
 
 	// Resource of the secrets
@@ -47,6 +47,7 @@ type Secret struct {
 	// - NotAvailable = Secret is available in external secret configuration but not in cluster
 	//
 	// required: false
+	// enum: Pending,Consistent,NotAvailable,Invalid
 	// example: Consistent
 	Status string `json:"status,omitempty"`
 
@@ -62,6 +63,7 @@ type Secret struct {
 	TLSCertificates []TLSCertificate `json:"tlsCertificates,omitempty"`
 }
 
+// swagger:enum SecretType
 type SecretType string
 
 const (

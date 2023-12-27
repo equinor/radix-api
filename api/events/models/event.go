@@ -1,6 +1,6 @@
 package models
 
-import "github.com/go-openapi/strfmt"
+import "time"
 
 // PodState holds information about the state of the first container in a Pod
 // swagger:model PodState
@@ -36,8 +36,9 @@ type Event struct {
 
 	// The time (ISO8601) at which the event was last recorded
 	//
+	// swagger:strfmt date
 	// example: 2020-11-05T13:25:07.000Z
-	LastTimestamp strfmt.DateTime `json:"lastTimestamp"`
+	LastTimestamp time.Time `json:"lastTimestamp"`
 
 	// Kind of object involved in this event
 	//

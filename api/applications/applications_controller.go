@@ -3,6 +3,7 @@ package applications
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -62,6 +63,15 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/applications/_search",
 			Method:      "POST",
+			HandlerFunc: ac.SearchApplications,
+			KubeApiConfig: models.KubeApiConfig{
+				QPS:   100,
+				Burst: 100,
+			},
+		},
+		models.Route{
+			Path:        rootPath + "/applications/_search",
+			Method:      "GET",
 			HandlerFunc: ac.SearchApplications,
 			KubeApiConfig: models.KubeApiConfig{
 				QPS:   100,
@@ -142,10 +152,8 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -182,11 +190,61 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	radixhttp.JSONResponse(w, r, appRegistrations)
 }
 
+// SearchApplications Gets applications by list of application names
 func (ac *applicationController) SearchApplications(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/_search platform getSearchApplications
+	//
+	// ---
+	// summary: Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments
+	// parameters:
+	// - name: apps
+	//   in: query
+	//   description: Comma separated list of application names to search for
+	//   required: true
+	//   type: string
+	// - name: includeLatestJobSummary
+	//   in: query
+	//   description: true to include LatestJobSummary
+	//   required: false
+	//   type: string
+	// - name: includeEnvironmentActiveComponents
+	//   in: query
+	//   description: true to include ActiveComponents in Environments
+	//   required: false
+	//   type: string
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful operation"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//           "$ref": "#/definitions/ApplicationSummary"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
 	// swagger:operation POST /applications/_search platform searchApplications
 	//
 	// ---
 	// summary: Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments
+	// deprecated: true
 	// parameters:
 	// - name: applicationSearch
 	//   in: body
@@ -201,10 +259,8 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -225,8 +281,22 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//     description: "Internal server error"
 
 	var appNamesRequest applicationModels.ApplicationsSearchRequest
-	if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+	switch r.Method {
+	case http.MethodGet:
+		appNamesRequest.Names = strings.Split(r.FormValue("apps"), ",")
+		if includeLatestJobSummary, _ := strconv.ParseBool(r.FormValue("includeLatestJobSummary")); includeLatestJobSummary {
+			appNamesRequest.IncludeFields.LatestJobSummary = true
+		}
+		if includeEnvActiveComponents, _ := strconv.ParseBool(r.FormValue("includeEnvironmentActiveComponents")); includeEnvActiveComponents {
+			appNamesRequest.IncludeFields.EnvironmentActiveComponents = true
+		}
+	case http.MethodPost:
+		if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
+			radixhttp.ErrorResponse(w, r, err)
+			return
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -274,10 +344,8 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -327,10 +395,8 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -381,10 +447,8 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "204":
@@ -429,10 +493,8 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -475,10 +537,8 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -532,10 +592,8 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -593,10 +651,8 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -648,10 +704,8 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -724,10 +778,8 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -774,10 +826,8 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -825,10 +875,8 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":
@@ -876,10 +924,8 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test group (Required if Impersonate-User is set)
-	//   type: array
-	//   items:
-	//     type: string
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
 	//   required: false
 	// responses:
 	//   "200":

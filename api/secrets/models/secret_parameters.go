@@ -12,6 +12,6 @@ type SecretParameters struct {
 	// Type of the secret
 	//
 	// required: false
-	// example: csi-az-blob
+	// example: azure-blob-fuse-volume
 	Type SecretType `json:"type,omitempty"`
 }

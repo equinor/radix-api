@@ -144,7 +144,6 @@ func createCloneJob(ctx context.Context, client kubernetes.Interface, rr *v1.Rad
 	return client.BatchV1().Jobs(namespace).Create(ctx, &job, metav1.CreateOptions{})
 }
 
-func cleanup(ctx context.Context, client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) error {
-	err := client.BatchV1().Jobs(namespace).Delete(ctx, jobApplied.Name, metav1.DeleteOptions{})
-	return err
+func cleanup(ctx context.Context, client kubernetes.Interface, namespace string, jobApplied *batchv1.Job) {
+	_ = client.BatchV1().Jobs(namespace).Delete(ctx, jobApplied.Name, metav1.DeleteOptions{})
 }
