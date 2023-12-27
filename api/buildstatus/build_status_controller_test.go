@@ -23,14 +23,12 @@ import (
 )
 
 const (
-	clusterName     = "AnyClusterName"
-	dnsZone         = "dev.radix.equinor.com"
-	appAliasDNSZone = "app.dev.radix.equinor.com"
-	egressIps       = "0.0.0.0"
-	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
+	clusterName    = "AnyClusterName"
+	egressIps      = "0.0.0.0"
+	subscriptionId = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secretproviderfake.Clientset) {
+func setupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secretproviderfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -38,14 +36,15 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secr
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	return &commonTestUtils, kubeclient, radixclient, secretproviderclient
 }
 
 func TestGetBuildStatus(t *testing.T) {
-	commonTestUtils, kubeclient, radixclient, secretproviderclient := setupTest()
+	commonTestUtils, kubeclient, radixclient, secretproviderclient := setupTest(t)
 
 	jobStartReferenceTime := time.Date(2020, 1, 10, 0, 0, 0, 0, time.UTC)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())

@@ -33,7 +33,7 @@ const (
 )
 
 func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest()
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest(nil)
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
@@ -45,7 +45,7 @@ func setupTestWithMockHandler(mockCtrl *gomock.Controller) (*commontest.Utils, *
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
-func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
+func setupTest(t *testing.T) (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -54,7 +54,8 @@ func setupTest() (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientse
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient
 }
 

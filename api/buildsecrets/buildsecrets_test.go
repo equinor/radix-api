@@ -28,7 +28,7 @@ const (
 	subscriptionId = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -36,8 +36,8 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
-
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildSecretsController())
 
@@ -50,7 +50,7 @@ func TestGetBuildSecrets_ListsAll(t *testing.T) {
 	anyBuildSecret3 := "secret3"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest(t)
 
 	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().
@@ -107,7 +107,7 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	anyBuildSecret1 := "secret1"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient := setupTest(t)
 
 	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
 		builders.ARadixApplication().

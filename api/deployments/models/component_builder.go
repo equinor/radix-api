@@ -1,9 +1,10 @@
 package models
 
 import (
+	"errors"
+
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
-	errorutils "github.com/equinor/radix-common/utils/errors"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
@@ -193,7 +194,7 @@ func (b *componentBuilder) buildError() error {
 		return nil
 	}
 
-	return errorutils.Concat(b.errors)
+	return errors.Join(b.errors...)
 }
 
 func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {

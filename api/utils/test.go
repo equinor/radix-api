@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
@@ -13,6 +15,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -25,7 +28,7 @@ const (
 	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
-func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func SetupTest(t *testing.T) (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := fake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
@@ -33,8 +36,8 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
-
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
 }
 

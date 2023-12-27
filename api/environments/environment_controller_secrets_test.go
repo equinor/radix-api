@@ -870,7 +870,7 @@ func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN stri
 func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.tlsValidator = tlsvalidatormock.NewMockTLSSecretValidator(ctrl)
-	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest([]EnvironmentHandlerOptions{WithTLSSecretValidator(s.tlsValidator)})
+	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSSecretValidator(s.tlsValidator)})
 
 	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"
 
@@ -1226,7 +1226,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 }
 
 func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, appName, envName, deploymentName string) *controllertest.Utils {
-	_, environmentControllerTestUtils, _, kubeClient, radixClient, _, secretClient := setupTest(nil)
+	_, environmentControllerTestUtils, _, kubeClient, radixClient, _, secretClient := setupTest(s.T(), nil)
 	_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), &v1.RadixRegistration{ObjectMeta: metav1.ObjectMeta{Name: appName}}, metav1.CreateOptions{})
 	require.NoError(s.T(), err)
 	appAppNamespace := operatorutils.GetAppNamespace(appName)
