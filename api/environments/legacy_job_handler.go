@@ -41,7 +41,7 @@ type legacyJobHandler struct {
 
 // GetJobs Get jobs
 func (h legacyJobHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
-	ScheduledJobSummary, error) {
+ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	jobs, err := h.getSingleJobs(ctx, namespace, jobComponentName)
 	if err != nil {
@@ -63,7 +63,7 @@ func (h legacyJobHandler) GetJobs(ctx context.Context, appName, envName, jobComp
 }
 
 func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.
-	ScheduledJobSummary, error) {
+ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	job, err := h.getJob(ctx, namespace, jobComponentName, jobName, kube.RadixJobTypeJobSchedule)
 	if err != nil {
@@ -87,7 +87,7 @@ func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobCompo
 
 // GetBatches Get batches
 func (h legacyJobHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
-	ScheduledBatchSummary, error) {
+ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	batches, err := h.getBatches(ctx, namespace, jobComponentName)
 	if err != nil {
@@ -98,7 +98,7 @@ func (h legacyJobHandler) GetBatches(ctx context.Context, appName, envName, jobC
 
 func (h legacyJobHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 	jobPodsMap map[string][]corev1.Pod) []deploymentModels.ScheduledJobSummary {
-	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
+	summaries := make([]deploymentModels.ScheduledJobSummary, 0) // return an array - not null
 	for _, job := range jobs {
 		summary := h.getScheduledJobSummary(&job, jobPodsMap)
 		summaries = append(summaries, *summary)
@@ -112,7 +112,7 @@ func (h legacyJobHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 }
 
 func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.
-	ScheduledBatchSummary, error) {
+ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	batch, err := h.getJob(ctx, namespace, jobComponentName, batchName, kube.RadixJobTypeBatchSchedule)
 	if err != nil {
@@ -135,7 +135,7 @@ func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobCom
 		return nil, err
 	}
 	summary.Status = batchStatus.Status
-	//lint:ignore SA1019 support old batch scheduler
+	//nolint:staticcheck // SA1019 support old batch scheduler
 	summary.Message = batchStatus.Message
 
 	jobPodsMap, err := h.getJobPodsMap(batchPods)
@@ -144,7 +144,7 @@ func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobCom
 	}
 	if batchPod, ok := jobPodsMap[batchName]; ok && len(batchPod) > 0 {
 		batchPodSummary := deploymentModels.GetReplicaSummary(batchPod[0])
-		//lint:ignore SA1019 support old batch scheduler
+		//nolint:staticcheck // SA1019 support old batch scheduler
 		summary.Replica = &batchPodSummary
 	}
 	batchJobSummaryList, err := h.getBatchJobSummaryList(ctx, namespace, jobComponentName, batchName, jobPodsMap)
@@ -211,13 +211,13 @@ func (h legacyJobHandler) getScheduledJobSummary(job *batchv1.Job,
 }
 
 func (h legacyJobHandler) getScheduledBatchSummaryList(batches []batchv1.Job) ([]deploymentModels.ScheduledBatchSummary, error) {
-	summaries := make([]deploymentModels.ScheduledBatchSummary, 0) //return an array - not null
+	summaries := make([]deploymentModels.ScheduledBatchSummary, 0) // return an array - not null
 	for _, batch := range batches {
 		summary, err := h.getScheduledBatchSummary(&batch)
 		if err != nil {
 			return nil, err
 		}
-		summary.Status = jobModels.Succeeded.String() //TODO should be real status?
+		summary.Status = jobModels.Succeeded.String() // TODO should be real status?
 		summaries = append(summaries, *summary)
 	}
 
@@ -245,7 +245,7 @@ func (h legacyJobHandler) getScheduledBatchSummary(batch *batchv1.Job) (*deploym
 }
 
 func (h legacyJobHandler) getBatchJobSummaryList(ctx context.Context, namespace string, jobComponentName string, batchName string, jobPodsMap map[string][]corev1.Pod) ([]deploymentModels.ScheduledJobSummary, error) {
-	summaries := make([]deploymentModels.ScheduledJobSummary, 0) //return an array - not null
+	summaries := make([]deploymentModels.ScheduledJobSummary, 0) // return an array - not null
 	batchJobs, err := h.getBatchJobs(ctx, namespace, jobComponentName, batchName)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
@@ -58,9 +59,10 @@ func TestGetApplicationJob(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, secretproviderclient := setupTest()
 
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
 		WithCloneURL(anyCloneURL))
+	require.NoError(t, err)
 
 	jobParameters := &jobmodels.JobParameters{
 		Branch:      anyBranch,
@@ -74,14 +76,16 @@ func TestGetApplicationJob(t *testing.T) {
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters)
-	createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
+	_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
+	require.NoError(t, err)
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response := <-responseChannel
 
 	job := jobmodels.Job{}
-	controllertest.GetResponseBody(response, &job)
+	err = controllertest.GetResponseBody(response, &job)
+	require.NoError(t, err)
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
@@ -94,14 +98,17 @@ func TestGetApplicationJob(t *testing.T) {
 	pipelineStep := corev1.ContainerStatus{Name: "radix-pipeline", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
 
 	// Emulate a running job with two steps
-	addInitStepsToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, internalStep, cloneStep)
-	addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
+	_, err = addInitStepsToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, internalStep, cloneStep)
+	require.NoError(t, err)
+	_, err = addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
+	require.NoError(t, err)
 
 	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response = <-responseChannel
 
 	job = jobmodels.Job{}
-	controllertest.GetResponseBody(response, &job)
+	err = controllertest.GetResponseBody(response, &job)
+	require.NoError(t, err)
 	assert.Equal(t, jobSummary.Name, job.Name)
 	assert.Equal(t, anyBranch, job.Branch)
 	assert.Equal(t, anyPushCommitID, job.CommitID)
@@ -123,7 +130,8 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	response := <-responseChannel
 
 	jobSummary := jobmodels.Job{}
-	controllertest.GetResponseBody(response, &jobSummary)
+	err := controllertest.GetResponseBody(response, &jobSummary)
+	require.NoError(t, err)
 	assert.Equal(t, job.Name, jobSummary.Name)
 	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch)
 	assert.Equal(t, string(job.Spec.PipeLineType), jobSummary.Pipeline)
@@ -140,12 +148,14 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs/%s", anyAppName, aJobName, cloneConfigStepName))
 		response := <-responseChannel
 
-		err, _ := controllertest.GetErrorResponse(response)
-		assert.NotNil(t, err)
-		assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), err.Message)
+		httpErr, err := controllertest.GetErrorResponse(response)
+		require.NoError(t, err)
+		assert.NotNil(t, httpErr)
+		assert.Equal(t, controllertest.AppNotFoundErrorMsg(anyAppName), httpErr.Message)
 
-		commonTestUtils.ApplyApplication(builders.ARadixApplication().
+		_, err = commonTestUtils.ApplyApplication(builders.ARadixApplication().
 			WithAppName(anyAppName))
+		require.NoError(t, err)
 
 		responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s/logs/%s", anyAppName, aJobName, cloneConfigStepName))
 		response = <-responseChannel
@@ -157,25 +167,25 @@ func TestGetPipelineJobLogsError(t *testing.T) {
 	})
 }
 
-func createPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string) {
+func createPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string) (*corev1.Pod, error) {
 	podSpec := getPodSpecForAPipelineJob(jobName)
-	kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
+	return kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 }
 
-func addInitStepsToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, initSteps ...corev1.ContainerStatus) {
+func addInitStepsToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, initSteps ...corev1.ContainerStatus) (*corev1.Pod, error) {
 	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
 	podStatus := pipelinePod.Status
 	podStatus.InitContainerStatuses = append(podStatus.InitContainerStatuses, initSteps...)
 	pipelinePod.Status = podStatus
-	kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
+	return kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
 }
 
-func addStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) {
+func addStepToPipelinePod(kubeclient kubernetes.Interface, namespace, jobName string, jobStep corev1.ContainerStatus) (*corev1.Pod, error) {
 	pipelinePod, _ := kubeclient.CoreV1().Pods(namespace).Get(context.Background(), jobName, metav1.GetOptions{})
 	podStatus := pipelinePod.Status
 	podStatus.ContainerStatuses = append(podStatus.ContainerStatuses, jobStep)
 	pipelinePod.Status = podStatus
-	kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
+	return kubeclient.CoreV1().Pods(namespace).Update(context.Background(), pipelinePod, metav1.UpdateOptions{})
 }
 
 func getPodSpecForAPipelineJob(jobName string) *corev1.Pod {

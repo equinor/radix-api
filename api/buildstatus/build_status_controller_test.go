@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
 	controllertest "github.com/equinor/radix-api/api/test"
@@ -38,7 +39,7 @@ func setupTest() (*commontest.Utils, *kubefake.Clientset, *fake.Clientset, *secr
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
-	os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
+	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	return &commonTestUtils, kubeclient, radixclient, secretproviderclient
 }
@@ -47,38 +48,46 @@ func TestGetBuildStatus(t *testing.T) {
 	commonTestUtils, kubeclient, radixclient, secretproviderclient := setupTest()
 
 	jobStartReferenceTime := time.Date(2020, 1, 10, 0, 0, 0, 0, time.UTC)
-	commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
-	commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))
-	commonTestUtils.ApplyJob(
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyApplication(builders.ARadixApplication().WithAppName("my-app").WithEnvironment("test", "master"))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
 			WithBranch("master").WithJobName("bd-test-1").WithPipelineType(v1.BuildDeploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
-	commonTestUtils.ApplyJob(
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
 			WithBranch("master").WithJobName("bd-test-2").WithPipelineType(v1.BuildDeploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobRunning).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
-	commonTestUtils.ApplyJob(
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
 			WithBranch("master").WithJobName("d-test-1").WithPipelineType(v1.Deploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
-	commonTestUtils.ApplyJob(
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
 			WithBranch("master").WithJobName("d-test-2").WithPipelineType(v1.Deploy).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobSucceeded).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
-	commonTestUtils.ApplyJob(
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime).
 			WithBranch("master").WithJobName("p-test-1").WithPipelineType(v1.Promote).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobStopped).WithStarted(jobStartReferenceTime).WithEnded(jobStartReferenceTime.Add(1 * time.Hour))),
 	)
-	commonTestUtils.ApplyJob(
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyJob(
 		builders.NewJobBuilder().WithCreated(jobStartReferenceTime.Add(1 * time.Hour)).
 			WithBranch("master").WithJobName("p-test-2").WithPipelineType(v1.Promote).WithAppName("my-app").
 			WithStatus(builders.NewJobStatusBuilder().WithCondition(v1.JobFailed).WithStarted(jobStartReferenceTime.Add(2 * time.Hour))),
 	)
+	require.NoError(t, err)
 
 	t.Run("return success status and badge data", func(t *testing.T) {
 		t.Parallel()

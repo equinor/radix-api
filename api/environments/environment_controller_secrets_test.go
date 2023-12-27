@@ -859,10 +859,11 @@ func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN stri
 	certPrivKey, _ := rsa.GenerateKey(rand.Reader, 4096)
 	certBytes, _ := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	certPEM := new(bytes.Buffer)
-	pem.Encode(certPEM, &pem.Block{
+	err := pem.Encode(certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
+	require.NoError(s.T(), err)
 	return certPEM.Bytes()
 }
 
@@ -882,13 +883,14 @@ func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 	require.NoError(s.T(), err)
 	s.deployment = deployment
 
-	s.commonTestUtils.ApplyApplication(operatorutils.
+	_, err = s.commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
 		WithAppName(s.appName).
 		WithEnvironment(s.environmentName, "master").
 		WithComponents(operatorutils.
 			AnApplicationComponent().
 			WithName(s.componentName)))
+	require.NoError(s.T(), err)
 }
 
 func (s *externalDnsAliasSecretTestSuite) executeRequest(appName, envName string) (environment *environmentModels.Environment, statusCode int, err error) {
@@ -916,7 +918,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() 
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -928,6 +930,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() 
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -969,7 +972,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyDat
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -981,6 +984,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyDat
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -1024,7 +1028,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValida
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1036,6 +1040,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValida
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -1074,7 +1079,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingCertDa
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1086,6 +1091,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingCertDa
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -1115,7 +1121,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataParse
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1127,6 +1133,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataParse
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -1161,7 +1168,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValid
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsSecretValidator = s.tlsValidator
 
-	s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: s.alias,
@@ -1173,6 +1180,7 @@ func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValid
 		},
 		metav1.CreateOptions{},
 	)
+	require.NoError(s.T(), err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -1219,7 +1227,8 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 
 func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, appName, envName, deploymentName string) *controllertest.Utils {
 	_, environmentControllerTestUtils, _, kubeClient, radixClient, _, secretClient := setupTest(nil)
-	radixClient.RadixV1().RadixRegistrations().Create(context.Background(), &v1.RadixRegistration{ObjectMeta: metav1.ObjectMeta{Name: appName}}, metav1.CreateOptions{})
+	_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), &v1.RadixRegistration{ObjectMeta: metav1.ObjectMeta{Name: appName}}, metav1.CreateOptions{})
+	require.NoError(s.T(), err)
 	appAppNamespace := operatorutils.GetAppNamespace(appName)
 	ra := &v1.RadixApplication{
 		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: appAppNamespace},
@@ -1235,7 +1244,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, app
 		ObjectMeta: metav1.ObjectMeta{Name: envNamespace},
 		Spec:       v1.RadixEnvironmentSpec{AppName: appName, EnvName: envName},
 	}
-	_, err := radixClient.RadixV1().RadixEnvironments().Create(context.Background(), re, metav1.CreateOptions{})
+	_, err = radixClient.RadixV1().RadixEnvironments().Create(context.Background(), re, metav1.CreateOptions{})
 	require.NoError(s.T(), err)
 
 	radixDeployment := v1.RadixDeployment{
