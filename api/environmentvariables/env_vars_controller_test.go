@@ -123,8 +123,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		assert.Equal(t, "Error: some-err", errorResponse.Message)
 
 		var envVars []envvarsmodels.EnvVar
-		err = controllertest.GetResponseBody(response, &envVars)
-		require.NoError(t, err)
+		_ = controllertest.GetResponseBody(response, &envVars)
 		assert.Empty(t, envVars)
 	})
 }

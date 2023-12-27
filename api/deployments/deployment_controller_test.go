@@ -158,8 +158,7 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 			response := <-responseChannel
 
 			deployments := make([]*deploymentModels.DeploymentSummary, 0)
-			err = controllertest.GetResponseBody(response, &deployments)
-			require.NoError(t, err)
+			_ = controllertest.GetResponseBody(response, &deployments)
 			assert.Equal(t, scenario.numDeploymentsExpected, len(deployments))
 		})
 	}

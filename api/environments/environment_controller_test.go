@@ -41,6 +41,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -2630,7 +2631,11 @@ func createComponentPod(kubeclient kubernetes.Interface, namespace, componentNam
 }
 
 func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) error {
-	return kubeclient.CoreV1().Pods(namespace).Delete(context.Background(), getComponentPodName(componentName), metav1.DeleteOptions{})
+	err := kubeclient.CoreV1().Pods(namespace).Delete(context.Background(), getComponentPodName(componentName), metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 func findComponentInDeployment(rd *v1.RadixDeployment, componentName string) *v1.RadixDeployComponent {
