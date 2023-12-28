@@ -7,7 +7,7 @@ import (
 )
 
 // BuildApplication builds an Application model.
-func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, ingressList []networkingv1.Ingress, userIsAdmin bool, dnsAliases []applicationModels.DNSAlias, radixDNSZone string) *applicationModels.Application {
+func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, ingressList []networkingv1.Ingress, userIsAdmin bool, dnsAliases []applicationModels.DNSAlias) *applicationModels.Application {
 	application := applicationModels.Application{
 		Name:         rr.Name,
 		Registration: *BuildApplicationRegistration(rr),
