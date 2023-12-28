@@ -6023,7 +6023,7 @@
         "lastTimestamp": {
           "description": "The time (ISO8601) at which the event was last recorded",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "LastTimestamp"
         },
         "message": {
@@ -7390,13 +7390,13 @@
         "notAfter": {
           "description": "NotAfter defines the uppdater date/time validity boundary",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "NotAfter"
         },
         "notBefore": {
           "description": "NotBefore defines the lower date/time validity boundary",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "NotBefore"
         },
         "subject": {
