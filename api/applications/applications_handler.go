@@ -116,11 +116,8 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	radixDNSAliasList, err := kubequery.GetRadixDNSAliases(ctx, ah.accounts.UserAccount.RadixClient, appName)
-	if err != nil {
-		return nil, err
-	}
-	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin, radixDNSAliasList, ah.config.DNSZone)
+	dnsAliases := kubequery.GetDNSAliases(ctx, ah.accounts.UserAccount.RadixClient, ra, ah.config.DNSZone)
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, ingressList, userIsAdmin, dnsAliases, ah.config.DNSZone)
 	return application, nil
 }
 
