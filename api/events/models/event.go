@@ -36,7 +36,7 @@ type Event struct {
 
 	// The time (ISO8601) at which the event was last recorded
 	//
-	// swagger:strfmt date
+	// swagger:strfmt date-time
 	// example: 2020-11-05T13:25:07.000Z
 	LastTimestamp time.Time `json:"lastTimestamp"`
 
