@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -78,11 +79,15 @@ func (dc *privateImageHubController) GetPrivateImageHubs(accounts models.Account
 	imageHubSecrets, err := privateImageHubHandler.GetPrivateImageHubs(r.Context(), appName)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, imageHubSecrets)
+	if err = radixhttp.JSONResponse(w, r, imageHubSecrets); err != nil {
+		log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+	}
 }
 
 // ChangePrivateImageHubSecret Modifies an application private image hub secret
@@ -135,7 +140,9 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+		}
 		return
 	}
 
@@ -143,9 +150,13 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 	err := privateImageHubHandler.UpdatePrivateImageHubValue(appName, serverName, secretParameters.SecretValue)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	if err = radixhttp.JSONResponse(w, r, "Success"); err != nil {
+		log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+	}
 }

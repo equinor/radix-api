@@ -11,6 +11,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -103,7 +104,9 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	if strings.TrimSpace(latest) != "" {
 		useLatest, err = strconv.ParseBool(r.FormValue("latest"))
 		if err != nil {
-			radixhttp.ErrorResponse(w, r, err)
+			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 			return
 		}
 	}
@@ -112,11 +115,15 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(r.Context(), appName, environment, useLatest)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, appDeployments)
+	if err = radixhttp.JSONResponse(w, r, appDeployments); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // GetDeployment Get deployment details
@@ -161,11 +168,15 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	appDeployment, err := deployHandler.GetDeploymentWithName(r.Context(), appName, deploymentName)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, appDeployment)
+	if err = radixhttp.JSONResponse(w, r, appDeployment); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // GetComponents for a deployment
@@ -209,11 +220,15 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	deployHandler := Init(accounts)
 	components, err := deployHandler.GetComponentsForDeploymentName(r.Context(), appName, deploymentName)
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, components)
+	if err = radixhttp.JSONResponse(w, r, components); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // GetPodLog Get logs of a single pod
@@ -288,22 +303,30 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
 	deployHandler := Init(accounts)
-	log, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
+	logs, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
-	defer log.Close()
+	defer func() {_ = logs.Close()}()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-		radixhttp.ReaderFileResponse(w, log, fileName, "text/plain; charset=utf-8")
+		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 	} else {
-		radixhttp.ReaderResponse(w, log, "text/plain; charset=utf-8")
+		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 	}
 }

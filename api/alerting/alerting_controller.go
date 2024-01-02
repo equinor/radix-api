@@ -9,6 +9,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	crdutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -81,7 +82,9 @@ func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHa
 		envNamespace := crdutils.GetEnvironmentNamespace(appName, envName)
 
 		if _, err := a.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Get(r.Context(), envNamespace, v1.GetOptions{}); err != nil {
-			radixhttp.ErrorResponse(rw, r, err)
+			if err = radixhttp.ErrorResponse(rw, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 			return
 		}
 
@@ -142,7 +145,9 @@ func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWr
 
 	var updateAlertingConfig alertingModels.UpdateAlertingConfig
 	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
@@ -150,11 +155,15 @@ func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // GetEnvironmentAlertingConfig returns alerts configuration
@@ -203,11 +212,15 @@ func GetEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // EnableEnvironmentAlerting enables alerting for application environment
@@ -258,11 +271,15 @@ func EnableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // DisableEnvironmentAlerting disables alerting for application environment
@@ -312,11 +329,15 @@ func DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter,
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
 	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // UpdateApplicationAlertingConfig Configures alert settings
@@ -366,7 +387,9 @@ func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWr
 
 	var updateAlertingConfig alertingModels.UpdateAlertingConfig
 	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
@@ -374,11 +397,15 @@ func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // GetApplicationAlertingConfig returns alerts configuration
@@ -421,11 +448,15 @@ func GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // EnableApplicationAlerting enables alerting for application
@@ -470,11 +501,15 @@ func EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // DisableApplicationAlerting disables alerting for application
@@ -518,9 +553,13 @@ func DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter,
 	alertHandler := NewApplicationHandler(accounts, appName)
 	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, alertsConfig)
+	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }

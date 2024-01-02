@@ -10,6 +10,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}/environments/{envName}"
@@ -83,7 +84,10 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	}
 
 	disableClientCaching(w)
-	radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
+	err = radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
+	if err != nil {
+		log.Errorf("failed to write response: %s", err.Error())
+	}
 }
 
 func disableClientCaching(w http.ResponseWriter) {

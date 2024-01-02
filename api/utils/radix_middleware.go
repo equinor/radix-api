@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,13 +60,17 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	token, err := getBearerTokenFromHeader(r, useOutClusterClient)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+				log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			}
 		return
 	}
 
 	impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err))
+		if err = radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err)); err != nil {
+				log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			}
 		return
 	}
 
@@ -88,7 +93,9 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
 		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(r.Context(), appName, metav1.GetOptions{}); err != nil {
-			radixhttp.ErrorResponse(w, r, err)
+			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+				log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			}
 			return
 		}
 	}

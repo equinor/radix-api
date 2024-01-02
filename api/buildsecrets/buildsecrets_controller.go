@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -78,11 +79,15 @@ func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(r.Context(), appName)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, buildSecrets)
+	if err = radixhttp.JSONResponse(w, r, buildSecrets); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
 
 // ChangeBuildSecret Modifies an application build secret
@@ -135,7 +140,9 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
@@ -143,9 +150,13 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 	err := buildSecretsHandler.ChangeBuildSecret(r.Context(), appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	if err = radixhttp.JSONResponse(w, r, "Success"); err != nil {
+			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		}
 }
