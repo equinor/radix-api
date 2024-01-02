@@ -6,10 +6,8 @@ import (
 
 	alertingModels "github.com/equinor/radix-api/api/alerting/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	crdutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,42 +29,42 @@ func (ec *alertingController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        envPath + "/alerting",
 			Method:      "PUT",
-			HandlerFunc: EnvironmentRouteAccessCheck(UpdateEnvironmentAlertingConfig),
+			HandlerFunc: ec.EnvironmentRouteAccessCheck(ec.UpdateEnvironmentAlertingConfig),
 		},
 		models.Route{
 			Path:        envPath + "/alerting",
 			Method:      http.MethodGet,
-			HandlerFunc: EnvironmentRouteAccessCheck(GetEnvironmentAlertingConfig),
+			HandlerFunc: ec.EnvironmentRouteAccessCheck(ec.GetEnvironmentAlertingConfig),
 		},
 		models.Route{
 			Path:        envPath + "/alerting/enable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnvironmentRouteAccessCheck(EnableEnvironmentAlerting),
+			HandlerFunc: ec.EnvironmentRouteAccessCheck(ec.EnableEnvironmentAlerting),
 		},
 		models.Route{
 			Path:        envPath + "/alerting/disable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnvironmentRouteAccessCheck(DisableEnvironmentAlerting),
+			HandlerFunc: ec.EnvironmentRouteAccessCheck(ec.DisableEnvironmentAlerting),
 		},
 		models.Route{
 			Path:        appPath + "/alerting",
 			Method:      "PUT",
-			HandlerFunc: UpdateApplicationAlertingConfig,
+			HandlerFunc: ec.UpdateApplicationAlertingConfig,
 		},
 		models.Route{
 			Path:        appPath + "/alerting",
 			Method:      http.MethodGet,
-			HandlerFunc: GetApplicationAlertingConfig,
+			HandlerFunc: ec.GetApplicationAlertingConfig,
 		},
 		models.Route{
 			Path:        appPath + "/alerting/enable",
 			Method:      http.MethodPost,
-			HandlerFunc: EnableApplicationAlerting,
+			HandlerFunc: ec.EnableApplicationAlerting,
 		},
 		models.Route{
 			Path:        appPath + "/alerting/disable",
 			Method:      http.MethodPost,
-			HandlerFunc: DisableApplicationAlerting,
+			HandlerFunc: ec.DisableApplicationAlerting,
 		},
 	}
 
@@ -75,16 +73,14 @@ func (ec *alertingController) GetRoutes() models.Routes {
 
 // EnvironmentRouteAccessCheck gets appName and envName from route and verifies that environment exists
 // Returns 404 NotFound if environment is not defined, otherwise calls handler
-func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHandlerFunc {
+func (ec *alertingController) EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHandlerFunc {
 	return func(a models.Accounts, rw http.ResponseWriter, r *http.Request) {
 		appName := mux.Vars(r)["appName"]
 		envName := mux.Vars(r)["envName"]
 		envNamespace := crdutils.GetEnvironmentNamespace(appName, envName)
 
 		if _, err := a.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Get(r.Context(), envNamespace, v1.GetOptions{}); err != nil {
-			if err = radixhttp.ErrorResponse(rw, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+			ec.ErrorResponse(rw, r, err)
 			return
 		}
 
@@ -93,7 +89,7 @@ func EnvironmentRouteAccessCheck(handler models.RadixHandlerFunc) models.RadixHa
 }
 
 // UpdateEnvironmentAlertingConfig Configures alert settings
-func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController)  UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/environments/{envName}/alerting environment updateEnvironmentAlertingConfig
 	// ---
 	// summary: Update alerts configuration for an environment
@@ -145,9 +141,7 @@ func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWr
 
 	var updateAlertingConfig alertingModels.UpdateAlertingConfig
 	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -155,19 +149,15 @@ func UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // GetEnvironmentAlertingConfig returns alerts configuration
-func GetEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) GetEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/alerting environment getEnvironmentAlertingConfig
 	// ---
 	// summary: Get alerts configuration for an environment
@@ -212,19 +202,15 @@ func GetEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // EnableEnvironmentAlerting enables alerting for application environment
-func EnableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) EnableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/alerting/enable environment enableEnvironmentAlerting
 	// ---
 	// summary: Enable alerting for an environment
@@ -271,19 +257,15 @@ func EnableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // DisableEnvironmentAlerting disables alerting for application environment
-func DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/alerting/disable environment disableEnvironmentAlerting
 	// ---
 	// summary: Disable alerting for an environment
@@ -329,19 +311,15 @@ func DisableEnvironmentAlerting(accounts models.Accounts, w http.ResponseWriter,
 	alertHandler := NewEnvironmentHandler(accounts, appName, envName)
 	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // UpdateApplicationAlertingConfig Configures alert settings
-func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func(ec *alertingController) UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/alerting application updateApplicationAlertingConfig
 	// ---
 	// summary: Update alerts configuration for application namespace
@@ -387,9 +365,7 @@ func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWr
 
 	var updateAlertingConfig alertingModels.UpdateAlertingConfig
 	if err := json.NewDecoder(r.Body).Decode(&updateAlertingConfig); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -397,19 +373,15 @@ func UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWr
 	alertsConfig, err := alertHandler.UpdateAlertingConfig(r.Context(), updateAlertingConfig)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // GetApplicationAlertingConfig returns alerts configuration
-func GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func(ec *alertingController) GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/alerting application getApplicationAlertingConfig
 	// ---
 	// summary: Get alerts configuration for application namespace
@@ -448,19 +420,15 @@ func GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWrite
 	alertsConfig, err := alertHandler.GetAlertingConfig(r.Context())
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // EnableApplicationAlerting enables alerting for application
-func EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func(ec *alertingController) EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/alerting/enable application enableApplicationAlerting
 	// ---
 	// summary: Enable alerting for application namespace
@@ -501,19 +469,15 @@ func EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, 
 	alertsConfig, err := alertHandler.EnableAlerting(r.Context())
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
 
 // DisableApplicationAlerting disables alerting for application
-func DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func(ec *alertingController) DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/alerting/disable application disableApplicationAlerting
 	// ---
 	// summary: Disable alerting for application namespace
@@ -553,13 +517,9 @@ func DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter,
 	alertHandler := NewApplicationHandler(accounts, appName)
 	alertsConfig, err := alertHandler.DisableAlerting(r.Context())
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, alertsConfig); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, alertsConfig)
 }
