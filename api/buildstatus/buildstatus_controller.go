@@ -84,9 +84,8 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	}
 
 	disableClientCaching(w)
-	err = radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
-	if err != nil {
-		log.Errorf("failed to write response: %s", err.Error())
+	if err = radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus); err != nil {
+		log.Errorf("failed to write response: %v", err)
 	}
 }
 
