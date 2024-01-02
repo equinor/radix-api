@@ -113,8 +113,8 @@ func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
 				WithName("frontend").
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com")))
+				WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: "some.alias.com"}, v1.RadixDeployExternalDNS{FQDN: "another.alias.com"}),
+		))
 	require.NoError(t, err)
 
 	// Test

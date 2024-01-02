@@ -147,8 +147,56 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 		},
 		{
-			name:       "External alias secrets with no secrets, must build secrets from deploy component",
+			name:       "External alias (using deprected DNSExternalAlias) secrets with no secrets, must build secrets from deploy component",
 			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias-1", "deployed-alias-2"}}},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "deployed-alias-1-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-1",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdKey,
+				},
+				{
+					Name:        "deployed-alias-1-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-1",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdCert,
+				},
+				{
+					Name:        "deployed-alias-2-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdKey,
+				},
+				{
+					Name:        "deployed-alias-2-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdCert,
+				},
+			},
+		},
+		{
+			name: "External alias secrets with no secrets, must build secrets from deploy component",
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+				ExternalDNS: []v1.RadixDeployExternalDNS{
+					{FQDN: "deployed-alias-1"},
+					{FQDN: "deployed-alias-2", UseCertificateAutomation: false},
+					{FQDN: "deployed-alias-3", UseCertificateAutomation: true},
+				}}},
 			expectedSecrets: []secretModels.Secret{
 				{
 					Name:        "deployed-alias-1-key",
@@ -878,7 +926,7 @@ func (s *externalDnsAliasSecretTestSuite) SetupTest() {
 		ARadixDeployment().
 		WithAppName(s.appName).
 		WithEnvironment(s.environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(s.componentName).WithDNSExternalAlias(s.alias)).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(s.componentName).WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: s.alias})).
 		WithImageTag("master"))
 	require.NoError(s.T(), err)
 	s.deployment = deployment

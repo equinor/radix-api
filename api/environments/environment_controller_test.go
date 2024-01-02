@@ -828,15 +828,15 @@ func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
 		WithRadixApplication(operatorutils.ARadixApplication().
 			WithAppName(anyAppName).
 			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponentName).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponentName)).
+			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponentName, false).
+			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponentName, false)).
 		WithComponents(
 			operatorutils.NewDeployComponentBuilder().
 				WithName(anyComponentName).
 				WithPort("http", 8080).
 				WithPublicPort("http").
-				WithDNSExternalAlias("some.alias.com").
-				WithDNSExternalAlias("another.alias.com")))
+				WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: "some.alias.com"}, v1.RadixDeployExternalDNS{FQDN: "another.alias.com"}),
+		))
 	require.NoError(t, err)
 
 	// Test

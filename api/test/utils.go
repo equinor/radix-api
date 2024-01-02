@@ -105,7 +105,6 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, er
 func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) error {
 	reader := bytes.NewReader(response.Body.Bytes()) //To allow read from response body multiple times
 	body, _ := io.ReadAll(reader)
-	log.Infof(string(body))
 	return json.Unmarshal(body, target)
 }
 

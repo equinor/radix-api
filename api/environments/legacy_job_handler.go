@@ -41,7 +41,7 @@ type legacyJobHandler struct {
 
 // GetJobs Get jobs
 func (h legacyJobHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
-ScheduledJobSummary, error) {
+	ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	jobs, err := h.getSingleJobs(ctx, namespace, jobComponentName)
 	if err != nil {
@@ -63,7 +63,7 @@ ScheduledJobSummary, error) {
 }
 
 func (h legacyJobHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.
-ScheduledJobSummary, error) {
+	ScheduledJobSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	job, err := h.getJob(ctx, namespace, jobComponentName, jobName, kube.RadixJobTypeJobSchedule)
 	if err != nil {
@@ -87,7 +87,7 @@ ScheduledJobSummary, error) {
 
 // GetBatches Get batches
 func (h legacyJobHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.
-ScheduledBatchSummary, error) {
+	ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	batches, err := h.getBatches(ctx, namespace, jobComponentName)
 	if err != nil {
@@ -112,7 +112,7 @@ func (h legacyJobHandler) getScheduledJobSummaryList(jobs []batchv1.Job,
 }
 
 func (h legacyJobHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.
-ScheduledBatchSummary, error) {
+	ScheduledBatchSummary, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	batch, err := h.getJob(ctx, namespace, jobComponentName, batchName, kube.RadixJobTypeBatchSchedule)
 	if err != nil {
@@ -135,7 +135,8 @@ ScheduledBatchSummary, error) {
 		return nil, err
 	}
 	summary.Status = batchStatus.Status
-	//nolint:staticcheck // SA1019 support old batch scheduler
+	//nolint:staticcheck
+	//lint:ignore SA1019 support old batch scheduler
 	summary.Message = batchStatus.Message
 
 	jobPodsMap, err := h.getJobPodsMap(batchPods)
@@ -144,7 +145,8 @@ ScheduledBatchSummary, error) {
 	}
 	if batchPod, ok := jobPodsMap[batchName]; ok && len(batchPod) > 0 {
 		batchPodSummary := deploymentModels.GetReplicaSummary(batchPod[0])
-		//nolint:staticcheck // SA1019 support old batch scheduler
+		//nolint:staticcheck
+		//lint:ignore SA1019 support old batch scheduler
 		summary.Replica = &batchPodSummary
 	}
 	batchJobSummaryList, err := h.getBatchJobSummaryList(ctx, namespace, jobComponentName, batchName, jobPodsMap)

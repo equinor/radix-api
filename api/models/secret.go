@@ -25,7 +25,7 @@ const secretDefaultData = "xx"
 func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.TLSSecretValidator) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	secrets = append(secrets, getSecretsForDeployment(secretList, rd)...)
-	secrets = append(secrets, getSecretsForTLSCertificates(secretList, rd, tlsValidator)...)
+	secrets = append(secrets, getSecretsForExternalDNS(secretList, rd, tlsValidator)...)
 	secrets = append(secrets, getSecretsForVolumeMounts(secretList, rd)...)
 	secrets = append(secrets, getSecretsForAuthentication(secretList, rd)...)
 	secrets = append(secrets, getSecretsForSecretRefs(secretList, secretProviderClassList, rd)...)
@@ -100,19 +100,23 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 	return secretDTOsMap
 }
 
-func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.TLSSecretValidator) []secretModels.Secret {
+func getSecretsForExternalDNS(secretList []corev1.Secret, rd *radixv1.RadixDeployment, tlsValidator tlsvalidator.TLSSecretValidator) []secretModels.Secret {
 	if tlsValidator == nil {
 		tlsValidator = tlsvalidator.DefaultValidator()
 	}
 
 	var secrets []secretModels.Secret
 	for _, component := range rd.Spec.Components {
-		for _, externalAlias := range component.DNSExternalAlias {
+		for _, externalAlias := range component.GetExternalDNS() {
+			if externalAlias.UseCertificateAutomation {
+				continue
+			}
+
 			var certData, keyData []byte
 			certStatus := secretModels.Consistent
 			keyStatus := secretModels.Consistent
 
-			if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias)); ok {
+			if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias.FQDN)); ok {
 				certData = secretValue.Data[corev1.TLSCertKey]
 				if certValue := strings.TrimSpace(string(certData)); len(certValue) == 0 || strings.EqualFold(certValue, secretDefaultData) {
 					certStatus = secretModels.Pending
@@ -134,7 +138,7 @@ func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixD
 			if certStatus == secretModels.Consistent {
 				tlsCerts = append(tlsCerts, secretModels.ParseTLSCertificatesFromPEM(certData)...)
 
-				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias); !certIsValid {
+				if certIsValid, messages := tlsValidator.ValidateTLSCertificate(certData, keyData, externalAlias.FQDN); !certIsValid {
 					certStatus = secretModels.Invalid
 					certStatusMessages = append(certStatusMessages, messages...)
 				}
@@ -150,10 +154,10 @@ func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixD
 
 			secrets = append(secrets,
 				secretModels.Secret{
-					Name:            externalAlias + suffix.ExternalDNSTLSCert,
+					Name:            externalAlias.FQDN + suffix.ExternalDNSTLSCert,
 					DisplayName:     "Certificate",
 					Type:            secretModels.SecretTypeClientCert,
-					Resource:        externalAlias,
+					Resource:        externalAlias.FQDN,
 					ID:              secretModels.SecretIdCert,
 					Component:       component.GetName(),
 					Status:          certStatus.String(),
@@ -161,10 +165,10 @@ func getSecretsForTLSCertificates(secretList []corev1.Secret, rd *radixv1.RadixD
 					TLSCertificates: tlsCerts,
 				},
 				secretModels.Secret{
-					Name:           externalAlias + suffix.ExternalDNSTLSKey,
+					Name:           externalAlias.FQDN + suffix.ExternalDNSTLSKey,
 					DisplayName:    "Key",
 					Type:           secretModels.SecretTypeClientCert,
-					Resource:       externalAlias,
+					Resource:       externalAlias.FQDN,
 					Component:      component.GetName(),
 					ID:             secretModels.SecretIdKey,
 					Status:         keyStatus.String(),

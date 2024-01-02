@@ -104,9 +104,9 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 		b.secrets = []string{}
 	}
 
-	for _, externalAlias := range component.GetDNSExternalAlias() {
-		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSTLSCert)
-		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSTLSKey)
+	for _, externalAlias := range component.GetExternalDNS() {
+		b.secrets = append(b.secrets, externalAlias.FQDN+suffix.ExternalDNSTLSCert)
+		b.secrets = append(b.secrets, externalAlias.FQDN+suffix.ExternalDNSTLSKey)
 	}
 
 	for _, volumeMount := range component.GetVolumeMounts() {
