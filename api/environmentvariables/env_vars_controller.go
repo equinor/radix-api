@@ -95,13 +95,13 @@ func (controller *envVarsController) GetComponentEnvVars(accounts models.Account
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, envVars); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -164,7 +164,7 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	var envVarParameters []envvarsmodels.EnvVarParameter
 	if err := json.NewDecoder(r.Body).Decode(&envVarParameters); err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -176,12 +176,12 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, "Success"); err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }

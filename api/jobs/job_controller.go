@@ -126,13 +126,13 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, jobSummaries); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -179,13 +179,13 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, jobDetail); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -230,7 +230,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -278,7 +278,7 @@ func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *htt
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -331,13 +331,13 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, tektonPipelineRuns); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -390,13 +390,13 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, tektonPipelineRun); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -451,13 +451,13 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, tektonTasks); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -516,13 +516,13 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, tektonTasks); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -583,13 +583,13 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, tektonTaskSteps); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -669,7 +669,7 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -678,7 +678,7 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	logs, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -687,11 +687,11 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }
@@ -760,7 +760,7 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -769,7 +769,7 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	logs, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -778,11 +778,11 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }

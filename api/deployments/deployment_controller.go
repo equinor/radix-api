@@ -105,7 +105,7 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 		useLatest, err = strconv.ParseBool(r.FormValue("latest"))
 		if err != nil {
 			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 			return
 		}
@@ -116,13 +116,13 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, appDeployments); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -169,13 +169,13 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, appDeployment); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -221,13 +221,13 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	components, err := deployHandler.GetComponentsForDeploymentName(r.Context(), appName, deploymentName)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, components); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
 
@@ -304,7 +304,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -313,7 +313,7 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	logs, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -322,11 +322,11 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }

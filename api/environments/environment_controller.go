@@ -263,7 +263,7 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 		if err != nil {
 			err = radixhttp.ErrorResponse(w, r, err)
 			if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 			return
 		}
@@ -275,14 +275,14 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, appEnvironmentDeployments)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -328,7 +328,7 @@ func (c *environmentController) CreateEnvironment(accounts models.Accounts, w ht
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -381,14 +381,14 @@ func (c *environmentController) GetEnvironment(accounts models.Accounts, w http.
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, appEnvironment)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 
 }
@@ -436,7 +436,7 @@ func (c *environmentController) DeleteEnvironment(accounts models.Accounts, w ht
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -484,14 +484,14 @@ func (c *environmentController) GetEnvironmentSummary(accounts models.Accounts, 
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, appEnvironments)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -542,14 +542,14 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, events)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 
 }
@@ -602,14 +602,14 @@ func (c *environmentController) StopComponent(accounts models.Accounts, w http.R
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -661,14 +661,14 @@ func (c *environmentController) StartComponent(accounts models.Accounts, w http.
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -724,14 +724,14 @@ func (c *environmentController) RestartComponent(accounts models.Accounts, w htt
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -777,14 +777,14 @@ func (c *environmentController) StopEnvironment(accounts models.Accounts, w http
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -830,14 +830,14 @@ func (c *environmentController) StartEnvironment(accounts models.Accounts, w htt
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -889,14 +889,14 @@ func (c *environmentController) RestartEnvironment(accounts models.Accounts, w h
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -936,14 +936,14 @@ func (c *environmentController) StopApplication(accounts models.Accounts, w http
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -983,14 +983,14 @@ func (c *environmentController) StartApplication(accounts models.Accounts, w htt
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1034,14 +1034,14 @@ func (c *environmentController) RestartApplication(accounts models.Accounts, w h
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1099,14 +1099,14 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, "Success")
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1185,7 +1185,7 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1195,7 +1195,7 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1206,11 +1206,11 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }
@@ -1284,7 +1284,7 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1294,7 +1294,7 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1303,12 +1303,12 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }
@@ -1363,14 +1363,14 @@ func (c *environmentController) GetJobComponentDeployments(accounts models.Accou
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, jobComponentDeployments)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1424,14 +1424,14 @@ func (c *environmentController) GetJobs(accounts models.Accounts, w http.Respons
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, jobSummaries)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1489,14 +1489,14 @@ func (c *environmentController) GetJob(accounts models.Accounts, w http.Response
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, jobSummary)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1558,7 +1558,7 @@ func (c *environmentController) StopJob(accounts models.Accounts, w http.Respons
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1624,7 +1624,7 @@ func (c *environmentController) RestartJob(accounts models.Accounts, w http.Resp
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1690,7 +1690,7 @@ func (c *environmentController) DeleteJob(accounts models.Accounts, w http.Respo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1748,14 +1748,14 @@ func (c *environmentController) GetBatches(accounts models.Accounts, w http.Resp
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, batchSummaries)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1813,14 +1813,14 @@ func (c *environmentController) GetBatch(accounts models.Accounts, w http.Respon
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, batchSummary)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -1882,7 +1882,7 @@ func (c *environmentController) StopBatch(accounts models.Accounts, w http.Respo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -1948,7 +1948,7 @@ func (c *environmentController) RestartBatch(accounts models.Accounts, w http.Re
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2020,7 +2020,7 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	if err := json.NewDecoder(r.Body).Decode(&scheduledBatchRequest); err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2030,14 +2030,14 @@ func (c *environmentController) CopyBatch(accounts models.Accounts, w http.Respo
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, batchSummary)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -2105,7 +2105,7 @@ func (c *environmentController) CopyJob(accounts models.Accounts, w http.Respons
 	if err := json.NewDecoder(r.Body).Decode(&scheduledJobRequest); err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2115,14 +2115,14 @@ func (c *environmentController) CopyJob(accounts models.Accounts, w http.Respons
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	err = radixhttp.JSONResponse(w, r, jobSummary)
 	if err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -2184,7 +2184,7 @@ func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.Res
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2268,7 +2268,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2277,7 +2277,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 
 		return
@@ -2287,11 +2287,11 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	} else {
 		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 	}
 }
@@ -2350,13 +2350,13 @@ func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.R
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.ReaderResponse(w, payload, "text/plain; charset=utf-8"); err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -2416,7 +2416,7 @@ func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.
 		log.Error(err)
 		err = radixhttp.ErrorResponse(w, r, fmt.Errorf("invalid new desired number of replicas argument"))
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -2426,7 +2426,7 @@ func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.
 	if err != nil {
 		err = radixhttp.ErrorResponse(w, r, err)
 		if err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}

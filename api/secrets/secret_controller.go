@@ -111,7 +111,7 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 	var secretParameters secretModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
@@ -120,13 +120,13 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 
 	if err := handler.ChangeComponentSecret(r.Context(), appName, envName, componentName, secretName, secretParameters); err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err := radixhttp.JSONResponse(w, r, "Success"); err != nil {
-		log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 	}
 }
 
@@ -202,12 +202,12 @@ func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWri
 	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, secretStatuses); err != nil {
-			log.Errorf("%s: failed to write response: %s", r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
 		}
 }
