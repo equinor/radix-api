@@ -80,13 +80,13 @@ func (dc *privateImageHubController) GetPrivateImageHubs(accounts models.Account
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v",r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, imageHubSecrets); err != nil {
-		log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v",r.URL.Path, err)
 	}
 }
 
@@ -141,7 +141,7 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v",r.URL.Path, err)
 		}
 		return
 	}
@@ -151,12 +151,12 @@ func (dc *privateImageHubController) ChangePrivateImageHubSecret(accounts models
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+			log.Errorf("%s: failed to write response: %v",r.URL.Path, err)
 		}
 		return
 	}
 
 	if err = radixhttp.JSONResponse(w, r, "Success"); err != nil {
-		log.Errorf("%s: failed to write response: %s",r.URL.Path, err.Error())
+		log.Errorf("%s: failed to write response: %v",r.URL.Path, err)
 	}
 }
