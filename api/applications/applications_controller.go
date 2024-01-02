@@ -8,9 +8,7 @@ import (
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = ""
@@ -184,17 +182,11 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 	appRegistrations, err := handler.GetApplications(r.Context(), matcher, ac.hasAccessToRR, GetApplicationsOptions{})
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
-
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, appRegistrations); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
-}
+	ac.JSONResponse(w, r, appRegistrations)}
 
 // SearchApplications Gets applications by list of application names
 func (ac *applicationController) SearchApplications(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
@@ -298,9 +290,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		}
 	case http.MethodPost:
 		if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
-			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-				log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-			}
+			ac.ErrorResponse(w, r, err)
 			return
 		}
 	default:
@@ -310,9 +300,7 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 
 	// No need to perform search if names in request is empty. Just return empty list
 	if len(appNamesRequest.Names) == 0 {
-		if err := radixhttp.JSONResponse(w, r, []interface{}{}); err != nil {
-			log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-		}
+		ac.JSONResponse(w, r, []interface{}{})
 		return
 	}
 
@@ -329,15 +317,11 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		},
 	)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, appRegistrations); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, appRegistrations)
 }
 
 // GetApplication Gets application by application name
@@ -384,15 +368,11 @@ func (ac *applicationController) GetApplication(accounts models.Accounts, w http
 	application, err := handler.GetApplication(r.Context(), appName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &application); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &application)
 }
 
 // IsDeployKeyValidHandler validates deploy key for radix application found for application name
@@ -434,15 +414,11 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	isDeployKeyValid, err := IsDeployKeyValid(r.Context(), accounts.UserAccount, appName)
 
 	if isDeployKeyValid {
-		if err = radixhttp.JSONResponse(w, r, &isDeployKeyValid); err != nil {
-			log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-		}
+		ac.JSONResponse(w, r, &isDeployKeyValid)
 		return
 	}
 
-	if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-		log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-	}
+	ac.ErrorResponse(w, r, err)
 }
 
 // RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key
@@ -485,17 +461,13 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyAndSecretData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecretAndPrivateKey); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 	err := handler.RegenerateDeployKey(r.Context(), appName, sharedSecretAndPrivateKey)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -536,15 +508,11 @@ func (ac *applicationController) GetDeployKeyAndSecret(accounts models.Accounts,
 	deployKeyAndSecret, err := handler.GetDeployKeyAndSecret(r.Context(), appName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &deployKeyAndSecret); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &deployKeyAndSecret)
 
 }
 
@@ -583,9 +551,7 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	//     description: "Conflict"
 	var applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&applicationRegistrationRequest); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -593,15 +559,11 @@ func (ac *applicationController) RegisterApplication(accounts models.Accounts, w
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.RegisterApplication(r.Context(), applicationRegistrationRequest)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // ChangeRegistrationDetails Updates application registration
@@ -648,9 +610,7 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 
 	var applicationRegistrationRequest applicationModels.ApplicationRegistrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&applicationRegistrationRequest); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -658,15 +618,11 @@ func (ac *applicationController) ChangeRegistrationDetails(accounts models.Accou
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.ChangeRegistrationDetails(r.Context(), appName, applicationRegistrationRequest)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // ModifyRegistrationDetails Updates specific field(s) of an application registration
@@ -713,9 +669,7 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 
 	var applicationRegistrationPatchRequest applicationModels.ApplicationRegistrationPatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&applicationRegistrationPatchRequest); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -723,15 +677,11 @@ func (ac *applicationController) ModifyRegistrationDetails(accounts models.Accou
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	appRegistrationUpsertResponse, err := handler.ModifyRegistrationDetails(r.Context(), appName, applicationRegistrationPatchRequest)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &appRegistrationUpsertResponse); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &appRegistrationUpsertResponse)
 }
 
 // DeleteApplication Deletes application
@@ -770,9 +720,7 @@ func (ac *applicationController) DeleteApplication(accounts models.Accounts, w h
 	err := handler.DeleteApplication(r.Context(), appName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -801,9 +749,7 @@ func (ac *applicationController) ListPipelines(accounts models.Accounts, w http.
 	// It was suggested to keep this under /applications/{appName} endpoint, but for now this will be the same for all applications
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	supportedPipelines := handler.GetSupportedPipelines()
-	if err := radixhttp.JSONResponse(w, r, supportedPipelines); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, supportedPipelines)
 }
 
 // TriggerPipelineBuild creates a build pipeline job for the application
@@ -847,15 +793,11 @@ func (ac *applicationController) TriggerPipelineBuild(accounts models.Accounts, 
 	jobSummary, err := handler.TriggerPipelineBuild(r.Context(), appName, r)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &jobSummary); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelineBuildDeploy creates a build-deploy pipeline job for the application
@@ -900,15 +842,11 @@ func (ac *applicationController) TriggerPipelineBuildDeploy(accounts models.Acco
 	jobSummary, err := handler.TriggerPipelineBuildDeploy(r.Context(), appName, r)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &jobSummary); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelineDeploy creates a deploy pipeline job for the application
@@ -953,15 +891,11 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 	jobSummary, err := handler.TriggerPipelineDeploy(r.Context(), appName, r)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &jobSummary); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &jobSummary)
 }
 
 // TriggerPipelinePromote creates a promote pipeline job for the application
@@ -1004,13 +938,9 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	jobSummary, err := handler.TriggerPipelinePromote(r.Context(), appName, r)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write error response: %v",r.URL.Path, err)
-		}
+		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, &jobSummary); err != nil {
-		log.Errorf("%s: failed to write json response: %v",r.URL.Path, err)
-	}
+	ac.JSONResponse(w, r, &jobSummary)
 }

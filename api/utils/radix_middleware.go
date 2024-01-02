@@ -61,16 +61,16 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-				log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-			}
+			log.Errorf("handleAuthorization: failed to write error response: %v", err)
+		}
 		return
 	}
 
 	impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 	if err != nil {
 		if err = radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err)); err != nil {
-				log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-			}
+			log.Errorf("handleAuthorization: failed to write error response: %v", err)
+		}
 		return
 	}
 
@@ -94,7 +94,7 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	if appName, exists := mux.Vars(r)["appName"]; exists {
 		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(r.Context(), appName, metav1.GetOptions{}); err != nil {
 			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-				log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
+				log.Errorf("handleAuthorization: failed to write error response: %v", err)
 			}
 			return
 		}

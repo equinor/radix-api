@@ -6,7 +6,6 @@ import (
 
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -94,15 +93,11 @@ func (controller *envVarsController) GetComponentEnvVars(accounts models.Account
 	envVars, err := eh.GetComponentEnvVars(appName, envName, componentName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		controller.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, envVars); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	controller.JSONResponse(w, r, envVars)
 }
 
 // ChangeEnvVar Modifies an environment variable
@@ -163,9 +158,7 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 	appName, envName, componentName := mux.Vars(r)["appName"], mux.Vars(r)["envName"], mux.Vars(r)["componentName"]
 	var envVarParameters []envvarsmodels.EnvVarParameter
 	if err := json.NewDecoder(r.Body).Decode(&envVarParameters); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		controller.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -175,13 +168,9 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 
 	err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		controller.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, "Success"); err != nil {
-		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-	}
+	controller.JSONResponse(w, r, "Success")
 }

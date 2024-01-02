@@ -8,9 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -30,57 +28,57 @@ func (jc *jobController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/jobs",
 			Method:      "GET",
-			HandlerFunc: GetApplicationJobs,
+			HandlerFunc: jc.GetApplicationJobs,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}",
 			Method:      "GET",
-			HandlerFunc: GetApplicationJob,
+			HandlerFunc: jc.GetApplicationJob,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/stop",
 			Method:      "POST",
-			HandlerFunc: StopApplicationJob,
+			HandlerFunc: jc.StopApplicationJob,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/rerun",
 			Method:      "POST",
-			HandlerFunc: RerunApplicationJob,
+			HandlerFunc: jc.RerunApplicationJob,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRuns,
+			HandlerFunc: jc.GetTektonPipelineRuns,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRun,
+			HandlerFunc: jc.GetTektonPipelineRun,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRunTasks,
+			HandlerFunc: jc.GetTektonPipelineRunTasks,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRunTask,
+			HandlerFunc: jc.GetTektonPipelineRunTask,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/steps",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRunTaskSteps,
+			HandlerFunc: jc.GetTektonPipelineRunTaskSteps,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName}",
 			Method:      "GET",
-			HandlerFunc: GetTektonPipelineRunTaskStepLogs,
+			HandlerFunc: jc.GetTektonPipelineRunTaskStepLogs,
 		},
 		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/logs/{stepName}",
 			Method:      "GET",
-			HandlerFunc: GetPipelineJobStepLogs,
+			HandlerFunc: jc.GetPipelineJobStepLogs,
 		},
 	}
 
@@ -88,7 +86,7 @@ func (jc *jobController) GetRoutes() models.Routes {
 }
 
 // GetApplicationJobs gets pipeline-job summaries
-func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs pipeline-job getApplicationJobs
 	// ---
 	// summary: Gets the summary of jobs for a given application
@@ -125,19 +123,15 @@ func GetApplicationJobs(accounts models.Accounts, w http.ResponseWriter, r *http
 	jobSummaries, err := handler.GetApplicationJobs(r.Context(), appName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, jobSummaries); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, jobSummaries)
 }
 
 // GetApplicationJob gets specific pipeline-job details
-func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName} pipeline-job getApplicationJob
 	// ---
 	// summary: Gets the detail of a given pipeline-job for a given application
@@ -178,19 +172,15 @@ func GetApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.
 	jobDetail, err := handler.GetApplicationJob(r.Context(), appName, jobName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, jobDetail); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, jobDetail)
 }
 
 // StopApplicationJob Stops job
-func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/jobs/{jobName}/stop pipeline-job stopApplicationJob
 	// ---
 	// summary: Stops job
@@ -229,9 +219,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 	err := handler.StopJob(r.Context(), appName, jobName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -239,7 +227,7 @@ func StopApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http
 }
 
 // RerunApplicationJob Reruns the pipeline job
-func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/jobs/{jobName}/rerun pipeline-job rerunApplicationJob
 	// ---
 	// summary: Reruns the pipeline job
@@ -277,9 +265,7 @@ func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *htt
 	err := handler.RerunJob(r.Context(), appName, jobName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -287,7 +273,7 @@ func RerunApplicationJob(accounts models.Accounts, w http.ResponseWriter, r *htt
 }
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs overview
-func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns pipeline-job getTektonPipelineRuns
 	// ---
 	// summary: Gets list of pipeline runs for a pipeline-job
@@ -330,19 +316,15 @@ func GetTektonPipelineRuns(accounts models.Accounts, w http.ResponseWriter, r *h
 	tektonPipelineRuns, err := handler.GetTektonPipelineRuns(r.Context(), appName, jobName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, tektonPipelineRuns); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, tektonPipelineRuns)
 }
 
 // GetTektonPipelineRun Get the Tekton pipeline run overview
-func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName} pipeline-job getTektonPipelineRun
 	// ---
 	// summary: Gets a pipeline run for a pipeline-job
@@ -389,19 +371,15 @@ func GetTektonPipelineRun(accounts models.Accounts, w http.ResponseWriter, r *ht
 	tektonPipelineRun, err := handler.GetTektonPipelineRun(r.Context(), appName, jobName, pipelineRunName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, tektonPipelineRun); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, tektonPipelineRun)
 }
 
 // GetTektonPipelineRunTasks Get the Tekton task list of a pipeline run
-func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks pipeline-job getTektonPipelineRunTasks
 	// ---
 	// summary: Gets list of pipeline run tasks of a pipeline-job
@@ -450,19 +428,15 @@ func GetTektonPipelineRunTasks(accounts models.Accounts, w http.ResponseWriter, 
 	tektonTasks, err := handler.GetTektonPipelineRunTasks(r.Context(), appName, jobName, pipelineRunName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, tektonTasks); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, tektonTasks)
 }
 
 // GetTektonPipelineRunTask Get the Tekton task of a pipeline run
-func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName} pipeline-job getTektonPipelineRunTask
 	// ---
 	// summary: Gets list of pipeline run task of a pipeline-job
@@ -515,19 +489,15 @@ func GetTektonPipelineRunTask(accounts models.Accounts, w http.ResponseWriter, r
 	tektonTasks, err := handler.GetTektonPipelineRunTask(r.Context(), appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, tektonTasks); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, tektonTasks)
 }
 
 // GetTektonPipelineRunTaskSteps Get the Tekton task step list of a pipeline run
-func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (jc *jobController) GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/steps pipeline-job getTektonPipelineRunTaskSteps
 	// ---
 	// summary: Gets list of steps for a pipeline run task of a pipeline-job
@@ -582,22 +552,18 @@ func GetTektonPipelineRunTaskSteps(accounts models.Accounts, w http.ResponseWrit
 	tektonTaskSteps, err := handler.GetTektonPipelineRunTaskSteps(r.Context(), appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, tektonTaskSteps); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	jc.JSONResponse(w, r, tektonTaskSteps)
 }
 
 // GetTektonPipelineRunTaskStepLogs Get step logs of a pipeline run task for a pipeline job
-func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName} pipeline-job getTektonPipelineRunTaskStepLogs
+func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/log/{stepName} pipeline-job getTektonPipelineRunTaskStepLogs
 	// ---
-	// summary: Gets logs of pipeline runs for a pipeline-job
+	// summary: Gets log of pipeline runs for a pipeline-job
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -668,39 +634,31 @@ func GetTektonPipelineRunTaskStepLogs(accounts models.Accounts, w http.ResponseW
 	stepName := mux.Vars(r)["stepName"]
 	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	logs, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
+	log, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = logs.Close()}()
+	defer func() {_ = log.Close()}()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ReaderFileResponse(w, r, log, fileName, "text/plain; charset=utf-8")
 	} else {
-		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ReaderResponse(w, r, log, "text/plain; charset=utf-8")
 	}
 }
 
 // GetPipelineJobStepLogs Get log of a pipeline job step
-func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/jobs/{jobName}/logs/{stepName} pipeline-job getPipelineJobStepLogs
+func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/log/{stepName} pipeline-job getPipelineJobStepLogs
 	// ---
-	// summary: Gets logs of a pipeline job step
+	// summary: Gets log of a pipeline job step
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -759,30 +717,22 @@ func GetPipelineJobStepLogs(accounts models.Accounts, w http.ResponseWriter, r *
 	stepName := mux.Vars(r)["stepName"]
 	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	logs, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
+	log, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = logs.Close()}()
+	defer func() {_ = log.Close()}()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ReaderFileResponse(w, r, log, fileName, "text/plain; charset=utf-8")
 	} else {
-		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		jc.ReaderResponse(w, r, log, "text/plain; charset=utf-8")
 	}
 }

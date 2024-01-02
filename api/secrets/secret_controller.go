@@ -6,9 +6,7 @@ import (
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -28,12 +26,12 @@ func (ec *secretController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
 			Method:      "PUT",
-			HandlerFunc: ChangeComponentSecret,
+			HandlerFunc: ec.ChangeComponentSecret,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}",
 			Method:      "GET",
-			HandlerFunc: GetAzureKeyVaultSecretVersions,
+			HandlerFunc: ec.GetAzureKeyVaultSecretVersions,
 		},
 		// TODO reimplement change-secrets individually for each secret type
 		// models.Route{
@@ -46,7 +44,7 @@ func (ec *secretController) GetRoutes() models.Routes {
 }
 
 // ChangeComponentSecret Modifies an application environment component secret
-func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *secretController) ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeComponentSecret
 	// ---
 	// summary: Update an application environment component secret
@@ -110,28 +108,22 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 
 	var secretParameters secretModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(WithAccounts(accounts))
 
 	if err := handler.ChangeComponentSecret(r.Context(), appName, envName, componentName, secretName, secretParameters); err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err := radixhttp.JSONResponse(w, r, "Success"); err != nil {
-		log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-	}
+	ec.JSONResponse(w, r, "Success")
 }
 
 // GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
-func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretVersions
 	// ---
 	// summary: Get Azure Key vault secret versions for a component
@@ -201,13 +193,9 @@ func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWri
 
 	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		ec.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, secretStatuses); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	ec.JSONResponse(w, r, secretStatuses)
 }

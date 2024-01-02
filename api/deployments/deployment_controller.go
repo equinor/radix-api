@@ -9,9 +9,7 @@ import (
 
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -31,22 +29,22 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/deployments",
 			Method:      "GET",
-			HandlerFunc: GetDeployments,
+			HandlerFunc: dc.GetDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}",
 			Method:      "GET",
-			HandlerFunc: GetDeployment,
+			HandlerFunc: dc.GetDeployment,
 		},
 		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs",
 			Method:      "GET",
-			HandlerFunc: GetPodLog,
+			HandlerFunc: dc.GetPodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/deployments/{deploymentName}/components",
 			Method:      "GET",
-			HandlerFunc: GetComponents,
+			HandlerFunc: dc.GetComponents,
 		},
 	}
 
@@ -54,7 +52,7 @@ func (dc *deploymentController) GetRoutes() models.Routes {
 }
 
 // GetDeployments Lists deployments
-func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *deploymentController) GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments application getDeployments
 	// ---
 	// summary: Lists the application deployments
@@ -104,9 +102,7 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	if strings.TrimSpace(latest) != "" {
 		useLatest, err = strconv.ParseBool(r.FormValue("latest"))
 		if err != nil {
-			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+			dc.ErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -115,19 +111,15 @@ func GetDeployments(accounts models.Accounts, w http.ResponseWriter, r *http.Req
 	appDeployments, err := deployHandler.GetDeploymentsForApplicationEnvironment(r.Context(), appName, environment, useLatest)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, appDeployments); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	dc.JSONResponse(w, r, appDeployments)
 }
 
 // GetDeployment Get deployment details
-func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *deploymentController) GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName} deployment getDeployment
 	// ---
 	// summary: Get deployment details
@@ -168,19 +160,15 @@ func GetDeployment(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	appDeployment, err := deployHandler.GetDeploymentWithName(r.Context(), appName, deploymentName)
 
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, appDeployment); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	dc.JSONResponse(w, r, appDeployment)
 }
 
 // GetComponents for a deployment
-func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *deploymentController) GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components component components
 	// ---
 	// summary: Get components for a deployment
@@ -220,19 +208,15 @@ func GetComponents(accounts models.Accounts, w http.ResponseWriter, r *http.Requ
 	deployHandler := Init(accounts)
 	components, err := deployHandler.GetComponentsForDeploymentName(r.Context(), appName, deploymentName)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
-	if err = radixhttp.JSONResponse(w, r, components); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+	dc.JSONResponse(w, r, components)
 }
 
 // GetPodLog Get logs of a single pod
-func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *deploymentController) GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/deployments/{deploymentName}/components/{componentName}/replicas/{podName}/logs component log
 	// ---
 	// summary: Get logs from a deployed pod
@@ -303,30 +287,22 @@ func GetPodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request)
 
 	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
 	deployHandler := Init(accounts)
 	logs, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
 	if err != nil {
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 	defer func() {_ = logs.Close()}()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-		if err = radixhttp.ReaderFileResponse(w, logs, fileName, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
 	} else {
-		if err = radixhttp.ReaderResponse(w, logs, "text/plain; charset=utf-8"); err != nil {
-			log.Errorf("%s: failed to write response: %v", r.URL.Path, err)
-		}
+		dc.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}
 }
