@@ -1309,7 +1309,6 @@ func (s *secretHandlerTestSuite) createPodForRadixComponent(kubeClient kubernete
 		kube.RadixComponentLabel: componentName,
 	}
 	if isJobComponent {
-		labels[k8sJobNameLabel] = componentName
 		labels[kube.RadixJobTypeLabel] = kube.RadixJobTypeJobSchedule
 	}
 	_, _ = kubeClient.CoreV1().Pods(envNamespace).Create(context.Background(), &corev1.Pod{
