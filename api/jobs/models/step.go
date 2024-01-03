@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // Step holds general information about job step
 // swagger:model Step
 type Step struct {
@@ -19,14 +21,16 @@ type Step struct {
 	// Started timestamp
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started"`
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
+	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended"`
+	Ended *time.Time `json:"ended"`
 
 	// Pod name
 	//

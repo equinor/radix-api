@@ -179,15 +179,16 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 // GetJobStepsFromRadixJob Gets the steps from a Radix job
 func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 	var steps []Step
+
 	for _, jobStep := range job.Status.Steps {
 		step := Step{
 			Name:       jobStep.Name,
 			Status:     string(jobStep.Condition),
-			Started:    radixutils.FormatTime(jobStep.Started),
-			Ended:      radixutils.FormatTime(jobStep.Ended),
 			PodName:    jobStep.PodName,
 			Components: jobStep.Components,
 		}
+		if jobStep.Started != nil {step.Started = &jobStep.Started.Time}
+		if jobStep.Ended != nil {step.Ended = &jobStep.Ended.Time}
 
 		steps = append(steps, step)
 	}

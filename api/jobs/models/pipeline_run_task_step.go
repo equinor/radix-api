@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // PipelineRunTaskStep holds general information about pipeline run task steps
 // swagger:model PipelineRunTaskStep
 type PipelineRunTaskStep struct {
@@ -25,14 +23,12 @@ type PipelineRunTaskStep struct {
 	// Started timestamp
 	//
 	// required: false
-	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Started *time.Time `json:"started"`
+	Started string `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// swagger:strfmt date-time
 	// example: 2006-01-02T15:04:05Z
-	Ended *time.Time `json:"ended"`
+	Ended string `json:"ended"`
 }
