@@ -6691,8 +6691,8 @@
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "name": {
           "description": "Name of the step",
@@ -6703,8 +6703,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the task",
