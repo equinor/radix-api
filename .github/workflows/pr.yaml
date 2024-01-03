@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Run Tests
-        run: go test -cover `go list ./... | grep -v 'pkg/client'`
+        run: go test -cover `go list ./...`
 
   test-swagger:
     name: Test Swagger

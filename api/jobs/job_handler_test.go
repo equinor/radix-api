@@ -184,7 +184,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		//nolint:staticcheck // SA1019 we want to make sure that Components is populated for backward compatibility (at least for a while)
 		s.ElementsMatch(slice.PointersOf(expectedComponents), actualJob.Components)
 		expectedSteps := []jobModels.Step{
-			{Name: step1Name, PodName: step1Pod, Status: string(step1Condition), Started: radixutils.FormatTime(&step1Started), Ended: radixutils.FormatTime(&step1Ended), Components: step1Components},
+			{Name: step1Name, PodName: step1Pod, Status: string(step1Condition), Started: &step1Started.Time, Ended: &step1Ended.Time, Components: step1Components},
 			{Name: step2Name},
 		}
 		s.ElementsMatch(expectedSteps, actualJob.Steps)
