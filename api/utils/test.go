@@ -1,9 +1,13 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
+	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -11,6 +15,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -23,7 +28,7 @@ const (
 	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
-func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func SetupTest(t *testing.T) (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := fake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
@@ -31,8 +36,8 @@ func SetupTest() (*commontest.Utils, kubernetes.Interface, radixclient.Interface
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
-	commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
-
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	require.NoError(t, err)
 	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
 }
 
@@ -46,7 +51,6 @@ func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixcli
 
 	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
 	return registration.OnSync()
-
 }
 
 // ApplyApplicationWithSync syncs based on application builder, and default builder for registration.
@@ -61,15 +65,19 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 	kubeUtils, _ := kube.New(client, radixclient, nil)
 	_, err = commonTestUtils.ApplyApplication(applicationBuilder)
 	if err != nil {
+		panic(err)
+	}
+	_, err = commonTestUtils.ApplyApplication(applicationBuilder)
+	if err != nil {
 		return err
 	}
 
-	applicationConfig, _ := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA())
+	applicationConfig := applicationconfig.NewApplicationConfig(client, kubeUtils, radixclient, registrationBuilder.BuildRR(), applicationBuilder.BuildRA(), &dnsalias.DNSConfig{DNSZone: "dev.radix.equinor.com"})
 	return applicationConfig.OnSync()
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, promclient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) error {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, prometheusClient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) error {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
@@ -80,6 +88,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deployment := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, promclient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []deployment.IngressAnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
-	return deployment.OnSync()
+	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
+	return deploymentSyncer.OnSync()
 }

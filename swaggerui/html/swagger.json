@@ -4931,6 +4931,14 @@
         "appAlias": {
           "$ref": "#/definitions/ApplicationAlias"
         },
+        "dnsAliases": {
+          "description": "DNS aliases showing nicer endpoint for application, without \"app.\" subdomain domain",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DNSAlias"
+          },
+          "x-go-name": "DNSAliases"
+        },
         "environments": {
           "description": "Environments List of environments for this application",
           "type": "array",
@@ -5549,6 +5557,54 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
+    "DNSAlias": {
+      "description": "DNSAlias holds public DNS alias information",
+      "type": "object",
+      "required": [
+        "url",
+        "componentName",
+        "environmentName"
+      ],
+      "properties": {
+        "componentName": {
+          "description": "ComponentName the component exposing the endpoint",
+          "type": "string",
+          "x-go-name": "ComponentName",
+          "example": "frontend"
+        },
+        "environmentName": {
+          "description": "EnvironmentName the environment hosting the endpoint",
+          "type": "string",
+          "x-go-name": "EnvironmentName",
+          "example": "prod"
+        },
+        "status": {
+          "$ref": "#/definitions/DNSAliasStatus"
+        },
+        "url": {
+          "description": "URL the public endpoint",
+          "type": "string",
+          "x-go-name": "URL",
+          "example": "https://my-app.radix.equinor.com"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "DNSAliasStatus": {
+      "description": "DNSAliasStatus Status of the DNSAlias",
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "x-go-name": "Condition"
+        },
+        "message": {
+          "type": "string",
+          "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "DeployKeyAndSecret": {
       "description": "DeployKeyAndSecret Holds generated public deploy key and shared secret",
       "type": "object",
@@ -5967,7 +6023,7 @@
         "lastTimestamp": {
           "description": "The time (ISO8601) at which the event was last recorded",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "LastTimestamp"
         },
         "message": {
@@ -7274,8 +7330,8 @@
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "name": {
           "description": "Name of the step",
@@ -7286,8 +7342,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the step",
@@ -7334,13 +7390,13 @@
         "notAfter": {
           "description": "NotAfter defines the uppdater date/time validity boundary",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "NotAfter"
         },
         "notBefore": {
           "description": "NotBefore defines the lower date/time validity boundary",
           "type": "string",
-          "format": "date",
+          "format": "date-time",
           "x-go-name": "NotBefore"
         },
         "subject": {

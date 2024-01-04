@@ -1,12 +1,12 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
 	radixutils "github.com/equinor/radix-common/utils"
-	errorutils "github.com/equinor/radix-common/utils/errors"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -147,7 +147,7 @@ func (b *deploymentBuilder) buildError() error {
 		return nil
 	}
 
-	return errorutils.Concat(b.errors)
+	return errors.Join(b.errors...)
 }
 
 func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error) {

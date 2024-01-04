@@ -24,3 +24,4 @@ Dockerfile.dev
 
 # binary created by goland with default settings
 main
+swaggerui/statik.go

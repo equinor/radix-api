@@ -22,13 +22,13 @@ type TLSCertificate struct {
 	// NotBefore defines the lower date/time validity boundary
 	//
 	// required: true
-	// swagger:strfmt date
+	// swagger:strfmt date-time
 	// example: 2022-08-09T00:00:00Z
 	NotBefore time.Time `json:"notBefore"`
 	// NotAfter defines the uppdater date/time validity boundary
 	//
 	// required: true
-	// swagger:strfmt date
+	// swagger:strfmt date-time
 	// example: 2023-08-25T23:59:59Z
 	NotAfter time.Time `json:"notAfter"`
 	// DNSNames defines list of Subject Alternate Names in the certificate
