@@ -1897,6 +1897,172 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt": {
+      "put": {
+        "tags": [
+          "component"
+        ],
+        "summary": "Set external DNS TLS certificate for a component",
+        "operationId": "changeComponentExternalDNSTLSCertificate",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret of Radix application",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret component of Radix application",
+            "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "FQDN to be updated",
+            "name": "fqdn",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "New TLS certificate",
+            "name": "componentSecret",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SecretParameters"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "Invalid application"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey": {
+      "put": {
+        "tags": [
+          "component"
+        ],
+        "summary": "Set external DNS TLS key for a component",
+        "operationId": "changeComponentExternalDNSTLSKey",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret of Radix application",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret component of Radix application",
+            "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "FQDN to be updated",
+            "name": "fqdn",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "New TLS key",
+            "name": "componentSecret",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SecretParameters"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "Invalid application"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs": {
       "get": {
         "tags": [
@@ -2113,7 +2279,7 @@
     "/applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}": {
       "get": {
         "tags": [
-          "environment"
+          "component"
         ],
         "summary": "Get Azure Key vault secret versions for a component",
         "operationId": "getAzureKeyVaultSecretVersions",
@@ -2199,7 +2365,7 @@
     "/applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName}": {
       "put": {
         "tags": [
-          "environment"
+          "component"
         ],
         "summary": "Update an application environment component secret",
         "operationId": "changeComponentSecret",
@@ -5412,6 +5578,14 @@
         "image"
       ],
       "properties": {
+        "externalDNS": {
+          "description": "Array of external DNS configurations",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExternalDNS"
+          },
+          "x-go-name": "ExternalDNS"
+        },
         "horizontalScalingSummary": {
           "$ref": "#/definitions/HorizontalScalingSummary"
         },
@@ -6046,6 +6220,26 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/events/models"
+    },
+    "ExternalDNS": {
+      "description": "ExternalDNS describes an external DNS entry for a component",
+      "type": "object",
+      "required": [
+        "fqdn",
+        "tls"
+      ],
+      "properties": {
+        "fqdn": {
+          "description": "Fully Qualified Domain Name",
+          "type": "string",
+          "x-go-name": "FQDN",
+          "example": "site.example.com"
+        },
+        "tls": {
+          "$ref": "#/definitions/TLS"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
     "HorizontalScalingSummary": {
       "description": "HorizontalScalingSummary describe the summary of horizontal scaling of a component",
@@ -7213,34 +7407,16 @@
           "enum": [
             "Pending",
             "Consistent",
-            "NotAvailable",
-            "Invalid"
+            "NotAvailable"
           ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
-        "statusMessages": {
-          "description": "StatusMessages contains a list of messages related to the Status",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "StatusMessages"
-        },
-        "tlsCertificates": {
-          "description": "TLSCertificates holds the TLS certificate and certificate authorities (CA)\nThe first certificate in the list should be the TLS certificate and the rest should be CA certificates",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/TLSCertificate"
-          },
-          "x-go-name": "TLSCertificates"
-        },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
-            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7248,7 +7424,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "client-cert"
         }
@@ -7269,11 +7445,10 @@
           "example": "p4$sW0rDz"
         },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
-            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7281,7 +7456,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "azure-blob-fuse-volume"
         }
@@ -7363,50 +7538,58 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
     },
-    "TLSCertificate": {
-      "description": "TLSCertificate holds information about a TLS certificate",
+    "TLS": {
+      "description": "TLS",
       "type": "object",
       "required": [
-        "subject",
-        "issuer",
-        "notBefore",
-        "notAfter"
+        "useAutomation",
+        "privateKeyStatus",
+        "certificateStatus"
       ],
       "properties": {
-        "dnsNames": {
-          "description": "DNSNames defines list of Subject Alternate Names in the certificate",
+        "certificateStatus": {
+          "$ref": "#/definitions/TLSStatus"
+        },
+        "certificateStatusMessages": {
+          "description": "CertificateStatusMessages contains a list of messages related to CertificateStatus",
           "type": "array",
           "items": {
             "type": "string"
           },
-          "x-go-name": "DNSNames"
+          "x-go-name": "CertificateStatusMessages"
         },
-        "issuer": {
-          "description": "Issuer contains the distinguished name for the certificate's issuer",
-          "type": "string",
-          "x-go-name": "Issuer",
-          "example": "CN=DigiCert TLS RSA SHA256 2020 CA1,O=DigiCert Inc,C=US"
+        "certificates": {
+          "description": "Certificates holds the X509 certificate chain\nThe first certificate in the list should be the host certificate and the rest should be intermediate certificates",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/X509Certificate"
+          },
+          "x-go-name": "Certificates"
         },
-        "notAfter": {
-          "description": "NotAfter defines the uppdater date/time validity boundary",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "NotAfter"
+        "privateKeyStatus": {
+          "$ref": "#/definitions/TLSStatus"
         },
-        "notBefore": {
-          "description": "NotBefore defines the lower date/time validity boundary",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "NotBefore"
+        "privateKeyStatusMessages": {
+          "description": "PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "PrivateKeyStatusMessages"
         },
-        "subject": {
-          "description": "Subject contains the distinguished name for the certificate",
-          "type": "string",
-          "x-go-name": "Subject",
-          "example": "CN=mysite.example.com,O=MyOrg,L=MyLocation,C=NO"
+        "useAutomation": {
+          "description": "UseAutomation describes if TLS certificate is automatically issued using automation (ACME)",
+          "type": "boolean",
+          "x-go-name": "UseAutomation"
         }
       },
-      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "TLSStatus": {
+      "description": "TLSStatus Enum of TLS private key status",
+      "type": "integer",
+      "format": "uint8",
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
     "UpdateAlertingConfig": {
       "description": "UpdateAlertingConfig contains fields for updating alert settings",
@@ -7459,6 +7642,51 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "X509Certificate": {
+      "description": "X509Certificate holds information about a X509 certificate",
+      "type": "object",
+      "required": [
+        "subject",
+        "issuer",
+        "notBefore",
+        "notAfter"
+      ],
+      "properties": {
+        "dnsNames": {
+          "description": "DNSNames defines list of Subject Alternate Names in the certificate",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "DNSNames"
+        },
+        "issuer": {
+          "description": "Issuer contains the distinguished name for the certificate's issuer",
+          "type": "string",
+          "x-go-name": "Issuer",
+          "example": "CN=DigiCert TLS RSA SHA256 2020 CA1,O=DigiCert Inc,C=US"
+        },
+        "notAfter": {
+          "description": "NotAfter defines the uppdater date/time validity boundary",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "NotAfter"
+        },
+        "notBefore": {
+          "description": "NotBefore defines the lower date/time validity boundary",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "NotBefore"
+        },
+        "subject": {
+          "description": "Subject contains the distinguished name for the certificate",
+          "type": "string",
+          "x-go-name": "Subject",
+          "example": "CN=mysite.example.com,O=MyOrg,L=MyLocation,C=NO"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     }
   },
   "securityDefinitions": {

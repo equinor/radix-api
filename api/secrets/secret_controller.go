@@ -43,12 +43,6 @@ func (c *secretController) GetRoutes() models.Routes {
 			Method:      "PUT",
 			HandlerFunc: func(a models.Accounts, w http.ResponseWriter, r *http.Request) {},
 		},
-		// TODO reimplement change-secrets individually for each secret type
-		// models.Route{
-		//    Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/clientid/{azureKeyVaultName}",
-		//    Method:      "PUT",
-		//    HandlerFunc: ChangeSecretAzureKeyVaultClientId,
-		// },
 	}
 	return routes
 }
@@ -210,9 +204,9 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 	c.JSONResponse(w, r, secretStatuses)
 }
 
-// SetComponentExternalDNSTLSKey Set external DNS TLS key for a component
-func (c *secretController) SetComponentExternalDNSTLSKey(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey component setComponentExternalDNSTLSKey
+// ChangeComponentExternalDNSTLSKey Set external DNS TLS key for a component
+func (c *secretController) ChangeComponentExternalDNSTLSKey(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey component changeComponentExternalDNSTLSKey
 	// ---
 	// summary: Set external DNS TLS key for a component
 	// parameters:
@@ -289,9 +283,9 @@ func (c *secretController) SetComponentExternalDNSTLSKey(accounts models.Account
 	c.JSONResponse(w, r, "Success")
 }
 
-// SetComponentExternalDNSTLSCertificate Set external DNS TLS certificate for a component
-func (c *secretController) SetComponentExternalDNSTLSCertificate(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt component setComponentExternalDNSTLSCertificate
+// ChangeComponentExternalDNSTLSCertificate Set external DNS TLS certificate for a component
+func (c *secretController) ChangeComponentExternalDNSTLSCertificate(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt component changeComponentExternalDNSTLSCertificate
 	// ---
 	// summary: Set external DNS TLS certificate for a component
 	// parameters:
