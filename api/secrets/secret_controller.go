@@ -6,7 +6,6 @@ import (
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 )
 
@@ -119,18 +118,18 @@ func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w htt
 
 	var secretParameters secretModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(WithAccounts(accounts))
 
 	if err := handler.ChangeComponentSecret(r.Context(), appName, envName, componentName, secretName, secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	c.JSONResponse(w, r, "Success")
 }
 
 // GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
@@ -204,11 +203,11 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 
 	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, secretStatuses)
+	c.JSONResponse(w, r, secretStatuses)
 }
 
 // SetComponentExternalDNSTLSKey Set external DNS TLS key for a component
@@ -276,18 +275,18 @@ func (c *secretController) SetComponentExternalDNSTLSKey(accounts models.Account
 
 	var secretParameters secretModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(WithAccounts(accounts))
 
 	if err := handler.ChangeComponentExternalDNSTLSKey(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	c.JSONResponse(w, r, "Success")
 }
 
 // SetComponentExternalDNSTLSCertificate Set external DNS TLS certificate for a component
@@ -355,16 +354,16 @@ func (c *secretController) SetComponentExternalDNSTLSCertificate(accounts models
 
 	var secretParameters secretModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(WithAccounts(accounts))
 
 	if err := handler.ChangeComponentExternalDNSTLSCertificate(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		c.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	c.JSONResponse(w, r, "Success")
 }

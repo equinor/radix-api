@@ -7,7 +7,6 @@ import (
 
 	buildmodels "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
 )
@@ -83,7 +82,7 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	}
 
 	disableClientCaching(w)
-	radixhttp.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
+	bsc.ByteArrayResponse(w, r, "image/svg+xml; charset=utf-8", buildStatus)
 }
 
 func disableClientCaching(w http.ResponseWriter) {

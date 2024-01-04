@@ -5,9 +5,7 @@ import (
 	"net/http"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
-
 	"github.com/equinor/radix-api/models"
-	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
 )
 
@@ -28,12 +26,12 @@ func (dc *buildSecretsController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/buildsecrets",
 			Method:      "GET",
-			HandlerFunc: GetBuildSecrets,
+			HandlerFunc: dc.GetBuildSecrets,
 		},
 		models.Route{
 			Path:        rootPath + "/buildsecrets/{secretName}",
 			Method:      "PUT",
-			HandlerFunc: ChangeBuildSecret,
+			HandlerFunc: dc.ChangeBuildSecret,
 		},
 	}
 
@@ -41,7 +39,7 @@ func (dc *buildSecretsController) GetRoutes() models.Routes {
 }
 
 // GetBuildSecrets Lists build secrets
-func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *buildSecretsController) GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/buildsecrets application getBuildSecrets
 	// ---
 	// summary: Lists the application build secrets
@@ -78,15 +76,15 @@ func GetBuildSecrets(accounts models.Accounts, w http.ResponseWriter, r *http.Re
 	buildSecrets, err := buildSecretsHandler.GetBuildSecrets(r.Context(), appName)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, buildSecrets)
+	dc.JSONResponse(w, r, buildSecrets)
 }
 
 // ChangeBuildSecret Modifies an application build secret
-func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *buildSecretsController)  ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/buildsecrets/{secretName} application updateBuildSecretsSecretValue
 	// ---
 	// summary: Update an application build secret
@@ -135,7 +133,7 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 
 	var secretParameters environmentModels.SecretParameters
 	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
@@ -143,9 +141,9 @@ func ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.
 	err := buildSecretsHandler.ChangeBuildSecret(r.Context(), appName, secretName, secretParameters.SecretValue)
 
 	if err != nil {
-		radixhttp.ErrorResponse(w, r, err)
+		dc.ErrorResponse(w, r, err)
 		return
 	}
 
-	radixhttp.JSONResponse(w, r, "Success")
+	dc.JSONResponse(w, r, "Success")
 }
