@@ -2,16 +2,20 @@ package secrets
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/labelselector"
+	"github.com/equinor/radix-api/api/utils/predicate"
 	sortUtils "github.com/equinor/radix-api/api/utils/sort"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -71,21 +75,7 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 		return radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
-	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-
 	var secretObjName, partName string
-
-	// if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
-	// 	// This is the cert part of the TLS secret
-	// 	secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
-	// 	partName = corev1.TLSCertKey
-
-	// } else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
-	// 	// This is the key part of the TLS secret
-	// 	secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
-	// 	partName = corev1.TLSPrivateKeyKey
-
-	// } else
 	if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
 		// This is the account key part of the blobfuse cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
@@ -134,34 +124,67 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 		// This is a regular secret
 		secretObjName = operatorutils.GetComponentSecretName(componentName)
 		partName = secretName
-
 	}
 
-	secretObject, err := eh.userAccount.Client.CoreV1().Secrets(ns).Get(ctx, secretObjName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	if secretObject.Data == nil {
-		secretObject.Data = make(map[string][]byte)
-	}
-
-	secretObject.Data[partName] = []byte(newSecretValue)
-
-	_, err = eh.userAccount.Client.CoreV1().Secrets(ns).Update(ctx, secretObject, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+	return eh.setSecretKeyValue(ctx, ns, secretObjName, partName, []byte(newSecretValue))
 }
 
 func (eh *SecretHandler) ChangeComponentExternalDNSTLSKey(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
-	return nil
+	return eh.changeComponentExternalDNSSecretData(ctx, appName, envName, componentName, fqdn, corev1.TLSPrivateKeyKey, componentSecret)
 }
 
 func (eh *SecretHandler) ChangeComponentExternalDNSTLSCertificate(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
+	return eh.changeComponentExternalDNSSecretData(ctx, appName, envName, componentName, fqdn, corev1.TLSCertKey, componentSecret)
+}
+
+func (eh *SecretHandler) changeComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn, secretKey string, componentSecret models.SecretParameters) error {
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
+	if err != nil {
+		return radixhttp.UnexpectedError("Failed to get deployments", err)
+	}
+
+	activeRd, found := slice.FindFirst(rdList, func(rd radixv1.RadixDeployment) bool { return predicate.IsActiveRadixDeployment(rd) })
+	if !found {
+		return radixhttp.NotFoundError(fmt.Sprintf("No active deployment was found for application %q in environment %q", appName, envName))
+	}
+
+	component := activeRd.GetComponentByName(componentName)
+	if component == nil {
+		return radixhttp.NotFoundError(fmt.Sprintf("Component %q not found", componentName))
+	}
+
+	externalDNS, found := slice.FindFirst(component.GetExternalDNS(), func(rded radixv1.RadixDeployExternalDNS) bool { return rded.FQDN == fqdn })
+	if !found {
+		return radixhttp.NotFoundError(fmt.Sprintf("External DNS %q not found", fqdn))
+	}
+
+	if externalDNS.UseCertificateAutomation {
+		return &radixhttp.Error{Type: radixhttp.User, Message: fmt.Sprintf("External DNS %q is configured to use certificate automation", fqdn)}
+	}
+
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+	if err := eh.setSecretKeyValue(ctx, ns, fqdn, secretKey, []byte(componentSecret.SecretValue)); err != nil {
+		return radixhttp.UnexpectedError(fmt.Sprintf("Failed to set %s for %q", secretKey, fqdn), err)
+	}
+
 	return nil
+}
+
+func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secretName, key string, value []byte) error {
+	secret, err := eh.userAccount.Client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if secret.Data == nil {
+		secret.Data = make(map[string][]byte)
+	}
+
+	secret.Data[key] = value
+
+	_, err = eh.userAccount.Client.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
+	return err
 }
 
 func (eh *SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
