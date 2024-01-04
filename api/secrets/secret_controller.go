@@ -22,17 +22,27 @@ func NewSecretController() models.Controller {
 }
 
 // GetRoutes List the supported routes of this handler
-func (ec *secretController) GetRoutes() models.Routes {
+func (c *secretController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/{secretName}",
 			Method:      "PUT",
-			HandlerFunc: ChangeComponentSecret,
+			HandlerFunc: c.ChangeComponentSecret,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}",
 			Method:      "GET",
-			HandlerFunc: GetAzureKeyVaultSecretVersions,
+			HandlerFunc: c.GetAzureKeyVaultSecretVersions,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt",
+			Method:      "PUT",
+			HandlerFunc: func(a models.Accounts, w http.ResponseWriter, r *http.Request) {},
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey",
+			Method:      "PUT",
+			HandlerFunc: func(a models.Accounts, w http.ResponseWriter, r *http.Request) {},
 		},
 		// TODO reimplement change-secrets individually for each secret type
 		// models.Route{
@@ -45,8 +55,8 @@ func (ec *secretController) GetRoutes() models.Routes {
 }
 
 // ChangeComponentSecret Modifies an application environment component secret
-func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeComponentSecret
+func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} component changeComponentSecret
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:
@@ -124,8 +134,8 @@ func ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *h
 }
 
 // GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
-func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretVersions
+func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} component getAzureKeyVaultSecretVersions
 	// ---
 	// summary: Get Azure Key vault secret versions for a component
 	// parameters:
@@ -199,4 +209,162 @@ func GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWri
 	}
 
 	radixhttp.JSONResponse(w, r, secretStatuses)
+}
+
+// SetComponentExternalDNSTLSKey Set external DNS TLS key for a component
+func (c *secretController) SetComponentExternalDNSTLSKey(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey component setComponentExternalDNSTLSKey
+	// ---
+	// summary: Set external DNS TLS key for a component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: secret of Radix application
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: secret component of Radix application
+	//   type: string
+	//   required: true
+	// - name: fqdn
+	//   in: path
+	//   description: FQDN to be updated
+	//   type: string
+	//   required: true
+	// - name: componentSecret
+	//   in: body
+	//   description: New TLS key
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/SecretParameters"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: success
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	fqdn := mux.Vars(r)["fqdn"]
+
+	var secretParameters secretModels.SecretParameters
+	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	handler := Init(WithAccounts(accounts))
+
+	if err := handler.ChangeComponentExternalDNSTLSKey(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
+}
+
+// SetComponentExternalDNSTLSCertificate Set external DNS TLS certificate for a component
+func (c *secretController) SetComponentExternalDNSTLSCertificate(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt component setComponentExternalDNSTLSCertificate
+	// ---
+	// summary: Set external DNS TLS certificate for a component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: secret of Radix application
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: secret component of Radix application
+	//   type: string
+	//   required: true
+	// - name: fqdn
+	//   in: path
+	//   description: FQDN to be updated
+	//   type: string
+	//   required: true
+	// - name: componentSecret
+	//   in: body
+	//   description: New TLS certificate
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/SecretParameters"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: success
+	//   "400":
+	//     description: "Invalid application"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	//   "500":
+	//     description: "Internal server error"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	fqdn := mux.Vars(r)["fqdn"]
+
+	var secretParameters secretModels.SecretParameters
+	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	handler := Init(WithAccounts(accounts))
+
+	if err := handler.ChangeComponentExternalDNSTLSCertificate(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
+		radixhttp.ErrorResponse(w, r, err)
+		return
+	}
+
+	radixhttp.JSONResponse(w, r, "Success")
 }

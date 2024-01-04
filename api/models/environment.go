@@ -24,8 +24,8 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
-		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList)
-		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd, tlsValidator)
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, tlsValidator)
+		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 	}
 
 	return &environmentModels.Environment{

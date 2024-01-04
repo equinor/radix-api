@@ -818,54 +818,6 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	})
 }
 
-// secret tests
-func TestUpdateSecret_TLSSecretForExternalAlias_UpdatedOk(t *testing.T) {
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient := setupTest(t, nil)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, operatorutils.ARadixDeployment().
-		WithAppName(anyAppName).
-		WithEnvironment(anyEnvironment).
-		WithRadixApplication(operatorutils.ARadixApplication().
-			WithAppName(anyAppName).
-			WithEnvironment(anyEnvironment, "master").
-			WithDNSExternalAlias("some.alias.com", anyEnvironment, anyComponentName, false).
-			WithDNSExternalAlias("another.alias.com", anyEnvironment, anyComponentName, false)).
-		WithComponents(
-			operatorutils.NewDeployComponentBuilder().
-				WithName(anyComponentName).
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: "some.alias.com"}, v1.RadixDeployExternalDNS{FQDN: "another.alias.com"}),
-		))
-	require.NoError(t, err)
-
-	// Test
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
-	response := <-responseChannel
-
-	environment := environmentModels.Environment{}
-	err = controllertest.GetResponseBody(response, &environment)
-	require.NoError(t, err)
-	assert.Equal(t, 4, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "some.alias.com-key"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-cert"))
-	assert.True(t, contains(environment.Secrets, "another.alias.com-key"))
-
-	parameters := secretModels.SecretParameters{
-		SecretValue: "anyValue",
-	}
-
-	putUrl := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name)
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", putUrl, parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[1].Name), parameters)
-	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
 func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t, nil)

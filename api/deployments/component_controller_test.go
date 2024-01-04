@@ -100,43 +100,6 @@ func TestGetComponents_active_deployment(t *testing.T) {
 	assert.Equal(t, 1, len(job.Replicas))
 }
 
-func TestGetComponents_WithExternalAlias_ContainsTLSSecrets(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
-		WithAppName("any-app").
-		WithEnvironment("prod").
-		WithDeploymentName(anyDeployName).
-		WithJobComponents().
-		WithComponents(
-			operatorUtils.NewDeployComponentBuilder().
-				WithName("frontend").
-				WithPort("http", 8080).
-				WithPublicPort("http").
-				WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: "some.alias.com"}, v1.RadixDeployExternalDNS{FQDN: "another.alias.com"}),
-		))
-	require.NoError(t, err)
-
-	// Test
-	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
-	response := <-responseChannel
-
-	assert.Equal(t, 200, response.Code)
-
-	var components []deploymentModels.Component
-	err = controllertest.GetResponseBody(response, &components)
-	require.NoError(t, err)
-
-	frontend := getComponentByName("frontend", components)
-	assert.Equal(t, 4, len(frontend.Secrets))
-	assert.Equal(t, "some.alias.com-cert", frontend.Secrets[0])
-	assert.Equal(t, "some.alias.com-key", frontend.Secrets[1])
-	assert.Equal(t, "another.alias.com-cert", frontend.Secrets[2])
-	assert.Equal(t, "another.alias.com-key", frontend.Secrets[3])
-}
-
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)

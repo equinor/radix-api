@@ -65,7 +65,7 @@ func Init(opts ...SecretHandlerOptions) SecretHandler {
 }
 
 // ChangeComponentSecret handler for HandleChangeComponentSecret
-func (eh SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envName, componentName, secretName string, componentSecret models.SecretParameters) error {
+func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envName, componentName, secretName string, componentSecret models.SecretParameters) error {
 	newSecretValue := componentSecret.SecretValue
 	if strings.TrimSpace(newSecretValue) == "" {
 		return radixhttp.ValidationError("Secret", "New secret value is empty")
@@ -75,17 +75,18 @@ func (eh SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envN
 
 	var secretObjName, partName string
 
-	if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
-		// This is the cert part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
-		partName = corev1.TLSCertKey
+	// if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
+	// 	// This is the cert part of the TLS secret
+	// 	secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
+	// 	partName = corev1.TLSCertKey
 
-	} else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
-		// This is the key part of the TLS secret
-		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
-		partName = corev1.TLSPrivateKeyKey
+	// } else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
+	// 	// This is the key part of the TLS secret
+	// 	secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
+	// 	partName = corev1.TLSPrivateKeyKey
 
-	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
+	// } else
+	if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
 		// This is the account key part of the blobfuse cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
 		partName = defaults.BlobFuseCredsAccountKeyPart
@@ -155,7 +156,15 @@ func (eh SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envN
 	return nil
 }
 
-func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
+func (eh *SecretHandler) ChangeComponentExternalDNSTLSKey(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
+	return nil
+}
+
+func (eh *SecretHandler) ChangeComponentExternalDNSTLSCertificate(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
+	return nil
+}
+
+func (eh *SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
 	secretProviderClassMap, err := eh.getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
 		return nil, err
@@ -180,7 +189,7 @@ func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace,
 	return secretStatusMap, nil // map[secretType/secretName][podName]secretVersion
 }
 
-func (eh SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName string) (map[string]secretsstorev1.SecretProviderClass, error) {
+func (eh *SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName string) (map[string]secretsstorev1.SecretProviderClass, error) {
 	labelSelector := getAzureKeyVaultSecretRefSecretProviderClassLabels(appName, componentName, azureKeyVaultName).String()
 	return eh.getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector)
 }
@@ -194,7 +203,7 @@ func getAzureKeyVaultSecretRefSecretProviderClassLabels(appName string, componen
 	}
 }
 
-func (eh SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector string) (map[string]secretsstorev1.SecretProviderClass, error) {
+func (eh *SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector string) (map[string]secretsstorev1.SecretProviderClass, error) {
 	secretProviderClassList, err := eh.serviceAccount.SecretProviderClient.SecretsstoreV1().SecretProviderClasses(envNamespace).
 		List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
@@ -209,7 +218,7 @@ func (eh SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, 
 }
 
 // GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
-func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
+func (eh *SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
@@ -223,7 +232,7 @@ func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, compone
 	return eh.getAzKeyVaultSecretVersions(appName, envNamespace, componentName, podList.Items, azureKeyVaultSecretMap[secretId])
 }
 
-func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
+func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
 	jobMap, err := eh.getJobMap(appName, envNamespace, componentName)
 	if err != nil {
 		return nil, err
@@ -269,7 +278,7 @@ func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace
 	return azKeyVaultSecretVersions, nil
 }
 
-func (eh SecretHandler) getJobMap(appName, namespace, componentName string) (map[string]batchv1.Job, error) {
+func (eh *SecretHandler) getJobMap(appName, namespace, componentName string) (map[string]batchv1.Job, error) {
 	jobMap := make(map[string]batchv1.Job)
 	jobList, err := eh.userAccount.Client.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelselector.JobAndBatchJobsForComponent(appName, componentName)})
 	if err != nil {
