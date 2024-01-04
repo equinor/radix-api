@@ -35,15 +35,6 @@ func (eh EnvironmentHandler) GetJobs(ctx context.Context, appName, envName, jobC
 		return nil, err
 	}
 
-	// Backward compatibility: Get list of jobs not handled by RadixBatch
-	// TODO: Remove when there are no legacy jobs left
-	jh := legacyJobHandler{accounts: eh.accounts}
-	legacyJobs, err := jh.GetJobs(ctx, appName, envName, jobComponentName)
-	if err != nil {
-		return nil, err
-	}
-	jobs = append(jobs, legacyJobs...)
-
 	sort.SliceStable(jobs, func(i, j int) bool {
 		return utils.IsBefore(&jobs[j], &jobs[i])
 	})
@@ -62,16 +53,7 @@ func (eh EnvironmentHandler) getJobs(ctx context.Context, appName, envName, jobC
 
 // GetJob Gets job by name
 func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
-	if jobSummary, err := eh.getJob(ctx, appName, envName, jobComponentName, jobName); err == nil {
-		return jobSummary, nil
-	}
-
-	// TODO: Return error from getJob when legacy handler is removed
-	// TODO: Remove when there are no legacy jobs left
-
-	// Backward compatibility: Get job not handled by RadixBatch
-	jh := legacyJobHandler{accounts: eh.accounts}
-	return jh.GetJob(ctx, appName, envName, jobComponentName, jobName)
+	return eh.getJob(ctx, appName, envName, jobComponentName, jobName)
 }
 
 // StopJob Stop job by name
@@ -178,15 +160,6 @@ func (eh EnvironmentHandler) GetBatches(ctx context.Context, appName, envName, j
 		return nil, err
 	}
 
-	// Backward compatibility: Get list of batches not handled by RadixBatch
-	// TODO: Remove when there are no legacy jobs left
-	jh := legacyJobHandler{accounts: eh.accounts}
-	legacyBatches, err := jh.GetBatches(ctx, appName, envName, jobComponentName)
-	if err != nil {
-		return nil, err
-	}
-	summaries = append(summaries, legacyBatches...)
-
 	sort.SliceStable(summaries, func(i, j int) bool {
 		return utils.IsBefore(&summaries[j], &summaries[i])
 	})
@@ -265,16 +238,7 @@ func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobC
 
 // GetBatch Gets batch by name
 func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
-	if batchSummary, err := eh.getBatch(ctx, appName, envName, jobComponentName, batchName); err == nil {
-		return batchSummary, nil
-	}
-
-	// TODO: Return error from getBatch when legacy handler is removed
-	// TODO: Remove legacy handler when there are no legacy jobs left
-
-	// Backward compatibility: Get batch not handled by RadixBatch
-	jh := legacyJobHandler{accounts: eh.accounts}
-	return jh.GetBatch(ctx, appName, envName, jobComponentName, batchName)
+	return eh.getBatch(ctx, appName, envName, jobComponentName, batchName)
 }
 
 func (eh EnvironmentHandler) getBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
@@ -295,14 +259,7 @@ func (eh EnvironmentHandler) getBatch(ctx context.Context, appName, envName, job
 
 // GetJobPayload Gets job payload
 func (eh EnvironmentHandler) GetJobPayload(ctx context.Context, appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
-	if payload, err := eh.getJobPayload(ctx, appName, envName, jobComponentName, jobName); err == nil {
-		return payload, nil
-	}
-
-	// Backward compatibility: Get batch not handled by RadixBatch
-	// TODO: Remove when there are no legacy jobs left
-	jh := legacyJobHandler{accounts: eh.accounts}
-	return jh.GetJobPayload(appName, envName, jobComponentName, jobName)
+	return eh.getJobPayload(ctx, appName, envName, jobComponentName, jobName)
 }
 
 func (eh EnvironmentHandler) getJobPayload(ctx context.Context, appName, envName, jobComponentName, jobName string) (io.ReadCloser, error) {
