@@ -16,60 +16,6 @@ type TLS struct {
 	// required: true
 	UseAutomation bool `json:"useAutomation"`
 
-	// PrivateKey  status about the TLS private key
-	//
-	// required: true
-	PrivateKey TLSPrivateKey `json:"privateKey"`
-
-	// Certificate holds status about the TLS private key
-	//
-	// required: true
-	Certificate TLSCertificate `json:"certificate"`
-}
-
-const (
-	TLSPrivateKeyPending TLSPrivateKeyStatus = iota + 1
-	TLSPrivateKeyConsistent
-	TLSPrivateKeyInvalid
-)
-
-var (
-	tlsPrivateKeyNames = map[TLSPrivateKeyStatus]string{
-		TLSPrivateKeyPending:    "Pending",
-		TLSPrivateKeyConsistent: "Consistent",
-		TLSPrivateKeyInvalid:    "Invalid",
-	}
-)
-
-// TLSPrivateKeyStatus Enum of TLS private key status
-type TLSPrivateKeyStatus uint8
-
-func (s *TLSPrivateKeyStatus) String() string {
-	return tlsPrivateKeyNames[*s]
-}
-
-func (s *TLSPrivateKeyStatus) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
-
-func (s *TLSPrivateKeyStatus) UnmarshalJSON(data []byte) error {
-	var status string
-	if err := json.Unmarshal(data, &status); err != nil {
-		return err
-	}
-
-	for k, v := range tlsPrivateKeyNames {
-		if v == status {
-			*s = k
-			return nil
-		}
-	}
-	return fmt.Errorf("%q is not a valid status", status)
-}
-
-// TLSPrivateKey
-// swagger:model TLSPrivateKey
-type TLSPrivateKey struct {
 	// Status of the private key
 	// Pending: Private key is not set
 	// Consistent: Private key is set and is valid
@@ -78,57 +24,13 @@ type TLSPrivateKey struct {
 	// required: true
 	// enum: Pending,Consistent,Invalid
 	// example: Consistent
-	Status TLSPrivateKeyStatus `json:"status,omitempty"`
+	PrivateKeyStatus TLSStatus `json:"privateKeyStatus"`
 
-	// StatusMessages contains a list of messages related to the Status
+	// PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus
 	//
 	// required: false
-	StatusMessages []string `json:"statusMessages,omitempty"`
-}
+	PrivateKeyStatusMessages []string `json:"privateKeyStatusMessages,omitempty"`
 
-const (
-	TLSCertificateStatusPending TLSCertificateStatus = iota + 1
-	TLSCertificateStatusConsistent
-	TLSCertificateStatusInvalid
-)
-
-var (
-	tlsCertificateStatusNames = map[TLSCertificateStatus]string{
-		TLSCertificateStatusPending:    "Pending",
-		TLSCertificateStatusConsistent: "Consistent",
-		TLSCertificateStatusInvalid:    "Invalid",
-	}
-)
-
-// TLSCertificateStatus Enum of TLS certificate status
-type TLSCertificateStatus uint8
-
-func (s *TLSCertificateStatus) String() string {
-	return tlsCertificateStatusNames[*s]
-}
-
-func (s *TLSCertificateStatus) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
-
-func (s *TLSCertificateStatus) UnmarshalJSON(data []byte) error {
-	var status string
-	if err := json.Unmarshal(data, &status); err != nil {
-		return err
-	}
-
-	for k, v := range tlsCertificateStatusNames {
-		if v == status {
-			*s = k
-			return nil
-		}
-	}
-	return fmt.Errorf("%q is not a valid status", status)
-}
-
-// TLSCertificate
-// swagger:model TLSCertificate
-type TLSCertificate struct {
 	// Status of the certificate
 	// Pending: Certificate is not set
 	// Consistent: Certificate is set and is valid
@@ -137,18 +39,58 @@ type TLSCertificate struct {
 	// required: true
 	// enum: Pending,Consistent,Invalid
 	// example: Consistent
-	Status TLSCertificateStatus `json:"status,omitempty"`
+	CertificateStatus TLSStatus `json:"certificateStatus"`
 
-	// StatusMessages contains a list of messages related to the Status
+	// CertificateStatusMessages contains a list of messages related to CertificateStatus
 	//
 	// required: false
-	StatusMessages []string `json:"statusMessages,omitempty"`
+	CertificateStatusMessages []string `json:"certificateStatusMessages,omitempty"`
 
-	// X509Certificates holds the X509 certificate chain
+	// Certificates holds the X509 certificate chain
 	// The first certificate in the list should be the host certificate and the rest should be intermediate certificates
 	//
 	// required: false
-	X509Certificates []X509Certificate `json:"x509Certificates,omitempty"`
+	Certificates []X509Certificate `json:"certificates,omitempty"`
+}
+
+const (
+	TLSStatusPending TLSStatus = iota + 1
+	TLSStatusConsistent
+	TLSStatusInvalid
+)
+
+var (
+	tlsStatusNames = map[TLSStatus]string{
+		TLSStatusPending:    "Pending",
+		TLSStatusConsistent: "Consistent",
+		TLSStatusInvalid:    "Invalid",
+	}
+)
+
+// TLSStatus Enum of TLS private key status
+type TLSStatus uint8
+
+func (s *TLSStatus) String() string {
+	return tlsStatusNames[*s]
+}
+
+func (s *TLSStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
+func (s *TLSStatus) UnmarshalJSON(data []byte) error {
+	var status string
+	if err := json.Unmarshal(data, &status); err != nil {
+		return err
+	}
+
+	for k, v := range tlsStatusNames {
+		if v == status {
+			*s = k
+			return nil
+		}
+	}
+	return fmt.Errorf("%q is not a valid status", status)
 }
 
 // X509Certificate holds information about a X509 certificate

@@ -16,15 +16,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func Test_TlsCertificateTestSuite(t *testing.T) {
-	suite.Run(t, new(tlsCertificateTestSuite))
+func Test_X509CertificateTestSuite(t *testing.T) {
+	suite.Run(t, new(x509CertificateTestSuite))
 }
 
-type tlsCertificateTestSuite struct {
+type x509CertificateTestSuite struct {
 	suite.Suite
 }
 
-func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_ValidPEM() {
+func (s *x509CertificateTestSuite) Test_ParseX509CertificatesFromPEM_ValidPEM() {
 	cn1, ca1, dns1 := "cn1", "ca1", []string{"dns1_1", "dns1_2"}
 	notBefore1, _ := time.Parse("2006-01-02", "2020-07-01")
 	notAfter1, _ := time.Parse("2006-01-02", "2020-08-01")
@@ -45,12 +45,12 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_ValidPEM() {
 	s.Equal(expected, certs)
 }
 
-func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_EmptyPEM() {
+func (s *x509CertificateTestSuite) Test_ParseX509CertificatesFromPEM_EmptyPEM() {
 	certs := models.ParseX509CertificatesFromPEM(nil)
 	s.Empty(certs)
 }
 
-func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_NonCertificatePEM() {
+func (s *x509CertificateTestSuite) Test_ParseX509CertificatesFromPEM_NonCertificatePEM() {
 	cn1, ca1, dns1 := "cn1", "ca1", []string{"dns1_1", "dns1_2"}
 	notBefore1, _ := time.Parse("2006-01-02", "2020-07-01")
 	notAfter1, _ := time.Parse("2006-01-02", "2020-08-01")
@@ -74,7 +74,7 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_NonCertificat
 	s.Equal(expected, certs)
 }
 
-func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_InvalidPEMData() {
+func (s *x509CertificateTestSuite) Test_ParseX509CertificatesFromPEM_InvalidPEMData() {
 	cn1, ca1, dns1 := "cn1", "ca1", []string{"dns1_1", "dns1_2"}
 	notBefore1, _ := time.Parse("2006-01-02", "2020-07-01")
 	notAfter1, _ := time.Parse("2006-01-02", "2020-08-01")
@@ -98,7 +98,7 @@ func (s *tlsCertificateTestSuite) Test_ParseTLSCertificatesFromPEM_InvalidPEMDat
 	s.Equal(expected, certs)
 }
 
-func (s *tlsCertificateTestSuite) buildCert(certCN, issuerCN string, notBefore, notAfter time.Time, dnsNames []string) []byte {
+func (s *x509CertificateTestSuite) buildCert(certCN, issuerCN string, notBefore, notAfter time.Time, dnsNames []string) []byte {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(1111),
 		Subject:      pkix.Name{CommonName: issuerCN},
