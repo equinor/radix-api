@@ -51,9 +51,9 @@ func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *htt
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
+		defer close(response)
 		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
-		close(response)
 	}()
 
 	return response
@@ -75,9 +75,9 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
+		defer close(response)
 		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
-		close(response)
 	}()
 
 	return response

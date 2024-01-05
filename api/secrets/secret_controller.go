@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
 )
@@ -13,11 +14,14 @@ const rootPath = "/applications/{appName}"
 
 type secretController struct {
 	*models.DefaultController
+	tlsValidator tlsvalidation.Validator
 }
 
 // NewSecretController Constructor
-func NewSecretController() models.Controller {
-	return &secretController{}
+func NewSecretController(tlsValidator tlsvalidation.Validator) models.Controller {
+	return &secretController{
+		tlsValidator: tlsValidator,
+	}
 }
 
 // GetRoutes List the supported routes of this handler
@@ -34,14 +38,9 @@ func (c *secretController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetAzureKeyVaultSecretVersions,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls",
 			Method:      "PUT",
-			HandlerFunc: func(a models.Accounts, w http.ResponseWriter, r *http.Request) {},
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey",
-			Method:      "PUT",
-			HandlerFunc: func(a models.Accounts, w http.ResponseWriter, r *http.Request) {},
+			HandlerFunc: c.SetComponentExternalDNSTLS,
 		},
 	}
 	return routes
@@ -116,7 +115,7 @@ func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w htt
 		return
 	}
 
-	handler := Init(WithAccounts(accounts))
+	handler := c.getSecretHandler(accounts)
 
 	if err := handler.ChangeComponentSecret(r.Context(), appName, envName, componentName, secretName, secretParameters); err != nil {
 		c.ErrorResponse(w, r, err)
@@ -193,7 +192,7 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 	azureKeyVaultName := mux.Vars(r)["azureKeyVaultName"]
 	secretName := r.FormValue("secretName")
 
-	handler := Init(WithAccounts(accounts))
+	handler := c.getSecretHandler(accounts)
 
 	secretStatuses, err := handler.GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretName)
 	if err != nil {
@@ -204,11 +203,11 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 	c.JSONResponse(w, r, secretStatuses)
 }
 
-// ChangeComponentExternalDNSTLSKey Set external DNS TLS key for a component
-func (c *secretController) ChangeComponentExternalDNSTLSKey(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey component changeComponentExternalDNSTLSKey
+// SetComponentExternalDNSTLS Set external DNS TLS private key and certificate for a component
+func (c *secretController) SetComponentExternalDNSTLS(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls component setComponentExternalDNSTLS
 	// ---
-	// summary: Set external DNS TLS key for a component
+	// summary: Set external DNS TLS private key certificate for a component
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -230,12 +229,12 @@ func (c *secretController) ChangeComponentExternalDNSTLSKey(accounts models.Acco
 	//   description: FQDN to be updated
 	//   type: string
 	//   required: true
-	// - name: componentSecret
+	// - name: tlsData
 	//   in: body
-	//   description: New TLS key
+	//   description: New TLS private key and certificate
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/SecretParameters"
+	//       "$ref": "#/definitions/SetExternalDNSTLSRequest"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -267,15 +266,15 @@ func (c *secretController) ChangeComponentExternalDNSTLSKey(accounts models.Acco
 	componentName := mux.Vars(r)["componentName"]
 	fqdn := mux.Vars(r)["fqdn"]
 
-	var secretParameters secretModels.SecretParameters
-	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
+	var requestBody secretModels.SetExternalDNSTLSRequest
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
 
-	handler := Init(WithAccounts(accounts))
+	handler := c.getSecretHandler(accounts)
 
-	if err := handler.ChangeComponentExternalDNSTLSKey(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
+	if err := handler.SetComponentExternalDNSSecretData(r.Context(), appName, envName, componentName, fqdn, requestBody.Certificate, requestBody.PrivateKey); err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
@@ -283,81 +282,6 @@ func (c *secretController) ChangeComponentExternalDNSTLSKey(accounts models.Acco
 	c.JSONResponse(w, r, "Success")
 }
 
-// ChangeComponentExternalDNSTLSCertificate Set external DNS TLS certificate for a component
-func (c *secretController) ChangeComponentExternalDNSTLSCertificate(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt component changeComponentExternalDNSTLSCertificate
-	// ---
-	// summary: Set external DNS TLS certificate for a component
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of application
-	//   type: string
-	//   required: true
-	// - name: envName
-	//   in: path
-	//   description: secret of Radix application
-	//   type: string
-	//   required: true
-	// - name: componentName
-	//   in: path
-	//   description: secret component of Radix application
-	//   type: string
-	//   required: true
-	// - name: fqdn
-	//   in: path
-	//   description: FQDN to be updated
-	//   type: string
-	//   required: true
-	// - name: componentSecret
-	//   in: body
-	//   description: New TLS certificate
-	//   required: true
-	//   schema:
-	//       "$ref": "#/definitions/SecretParameters"
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: success
-	//   "400":
-	//     description: "Invalid application"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "403":
-	//     description: "Forbidden"
-	//   "404":
-	//     description: "Not found"
-	//   "409":
-	//     description: "Conflict"
-	//   "500":
-	//     description: "Internal server error"
-
-	appName := mux.Vars(r)["appName"]
-	envName := mux.Vars(r)["envName"]
-	componentName := mux.Vars(r)["componentName"]
-	fqdn := mux.Vars(r)["fqdn"]
-
-	var secretParameters secretModels.SecretParameters
-	if err := json.NewDecoder(r.Body).Decode(&secretParameters); err != nil {
-		c.ErrorResponse(w, r, err)
-		return
-	}
-
-	handler := Init(WithAccounts(accounts))
-
-	if err := handler.ChangeComponentExternalDNSTLSCertificate(r.Context(), appName, envName, componentName, fqdn, secretParameters); err != nil {
-		c.ErrorResponse(w, r, err)
-		return
-	}
-
-	c.JSONResponse(w, r, "Success")
+func (c *secretController) getSecretHandler(accounts models.Accounts) *SecretHandler {
+	return Init(WithAccounts(accounts), WithTLSValidator(c.tlsValidator))
 }

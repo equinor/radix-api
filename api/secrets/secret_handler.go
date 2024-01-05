@@ -12,9 +12,10 @@ import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	sortUtils "github.com/equinor/radix-api/api/utils/sort"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
-	radixutils "github.com/equinor/radix-common/utils"
+	commonutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -48,21 +49,29 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	}
 }
 
+// WithAccounts configures all SecretHandler fields
+func WithTLSValidator(tlsValidator tlsvalidation.Validator) SecretHandlerOptions {
+	return func(eh *SecretHandler) {
+		eh.tlsValidator = tlsValidator
+	}
+}
+
 // SecretHandler Instance variables
 type SecretHandler struct {
 	userAccount    apiModels.Account
 	serviceAccount apiModels.Account
 	deployHandler  deployments.DeployHandler
+	tlsValidator   tlsvalidation.Validator
 }
 
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' SecretHandler.
 // SecretHandlerOptions are processed in the sequence they are passed to this function.
-func Init(opts ...SecretHandlerOptions) SecretHandler {
-	eh := SecretHandler{}
+func Init(opts ...SecretHandlerOptions) *SecretHandler {
+	eh := &SecretHandler{}
 
 	for _, opt := range opts {
-		opt(&eh)
+		opt(eh)
 	}
 
 	return eh
@@ -127,18 +136,10 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 	}
 
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-	return eh.setSecretKeyValue(ctx, ns, secretObjName, partName, []byte(newSecretValue))
+	return eh.setSecretKeyValue(ctx, ns, secretObjName, map[string][]byte{partName: []byte(newSecretValue)})
 }
 
-func (eh *SecretHandler) ChangeComponentExternalDNSTLSKey(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
-	return eh.changeComponentExternalDNSSecretData(ctx, appName, envName, componentName, fqdn, corev1.TLSPrivateKeyKey, componentSecret)
-}
-
-func (eh *SecretHandler) ChangeComponentExternalDNSTLSCertificate(ctx context.Context, appName, envName, componentName, fqdn string, componentSecret models.SecretParameters) error {
-	return eh.changeComponentExternalDNSSecretData(ctx, appName, envName, componentName, fqdn, corev1.TLSCertKey, componentSecret)
-}
-
-func (eh *SecretHandler) changeComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn, secretKey string, componentSecret models.SecretParameters) error {
+func (eh *SecretHandler) SetComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string) error {
 	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
 	if err != nil {
 		return radixhttp.UnexpectedError("Failed to get deployments", err)
@@ -146,7 +147,7 @@ func (eh *SecretHandler) changeComponentExternalDNSSecretData(ctx context.Contex
 
 	activeRd, found := slice.FindFirst(rdList, func(rd radixv1.RadixDeployment) bool { return predicate.IsActiveRadixDeployment(rd) })
 	if !found {
-		return radixhttp.NotFoundError(fmt.Sprintf("No active deployment was found for application %q in environment %q", appName, envName))
+		return radixhttp.NotFoundError(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName))
 	}
 
 	component := activeRd.GetComponentByName(componentName)
@@ -163,15 +164,32 @@ func (eh *SecretHandler) changeComponentExternalDNSSecretData(ctx context.Contex
 		return &radixhttp.Error{Type: radixhttp.User, Message: fmt.Sprintf("External DNS %q is configured to use certificate automation", fqdn)}
 	}
 
+	certificateBytes, privateKeyBytes := []byte(certificate), []byte(privateKey)
+	tlsValidator := eh.getTLSValidatorOrDefault()
+
+	if valid, validationMsgs := tlsValidator.ValidatePrivateKey(privateKeyBytes); !valid {
+		return radixhttp.ValidationError("Private key", strings.Join(validationMsgs, ", "))
+	}
+	if valid, validationMsgs := tlsValidator.ValidateX509Certificate(certificateBytes, privateKeyBytes, fqdn); !valid {
+		return radixhttp.ValidationError("Certificate", strings.Join(validationMsgs, ", "))
+	}
+
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-	if err := eh.setSecretKeyValue(ctx, ns, fqdn, secretKey, []byte(componentSecret.SecretValue)); err != nil {
-		return radixhttp.UnexpectedError(fmt.Sprintf("Failed to set %s for %q", secretKey, fqdn), err)
+	if err := eh.setSecretKeyValue(ctx, ns, fqdn, map[string][]byte{corev1.TLSCertKey: certificateBytes, corev1.TLSPrivateKeyKey: privateKeyBytes}); err != nil {
+		return radixhttp.UnexpectedError(fmt.Sprintf("Failed to update TLS private key and certificate for %q", fqdn), err)
 	}
 
 	return nil
 }
 
-func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secretName, key string, value []byte) error {
+func (eh *SecretHandler) getTLSValidatorOrDefault() tlsvalidation.Validator {
+	if commonutils.IsNil(eh.tlsValidator) {
+		return tlsvalidation.DefaultValidator()
+	}
+	return eh.tlsValidator
+}
+
+func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secretName string, keyValue map[string][]byte) error {
 	secret, err := eh.userAccount.Client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -181,7 +199,9 @@ func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secre
 		secret.Data = make(map[string][]byte)
 	}
 
-	secret.Data[key] = value
+	for k, v := range keyValue {
+		secret.Data[k] = v
+	}
 
 	_, err = eh.userAccount.Client.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	return err
@@ -209,7 +229,7 @@ func (eh *SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace
 			secretStatusMap[secretVersion.ID][secretsInPod.Status.PodName] = secretVersion.Version
 		}
 	}
-	return secretStatusMap, nil // map[secretType/secretName][podName]secretVersion
+	return secretStatusMap, nil
 }
 
 func (eh *SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName string) (map[string]secretsstorev1.SecretProviderClass, error) {
@@ -269,7 +289,7 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 		podCreated := pod.GetCreationTimestamp()
 		azureKeyVaultSecretVersion := models.AzureKeyVaultSecretVersion{
 			ReplicaName:    pod.GetName(),
-			ReplicaCreated: radixutils.FormatTime(&podCreated),
+			ReplicaCreated: commonutils.FormatTime(&podCreated),
 			Version:        secretVersion,
 		}
 		if _, ok := pod.ObjectMeta.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok {
@@ -288,12 +308,12 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 		}
 		azureKeyVaultSecretVersion.JobName = jobName
 		jobCreated := job.GetCreationTimestamp()
-		azureKeyVaultSecretVersion.JobCreated = radixutils.FormatTime(&jobCreated)
+		azureKeyVaultSecretVersion.JobCreated = commonutils.FormatTime(&jobCreated)
 		if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok {
 			if batch, ok := jobMap[batchName]; ok {
 				azureKeyVaultSecretVersion.BatchName = batchName
 				batchCreated := batch.GetCreationTimestamp()
-				azureKeyVaultSecretVersion.BatchCreated = radixutils.FormatTime(&batchCreated)
+				azureKeyVaultSecretVersion.BatchCreated = commonutils.FormatTime(&batchCreated)
 			}
 		}
 		azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)

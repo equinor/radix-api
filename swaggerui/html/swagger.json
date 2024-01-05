@@ -1897,13 +1897,13 @@
         }
       }
     },
-    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlscrt": {
+    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls": {
       "put": {
         "tags": [
           "component"
         ],
-        "summary": "Set external DNS TLS certificate for a component",
-        "operationId": "changeComponentExternalDNSTLSCertificate",
+        "summary": "Set external DNS TLS private key certificate for a component",
+        "operationId": "setComponentExternalDNSTLS",
         "parameters": [
           {
             "type": "string",
@@ -1934,95 +1934,12 @@
             "required": true
           },
           {
-            "description": "New TLS certificate",
-            "name": "componentSecret",
+            "description": "New TLS private key and certificate",
+            "name": "tlsData",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/SecretParameters"
-            }
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
-            "name": "Impersonate-User",
-            "in": "header"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
-            "name": "Impersonate-Group",
-            "in": "header"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "success"
-          },
-          "400": {
-            "description": "Invalid application"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        }
-      }
-    },
-    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tlskey": {
-      "put": {
-        "tags": [
-          "component"
-        ],
-        "summary": "Set external DNS TLS key for a component",
-        "operationId": "changeComponentExternalDNSTLSKey",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Name of application",
-            "name": "appName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "secret of Radix application",
-            "name": "envName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "secret component of Radix application",
-            "name": "componentName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "FQDN to be updated",
-            "name": "fqdn",
-            "in": "path",
-            "required": true
-          },
-          {
-            "description": "New TLS key",
-            "name": "componentSecret",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/SecretParameters"
+              "$ref": "#/definitions/SetExternalDNSTLSRequest"
             }
           },
           {
@@ -7459,6 +7376,27 @@
           "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "azure-blob-fuse-volume"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
+    },
+    "SetExternalDNSTLSRequest": {
+      "description": "SetExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS",
+      "type": "object",
+      "required": [
+        "privateKey",
+        "certificate"
+      ],
+      "properties": {
+        "certificate": {
+          "description": "X509 certificate in PEM format",
+          "type": "string",
+          "x-go-name": "Certificate"
+        },
+        "privateKey": {
+          "description": "Private key in PEM format",
+          "type": "string",
+          "x-go-name": "PrivateKey"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"

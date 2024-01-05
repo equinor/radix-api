@@ -75,7 +75,7 @@ func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commo
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController())
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController(nil))
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
