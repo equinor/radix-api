@@ -7486,14 +7486,14 @@
       ],
       "properties": {
         "certificateStatus": {
-          "description": "Status of the certificate\nPending: Certificate is not set\nConsistent: Certificate is set and is valid\nInvalid: Certificate is set but is invalid\nPending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "description": "Status of the certificate\nPending CertificatePending  Certificate is not set\nConsistent CertificateConsistent  Certificate is valid\nInvalid CertificateInvalid  Certificate is invalid",
           "type": "string",
           "enum": [
             "Pending",
             "Consistent",
             "Invalid"
           ],
-          "x-go-enum-desc": "Pending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "x-go-enum-desc": "Pending CertificatePending  Certificate is not set\nConsistent CertificateConsistent  Certificate is valid\nInvalid CertificateInvalid  Certificate is invalid",
           "x-go-name": "CertificateStatus",
           "example": "Consistent"
         },
@@ -7514,14 +7514,14 @@
           "x-go-name": "Certificates"
         },
         "privateKeyStatus": {
-          "description": "Status of the private key\nPending: Private key is not set\nConsistent: Private key is set and is valid\nInvalid: Private key is set but is invalid\nPending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "description": "Status of the private key\nPending PrivateKeyPending  Private key is not set\nConsistent PrivateKeyConsistent  Private key is valid\nInvalid PrivateKeyInvalid  Private key is invalid",
           "type": "string",
           "enum": [
             "Pending",
             "Consistent",
             "Invalid"
           ],
-          "x-go-enum-desc": "Pending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "x-go-enum-desc": "Pending PrivateKeyPending  Private key is not set\nConsistent PrivateKeyConsistent  Private key is valid\nInvalid PrivateKeyInvalid  Private key is invalid",
           "x-go-name": "PrivateKeyStatus",
           "example": "Consistent"
         },

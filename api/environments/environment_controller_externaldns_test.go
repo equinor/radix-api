@@ -151,8 +151,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_Consistent() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.TLSStatusConsistent,
-			CertificateStatus: deploymentModels.TLSStatusConsistent,
+			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
+			CertificateStatus: deploymentModels.CertificateConsistent,
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,
 				Issuer:    "CN=" + issuerCN,
@@ -198,8 +198,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingKeyData() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.TLSStatusPending,
-			CertificateStatus: deploymentModels.TLSStatusConsistent,
+			PrivateKeyStatus:  deploymentModels.PrivateKeyPending,
+			CertificateStatus: deploymentModels.CertificateConsistent,
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,
 				Issuer:    "CN=" + issuerCN,
@@ -247,9 +247,9 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_KeyDataValidationError() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:         deploymentModels.TLSStatusInvalid,
+			PrivateKeyStatus:         deploymentModels.PrivateKeyInvalid,
 			PrivateKeyStatusMessages: []string{keyValidationMsg},
-			CertificateStatus:        deploymentModels.TLSStatusConsistent,
+			CertificateStatus:        deploymentModels.CertificateConsistent,
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,
 				Issuer:    "CN=" + issuerCN,
@@ -291,8 +291,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingCertData() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.TLSStatusConsistent,
-			CertificateStatus: deploymentModels.TLSStatusPending,
+			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
+			CertificateStatus: deploymentModels.CertificatePending,
 		},
 	}}
 	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
@@ -328,8 +328,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataParseError() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.TLSStatusConsistent,
-			CertificateStatus: deploymentModels.TLSStatusConsistent,
+			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
+			CertificateStatus: deploymentModels.CertificateConsistent,
 		},
 	}}
 	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
@@ -370,8 +370,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataValidationError() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:          deploymentModels.TLSStatusConsistent,
-			CertificateStatus:         deploymentModels.TLSStatusInvalid,
+			PrivateKeyStatus:          deploymentModels.PrivateKeyConsistent,
+			CertificateStatus:         deploymentModels.CertificateInvalid,
 			CertificateStatusMessages: []string{certValidationMsg},
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,

@@ -81,41 +81,41 @@ func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secre
 
 	for _, externalAlias := range component.GetExternalDNS() {
 		var certData, keyData []byte
-		certStatus := deploymentModels.TLSStatusConsistent
-		keyStatus := deploymentModels.TLSStatusConsistent
+		certStatus := deploymentModels.CertificateConsistent
+		keyStatus := deploymentModels.PrivateKeyConsistent
 
 		if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias.FQDN)); ok {
 			certData = secretValue.Data[corev1.TLSCertKey]
 			if certValue := strings.TrimSpace(string(certData)); len(certValue) == 0 || strings.EqualFold(certValue, secretDefaultData) {
-				certStatus = deploymentModels.TLSStatusPending
+				certStatus = deploymentModels.CertificatePending
 				certData = nil
 			}
 
 			keyData = secretValue.Data[corev1.TLSPrivateKeyKey]
 			if keyValue := strings.TrimSpace(string(keyData)); len(keyValue) == 0 || strings.EqualFold(keyValue, secretDefaultData) {
-				keyStatus = deploymentModels.TLSStatusPending
+				keyStatus = deploymentModels.PrivateKeyPending
 				keyData = nil
 			}
 		} else {
-			certStatus = deploymentModels.TLSStatusPending
-			keyStatus = deploymentModels.TLSStatusPending
+			certStatus = deploymentModels.CertificatePending
+			keyStatus = deploymentModels.PrivateKeyPending
 		}
 
 		var x509Certs []deploymentModels.X509Certificate
 		var certStatusMessages []string
-		if certStatus == deploymentModels.TLSStatusConsistent {
+		if certStatus == deploymentModels.CertificateConsistent {
 			x509Certs = append(x509Certs, deploymentModels.ParseX509CertificatesFromPEM(certData)...)
 
 			if certIsValid, messages := tlsValidator.ValidateX509Certificate(certData, keyData, externalAlias.FQDN); !certIsValid {
-				certStatus = deploymentModels.TLSStatusInvalid
+				certStatus = deploymentModels.CertificateInvalid
 				certStatusMessages = append(certStatusMessages, messages...)
 			}
 		}
 
 		var keyStatusMessages []string
-		if keyStatus == deploymentModels.TLSStatusConsistent {
+		if keyStatus == deploymentModels.PrivateKeyConsistent {
 			if keyIsValid, messages := tlsValidator.ValidatePrivateKey(keyData); !keyIsValid {
-				keyStatus = deploymentModels.TLSStatusInvalid
+				keyStatus = deploymentModels.PrivateKeyInvalid
 				keyStatusMessages = append(keyStatusMessages, messages...)
 			}
 		}

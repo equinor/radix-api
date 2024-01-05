@@ -6,13 +6,28 @@ import (
 	"time"
 )
 
-// swagger:enum TLSStatus
-type TLSStatus string
+// swagger:enum PrivateKeyStatusEnum
+type PrivateKeyStatusEnum string
 
 const (
-	TLSStatusPending    TLSStatus = "Pending"
-	TLSStatusConsistent TLSStatus = "Consistent"
-	TLSStatusInvalid    TLSStatus = "Invalid"
+	// Private key is not set
+	PrivateKeyPending PrivateKeyStatusEnum = "Pending"
+	// Private key is valid
+	PrivateKeyConsistent PrivateKeyStatusEnum = "Consistent"
+	// Private key is invalid
+	PrivateKeyInvalid PrivateKeyStatusEnum = "Invalid"
+)
+
+// swagger:enum CertificateStatusEnum
+type CertificateStatusEnum string
+
+const (
+	// Certificate is not set
+	CertificatePending CertificateStatusEnum = "Pending"
+	// Certificate is valid
+	CertificateConsistent CertificateStatusEnum = "Consistent"
+	// Certificate is invalid
+	CertificateInvalid CertificateStatusEnum = "Invalid"
 )
 
 // TLS configuration and status for external DNS
@@ -24,14 +39,10 @@ type TLS struct {
 	UseAutomation bool `json:"useAutomation"`
 
 	// Status of the private key
-	// Pending: Private key is not set
-	// Consistent: Private key is set and is valid
-	// Invalid: Private key is set but is invalid
 	//
 	// required: true
-	// enum: Pending,Consistent,Invalid
 	// example: Consistent
-	PrivateKeyStatus TLSStatus `json:"privateKeyStatus"`
+	PrivateKeyStatus PrivateKeyStatusEnum `json:"privateKeyStatus"`
 
 	// PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus
 	//
@@ -39,14 +50,10 @@ type TLS struct {
 	PrivateKeyStatusMessages []string `json:"privateKeyStatusMessages,omitempty"`
 
 	// Status of the certificate
-	// Pending: Certificate is not set
-	// Consistent: Certificate is set and is valid
-	// Invalid: Certificate is set but is invalid
 	//
 	// required: true
-	// enum: Pending,Consistent,Invalid
 	// example: Consistent
-	CertificateStatus TLSStatus `json:"certificateStatus"`
+	CertificateStatus CertificateStatusEnum `json:"certificateStatus"`
 
 	// CertificateStatusMessages contains a list of messages related to CertificateStatus
 	//
