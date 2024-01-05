@@ -349,7 +349,7 @@ func (s *externalDNSSecretTestSuite) Test_NonExistingComponent() {
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
 	s.Require().NoError(controllertest.GetResponseBody(response, &status))
-	s.Equal(fmt.Sprintf("Component %q not found", componentName), status.Message)
+	s.Equal(fmt.Sprintf("Component %q does not exist", componentName), status.Message)
 }
 
 func (s *externalDNSSecretTestSuite) Test_NonExistingExternalDNS() {
@@ -361,7 +361,7 @@ func (s *externalDNSSecretTestSuite) Test_NonExistingExternalDNS() {
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
 	s.Require().NoError(controllertest.GetResponseBody(response, &status))
-	s.Equal(fmt.Sprintf("External DNS %q not found", fqdn), status.Message)
+	s.Equal(fmt.Sprintf("External DNS %q not configured for component", fqdn), status.Message)
 }
 
 func (s *externalDNSSecretTestSuite) Test_ExternalDNSUsesAutomation() {

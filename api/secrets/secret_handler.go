@@ -152,12 +152,12 @@ func (eh *SecretHandler) SetComponentExternalDNSSecretData(ctx context.Context, 
 
 	component := activeRd.GetComponentByName(componentName)
 	if component == nil {
-		return radixhttp.NotFoundError(fmt.Sprintf("Component %q not found", componentName))
+		return radixhttp.NotFoundError(fmt.Sprintf("Component %q does not exist", componentName))
 	}
 
 	externalDNS, found := slice.FindFirst(component.GetExternalDNS(), func(rded radixv1.RadixDeployExternalDNS) bool { return rded.FQDN == fqdn })
 	if !found {
-		return radixhttp.NotFoundError(fmt.Sprintf("External DNS %q not found", fqdn))
+		return radixhttp.NotFoundError(fmt.Sprintf("External DNS %q not configured for component", fqdn))
 	}
 
 	if externalDNS.UseCertificateAutomation {
