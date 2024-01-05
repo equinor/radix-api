@@ -16,7 +16,7 @@
     "contact": {
       "url": "https://equinor.slack.com/messages/CBKM6N2JY"
     },
-    "version": "1.23.0"
+    "version": "1.23.1"
   },
   "basePath": "/api/v1",
   "paths": {
