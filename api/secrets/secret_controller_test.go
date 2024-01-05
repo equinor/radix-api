@@ -336,7 +336,7 @@ func (s *externalDNSSecretTestSuite) Test_RadixDeploymentNotActive() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName), status.Message)
 }
 
@@ -348,7 +348,7 @@ func (s *externalDNSSecretTestSuite) Test_NonExistingComponent() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("Component %q not found", componentName), status.Message)
 }
 
@@ -360,7 +360,7 @@ func (s *externalDNSSecretTestSuite) Test_NonExistingExternalDNS() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("External DNS %q not found", fqdn), status.Message)
 }
 
@@ -372,7 +372,7 @@ func (s *externalDNSSecretTestSuite) Test_ExternalDNSUsesAutomation() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(400, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("External DNS %q is configured to use certificate automation", fqdn), status.Message)
 }
 
@@ -387,7 +387,7 @@ func (s *externalDNSSecretTestSuite) Test_TLSCertificateValidationError() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(400, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("%s, %s", validationMsg1, validationMsg2), status.Message)
 	s.ErrorContains(status.Err, "Certificate failed validation")
 }
@@ -402,7 +402,7 @@ func (s *externalDNSSecretTestSuite) Test_TLSPrivateKeyValidationError() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(400, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("%s, %s", validationMsg1, validationMsg2), status.Message)
 	s.ErrorContains(status.Err, "Private key failed validation")
 }
@@ -417,6 +417,6 @@ func (s *externalDNSSecretTestSuite) Test_NonExistingSecretFails() {
 	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.SetExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
 	s.Equal(500, response.Code)
 	var status radixhttp.Error
-	controllertest.GetResponseBody(response, &status)
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
 	s.Equal(fmt.Sprintf("Failed to update TLS private key and certificate for %q", fqdn), status.Message)
 }
