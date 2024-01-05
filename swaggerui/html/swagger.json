@@ -7477,7 +7477,7 @@
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
     },
     "TLS": {
-      "description": "TLS",
+      "description": "TLS configuration and status for external DNS",
       "type": "object",
       "required": [
         "useAutomation",
@@ -7486,7 +7486,16 @@
       ],
       "properties": {
         "certificateStatus": {
-          "$ref": "#/definitions/TLSStatus"
+          "description": "Status of the certificate\nPending: Certificate is not set\nConsistent: Certificate is set and is valid\nInvalid: Certificate is set but is invalid\nPending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent",
+            "Invalid"
+          ],
+          "x-go-enum-desc": "Pending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "x-go-name": "CertificateStatus",
+          "example": "Consistent"
         },
         "certificateStatusMessages": {
           "description": "CertificateStatusMessages contains a list of messages related to CertificateStatus",
@@ -7505,7 +7514,16 @@
           "x-go-name": "Certificates"
         },
         "privateKeyStatus": {
-          "$ref": "#/definitions/TLSStatus"
+          "description": "Status of the private key\nPending: Private key is not set\nConsistent: Private key is set and is valid\nInvalid: Private key is set but is invalid\nPending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent",
+            "Invalid"
+          ],
+          "x-go-enum-desc": "Pending TLSStatusPending\nConsistent TLSStatusConsistent\nInvalid TLSStatusInvalid",
+          "x-go-name": "PrivateKeyStatus",
+          "example": "Consistent"
         },
         "privateKeyStatusMessages": {
           "description": "PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus",
@@ -7521,12 +7539,6 @@
           "x-go-name": "UseAutomation"
         }
       },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
-    },
-    "TLSStatus": {
-      "description": "TLSStatus Enum of TLS private key status",
-      "type": "integer",
-      "format": "uint8",
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
     "UpdateAlertingConfig": {

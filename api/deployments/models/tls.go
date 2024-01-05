@@ -2,13 +2,20 @@ package models
 
 import (
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"time"
 )
 
-// TLS
+// swagger:enum TLSStatus
+type TLSStatus string
+
+const (
+	TLSStatusPending    TLSStatus = "Pending"
+	TLSStatusConsistent TLSStatus = "Consistent"
+	TLSStatusInvalid    TLSStatus = "Invalid"
+)
+
+// TLS configuration and status for external DNS
 // swagger:model TLS
 type TLS struct {
 	// UseAutomation describes if TLS certificate is automatically issued using automation (ACME)
@@ -51,46 +58,6 @@ type TLS struct {
 	//
 	// required: false
 	Certificates []X509Certificate `json:"certificates,omitempty"`
-}
-
-const (
-	TLSStatusPending TLSStatus = iota + 1
-	TLSStatusConsistent
-	TLSStatusInvalid
-)
-
-var (
-	tlsStatusNames = map[TLSStatus]string{
-		TLSStatusPending:    "Pending",
-		TLSStatusConsistent: "Consistent",
-		TLSStatusInvalid:    "Invalid",
-	}
-)
-
-// TLSStatus Enum of TLS private key status
-type TLSStatus uint8
-
-func (s *TLSStatus) String() string {
-	return tlsStatusNames[*s]
-}
-
-func (s *TLSStatus) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
-
-func (s *TLSStatus) UnmarshalJSON(data []byte) error {
-	var status string
-	if err := json.Unmarshal(data, &status); err != nil {
-		return err
-	}
-
-	for k, v := range tlsStatusNames {
-		if v == status {
-			*s = k
-			return nil
-		}
-	}
-	return fmt.Errorf("%q is not a valid status", status)
 }
 
 // X509Certificate holds information about a X509 certificate
