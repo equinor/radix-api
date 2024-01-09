@@ -6,28 +6,16 @@ import (
 	"time"
 )
 
-// swagger:enum PrivateKeyStatusEnum
-type PrivateKeyStatusEnum string
+// swagger:enum TLSStatusEnum
+type TLSStatusEnum string
 
 const (
-	// Private key is not set
-	PrivateKeyPending PrivateKeyStatusEnum = "Pending"
-	// Private key is valid
-	PrivateKeyConsistent PrivateKeyStatusEnum = "Consistent"
-	// Private key is invalid
-	PrivateKeyInvalid PrivateKeyStatusEnum = "Invalid"
-)
-
-// swagger:enum CertificateStatusEnum
-type CertificateStatusEnum string
-
-const (
-	// Certificate is not set
-	CertificatePending CertificateStatusEnum = "Pending"
-	// Certificate is valid
-	CertificateConsistent CertificateStatusEnum = "Consistent"
-	// Certificate is invalid
-	CertificateInvalid CertificateStatusEnum = "Invalid"
+	// TLS certificate and private key not set
+	TLSStatusPending TLSStatusEnum = "Pending"
+	// TLS certificate and private key is valid
+	TLSStatusConsistent TLSStatusEnum = "Consistent"
+	// TLS certificate and private key is invalid
+	TLSStatusInvalid TLSStatusEnum = "Invalid"
 )
 
 // TLS configuration and status for external DNS
@@ -38,27 +26,16 @@ type TLS struct {
 	// required: true
 	UseAutomation bool `json:"useAutomation"`
 
-	// Status of the private key
+	// Status of TLS certificate and private key
 	//
 	// required: true
 	// example: Consistent
-	PrivateKeyStatus PrivateKeyStatusEnum `json:"privateKeyStatus"`
+	Status TLSStatusEnum `json:"status"`
 
-	// PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus
+	// StatusMessages contains a list of messages related to Status
 	//
 	// required: false
-	PrivateKeyStatusMessages []string `json:"privateKeyStatusMessages,omitempty"`
-
-	// Status of the certificate
-	//
-	// required: true
-	// example: Consistent
-	CertificateStatus CertificateStatusEnum `json:"certificateStatus"`
-
-	// CertificateStatusMessages contains a list of messages related to CertificateStatus
-	//
-	// required: false
-	CertificateStatusMessages []string `json:"certificateStatusMessages,omitempty"`
+	StatusMessages []string `json:"statusMessages,omitempty"`
 
 	// Certificates holds the X509 certificate chain
 	// The first certificate in the list should be the host certificate and the rest should be intermediate certificates

@@ -81,42 +81,26 @@ func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secre
 
 	for _, externalAlias := range component.GetExternalDNS() {
 		var certData, keyData []byte
-		certStatus := deploymentModels.CertificateConsistent
-		keyStatus := deploymentModels.PrivateKeyConsistent
+		status := deploymentModels.TLSStatusConsistent
 
 		if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias.FQDN)); ok {
 			certData = secretValue.Data[corev1.TLSCertKey]
-			if certValue := strings.TrimSpace(string(certData)); len(certValue) == 0 || strings.EqualFold(certValue, secretDefaultData) {
-				certStatus = deploymentModels.CertificatePending
-				certData = nil
-			}
-
 			keyData = secretValue.Data[corev1.TLSPrivateKeyKey]
-			if keyValue := strings.TrimSpace(string(keyData)); len(keyValue) == 0 || strings.EqualFold(keyValue, secretDefaultData) {
-				keyStatus = deploymentModels.PrivateKeyPending
-				keyData = nil
+			if certValue, keyValue := strings.TrimSpace(string(certData)), strings.TrimSpace(string(keyData)); len(certValue) == 0 || len(keyValue) == 0 || strings.EqualFold(certValue, secretDefaultData) || strings.EqualFold(keyValue, secretDefaultData) {
+				status = deploymentModels.TLSStatusPending
 			}
 		} else {
-			certStatus = deploymentModels.CertificatePending
-			keyStatus = deploymentModels.PrivateKeyPending
+			status = deploymentModels.TLSStatusPending
 		}
 
 		var x509Certs []deploymentModels.X509Certificate
-		var certStatusMessages []string
-		if certStatus == deploymentModels.CertificateConsistent {
+		var statusMessages []string
+		if status == deploymentModels.TLSStatusConsistent {
 			x509Certs = append(x509Certs, deploymentModels.ParseX509CertificatesFromPEM(certData)...)
 
 			if certIsValid, messages := tlsValidator.ValidateX509Certificate(certData, keyData, externalAlias.FQDN); !certIsValid {
-				certStatus = deploymentModels.CertificateInvalid
-				certStatusMessages = append(certStatusMessages, messages...)
-			}
-		}
-
-		var keyStatusMessages []string
-		if keyStatus == deploymentModels.PrivateKeyConsistent {
-			if keyIsValid, messages := tlsValidator.ValidatePrivateKey(keyData); !keyIsValid {
-				keyStatus = deploymentModels.PrivateKeyInvalid
-				keyStatusMessages = append(keyStatusMessages, messages...)
+				status = deploymentModels.TLSStatusInvalid
+				statusMessages = append(statusMessages, messages...)
 			}
 		}
 
@@ -124,12 +108,10 @@ func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secre
 			deploymentModels.ExternalDNS{
 				FQDN: externalAlias.FQDN,
 				TLS: deploymentModels.TLS{
-					UseAutomation:             externalAlias.UseCertificateAutomation,
-					PrivateKeyStatus:          keyStatus,
-					PrivateKeyStatusMessages:  keyStatusMessages,
-					CertificateStatus:         certStatus,
-					CertificateStatusMessages: certStatusMessages,
-					Certificates:              x509Certs,
+					UseAutomation:  externalAlias.UseCertificateAutomation,
+					Status:         status,
+					StatusMessages: statusMessages,
+					Certificates:   x509Certs,
 				},
 			},
 		)

@@ -33,21 +33,6 @@ func (m *MockValidator) EXPECT() *MockValidatorMockRecorder {
 	return m.recorder
 }
 
-// ValidatePrivateKey mocks base method.
-func (m *MockValidator) ValidatePrivateKey(keyBytes []byte) (bool, []string) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidatePrivateKey", keyBytes)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].([]string)
-	return ret0, ret1
-}
-
-// ValidatePrivateKey indicates an expected call of ValidatePrivateKey.
-func (mr *MockValidatorMockRecorder) ValidatePrivateKey(keyBytes interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidatePrivateKey", reflect.TypeOf((*MockValidator)(nil).ValidatePrivateKey), keyBytes)
-}
-
 // ValidateX509Certificate mocks base method.
 func (m *MockValidator) ValidateX509Certificate(certBytes, keyBytes []byte, dnsName string) (bool, []string) {
 	m.ctrl.T.Helper()

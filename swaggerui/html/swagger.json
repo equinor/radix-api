@@ -1903,7 +1903,7 @@
           "component"
         ],
         "summary": "Set external DNS TLS private key certificate for a component",
-        "operationId": "setComponentExternalDNSTLS",
+        "operationId": "updateComponentExternalDnsTls",
         "parameters": [
           {
             "type": "string",
@@ -1939,7 +1939,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/SetExternalDNSTLSRequest"
+              "$ref": "#/definitions/UpdateExternalDnsTlsRequest"
             }
           },
           {
@@ -7380,27 +7380,6 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
     },
-    "SetExternalDNSTLSRequest": {
-      "description": "SetExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS",
-      "type": "object",
-      "required": [
-        "privateKey",
-        "certificate"
-      ],
-      "properties": {
-        "certificate": {
-          "description": "X509 certificate in PEM format",
-          "type": "string",
-          "x-go-name": "Certificate"
-        },
-        "privateKey": {
-          "description": "Private key in PEM format",
-          "type": "string",
-          "x-go-name": "PrivateKey"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
-    },
     "SlackConfig": {
       "description": "SlackConfig configuration options for Slack",
       "type": "object",
@@ -7481,30 +7460,9 @@
       "type": "object",
       "required": [
         "useAutomation",
-        "privateKeyStatus",
-        "certificateStatus"
+        "status"
       ],
       "properties": {
-        "certificateStatus": {
-          "description": "Status of the certificate\nPending CertificatePending  Certificate is not set\nConsistent CertificateConsistent  Certificate is valid\nInvalid CertificateInvalid  Certificate is invalid",
-          "type": "string",
-          "enum": [
-            "Pending",
-            "Consistent",
-            "Invalid"
-          ],
-          "x-go-enum-desc": "Pending CertificatePending  Certificate is not set\nConsistent CertificateConsistent  Certificate is valid\nInvalid CertificateInvalid  Certificate is invalid",
-          "x-go-name": "CertificateStatus",
-          "example": "Consistent"
-        },
-        "certificateStatusMessages": {
-          "description": "CertificateStatusMessages contains a list of messages related to CertificateStatus",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "CertificateStatusMessages"
-        },
         "certificates": {
           "description": "Certificates holds the X509 certificate chain\nThe first certificate in the list should be the host certificate and the rest should be intermediate certificates",
           "type": "array",
@@ -7513,25 +7471,25 @@
           },
           "x-go-name": "Certificates"
         },
-        "privateKeyStatus": {
-          "description": "Status of the private key\nPending PrivateKeyPending  Private key is not set\nConsistent PrivateKeyConsistent  Private key is valid\nInvalid PrivateKeyInvalid  Private key is invalid",
+        "status": {
+          "description": "Status of TLS certificate and private key\nPending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
           "type": "string",
           "enum": [
             "Pending",
             "Consistent",
             "Invalid"
           ],
-          "x-go-enum-desc": "Pending PrivateKeyPending  Private key is not set\nConsistent PrivateKeyConsistent  Private key is valid\nInvalid PrivateKeyInvalid  Private key is invalid",
-          "x-go-name": "PrivateKeyStatus",
+          "x-go-enum-desc": "Pending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
+          "x-go-name": "Status",
           "example": "Consistent"
         },
-        "privateKeyStatusMessages": {
-          "description": "PrivateKeyStatusMessages contains a list of messages related to PrivateKeyStatus",
+        "statusMessages": {
+          "description": "StatusMessages contains a list of messages related to Status",
           "type": "array",
           "items": {
             "type": "string"
           },
-          "x-go-name": "PrivateKeyStatusMessages"
+          "x-go-name": "StatusMessages"
         },
         "useAutomation": {
           "description": "UseAutomation describes if TLS certificate is automatically issued using automation (ACME)",
@@ -7561,6 +7519,28 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateExternalDnsTlsRequest": {
+      "description": "UpdateExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS",
+      "type": "object",
+      "required": [
+        "privateKey",
+        "certificate"
+      ],
+      "properties": {
+        "certificate": {
+          "description": "X509 certificate in PEM format",
+          "type": "string",
+          "x-go-name": "Certificate"
+        },
+        "privateKey": {
+          "description": "Private key in PEM format",
+          "type": "string",
+          "x-go-name": "PrivateKey"
+        }
+      },
+      "x-go-name": "UpdateExternalDNSTLSRequest",
+      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
     },
     "UpdateReceiverConfigSecrets": {
       "description": "UpdateReceiverConfigSecrets defines secrets to be updated",

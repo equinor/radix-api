@@ -124,7 +124,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_Consistent() {
 	dnsNames := []string{"dns1", "dns2"}
 	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
 
-	s.tlsValidator.EXPECT().ValidatePrivateKey(keyBytes).Return(true, nil).Times(1)
 	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
 
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
@@ -151,8 +150,7 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_Consistent() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
-			CertificateStatus: deploymentModels.CertificateConsistent,
+			Status: deploymentModels.TLSStatusConsistent,
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,
 				Issuer:    "CN=" + issuerCN,
@@ -165,14 +163,12 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_Consistent() {
 	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
 }
 
-func (s *externalDnsTestSuite) Test_ExternalDNS_MissingKeyData() {
+func (s *externalDnsTestSuite) Test_ExternalDNS_MissingPrivateKeyData() {
 	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
 	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
 	certCN, issuerCN := "one.example.com", "issuer.example.com"
 	dnsNames := []string{"dns1", "dns2"}
 	certBytes := s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
-
-	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, nil, s.alias).Return(true, nil).Times(1)
 
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsValidator = s.tlsValidator
@@ -198,65 +194,7 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingKeyData() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.PrivateKeyPending,
-			CertificateStatus: deploymentModels.CertificateConsistent,
-			Certificates: []deploymentModels.X509Certificate{{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: notBefore,
-				NotAfter:  notAfter,
-				DNSNames:  dnsNames,
-			}},
-		},
-	}}
-	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
-}
-
-func (s *externalDnsTestSuite) Test_ExternalDNS_KeyDataValidationError() {
-	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
-	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
-	certCN, issuerCN := "one.example.com", "issuer.example.com"
-	dnsNames := []string{"dns1", "dns2"}
-	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
-	keyValidationMsg := "any message"
-
-	s.tlsValidator.EXPECT().ValidatePrivateKey(keyBytes).Return(false, []string{keyValidationMsg}).Times(1)
-	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
-
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
-	sut.tlsValidator = s.tlsValidator
-
-	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: s.alias,
-			},
-			Data: map[string][]byte{
-				corev1.TLSPrivateKeyKey: keyBytes,
-				corev1.TLSCertKey:       certBytes,
-			},
-		},
-		metav1.CreateOptions{},
-	)
-	require.NoError(s.T(), err)
-
-	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
-	s.Equal(statusCode, 200)
-	s.NoError(err)
-
-	expectedExternalDNS := []deploymentModels.ExternalDNS{{
-		FQDN: s.alias,
-		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:         deploymentModels.PrivateKeyInvalid,
-			PrivateKeyStatusMessages: []string{keyValidationMsg},
-			CertificateStatus:        deploymentModels.CertificateConsistent,
-			Certificates: []deploymentModels.X509Certificate{{
-				Subject:   "CN=" + certCN,
-				Issuer:    "CN=" + issuerCN,
-				NotBefore: notBefore,
-				NotAfter:  notAfter,
-				DNSNames:  dnsNames,
-			}},
+			Status: deploymentModels.TLSStatusPending,
 		},
 	}}
 	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
@@ -264,9 +202,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_KeyDataValidationError() {
 
 func (s *externalDnsTestSuite) Test_ExternalDNS_MissingCertData() {
 	keyBytes := []byte("any key")
-
-	s.tlsValidator.EXPECT().ValidatePrivateKey(keyBytes).Return(true, nil).Times(1)
-
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
 	sut.tlsValidator = s.tlsValidator
 
@@ -291,45 +226,7 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingCertData() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
-			CertificateStatus: deploymentModels.CertificatePending,
-		},
-	}}
-	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
-}
-
-func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataParseError() {
-	keyBytes, certBytes := []byte("any key"), []byte("any cert")
-
-	s.tlsValidator.EXPECT().ValidatePrivateKey(keyBytes).Return(true, nil).Times(1)
-	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
-
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
-	sut.tlsValidator = s.tlsValidator
-
-	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: s.alias,
-			},
-			Data: map[string][]byte{
-				corev1.TLSPrivateKeyKey: keyBytes,
-				corev1.TLSCertKey:       certBytes,
-			},
-		},
-		metav1.CreateOptions{},
-	)
-	require.NoError(s.T(), err)
-
-	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
-	s.Equal(statusCode, 200)
-	s.NoError(err)
-
-	expectedExternalDNS := []deploymentModels.ExternalDNS{{
-		FQDN: s.alias,
-		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:  deploymentModels.PrivateKeyConsistent,
-			CertificateStatus: deploymentModels.CertificateConsistent,
+			Status: deploymentModels.TLSStatusPending,
 		},
 	}}
 	s.ElementsMatch(expectedExternalDNS, environment.ActiveDeployment.Components[0].ExternalDNS)
@@ -343,7 +240,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataValidationError() {
 	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
 	certValidationMsg := "any msg"
 
-	s.tlsValidator.EXPECT().ValidatePrivateKey(keyBytes).Return(true, nil).Times(1)
 	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(false, []string{certValidationMsg}).Times(1)
 
 	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
@@ -370,9 +266,8 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataValidationError() {
 	expectedExternalDNS := []deploymentModels.ExternalDNS{{
 		FQDN: s.alias,
 		TLS: deploymentModels.TLS{
-			PrivateKeyStatus:          deploymentModels.PrivateKeyConsistent,
-			CertificateStatus:         deploymentModels.CertificateInvalid,
-			CertificateStatusMessages: []string{certValidationMsg},
+			Status:         deploymentModels.TLSStatusInvalid,
+			StatusMessages: []string{certValidationMsg},
 			Certificates: []deploymentModels.X509Certificate{{
 				Subject:   "CN=" + certCN,
 				Issuer:    "CN=" + issuerCN,

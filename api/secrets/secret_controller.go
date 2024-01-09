@@ -40,7 +40,7 @@ func (c *secretController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls",
 			Method:      "PUT",
-			HandlerFunc: c.SetComponentExternalDNSTLS,
+			HandlerFunc: c.UpdateComponentExternalDNSTLS,
 		},
 	}
 	return routes
@@ -203,9 +203,9 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 	c.JSONResponse(w, r, secretStatuses)
 }
 
-// SetComponentExternalDNSTLS Set external DNS TLS private key and certificate for a component
-func (c *secretController) SetComponentExternalDNSTLS(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls component setComponentExternalDNSTLS
+// UpdateComponentExternalDNSTLS Set external DNS TLS private key and certificate for a component
+func (c *secretController) UpdateComponentExternalDNSTLS(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls component updateComponentExternalDnsTls
 	// ---
 	// summary: Set external DNS TLS private key certificate for a component
 	// parameters:
@@ -234,7 +234,7 @@ func (c *secretController) SetComponentExternalDNSTLS(accounts models.Accounts, 
 	//   description: New TLS private key and certificate
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/SetExternalDNSTLSRequest"
+	//       "$ref": "#/definitions/UpdateExternalDnsTlsRequest"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -266,7 +266,7 @@ func (c *secretController) SetComponentExternalDNSTLS(accounts models.Accounts, 
 	componentName := mux.Vars(r)["componentName"]
 	fqdn := mux.Vars(r)["fqdn"]
 
-	var requestBody secretModels.SetExternalDNSTLSRequest
+	var requestBody secretModels.UpdateExternalDNSTLSRequest
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		c.ErrorResponse(w, r, err)
 		return
@@ -274,7 +274,7 @@ func (c *secretController) SetComponentExternalDNSTLS(accounts models.Accounts, 
 
 	handler := c.getSecretHandler(accounts)
 
-	if err := handler.SetComponentExternalDNSSecretData(r.Context(), appName, envName, componentName, fqdn, requestBody.Certificate, requestBody.PrivateKey); err != nil {
+	if err := handler.UpdateComponentExternalDNSSecretData(r.Context(), appName, envName, componentName, fqdn, requestBody.Certificate, requestBody.PrivateKey); err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}

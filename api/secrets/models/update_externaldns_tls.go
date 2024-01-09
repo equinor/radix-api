@@ -1,8 +1,8 @@
 package models
 
-// SetExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS
-// swagger:model SetExternalDNSTLSRequest
-type SetExternalDNSTLSRequest struct {
+// UpdateExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS
+// swagger:model UpdateExternalDnsTlsRequest
+type UpdateExternalDNSTLSRequest struct {
 	// Private key in PEM format
 	//
 	// required: true
