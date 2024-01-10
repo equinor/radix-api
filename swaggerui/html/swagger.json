@@ -2196,7 +2196,7 @@
     "/applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName}": {
       "get": {
         "tags": [
-          "component"
+          "environment"
         ],
         "summary": "Get Azure Key vault secret versions for a component",
         "operationId": "getAzureKeyVaultSecretVersions",
@@ -2282,7 +2282,7 @@
     "/applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName}": {
       "put": {
         "tags": [
-          "component"
+          "environment"
         ],
         "summary": "Update an application environment component secret",
         "operationId": "changeComponentSecret",

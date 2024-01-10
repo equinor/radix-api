@@ -48,7 +48,7 @@ func (c *secretController) GetRoutes() models.Routes {
 
 // ChangeComponentSecret Modifies an application environment component secret
 func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} component changeComponentSecret
+	// swagger:operation PUT /applications/{appName}/environments/{envName}/components/{componentName}/secrets/{secretName} environment changeComponentSecret
 	// ---
 	// summary: Update an application environment component secret
 	// parameters:
@@ -127,7 +127,7 @@ func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w htt
 
 // GetAzureKeyVaultSecretVersions Get Azure Key vault secret versions for a component
 func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} component getAzureKeyVaultSecretVersions
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/secrets/azure/keyvault/{azureKeyVaultName} environment getAzureKeyVaultSecretVersions
 	// ---
 	// summary: Get Azure Key vault secret versions for a component
 	// parameters:
