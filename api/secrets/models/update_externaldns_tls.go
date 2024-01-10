@@ -12,4 +12,9 @@ type UpdateExternalDNSTLSRequest struct {
 	//
 	// required: true
 	Certificate string `json:"certificate"`
+
+	// Skip validation of certificate and private key
+	//
+	// required: false
+	SkipValidation bool `json:"skipValidation"`
 }

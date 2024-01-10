@@ -327,6 +327,24 @@ func (s *externalDNSSecretTestSuite) Test_UpdateSuccess() {
 	s.Equal(expectedSecretData, secret.Data)
 }
 
+func (s *externalDNSSecretTestSuite) Test_SkipValidationDoesNotCallValidator() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+	s.Require().NoError(s.setupSecretForExternalDNS(ns, fqdn, nil, nil))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert, SkipValidation: true})
+	s.Equal(200, response.Code)
+	expectedSecretData := map[string][]byte{
+		corev1.TLSCertKey:       []byte(cert),
+		corev1.TLSPrivateKeyKey: []byte(privateKey),
+	}
+	secret, err := s.kubeClient.CoreV1().Secrets(ns).Get(context.Background(), fqdn, metav1.GetOptions{})
+	s.Require().NoError(err)
+	s.Equal(expectedSecretData, secret.Data)
+}
+
 func (s *externalDNSSecretTestSuite) Test_RadixDeploymentNotActive() {
 	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
 	privateKey, cert := "any private key", "any certificate"

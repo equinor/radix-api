@@ -139,7 +139,7 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 	return eh.setSecretKeyValue(ctx, ns, secretObjName, map[string][]byte{partName: []byte(newSecretValue)})
 }
 
-func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string) error {
+func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string, skipValidation bool) error {
 	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
 	if err != nil {
 		return radixhttp.UnexpectedError("Failed to get deployments", err)
@@ -165,10 +165,13 @@ func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Contex
 	}
 
 	certificateBytes, privateKeyBytes := []byte(certificate), []byte(privateKey)
-	tlsValidator := eh.getTLSValidatorOrDefault()
 
-	if valid, validationMsgs := tlsValidator.ValidateX509Certificate(certificateBytes, privateKeyBytes, fqdn); !valid {
-		return radixhttp.ValidationError("TLS", strings.Join(validationMsgs, ", "))
+	if !skipValidation {
+		tlsValidator := eh.getTLSValidatorOrDefault()
+
+		if valid, validationMsgs := tlsValidator.ValidateX509Certificate(certificateBytes, privateKeyBytes, fqdn); !valid {
+			return radixhttp.ValidationError("TLS", strings.Join(validationMsgs, ", "))
+		}
 	}
 
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)

@@ -7537,6 +7537,11 @@
           "description": "Private key in PEM format",
           "type": "string",
           "x-go-name": "PrivateKey"
+        },
+        "skipValidation": {
+          "description": "Skip validation of certificate and private key",
+          "type": "boolean",
+          "x-go-name": "SkipValidation"
         }
       },
       "x-go-name": "UpdateExternalDNSTLSRequest",

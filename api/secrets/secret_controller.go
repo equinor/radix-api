@@ -274,7 +274,7 @@ func (c *secretController) UpdateComponentExternalDNSTLS(accounts models.Account
 
 	handler := c.getSecretHandler(accounts)
 
-	if err := handler.UpdateComponentExternalDNSSecretData(r.Context(), appName, envName, componentName, fqdn, requestBody.Certificate, requestBody.PrivateKey); err != nil {
+	if err := handler.UpdateComponentExternalDNSSecretData(r.Context(), appName, envName, componentName, fqdn, requestBody.Certificate, requestBody.PrivateKey, requestBody.SkipValidation); err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
