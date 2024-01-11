@@ -359,7 +359,6 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 				WithImage("radixdev.azurecr.io/some-image:imagetag").
 				WithName("frontend").
 				WithPort("http", 8080).
-				WithPublicPort("http").
 				WithReplicas(commontest.IntPtr(1)),
 			builders.NewDeployComponentBuilder().
 				WithImage("radixdev.azurecr.io/another-image:imagetag").
