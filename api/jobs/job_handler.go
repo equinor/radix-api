@@ -242,7 +242,7 @@ func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.Pip
 			stepModel.StatusMessage = stepStatus.Terminated.Message
 		} else if stepStatus.Running != nil {
 			stepModel.Started = radixutils.FormatTime(&stepStatus.Running.StartedAt)
-			stepModel.Status = jobModels.TaskRunReason(jobModels.Running.String())
+			stepModel.Status = jobModels.TaskRunReasonRunning
 		} else if stepStatus.Waiting != nil {
 			stepModel.Status = jobModels.TaskRunReason(stepStatus.Waiting.Reason)
 			stepModel.StatusMessage = stepStatus.Waiting.Message
