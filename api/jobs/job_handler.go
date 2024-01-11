@@ -238,13 +238,13 @@ func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.Pip
 		if stepStatus.Terminated != nil {
 			stepModel.Started = radixutils.FormatTime(&stepStatus.Terminated.StartedAt)
 			stepModel.Ended = radixutils.FormatTime(&stepStatus.Terminated.FinishedAt)
-			stepModel.Status = stepStatus.Terminated.Reason
+			stepModel.Status = jobModels.TaskRunReason(stepStatus.Terminated.Reason)
 			stepModel.StatusMessage = stepStatus.Terminated.Message
 		} else if stepStatus.Running != nil {
 			stepModel.Started = radixutils.FormatTime(&stepStatus.Running.StartedAt)
-			stepModel.Status = jobModels.Running.String()
+			stepModel.Status = jobModels.TaskRunReason(jobModels.Running.String())
 		} else if stepStatus.Waiting != nil {
-			stepModel.Status = stepStatus.Waiting.Reason
+			stepModel.Status = jobModels.TaskRunReason(stepStatus.Waiting.Reason)
 			stepModel.StatusMessage = stepStatus.Waiting.Message
 		}
 		stepsModels = append(stepsModels, stepModel)
