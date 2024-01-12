@@ -85,6 +85,8 @@ github.com/equinor/radix-job-scheduler v1.8.5 h1:ahw6FkFpPV167B1/w7/aQKpVMmU5Vc7
 github.com/equinor/radix-job-scheduler v1.8.5/go.mod h1:rNIQU1eCInLV8Yl+5SRITOUU52QwYioYrIGQcsDc3kg=
 github.com/equinor/radix-operator v1.47.2 h1:QYOIDhx0zfjrHcipl/AuO+O8cMOqQ6ELESoIsj0BWZo=
 github.com/equinor/radix-operator v1.47.2/go.mod h1:kwwnvyW1WKCKiXVSKNhkG7zAe1sFC2XW9IbNZsCCgRw=
+github.com/equinor/radix-operator v1.48.4-0.20240112124339-78831ac2b9fc h1:FIqLXEseOiL/AL9MC3/Epfc/G5gAoCLklGfEuhZVNnM=
+github.com/equinor/radix-operator v1.48.4-0.20240112124339-78831ac2b9fc/go.mod h1:kwwnvyW1WKCKiXVSKNhkG7zAe1sFC2XW9IbNZsCCgRw=
 github.com/evanphx/json-patch v5.7.0+incompatible h1:vgGkfT/9f8zE6tvSCe74nfpAVDQ2tG6yudJd8LBksgI=
 github.com/evanphx/json-patch v5.7.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.7.0 h1:nJqP7uwL84RJInrohHfW0Fx3awjbm8qZeFv0nW9SYGc=
@@ -330,6 +332,8 @@ github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k
 github.com/prometheus/procfs v0.12.0/go.mod h1:pcuDEFsWDnvcgNzo4EEweacyhjeA9Zk3cnaOZAZEfOo=
 github.com/prometheus/statsd_exporter v0.22.7 h1:7Pji/i2GuhK6Lu7DHrtTkFmNBCudCPT1pX2CziuyQR0=
 github.com/prometheus/statsd_exporter v0.22.7/go.mod h1:N/TevpjkIh9ccs6nuzY3jQn9dFqnUakOjnEuMPJJJnI=
+github.com/rakyll/statik v0.1.7 h1:OF3QCZUuyPxuGEP7B4ypUa7sB/iHtqOTDYZXGM8KOdQ=
+github.com/rakyll/statik v0.1.7/go.mod h1:AlZONWzMtEnMs7W4e/1LURLiI49pIMmp6V9Unghqrcc=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=

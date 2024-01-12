@@ -97,6 +97,7 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			ToEnvironment: jobSpec.ToEnvironment,
 			ImageTagNames: jobSpec.ImageTagNames,
 			CommitID:      jobSpec.CommitID,
+			Components:    jobSpec.Components,
 		}
 	}
 

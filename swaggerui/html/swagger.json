@@ -6513,6 +6513,12 @@
           "x-go-name": "CommitID",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
         },
+        "components": {
+          "description": "Components List of components to deploy\nOPTIONAL If specified, only these components are deployed",
+          "type": "string",
+          "x-go-name": "Components",
+          "example": "component1,component2"
+        },
         "imageTagNames": {
           "description": "Image tags names for components",
           "type": "object",
