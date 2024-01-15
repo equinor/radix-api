@@ -1,6 +1,6 @@
 package models
 
-import v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+import tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 // PipelineRunTaskStep holds general information about pipeline run task steps
 // swagger:model PipelineRunTaskStep
@@ -14,7 +14,6 @@ type PipelineRunTaskStep struct {
 	// Status of the task
 	//
 	// required: false
-	// example: Completed
 	Status TaskRunReason `json:"status"`
 
 	// StatusMessage of the task
@@ -37,7 +36,7 @@ type PipelineRunTaskStep struct {
 
 // TaskRunReason copies the fields from github.com/tektoncd/pipeline so go-swagger can map the enums
 // swagger:enum TaskRunReason
-type TaskRunReason v1.TaskRunReason
+type TaskRunReason tektonv1.TaskRunReason
 
 const (
 	// TaskRunReasonStarted is the reason set when the TaskRun has just started

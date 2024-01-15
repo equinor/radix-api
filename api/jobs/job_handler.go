@@ -194,7 +194,7 @@ func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.Pipelin
 	}
 	runCondition := getLastReadyCondition(pipelineRun.Status.Conditions)
 	if runCondition != nil {
-		pipelineRunModel.Status = runCondition.Reason
+		pipelineRunModel.Status = jobModels.TaskRunReason(runCondition.Reason)
 		pipelineRunModel.StatusMessage = runCondition.Message
 	}
 	return &pipelineRunModel
@@ -221,7 +221,7 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 	pipelineTaskModel.Ended = radixutils.FormatTime(taskRun.Status.CompletionTime)
 	taskCondition := getLastReadyCondition(taskRun.Status.Conditions)
 	if taskCondition != nil {
-		pipelineTaskModel.Status = taskCondition.Reason
+		pipelineTaskModel.Status = jobModels.PipelineRunReason(taskCondition.Reason)
 		pipelineTaskModel.StatusMessage = taskCondition.Message
 	}
 	logEmbeddedCommandIndex := strings.Index(pipelineTaskModel.StatusMessage, "for logs run")
