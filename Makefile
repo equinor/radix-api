@@ -44,9 +44,8 @@ build-kaniko:
 .PHONY: swagger
 swagger: SHELL:=/bin/bash
 swagger: bootstrap
-	swagger generate spec -o ./swagger.json --scan-models --exclude-deps
-	swagger validate ./swagger.json
-	mv swagger.json ./swaggerui/html/swagger.json
+	swagger generate spec -o ./swaggerui/html/swagger.json --scan-models --exclude-deps
+	swagger validate ./swaggerui/html/swagger.json
 
 .PHONY: $(BINS)
 $(BINS): bootstrap
