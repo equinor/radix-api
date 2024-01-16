@@ -127,7 +127,7 @@ type Job struct {
 	// ComponentsToDeploy List of components to deploy
 	// OPTIONAL If specified, only these components are deployed
 	//
-	// example: component1,component2
+	// required: false
 	ComponentsToDeploy []string `json:"componentsToDeploy,omitempty"`
 }
 

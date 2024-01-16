@@ -103,7 +103,7 @@ type Component struct {
 	// required: false
 	ExternalDNS []ExternalDNS `json:"externalDNS,omitempty"`
 
-	// Commit ID for the component. In can be different from the Commit ID, defined for entire deployment
+	// Commit ID for the component. It can be different from the Commit ID, specified in deployment label
 	//
 	// required: false
 	CommitID string `json:",inline"`

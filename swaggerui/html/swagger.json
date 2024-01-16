@@ -5496,7 +5496,7 @@
       ],
       "properties": {
         "CommitID": {
-          "description": "Commit ID for the component. In can be different from the Commit ID, defined for entire deployment",
+          "description": "Commit ID for the component. It can be different from the Commit ID, specified in deployment label",
           "type": "string"
         },
         "externalDNS": {
@@ -6290,8 +6290,7 @@
           "items": {
             "type": "string"
           },
-          "x-go-name": "ComponentsToDeploy",
-          "example": "component1,component2"
+          "x-go-name": "ComponentsToDeploy"
         },
         "created": {
           "description": "Created timestamp",
