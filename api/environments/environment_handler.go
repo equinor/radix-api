@@ -17,7 +17,7 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"github.com/equinor/radix-api/api/utils/predicate"
-	"github.com/equinor/radix-api/api/utils/tlsvalidator"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -60,10 +60,10 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 	}
 }
 
-// WithTLSSecretValidator configures the tlsSecretValidator used by EnvironmentHandler
-func WithTLSSecretValidator(validator tlsvalidator.TLSSecretValidator) EnvironmentHandlerOptions {
+// WithTLSValidator configures the tlsValidator used by EnvironmentHandler
+func WithTLSValidator(validator tlsvalidation.Validator) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
-		eh.tlsSecretValidator = validator
+		eh.tlsValidator = validator
 	}
 }
 
@@ -99,7 +99,7 @@ type EnvironmentHandler struct {
 	accounts                   models.Accounts
 	kubeUtil                   *kube.Kube
 	kubeUtilForServiceAccount  *kube.Kube
-	tlsSecretValidator         tlsvalidator.TLSSecretValidator
+	tlsValidator               tlsvalidation.Validator
 	jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface
 }
 
@@ -204,7 +204,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 		return nil, err
 	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsSecretValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsValidator)
 	return env, nil
 }
 
