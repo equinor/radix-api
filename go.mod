@@ -3,9 +3,9 @@ module github.com/equinor/radix-api
 go 1.21
 
 require (
-	github.com/equinor/radix-common v1.7.1
+	github.com/equinor/radix-common v1.8.0
 	github.com/equinor/radix-job-scheduler v1.8.5
-	github.com/equinor/radix-operator v1.47.2
+	github.com/equinor/radix-operator v1.49.0
 	github.com/evanphx/json-patch/v5 v5.7.0
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -41,6 +41,7 @@ require (
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/elnormous/contenttype v1.0.4 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

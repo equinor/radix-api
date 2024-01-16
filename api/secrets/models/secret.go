@@ -47,20 +47,9 @@ type Secret struct {
 	// - NotAvailable = Secret is available in external secret configuration but not in cluster
 	//
 	// required: false
-	// enum: Pending,Consistent,NotAvailable,Invalid
+	// enum: Pending,Consistent,NotAvailable
 	// example: Consistent
 	Status string `json:"status,omitempty"`
-
-	// StatusMessages contains a list of messages related to the Status
-	//
-	// required: false
-	StatusMessages []string `json:"statusMessages,omitempty"`
-
-	// TLSCertificates holds the TLS certificate and certificate authorities (CA)
-	// The first certificate in the list should be the TLS certificate and the rest should be CA certificates
-	//
-	// required: false
-	TLSCertificates []TLSCertificate `json:"tlsCertificates,omitempty"`
 }
 
 // swagger:enum SecretType
@@ -68,7 +57,6 @@ type SecretType string
 
 const (
 	SecretTypeGeneric               SecretType = "generic"
-	SecretTypeClientCert            SecretType = "client-cert"
 	SecretTypeAzureBlobFuseVolume   SecretType = "azure-blob-fuse-volume"
 	SecretTypeCsiAzureBlobVolume    SecretType = "csi-azure-blob-volume"
 	SecretTypeCsiAzureKeyVaultCreds SecretType = "csi-azure-key-vault-creds"
@@ -78,8 +66,6 @@ const (
 )
 
 const (
-	SecretIdKey          string = "key"
-	SecretIdCert         string = "cert"
 	SecretIdClientId     string = "clientId"
 	SecretIdClientSecret string = "clientSecret"
 	SecretIdAccountName  string = "accountName"
