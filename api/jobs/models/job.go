@@ -123,6 +123,12 @@ type Job struct {
 	// items:
 	//    "$ref": "#/definitions/ComponentSummary"
 	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
+
+	// ComponentsToDeploy List of components to deploy
+	// OPTIONAL If specified, only these components are deployed
+	//
+	// example: component1,component2
+	ComponentsToDeploy []string `json:"componentsToDeploy,omitempty"`
 }
 
 // GetJobFromRadixJob Gets job from a radix job
@@ -161,6 +167,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	case radixv1.Deploy:
 		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		jobModel.CommitID = job.Spec.Deploy.CommitID
+		jobModel.ComponentsToDeploy = job.Spec.Deploy.Components
 	case radixv1.Promote:
 		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName
 		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
@@ -181,8 +188,12 @@ func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 			PodName:    jobStep.PodName,
 			Components: jobStep.Components,
 		}
-		if jobStep.Started != nil {step.Started = &jobStep.Started.Time}
-		if jobStep.Ended != nil {step.Ended = &jobStep.Ended.Time}
+		if jobStep.Started != nil {
+			step.Started = &jobStep.Started.Time
+		}
+		if jobStep.Ended != nil {
+			step.Ended = &jobStep.Ended.Time
+		}
 
 		steps = append(steps, step)
 	}

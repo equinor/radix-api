@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/equinor/radix-common v1.8.0
 	github.com/equinor/radix-job-scheduler v1.8.5
-	github.com/equinor/radix-operator v1.49.0
+	github.com/equinor/radix-operator v1.49.1-0.20240116123121-b7148c5ca4dd
 	github.com/evanphx/json-patch/v5 v5.7.0
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -83,6 +83,7 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
+	github.com/rakyll/statik v0.1.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
