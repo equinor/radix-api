@@ -86,12 +86,6 @@ type Job struct {
 	// required: false
 	PromotedFromDeployment string `json:"promotedFromDeployment,omitempty"`
 
-	// PromotedDeploymentName the name of the deployment that was promoted
-	//
-	// required: false
-	// example: component-6hznh
-	PromotedDeploymentName string `json:"promotedDeploymentName,omitempty"`
-
 	// PromotedFromEnvironment the name of the environment that was promoted from
 	//
 	// required: false
