@@ -37,6 +37,9 @@ type JobParameters struct {
 	//
 	// example: component1=tag1,component2=tag2
 	ImageTagNames map[string]string
+
+	// Deployment should not be applied
+	PostponeDeployment bool `json:"postponedDeployment"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

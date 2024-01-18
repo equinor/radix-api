@@ -78,18 +78,22 @@ type PipelineParametersBuild struct {
 	//
 	// example: master-latest
 	ImageTag string `json:"imageTag,omitempty"`
+
+	// Deployment should not be applied
+	PostponeDeployment bool `json:"postponedDeployment"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		Branch:          buildParam.Branch,
-		CommitID:        buildParam.CommitID,
-		PushImage:       buildParam.PushImageToContainerRegistry(),
-		TriggeredBy:     buildParam.TriggeredBy,
-		ImageRepository: buildParam.ImageRepository,
-		ImageName:       buildParam.ImageName,
-		ImageTag:        buildParam.ImageTag,
+		Branch:             buildParam.Branch,
+		CommitID:           buildParam.CommitID,
+		PushImage:          buildParam.PushImageToContainerRegistry(),
+		TriggeredBy:        buildParam.TriggeredBy,
+		ImageRepository:    buildParam.ImageRepository,
+		ImageName:          buildParam.ImageName,
+		ImageTag:           buildParam.ImageTag,
+		PostponeDeployment: buildParam.PostponeDeployment,
 	}
 }
 
@@ -122,14 +126,18 @@ type PipelineParametersDeploy struct {
 	//
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID"`
+
+	// Deployment should not be applied
+	PostponeDeployment bool `json:"postponedDeployment"`
 }
 
 // MapPipelineParametersDeployToJobParameter maps to JobParameter
 func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		ToEnvironment: deployParam.ToEnvironment,
-		TriggeredBy:   deployParam.TriggeredBy,
-		ImageTagNames: deployParam.ImageTagNames,
-		CommitID:      deployParam.CommitID,
+		ToEnvironment:      deployParam.ToEnvironment,
+		TriggeredBy:        deployParam.TriggeredBy,
+		ImageTagNames:      deployParam.ImageTagNames,
+		CommitID:           deployParam.CommitID,
+		PostponeDeployment: deployParam.PostponeDeployment,
 	}
 }

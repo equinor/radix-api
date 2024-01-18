@@ -6593,6 +6593,11 @@
           "x-go-name": "ImageTag",
           "example": "master-latest"
         },
+        "postponedDeployment": {
+          "description": "Deployment should not be applied",
+          "type": "boolean",
+          "x-go-name": "PostponeDeployment"
+        },
         "pushImage": {
           "description": "PushImage should image be pushed to container registry. Defaults pushing",
           "type": "string",
@@ -6626,6 +6631,11 @@
           },
           "x-go-name": "ImageTagNames",
           "example": "component1=tag1,component2=tag2"
+        },
+        "postponedDeployment": {
+          "description": "Deployment should not be applied",
+          "type": "boolean",
+          "x-go-name": "PostponeDeployment"
         },
         "toEnvironment": {
           "description": "Name of environment to deploy\nREQUIRED for \"deploy\" pipeline",

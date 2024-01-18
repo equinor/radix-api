@@ -120,7 +120,11 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			Deploy:              deploySpec,
 			TriggeredBy:         triggeredBy,
 			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
+			PostponeDeployment:  jobSpec.PostponeDeployment,
 		},
+	}
+	if jobSpec.PostponeDeployment {
+		job.ObjectMeta.Annotations["radix.equinor.com/postponed-deployment"] = "true"
 	}
 
 	return &job
