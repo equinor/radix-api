@@ -167,7 +167,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	case radixv1.Deploy:
 		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		jobModel.CommitID = job.Spec.Deploy.CommitID
-		jobModel.ComponentsToDeploy = job.Spec.Deploy.Components
+		jobModel.ComponentsToDeploy = job.Spec.Deploy.ComponentsToDeploy
 	case radixv1.Promote:
 		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName
 		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment

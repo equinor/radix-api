@@ -1,8 +1,6 @@
 package models
 
 import (
-	"strings"
-
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 )
 
@@ -127,20 +125,20 @@ type PipelineParametersDeploy struct {
 	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID,omitempty"`
 
-	// Components List of components to deploy
+	// ComponentsToDeploy List of components to deploy
 	// OPTIONAL If specified, only these components are deployed
 	//
-	// example: component1,component2
-	Components string `json:"components,omitempty"`
+	// required: false
+	ComponentsToDeploy []string `json:"componentsToDeploy"`
 }
 
 // MapPipelineParametersDeployToJobParameter maps to JobParameter
 func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		ToEnvironment: deployParam.ToEnvironment,
-		TriggeredBy:   deployParam.TriggeredBy,
-		ImageTagNames: deployParam.ImageTagNames,
-		CommitID:      deployParam.CommitID,
-		Components:    strings.Split(deployParam.Components, ","),
+		ToEnvironment:      deployParam.ToEnvironment,
+		TriggeredBy:        deployParam.TriggeredBy,
+		ImageTagNames:      deployParam.ImageTagNames,
+		CommitID:           deployParam.CommitID,
+		ComponentsToDeploy: deployParam.ComponentsToDeploy,
 	}
 }
