@@ -154,7 +154,7 @@ func getPipelineTag() string {
 func getRadixTektonTag() string {
 	tektonTag := os.Getenv(radixTektonTagEnvironmentVariable)
 	if tektonTag == "" {
-		log.Warning("No radix tektom image tag defined. Using release-latest")
+		log.Warning("No radix tekton image tag defined. Using release-latest")
 		tektonTag = "release-latest"
 	} else {
 		log.Infof("Using %s radix tekton image tag", tektonTag)
