@@ -5495,9 +5495,10 @@
         "image"
       ],
       "properties": {
-        "CommitID": {
+        "commitID": {
           "description": "Commit ID for the component. It can be different from the Commit ID, specified in deployment label",
-          "type": "string"
+          "type": "string",
+          "x-go-name": "CommitID"
         },
         "externalDNS": {
           "description": "Array of external DNS configurations",
