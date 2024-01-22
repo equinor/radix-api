@@ -2,10 +2,6 @@
 package suffix
 
 const (
-	//ExternalDNSTLSCert TLS certificate for external DNS
-	ExternalDNSTLSCert = "-cert"
-	//ExternalDNSTLSKey TLS key for external DNS
-	ExternalDNSTLSKey = "-key"
 	//ClientCertificate Client certificate
 	ClientCertificate = "-clientcertca"
 	//OAuth2ClientSecret Client secret of OAuth2

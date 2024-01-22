@@ -7,17 +7,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	_ "github.com/equinor/radix-api/api/events"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
+	tlsvalidationmock "github.com/equinor/radix-api/api/utils/tlsvalidation/mock"
+	radixhttp "github.com/equinor/radix-common/net/http"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -37,7 +42,7 @@ const (
 	subscriptionId     = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func setupTest(t *testing.T, tlsValidator tlsvalidation.Validator) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -50,7 +55,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController())
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController(tlsValidator))
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -92,7 +97,7 @@ func executeUpdateSecretTest(t *testing.T, oldSecretValue, updateSecret, updateC
 		SecretValue: updateSecretValue,
 	}
 
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t, nil)
 	appBuilder := operatorutils.
 		ARadixApplication().
 		WithAppName(anyAppName)
@@ -242,4 +247,176 @@ func TestUpdateSecret_NonExistingEnvironment_Missing(t *testing.T) {
 	secretObjName = operatorutils.GetComponentSecretName(anyJobName)
 	assert.Equal(t, http.StatusNotFound, response.Code)
 	assert.Equal(t, fmt.Sprintf("secrets \"%s\" not found", secretObjName), errorResponse.Err.Error())
+}
+
+type externalDNSSecretTestSuite struct {
+	suite.Suite
+	controllerTestUtils *controllertest.Utils
+	commonTestUtils     *commontest.Utils
+	tlsValidator        *tlsvalidationmock.MockValidator
+	kubeClient          kubernetes.Interface
+	radixClient         radixclient.Interface
+}
+
+func Test_ExternalDNSSecretTestSuite(t *testing.T) {
+	suite.Run(t, new(externalDNSSecretTestSuite))
+}
+
+func (s *externalDNSSecretTestSuite) SetupTest() {
+	ctrl := gomock.NewController(s.T())
+	s.tlsValidator = tlsvalidationmock.NewMockValidator(ctrl)
+	s.commonTestUtils, s.controllerTestUtils, s.kubeClient, s.radixClient, _, _ = setupTest(s.T(), s.tlsValidator)
+}
+
+func (s *externalDNSSecretTestSuite) setupTestResources(appName, envName, componentName string, externalAliases []radixv1.RadixDeployExternalDNS, rdCondition radixv1.RadixDeployCondition) error {
+	_, err := s.commonTestUtils.ApplyDeployment(
+		operatorutils.NewDeploymentBuilder().
+			WithRadixApplication(
+				operatorutils.NewRadixApplicationBuilder().
+					WithAppName(appName).
+					WithRadixRegistration(
+						operatorutils.NewRegistrationBuilder().
+							WithName(appName),
+					),
+			).
+			WithCondition(rdCondition).
+			WithAppName(appName).
+			WithEnvironment(envName).
+			WithComponents(
+				operatorutils.NewDeployComponentBuilder().
+					WithName(componentName).
+					WithExternalDNS(externalAliases...),
+			),
+	)
+
+	return err
+}
+
+func (s *externalDNSSecretTestSuite) setupSecretForExternalDNS(namespace, fqdn string, cert []byte, privateKey []byte) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: fqdn},
+		Type:       corev1.SecretTypeTLS,
+		Data:       map[string][]byte{corev1.TLSCertKey: cert, corev1.TLSPrivateKeyKey: privateKey},
+	}
+	_, err := s.kubeClient.CoreV1().Secrets(namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	return err
+}
+
+func (s *externalDNSSecretTestSuite) executeRequest(appName, envName, componentName, fqdn string, body *secretModels.UpdateExternalDNSTLSRequest) *httptest.ResponseRecorder {
+	endpoint := fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/externaldns/%s/tls", appName, envName, componentName, fqdn)
+	responseCh := s.controllerTestUtils.ExecuteRequestWithParameters(http.MethodPut, endpoint, body)
+	return <-responseCh
+}
+
+func (s *externalDNSSecretTestSuite) Test_UpdateSuccess() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+	s.Require().NoError(s.setupSecretForExternalDNS(ns, fqdn, nil, nil))
+	s.tlsValidator.EXPECT().ValidateX509Certificate([]byte(cert), []byte(privateKey), fqdn).Return(true, nil).Times(1)
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(200, response.Code)
+	expectedSecretData := map[string][]byte{
+		corev1.TLSCertKey:       []byte(cert),
+		corev1.TLSPrivateKeyKey: []byte(privateKey),
+	}
+	secret, err := s.kubeClient.CoreV1().Secrets(ns).Get(context.Background(), fqdn, metav1.GetOptions{})
+	s.Require().NoError(err)
+	s.Equal(expectedSecretData, secret.Data)
+}
+
+func (s *externalDNSSecretTestSuite) Test_SkipValidationDoesNotCallValidator() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+	s.Require().NoError(s.setupSecretForExternalDNS(ns, fqdn, nil, nil))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert, SkipValidation: true})
+	s.Equal(200, response.Code)
+	expectedSecretData := map[string][]byte{
+		corev1.TLSCertKey:       []byte(cert),
+		corev1.TLSPrivateKeyKey: []byte(privateKey),
+	}
+	secret, err := s.kubeClient.CoreV1().Secrets(ns).Get(context.Background(), fqdn, metav1.GetOptions{})
+	s.Require().NoError(err)
+	s.Equal(expectedSecretData, secret.Data)
+}
+
+func (s *externalDNSSecretTestSuite) Test_RadixDeploymentNotActive() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentInactive))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(404, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName), status.Message)
+}
+
+func (s *externalDNSSecretTestSuite) Test_NonExistingComponent() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	s.Require().NoError(s.setupTestResources(appName, envName, "othercomp", []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(404, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("Component %q does not exist", componentName), status.Message)
+}
+
+func (s *externalDNSSecretTestSuite) Test_NonExistingExternalDNS() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: "other.example.com"}}, radixv1.DeploymentActive))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(404, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("External DNS %q not configured for component", fqdn), status.Message)
+}
+
+func (s *externalDNSSecretTestSuite) Test_ExternalDNSUsesAutomation() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn, UseCertificateAutomation: true}}, radixv1.DeploymentActive))
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(400, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("External DNS %q is configured to use certificate automation", fqdn), status.Message)
+}
+
+func (s *externalDNSSecretTestSuite) Test_CertificateValidationError() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	validationMsg1, validationMsg2 := "validation error 1", "validation error 2"
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+	s.tlsValidator.EXPECT().ValidateX509Certificate([]byte(cert), []byte(privateKey), fqdn).Return(false, []string{validationMsg1, validationMsg2}).Times(1)
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(400, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("%s, %s", validationMsg1, validationMsg2), status.Message)
+	s.ErrorContains(status.Err, "TLS failed validation")
+}
+
+func (s *externalDNSSecretTestSuite) Test_NonExistingSecretFails() {
+	appName, envName, componentName, fqdn := "app", "env", "comp", "my.example.com"
+	privateKey, cert := "any private key", "any certificate"
+	s.Require().NoError(s.setupTestResources(appName, envName, componentName, []radixv1.RadixDeployExternalDNS{{FQDN: fqdn}}, radixv1.DeploymentActive))
+	s.tlsValidator.EXPECT().ValidateX509Certificate([]byte(cert), []byte(privateKey), fqdn).Return(true, nil).Times(1)
+
+	response := s.executeRequest(appName, envName, componentName, fqdn, &secretModels.UpdateExternalDNSTLSRequest{PrivateKey: privateKey, Certificate: cert})
+	s.Equal(500, response.Code)
+	var status radixhttp.Error
+	s.Require().NoError(controllertest.GetResponseBody(response, &status))
+	s.Equal(fmt.Sprintf("Failed to update TLS private key and certificate for %q", fqdn), status.Message)
 }

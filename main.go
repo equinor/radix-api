@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/equinor/radix-api/api/secrets"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
@@ -110,7 +111,7 @@ func getControllers() ([]models.Controller, error) {
 		buildsecrets.NewBuildSecretsController(),
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
-		secrets.NewSecretController(),
+		secrets.NewSecretController(tlsvalidation.DefaultValidator()),
 	}, nil
 }
 

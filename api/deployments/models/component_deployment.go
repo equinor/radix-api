@@ -98,7 +98,32 @@ type Component struct {
 	// Notifications is the spec for notification about internal events or changes
 	Notifications *Notifications `json:"notifications,omitempty"`
 
+	// Array of external DNS configurations
+	//
+	// required: false
+	ExternalDNS []ExternalDNS `json:"externalDNS,omitempty"`
+
+	// Commit ID for the component. It can be different from the Commit ID, specified in deployment label
+	//
+	// required: false
+	CommitID string `json:"commitID,omitempty"`
+
 	AuxiliaryResource `json:",inline"`
+}
+
+// ExternalDNS describes an external DNS entry for a component
+// swagger:model ExternalDNS
+type ExternalDNS struct {
+	// Fully Qualified Domain Name
+	//
+	// required: true
+	// example: site.example.com
+	FQDN string `json:"fqdn"`
+
+	// TLS configuration
+	//
+	// required: true
+	TLS TLS `json:"tls"`
 }
 
 // Identity describes external identities

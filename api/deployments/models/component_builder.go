@@ -24,6 +24,7 @@ type ComponentBuilder interface {
 	WithAuxiliaryResource(AuxiliaryResource) ComponentBuilder
 	WithNotifications(*v1.Notifications) ComponentBuilder
 	WithHorizontalScalingSummary(*HorizontalScalingSummary) ComponentBuilder
+	WithExternalDNS(externalDNS []ExternalDNS) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -45,6 +46,7 @@ type componentBuilder struct {
 	identity                  *Identity
 	notifications             *Notifications
 	hpa                       *HorizontalScalingSummary
+	externalDNS               []ExternalDNS
 	errors                    []error
 }
 
@@ -100,14 +102,6 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 
 	b.ports = ports
 	b.secrets = component.GetSecrets()
-	if b.secrets == nil {
-		b.secrets = []string{}
-	}
-
-	for _, externalAlias := range component.GetDNSExternalAlias() {
-		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSTLSCert)
-		b.secrets = append(b.secrets, externalAlias+suffix.ExternalDNSTLSKey)
-	}
 
 	for _, volumeMount := range component.GetVolumeMounts() {
 		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
@@ -189,6 +183,11 @@ func (b *componentBuilder) WithHorizontalScalingSummary(hpa *HorizontalScalingSu
 	return b
 }
 
+func (b *componentBuilder) WithExternalDNS(externalDNS []ExternalDNS) ComponentBuilder {
+	b.externalDNS = externalDNS
+	return b
+}
+
 func (b *componentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
@@ -230,7 +229,9 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		AuxiliaryResource:        b.auxResource,
 		Identity:                 b.identity,
 		Notifications:            b.notifications,
+		ExternalDNS:              b.externalDNS,
 		HorizontalScalingSummary: b.hpa,
+		CommitID:                 variables[defaults.RadixCommitHashEnvironmentVariable],
 	}, b.buildError()
 }
 

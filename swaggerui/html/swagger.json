@@ -1897,6 +1897,89 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls": {
+      "put": {
+        "tags": [
+          "component"
+        ],
+        "summary": "Set external DNS TLS private key certificate for a component",
+        "operationId": "updateComponentExternalDnsTls",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret of Radix application",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "secret component of Radix application",
+            "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "FQDN to be updated",
+            "name": "fqdn",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "New TLS private key and certificate",
+            "name": "tlsData",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateExternalDnsTlsRequest"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "Invalid application"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs": {
       "get": {
         "tags": [
@@ -5412,6 +5495,19 @@
         "image"
       ],
       "properties": {
+        "commitID": {
+          "description": "Commit ID for the component. It can be different from the Commit ID, specified in deployment label",
+          "type": "string",
+          "x-go-name": "CommitID"
+        },
+        "externalDNS": {
+          "description": "Array of external DNS configurations",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExternalDNS"
+          },
+          "x-go-name": "ExternalDNS"
+        },
         "horizontalScalingSummary": {
           "$ref": "#/definitions/HorizontalScalingSummary"
         },
@@ -6047,6 +6143,26 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/events/models"
     },
+    "ExternalDNS": {
+      "description": "ExternalDNS describes an external DNS entry for a component",
+      "type": "object",
+      "required": [
+        "fqdn",
+        "tls"
+      ],
+      "properties": {
+        "fqdn": {
+          "description": "Fully Qualified Domain Name",
+          "type": "string",
+          "x-go-name": "FQDN",
+          "example": "site.example.com"
+        },
+        "tls": {
+          "$ref": "#/definitions/TLS"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
     "HorizontalScalingSummary": {
       "description": "HorizontalScalingSummary describe the summary of horizontal scaling of a component",
       "type": "object",
@@ -6168,6 +6284,14 @@
             "$ref": "#/definitions/ComponentSummary"
           },
           "x-go-name": "Components"
+        },
+        "componentsToDeploy": {
+          "description": "ComponentsToDeploy List of components to deploy\nOPTIONAL If specified, only these components are deployed",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ComponentsToDeploy"
         },
         "created": {
           "description": "Created timestamp",
@@ -6506,6 +6630,14 @@
           "type": "string",
           "x-go-name": "CommitID",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "componentsToDeploy": {
+          "description": "ComponentsToDeploy List of components to deploy\nOPTIONAL If specified, only these components are deployed",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ComponentsToDeploy"
         },
         "imageTagNames": {
           "description": "Image tags names for components",
@@ -7278,34 +7410,16 @@
           "enum": [
             "Pending",
             "Consistent",
-            "NotAvailable",
-            "Invalid"
+            "NotAvailable"
           ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
-        "statusMessages": {
-          "description": "StatusMessages contains a list of messages related to the Status",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "StatusMessages"
-        },
-        "tlsCertificates": {
-          "description": "TLSCertificates holds the TLS certificate and certificate authorities (CA)\nThe first certificate in the list should be the TLS certificate and the rest should be CA certificates",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/TLSCertificate"
-          },
-          "x-go-name": "TLSCertificates"
-        },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
-            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7313,7 +7427,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "client-cert"
         }
@@ -7334,11 +7448,10 @@
           "example": "p4$sW0rDz"
         },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
-            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7346,7 +7459,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "azure-blob-fuse-volume"
         }
@@ -7428,8 +7541,131 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
     },
-    "TLSCertificate": {
-      "description": "TLSCertificate holds information about a TLS certificate",
+    "TLS": {
+      "description": "TLS configuration and status for external DNS",
+      "type": "object",
+      "required": [
+        "useAutomation",
+        "status"
+      ],
+      "properties": {
+        "certificates": {
+          "description": "Certificates holds the X509 certificate chain\nThe first certificate in the list should be the host certificate and the rest should be intermediate certificates",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/X509Certificate"
+          },
+          "x-go-name": "Certificates"
+        },
+        "status": {
+          "description": "Status of TLS certificate and private key\nPending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Consistent",
+            "Invalid"
+          ],
+          "x-go-enum-desc": "Pending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
+          "x-go-name": "Status",
+          "example": "Consistent"
+        },
+        "statusMessages": {
+          "description": "StatusMessages contains a list of messages related to Status",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "StatusMessages"
+        },
+        "useAutomation": {
+          "description": "UseAutomation describes if TLS certificate is automatically issued using automation (ACME)",
+          "type": "boolean",
+          "x-go-name": "UseAutomation"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "UpdateAlertingConfig": {
+      "description": "UpdateAlertingConfig contains fields for updating alert settings",
+      "type": "object",
+      "required": [
+        "receivers",
+        "receiverSecrets",
+        "alerts"
+      ],
+      "properties": {
+        "alerts": {
+          "$ref": "#/definitions/AlertConfigList"
+        },
+        "receiverSecrets": {
+          "$ref": "#/definitions/UpdateReceiverConfigSecretsMap"
+        },
+        "receivers": {
+          "$ref": "#/definitions/ReceiverConfigMap"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateExternalDnsTlsRequest": {
+      "description": "UpdateExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS",
+      "type": "object",
+      "required": [
+        "privateKey",
+        "certificate"
+      ],
+      "properties": {
+        "certificate": {
+          "description": "X509 certificate in PEM format",
+          "type": "string",
+          "x-go-name": "Certificate"
+        },
+        "privateKey": {
+          "description": "Private key in PEM format",
+          "type": "string",
+          "x-go-name": "PrivateKey"
+        },
+        "skipValidation": {
+          "description": "Skip validation of certificate and private key",
+          "type": "boolean",
+          "x-go-name": "SkipValidation"
+        }
+      },
+      "x-go-name": "UpdateExternalDNSTLSRequest",
+      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
+    },
+    "UpdateReceiverConfigSecrets": {
+      "description": "UpdateReceiverConfigSecrets defines secrets to be updated",
+      "type": "object",
+      "properties": {
+        "slackConfig": {
+          "$ref": "#/definitions/UpdateSlackConfigSecrets"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateReceiverConfigSecretsMap": {
+      "description": "UpdateReceiverConfigSecretsMap defines a map of UpdateReceiverConfigSecrets where key is the name of the receiver",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/UpdateReceiverConfigSecrets"
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateSlackConfigSecrets": {
+      "description": "UpdateSlackConfig defines secrets to be updated for Slack",
+      "type": "object",
+      "properties": {
+        "webhookUrl": {
+          "description": "WebhookURL the Slack webhook URL where alerts are sent\nSecret key for webhook URL is updated if a non-nil value is present, and deleted if omitted or set to null\n\nrequired:",
+          "type": "string",
+          "x-go-name": "WebhookURL",
+          "x-nullable": true
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "X509Certificate": {
+      "description": "X509Certificate holds information about a X509 certificate",
       "type": "object",
       "required": [
         "subject",
@@ -7471,59 +7707,7 @@
           "example": "CN=mysite.example.com,O=MyOrg,L=MyLocation,C=NO"
         }
       },
-      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
-    },
-    "UpdateAlertingConfig": {
-      "description": "UpdateAlertingConfig contains fields for updating alert settings",
-      "type": "object",
-      "required": [
-        "receivers",
-        "receiverSecrets",
-        "alerts"
-      ],
-      "properties": {
-        "alerts": {
-          "$ref": "#/definitions/AlertConfigList"
-        },
-        "receiverSecrets": {
-          "$ref": "#/definitions/UpdateReceiverConfigSecretsMap"
-        },
-        "receivers": {
-          "$ref": "#/definitions/ReceiverConfigMap"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateReceiverConfigSecrets": {
-      "description": "UpdateReceiverConfigSecrets defines secrets to be updated",
-      "type": "object",
-      "properties": {
-        "slackConfig": {
-          "$ref": "#/definitions/UpdateSlackConfigSecrets"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateReceiverConfigSecretsMap": {
-      "description": "UpdateReceiverConfigSecretsMap defines a map of UpdateReceiverConfigSecrets where key is the name of the receiver",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/UpdateReceiverConfigSecrets"
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateSlackConfigSecrets": {
-      "description": "UpdateSlackConfig defines secrets to be updated for Slack",
-      "type": "object",
-      "properties": {
-        "webhookUrl": {
-          "description": "WebhookURL the Slack webhook URL where alerts are sent\nSecret key for webhook URL is updated if a non-nil value is present, and deleted if omitted or set to null\n\nrequired:",
-          "type": "string",
-          "x-go-name": "WebhookURL",
-          "x-nullable": true
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     }
   },
   "securityDefinitions": {
