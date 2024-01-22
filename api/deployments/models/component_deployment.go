@@ -106,7 +106,7 @@ type Component struct {
 	// Commit ID for the component. It can be different from the Commit ID, specified in deployment label
 	//
 	// required: false
-	CommitID string `json:",inline"`
+	CommitID string `json:"CommitID,omitempty"`
 
 	AuxiliaryResource `json:",inline"`
 }
