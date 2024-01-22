@@ -37,6 +37,12 @@ type JobParameters struct {
 	//
 	// example: component1=tag1,component2=tag2
 	ImageTagNames map[string]string
+
+	// ComponentsToDeploy List of components to deploy
+	// OPTIONAL If specified, only these components are deployed
+	//
+	// required: false
+	ComponentsToDeploy []string `json:"componentsToDeploy"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

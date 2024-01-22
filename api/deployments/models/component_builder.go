@@ -231,6 +231,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		Notifications:            b.notifications,
 		ExternalDNS:              b.externalDNS,
 		HorizontalScalingSummary: b.hpa,
+		CommitID:                 variables[defaults.RadixCommitHashEnvironmentVariable],
 	}, b.buildError()
 }
 
