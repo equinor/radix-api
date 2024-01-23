@@ -6310,14 +6310,6 @@
           },
           "x-go-name": "Components"
         },
-        "componentsToDeploy": {
-          "description": "ComponentsToDeploy List of components to deploy\nOPTIONAL If specified, only these components are deployed",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "ComponentsToDeploy"
-        },
         "created": {
           "description": "Created timestamp",
           "type": "string",
