@@ -95,6 +95,51 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		}
 		assert.Equal(t, expected, actual)
 	})
+
+	t.Run("deploy specific components", func(t *testing.T) {
+		t.Parallel()
+		b := NewDeploymentBuilder().WithPipelineJob(
+			&v1.RadixJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: jobName,
+				},
+				Spec: v1.RadixJobSpec{
+					PipeLineType: v1.Deploy,
+					Deploy: v1.RadixDeploySpec{
+						ToEnvironment:      "dev",
+						CommitID:           commitID,
+						ComponentsToDeploy: []string{"comp1", "job1"},
+					},
+				},
+			},
+		).WithRadixDeployment(&v1.RadixDeployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "rd1"},
+			Spec: v1.RadixDeploymentSpec{
+				Components: []v1.RadixDeployComponent{
+					{Name: "comp1"},
+					{Name: "comp2"},
+				},
+				Jobs: []v1.RadixDeployJobComponent{
+					{Name: "job1"},
+					{Name: "job2"},
+				},
+			},
+		}).WithGitCommitHash("commit1").WithGitTags("git1,git2")
+
+		actual, err := b.BuildDeploymentSummary()
+
+		assert.NoError(t, err)
+		assert.Equal(t, "commit1", actual.GitCommitHash)
+		assert.Equal(t, "git1,git2", actual.GitTags)
+		assert.Equal(t, "comp1", actual.Components[0].Name)
+		assert.False(t, actual.Components[0].SkipDeployment)
+		assert.Equal(t, "comp2", actual.Components[1].Name)
+		assert.True(t, actual.Components[1].SkipDeployment)
+		assert.Equal(t, "job1", actual.Components[2].Name)
+		assert.False(t, actual.Components[2].SkipDeployment)
+		assert.Equal(t, "job2", actual.Components[3].Name)
+		assert.True(t, actual.Components[3].SkipDeployment)
+	})
 }
 
 func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
@@ -140,5 +185,70 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 			Repository:   repoUrl,
 		}
 		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("deploy with specific components", func(t *testing.T) {
+		t.Parallel()
+
+		b := NewDeploymentBuilder().
+			WithRadixRegistration(rr).
+			WithPipelineJob(
+				&v1.RadixJob{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: jobName,
+					},
+					Spec: v1.RadixJobSpec{
+						PipeLineType: v1.Deploy,
+						Deploy: v1.RadixDeploySpec{
+							ToEnvironment:      "dev",
+							ComponentsToDeploy: []string{"comp1", "job1"},
+						},
+					},
+				},
+			).WithComponents([]*Component{
+			{Name: "comp1"},
+			{Name: "comp2"},
+			{Name: "job1"},
+			{Name: "job2"},
+		}).WithRadixDeployment(
+			&v1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      deploymentName,
+					Namespace: deploymentNamespace,
+					Labels:    map[string]string{kube.RadixJobNameLabel: jobName},
+				},
+				Spec: v1.RadixDeploymentSpec{
+					Environment: envName,
+					Components: []v1.RadixDeployComponent{
+						{Name: "comp1"},
+						{Name: "comp2"},
+					},
+					Jobs: []v1.RadixDeployJobComponent{
+						{Name: "job1"},
+						{Name: "job2"},
+					},
+				},
+				Status: v1.RadixDeployStatus{
+					ActiveFrom: metav1.NewTime(activeFrom),
+					ActiveTo:   metav1.NewTime(activeTo),
+				},
+			},
+		).
+			WithGitCommitHash("commit1").
+			WithGitTags("git1,git2")
+
+		actual, err := b.BuildDeployment()
+
+		assert.NoError(t, err)
+		assert.Equal(t, "commit1", actual.GitCommitHash)
+		assert.Equal(t, "git1,git2", actual.GitTags)
+		assert.Equal(t, "comp1", actual.Components[0].Name)
+		assert.False(t, actual.Components[0].SkipDeployment)
+		assert.Equal(t, "comp2", actual.Components[1].Name)
+		assert.True(t, actual.Components[1].SkipDeployment)
+		assert.Equal(t, "job1", actual.Components[2].Name)
+		assert.False(t, actual.Components[2].SkipDeployment)
+		assert.Equal(t, "job2", actual.Components[3].Name)
+		assert.True(t, actual.Components[3].SkipDeployment)
 	})
 }
