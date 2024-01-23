@@ -202,7 +202,7 @@ func (deploy *deployHandler) getRadixDeploymentRadixJob(ctx context.Context, app
 	jobName := rd.GetLabels()[kube.RadixJobNameLabel]
 	radixJob, err := kubequery.GetRadixJob(ctx, deploy.accounts.UserAccount.RadixClient, appName, jobName)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err
