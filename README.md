@@ -18,9 +18,9 @@ You need Go installed. Make sure `GOPATH` and `GOROOT` are properly set up.
 
 Also needed:
 
-- [`go-swagger`](https://github.com/go-swagger/go-swagger) (install with `make bootstrap`.)
-- [`golangci-lint`](https://golangci-lint.run/) (install with `make bootstrap`)
-- [`gomock`](https://github.com/golang/mock) (install with `make bootstrap`)
+- [`go-swagger`](https://github.com/go-swagger/go-swagger) (install with `go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5`.)
+- [`statik`](https://github.com/rakyll/statik) (install with `go install github.com/rakyll/statik@v0.1.7`)
+- [`gomock`](https://github.com/golang/mock) (install with `go install github.com/golang/mock/mockgen@v1.6.0`)
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
@@ -44,7 +44,6 @@ The following env vars are needed. Useful default values in brackets.
 
 - `RADIX_CONTAINER_REGISTRY` - (`radixdev.azurecr.io`)
 - `PIPELINE_IMG_TAG` - (`master-latest`)
-- `RADIX_TEKTON_TAG` - (`release-latest`)
 
 You also probably want to start with the argument `--useOutClusterClient=false`. When `useOutClusterClient` is `false`, several debugging settings are enabled:
 * a service principal with superpowers is used to authorize the requests, and the client's `Authorization` bearer token is ignored. 
@@ -54,9 +53,16 @@ You also probably want to start with the argument `--useOutClusterClient=false`.
 
 If you are using VSCode, there is a convenient launch configuration in `.vscode`.
 
+#### Common errors running locally
+
+- **Problem**: `panic: statik/fs: no zip data registered`
+
+  **Solution**: `make swagger`
+
 #### Validate code
 
-- run `make lint`
+- `go install honnef.co/go/tools/cmd/staticcheck@v0.3.3`
+- run `make staticcheck`
 
 #### Update version
 We follow the [semantic version](https://semver.org/) as recommended by [go](https://blog.golang.org/publishing-go-modules).
