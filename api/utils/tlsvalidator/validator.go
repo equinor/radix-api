@@ -1,4 +1,4 @@
-package tlsvalidation
+package tlsvalidator
 
 import (
 	"crypto/ecdsa"
@@ -13,13 +13,13 @@ import (
 
 var defaultValidator = validator{}
 
-func DefaultValidator() Validator {
+func DefaultValidator() TLSSecretValidator {
 	return &defaultValidator
 }
 
 type validator struct{}
 
-func (v *validator) ValidatePrivateKey(keyBytes []byte) (valid bool, failedValidationMessages []string) {
+func (v *validator) ValidateTLSKey(keyBytes []byte) (valid bool, failedValidationMessages []string) {
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()
@@ -68,7 +68,7 @@ func (v *validator) ValidatePrivateKey(keyBytes []byte) (valid bool, failedValid
 	return
 }
 
-func (v *validator) ValidateX509Certificate(certBytes, keyBytes []byte, dnsName string) (valid bool, failedValidationMessages []string) {
+func (v *validator) ValidateTLSCertificate(certBytes, keyBytes []byte, dnsName string) (valid bool, failedValidationMessages []string) {
 	defer func() {
 		valid = len(failedValidationMessages) == 0
 	}()

@@ -194,7 +194,7 @@ func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.Pipelin
 	}
 	runCondition := getLastReadyCondition(pipelineRun.Status.Conditions)
 	if runCondition != nil {
-		pipelineRunModel.Status = jobModels.TaskRunReason(runCondition.Reason)
+		pipelineRunModel.Status = runCondition.Reason
 		pipelineRunModel.StatusMessage = runCondition.Message
 	}
 	return &pipelineRunModel
@@ -221,7 +221,7 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 	pipelineTaskModel.Ended = radixutils.FormatTime(taskRun.Status.CompletionTime)
 	taskCondition := getLastReadyCondition(taskRun.Status.Conditions)
 	if taskCondition != nil {
-		pipelineTaskModel.Status = jobModels.PipelineRunReason(taskCondition.Reason)
+		pipelineTaskModel.Status = taskCondition.Reason
 		pipelineTaskModel.StatusMessage = taskCondition.Message
 	}
 	logEmbeddedCommandIndex := strings.Index(pipelineTaskModel.StatusMessage, "for logs run")
@@ -238,13 +238,13 @@ func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.Pip
 		if stepStatus.Terminated != nil {
 			stepModel.Started = radixutils.FormatTime(&stepStatus.Terminated.StartedAt)
 			stepModel.Ended = radixutils.FormatTime(&stepStatus.Terminated.FinishedAt)
-			stepModel.Status = jobModels.TaskRunReason(stepStatus.Terminated.Reason)
+			stepModel.Status = stepStatus.Terminated.Reason
 			stepModel.StatusMessage = stepStatus.Terminated.Message
 		} else if stepStatus.Running != nil {
 			stepModel.Started = radixutils.FormatTime(&stepStatus.Running.StartedAt)
-			stepModel.Status = jobModels.TaskRunReasonRunning
+			stepModel.Status = jobModels.Running.String()
 		} else if stepStatus.Waiting != nil {
-			stepModel.Status = jobModels.TaskRunReason(stepStatus.Waiting.Reason)
+			stepModel.Status = stepStatus.Waiting.Reason
 			stepModel.StatusMessage = stepStatus.Waiting.Message
 		}
 		stepsModels = append(stepsModels, stepModel)

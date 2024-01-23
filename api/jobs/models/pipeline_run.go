@@ -24,7 +24,8 @@ type PipelineRun struct {
 	// Status of the step
 	//
 	// required: false
-	Status TaskRunReason `json:"status"`
+	// example: Started
+	Status string `json:"status"`
 
 	// StatusMessage of the task
 	//

@@ -5,7 +5,6 @@ import (
 
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
-	"github.com/equinor/radix-operator/pkg/apis/config"
 	"github.com/equinor/radix-operator/pkg/apis/config/dnsalias"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
@@ -89,6 +88,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{}, &config.Config{})
+	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, "123456", 443, 10, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{})
 	return deploymentSyncer.OnSync()
 }

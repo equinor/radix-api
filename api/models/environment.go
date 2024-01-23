@@ -4,7 +4,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
-	"github.com/equinor/radix-api/api/utils/tlsvalidation"
+	"github.com/equinor/radix-api/api/utils/tlsvalidator"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,7 +14,7 @@ import (
 )
 
 // BuildEnvironment builds and Environment model.
-func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
+func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, tlsValidator tlsvalidator.TLSSecretValidator) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
@@ -24,8 +24,8 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
-		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, tlsValidator)
-		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList)
+		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd, tlsValidator)
 	}
 
 	return &environmentModels.Environment{

@@ -1897,89 +1897,6 @@
         }
       }
     },
-    "/applications/{appName}/environments/{envName}/components/{componentName}/externaldns/{fqdn}/tls": {
-      "put": {
-        "tags": [
-          "component"
-        ],
-        "summary": "Set external DNS TLS private key certificate for a component",
-        "operationId": "updateComponentExternalDnsTls",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Name of application",
-            "name": "appName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "secret of Radix application",
-            "name": "envName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "secret component of Radix application",
-            "name": "componentName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "FQDN to be updated",
-            "name": "fqdn",
-            "in": "path",
-            "required": true
-          },
-          {
-            "description": "New TLS private key and certificate",
-            "name": "tlsData",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/UpdateExternalDnsTlsRequest"
-            }
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
-            "name": "Impersonate-User",
-            "in": "header"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
-            "name": "Impersonate-Group",
-            "in": "header"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "success"
-          },
-          "400": {
-            "description": "Invalid application"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        }
-      }
-    },
     "/applications/{appName}/environments/{envName}/components/{componentName}/replicas/{podName}/logs": {
       "get": {
         "tags": [
@@ -5495,14 +5412,6 @@
         "image"
       ],
       "properties": {
-        "externalDNS": {
-          "description": "Array of external DNS configurations",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ExternalDNS"
-          },
-          "x-go-name": "ExternalDNS"
-        },
         "horizontalScalingSummary": {
           "$ref": "#/definitions/HorizontalScalingSummary"
         },
@@ -6138,26 +6047,6 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/events/models"
     },
-    "ExternalDNS": {
-      "description": "ExternalDNS describes an external DNS entry for a component",
-      "type": "object",
-      "required": [
-        "fqdn",
-        "tls"
-      ],
-      "properties": {
-        "fqdn": {
-          "description": "Fully Qualified Domain Name",
-          "type": "string",
-          "x-go-name": "FQDN",
-          "example": "site.example.com"
-        },
-        "tls": {
-          "$ref": "#/definitions/TLS"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
-    },
     "HorizontalScalingSummary": {
       "description": "HorizontalScalingSummary describe the summary of horizontal scaling of a component",
       "type": "object",
@@ -6326,6 +6215,12 @@
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
+        },
+        "promotedDeploymentName": {
+          "description": "PromotedDeploymentName the name of the deployment that was promoted",
+          "type": "string",
+          "x-go-name": "PromotedDeploymentName",
+          "example": "component-6hznh"
         },
         "promotedFromDeployment": {
           "description": "RadixDeployment name, which is promoted",
@@ -6713,28 +6608,10 @@
           "example": "2006-01-02T15:04:05Z"
         },
         "status": {
-          "description": "Status of the step\nStarted TaskRunReasonStarted  TaskRunReasonStarted is the reason set when the TaskRun has just started\nRunning TaskRunReasonRunning  TaskRunReasonRunning is the reason set when the TaskRun is running\nSucceeded TaskRunReasonSuccessful  TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully\nFailed TaskRunReasonFailed  TaskRunReasonFailed is the reason set when the TaskRun completed with a failure\nToBeRetried TaskRunReasonToBeRetried  TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried\nTaskRunCancelled TaskRunReasonCancelled  TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user\nTaskRunTimeout TaskRunReasonTimedOut  TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out\nTaskRunImagePullFailed TaskRunReasonImagePullFailed  TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled\nTaskRunResultLargerThanAllowedLimit TaskRunReasonResultLargerThanAllowedLimit  TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB\nTaskRunStopSidecarFailed TaskRunReasonStopSidecarFailed  TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.\nInvalidParamValue TaskRunReasonInvalidParamValue  TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.\nTaskRunResolutionFailed TaskRunReasonFailedResolution  TaskRunReasonFailedResolution indicated that the reason for failure status is  that references within the TaskRun could not be resolved\nTaskRunValidationFailed TaskRunReasonFailedValidation  TaskRunReasonFailedValidation indicated that the reason for failure status is  that taskrun failed runtime validation\nTaskValidationFailed TaskRunReasonTaskFailedValidation  TaskRunReasonTaskFailedValidation indicated that the reason for failure status is  that task failed runtime validation\nResourceVerificationFailed TaskRunReasonResourceVerificationFailed  TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nFailureIgnored TaskRunReasonFailureIgnored  TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.  TaskRuns failed due to reconciler/validation error should not use this reason.",
+          "description": "Status of the step",
           "type": "string",
-          "enum": [
-            "Started",
-            "Running",
-            "Succeeded",
-            "Failed",
-            "ToBeRetried",
-            "TaskRunCancelled",
-            "TaskRunTimeout",
-            "TaskRunImagePullFailed",
-            "TaskRunResultLargerThanAllowedLimit",
-            "TaskRunStopSidecarFailed",
-            "InvalidParamValue",
-            "TaskRunResolutionFailed",
-            "TaskRunValidationFailed",
-            "TaskValidationFailed",
-            "ResourceVerificationFailed",
-            "FailureIgnored"
-          ],
-          "x-go-enum-desc": "Started TaskRunReasonStarted  TaskRunReasonStarted is the reason set when the TaskRun has just started\nRunning TaskRunReasonRunning  TaskRunReasonRunning is the reason set when the TaskRun is running\nSucceeded TaskRunReasonSuccessful  TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully\nFailed TaskRunReasonFailed  TaskRunReasonFailed is the reason set when the TaskRun completed with a failure\nToBeRetried TaskRunReasonToBeRetried  TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried\nTaskRunCancelled TaskRunReasonCancelled  TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user\nTaskRunTimeout TaskRunReasonTimedOut  TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out\nTaskRunImagePullFailed TaskRunReasonImagePullFailed  TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled\nTaskRunResultLargerThanAllowedLimit TaskRunReasonResultLargerThanAllowedLimit  TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB\nTaskRunStopSidecarFailed TaskRunReasonStopSidecarFailed  TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.\nInvalidParamValue TaskRunReasonInvalidParamValue  TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.\nTaskRunResolutionFailed TaskRunReasonFailedResolution  TaskRunReasonFailedResolution indicated that the reason for failure status is  that references within the TaskRun could not be resolved\nTaskRunValidationFailed TaskRunReasonFailedValidation  TaskRunReasonFailedValidation indicated that the reason for failure status is  that taskrun failed runtime validation\nTaskValidationFailed TaskRunReasonTaskFailedValidation  TaskRunReasonTaskFailedValidation indicated that the reason for failure status is  that task failed runtime validation\nResourceVerificationFailed TaskRunReasonResourceVerificationFailed  TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nFailureIgnored TaskRunReasonFailureIgnored  TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.  TaskRuns failed due to reconciler/validation error should not use this reason.",
-          "x-go-name": "Status"
+          "x-go-name": "Status",
+          "example": "Started"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -6791,45 +6668,10 @@
           "example": "2006-01-02T15:04:05Z"
         },
         "status": {
-          "description": "Status of the task\nStarted PipelineRunReasonStarted  PipelineRunReasonStarted is the reason set when the PipelineRun has just started\nRunning PipelineRunReasonRunning  PipelineRunReasonRunning is the reason set when the PipelineRun is running\nSucceeded PipelineRunReasonSuccessful  PipelineRunReasonSuccessful is the reason set when the PipelineRun completed successfully\nCompleted PipelineRunReasonCompleted  PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks\nFailed PipelineRunReasonFailed  PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure\nCancelled PipelineRunReasonCancelled  PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user  This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully  This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed\nPipelineRunPending PipelineRunReasonPending  PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state\nPipelineRunTimeout PipelineRunReasonTimedOut  PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out\nPipelineRunStopping PipelineRunReasonStopping  PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the  pipeline will stop once all running tasks complete their work\nCancelledRunningFinally PipelineRunReasonCancelledRunningFinally  PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled  and no new Tasks will be scheduled by the controller, but final tasks are now running\nStoppedRunningFinally PipelineRunReasonStoppedRunningFinally  PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped  and no new Tasks will be scheduled by the controller, but final tasks are now running\nCouldntGetPipeline PipelineRunReasonCouldntGetPipeline  ReasonCouldntGetPipeline indicates that the reason for the failure status is that the  associated Pipeline couldn't be retrieved\nInvalidPipelineResourceBindings PipelineRunReasonInvalidBindings  ReasonInvalidBindings indicates that the reason for the failure status is that the  PipelineResources bound in the PipelineRun didn't match those declared in the Pipeline\nInvalidWorkspaceBindings PipelineRunReasonInvalidWorkspaceBinding  ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a  PipelineRun has provided an invalid binding.\nInvalidTaskRunSpecs PipelineRunReasonInvalidTaskRunSpec  ReasonInvalidTaskRunSpec indicates that PipelineRun.Spec.TaskRunSpecs[].PipelineTaskName is defined with  a not exist taskName in pipelineSpec.\nParameterTypeMismatch PipelineRunReasonParameterTypeMismatch  ReasonParameterTypeMismatch indicates that the reason for the failure status is that  parameter(s) declared in the PipelineRun do not have the some declared type as the  parameters(s) declared in the Pipeline that they are supposed to override.\nObjectParameterMissKeys PipelineRunReasonObjectParameterMissKeys  ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec  misses some keys required for the object param declared in Pipeline spec.\nParamArrayIndexingInvalid PipelineRunReasonParamArrayIndexingInvalid  ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate  or the array is out of bound.\nCouldntGetTask PipelineRunReasonCouldntGetTask  ReasonCouldntGetTask indicates that the reason for the failure status is that the  associated Pipeline's Tasks couldn't all be retrieved\nParameterMissing PipelineRunReasonParameterMissing  ReasonParameterMissing indicates that the reason for the failure status is that the  associated PipelineRun didn't provide all the required parameters\nPipelineValidationFailed PipelineRunReasonFailedValidation  ReasonFailedValidation indicates that the reason for failure status is  that pipelinerun failed runtime validation\nCouldntGetPipelineResult PipelineRunReasonCouldntGetPipelineResult  PipelineRunReasonCouldntGetPipelineResult indicates that the pipeline fails to retrieve the  referenced result. This could be due to failed TaskRuns or Runs that were supposed to produce  the results\nPipelineInvalidGraph PipelineRunReasonInvalidGraph  ReasonInvalidGraph indicates that the reason for the failure status is that the  associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)\nPipelineRunCouldntCancel PipelineRunReasonCouldntCancel  ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update  all of the running TaskRuns as cancelled failed.\nPipelineRunCouldntTimeOut PipelineRunReasonCouldntTimeOut  ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update  all of the running TaskRuns as timed out failed.\nInvalidMatrixParameterTypes PipelineRunReasonInvalidMatrixParameterTypes  ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types\nInvalidTaskResultReference PipelineRunReasonInvalidTaskResultReference  ReasonInvalidTaskResultReference indicates a task result was declared  but was not initialized by that task\nRequiredWorkspaceMarkedOptional PipelineRunReasonRequiredWorkspaceMarkedOptional  ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace  has been passed to a Task that is expecting a non-optional workspace\nResolvingPipelineRef PipelineRunReasonResolvingPipelineRef  ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for  its pipelineRef to be asynchronously resolved.\nResourceVerificationFailed PipelineRunReasonResourceVerificationFailed  ReasonResourceVerificationFailed indicates that the pipeline fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nCreateRunFailed PipelineRunReasonCreateRunFailed  ReasonCreateRunFailed indicates that the pipeline fails to create the taskrun or other run resources\nCELEvaluationFailed PipelineRunReasonCELEvaluationFailed  ReasonCELEvaluationFailed indicates the pipeline fails the CEL evaluation\nInvalidParamValue PipelineRunReasonInvalidParamValue  PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.",
+          "description": "Status of the task",
           "type": "string",
-          "enum": [
-            "Started",
-            "Running",
-            "Succeeded",
-            "Completed",
-            "Failed",
-            "Cancelled",
-            "PipelineRunPending",
-            "PipelineRunTimeout",
-            "PipelineRunStopping",
-            "CancelledRunningFinally",
-            "StoppedRunningFinally",
-            "CouldntGetPipeline",
-            "InvalidPipelineResourceBindings",
-            "InvalidWorkspaceBindings",
-            "InvalidTaskRunSpecs",
-            "ParameterTypeMismatch",
-            "ObjectParameterMissKeys",
-            "ParamArrayIndexingInvalid",
-            "CouldntGetTask",
-            "ParameterMissing",
-            "PipelineValidationFailed",
-            "CouldntGetPipelineResult",
-            "PipelineInvalidGraph",
-            "PipelineRunCouldntCancel",
-            "PipelineRunCouldntTimeOut",
-            "InvalidMatrixParameterTypes",
-            "InvalidTaskResultReference",
-            "RequiredWorkspaceMarkedOptional",
-            "ResolvingPipelineRef",
-            "ResourceVerificationFailed",
-            "CreateRunFailed",
-            "CELEvaluationFailed",
-            "InvalidParamValue"
-          ],
-          "x-go-enum-desc": "Started PipelineRunReasonStarted  PipelineRunReasonStarted is the reason set when the PipelineRun has just started\nRunning PipelineRunReasonRunning  PipelineRunReasonRunning is the reason set when the PipelineRun is running\nSucceeded PipelineRunReasonSuccessful  PipelineRunReasonSuccessful is the reason set when the PipelineRun completed successfully\nCompleted PipelineRunReasonCompleted  PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks\nFailed PipelineRunReasonFailed  PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure\nCancelled PipelineRunReasonCancelled  PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user  This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully  This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed\nPipelineRunPending PipelineRunReasonPending  PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state\nPipelineRunTimeout PipelineRunReasonTimedOut  PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out\nPipelineRunStopping PipelineRunReasonStopping  PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the  pipeline will stop once all running tasks complete their work\nCancelledRunningFinally PipelineRunReasonCancelledRunningFinally  PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled  and no new Tasks will be scheduled by the controller, but final tasks are now running\nStoppedRunningFinally PipelineRunReasonStoppedRunningFinally  PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped  and no new Tasks will be scheduled by the controller, but final tasks are now running\nCouldntGetPipeline PipelineRunReasonCouldntGetPipeline  ReasonCouldntGetPipeline indicates that the reason for the failure status is that the  associated Pipeline couldn't be retrieved\nInvalidPipelineResourceBindings PipelineRunReasonInvalidBindings  ReasonInvalidBindings indicates that the reason for the failure status is that the  PipelineResources bound in the PipelineRun didn't match those declared in the Pipeline\nInvalidWorkspaceBindings PipelineRunReasonInvalidWorkspaceBinding  ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a  PipelineRun has provided an invalid binding.\nInvalidTaskRunSpecs PipelineRunReasonInvalidTaskRunSpec  ReasonInvalidTaskRunSpec indicates that PipelineRun.Spec.TaskRunSpecs[].PipelineTaskName is defined with  a not exist taskName in pipelineSpec.\nParameterTypeMismatch PipelineRunReasonParameterTypeMismatch  ReasonParameterTypeMismatch indicates that the reason for the failure status is that  parameter(s) declared in the PipelineRun do not have the some declared type as the  parameters(s) declared in the Pipeline that they are supposed to override.\nObjectParameterMissKeys PipelineRunReasonObjectParameterMissKeys  ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec  misses some keys required for the object param declared in Pipeline spec.\nParamArrayIndexingInvalid PipelineRunReasonParamArrayIndexingInvalid  ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate  or the array is out of bound.\nCouldntGetTask PipelineRunReasonCouldntGetTask  ReasonCouldntGetTask indicates that the reason for the failure status is that the  associated Pipeline's Tasks couldn't all be retrieved\nParameterMissing PipelineRunReasonParameterMissing  ReasonParameterMissing indicates that the reason for the failure status is that the  associated PipelineRun didn't provide all the required parameters\nPipelineValidationFailed PipelineRunReasonFailedValidation  ReasonFailedValidation indicates that the reason for failure status is  that pipelinerun failed runtime validation\nCouldntGetPipelineResult PipelineRunReasonCouldntGetPipelineResult  PipelineRunReasonCouldntGetPipelineResult indicates that the pipeline fails to retrieve the  referenced result. This could be due to failed TaskRuns or Runs that were supposed to produce  the results\nPipelineInvalidGraph PipelineRunReasonInvalidGraph  ReasonInvalidGraph indicates that the reason for the failure status is that the  associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)\nPipelineRunCouldntCancel PipelineRunReasonCouldntCancel  ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update  all of the running TaskRuns as cancelled failed.\nPipelineRunCouldntTimeOut PipelineRunReasonCouldntTimeOut  ReasonCouldntTimeOut indicates that a PipelineRun was timed out but attempting to update  all of the running TaskRuns as timed out failed.\nInvalidMatrixParameterTypes PipelineRunReasonInvalidMatrixParameterTypes  ReasonInvalidMatrixParameterTypes indicates a matrix contains invalid parameter types\nInvalidTaskResultReference PipelineRunReasonInvalidTaskResultReference  ReasonInvalidTaskResultReference indicates a task result was declared  but was not initialized by that task\nRequiredWorkspaceMarkedOptional PipelineRunReasonRequiredWorkspaceMarkedOptional  ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace  has been passed to a Task that is expecting a non-optional workspace\nResolvingPipelineRef PipelineRunReasonResolvingPipelineRef  ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for  its pipelineRef to be asynchronously resolved.\nResourceVerificationFailed PipelineRunReasonResourceVerificationFailed  ReasonResourceVerificationFailed indicates that the pipeline fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nCreateRunFailed PipelineRunReasonCreateRunFailed  ReasonCreateRunFailed indicates that the pipeline fails to create the taskrun or other run resources\nCELEvaluationFailed PipelineRunReasonCELEvaluationFailed  ReasonCELEvaluationFailed indicates the pipeline fails the CEL evaluation\nInvalidParamValue PipelineRunReasonInvalidParamValue  PipelineRunReasonInvalidParamValue indicates that the PipelineRun Param input value is not allowed.",
-          "x-go-name": "Status"
+          "x-go-name": "Status",
+          "example": "Running"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -6865,28 +6707,10 @@
           "example": "2006-01-02T15:04:05Z"
         },
         "status": {
-          "description": "Status of the task\nStarted TaskRunReasonStarted  TaskRunReasonStarted is the reason set when the TaskRun has just started\nRunning TaskRunReasonRunning  TaskRunReasonRunning is the reason set when the TaskRun is running\nSucceeded TaskRunReasonSuccessful  TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully\nFailed TaskRunReasonFailed  TaskRunReasonFailed is the reason set when the TaskRun completed with a failure\nToBeRetried TaskRunReasonToBeRetried  TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried\nTaskRunCancelled TaskRunReasonCancelled  TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user\nTaskRunTimeout TaskRunReasonTimedOut  TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out\nTaskRunImagePullFailed TaskRunReasonImagePullFailed  TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled\nTaskRunResultLargerThanAllowedLimit TaskRunReasonResultLargerThanAllowedLimit  TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB\nTaskRunStopSidecarFailed TaskRunReasonStopSidecarFailed  TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.\nInvalidParamValue TaskRunReasonInvalidParamValue  TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.\nTaskRunResolutionFailed TaskRunReasonFailedResolution  TaskRunReasonFailedResolution indicated that the reason for failure status is  that references within the TaskRun could not be resolved\nTaskRunValidationFailed TaskRunReasonFailedValidation  TaskRunReasonFailedValidation indicated that the reason for failure status is  that taskrun failed runtime validation\nTaskValidationFailed TaskRunReasonTaskFailedValidation  TaskRunReasonTaskFailedValidation indicated that the reason for failure status is  that task failed runtime validation\nResourceVerificationFailed TaskRunReasonResourceVerificationFailed  TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nFailureIgnored TaskRunReasonFailureIgnored  TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.  TaskRuns failed due to reconciler/validation error should not use this reason.",
+          "description": "Status of the task",
           "type": "string",
-          "enum": [
-            "Started",
-            "Running",
-            "Succeeded",
-            "Failed",
-            "ToBeRetried",
-            "TaskRunCancelled",
-            "TaskRunTimeout",
-            "TaskRunImagePullFailed",
-            "TaskRunResultLargerThanAllowedLimit",
-            "TaskRunStopSidecarFailed",
-            "InvalidParamValue",
-            "TaskRunResolutionFailed",
-            "TaskRunValidationFailed",
-            "TaskValidationFailed",
-            "ResourceVerificationFailed",
-            "FailureIgnored"
-          ],
-          "x-go-enum-desc": "Started TaskRunReasonStarted  TaskRunReasonStarted is the reason set when the TaskRun has just started\nRunning TaskRunReasonRunning  TaskRunReasonRunning is the reason set when the TaskRun is running\nSucceeded TaskRunReasonSuccessful  TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully\nFailed TaskRunReasonFailed  TaskRunReasonFailed is the reason set when the TaskRun completed with a failure\nToBeRetried TaskRunReasonToBeRetried  TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried\nTaskRunCancelled TaskRunReasonCancelled  TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user\nTaskRunTimeout TaskRunReasonTimedOut  TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out\nTaskRunImagePullFailed TaskRunReasonImagePullFailed  TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled\nTaskRunResultLargerThanAllowedLimit TaskRunReasonResultLargerThanAllowedLimit  TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB\nTaskRunStopSidecarFailed TaskRunReasonStopSidecarFailed  TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.\nInvalidParamValue TaskRunReasonInvalidParamValue  TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.\nTaskRunResolutionFailed TaskRunReasonFailedResolution  TaskRunReasonFailedResolution indicated that the reason for failure status is  that references within the TaskRun could not be resolved\nTaskRunValidationFailed TaskRunReasonFailedValidation  TaskRunReasonFailedValidation indicated that the reason for failure status is  that taskrun failed runtime validation\nTaskValidationFailed TaskRunReasonTaskFailedValidation  TaskRunReasonTaskFailedValidation indicated that the reason for failure status is  that task failed runtime validation\nResourceVerificationFailed TaskRunReasonResourceVerificationFailed  TaskRunReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,  it could be the content has changed, signature is invalid or public key is invalid\nFailureIgnored TaskRunReasonFailureIgnored  TaskRunReasonFailureIgnored is the reason set when the Taskrun has failed due to pod execution error and the failure is ignored for the owning PipelineRun.  TaskRuns failed due to reconciler/validation error should not use this reason.",
-          "x-go-name": "Status"
+          "x-go-name": "Status",
+          "example": "Completed"
         },
         "statusMessage": {
           "description": "StatusMessage of the task",
@@ -7389,16 +7213,34 @@
           "enum": [
             "Pending",
             "Consistent",
-            "NotAvailable"
+            "NotAvailable",
+            "Invalid"
           ],
           "x-go-name": "Status",
           "example": "Consistent"
         },
+        "statusMessages": {
+          "description": "StatusMessages contains a list of messages related to the Status",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "StatusMessages"
+        },
+        "tlsCertificates": {
+          "description": "TLSCertificates holds the TLS certificate and certificate authorities (CA)\nThe first certificate in the list should be the TLS certificate and the rest should be CA certificates",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TLSCertificate"
+          },
+          "x-go-name": "TLSCertificates"
+        },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
+            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7406,7 +7248,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "client-cert"
         }
@@ -7427,10 +7269,11 @@
           "example": "p4$sW0rDz"
         },
         "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "description": "Type of the secret\ngeneric SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "type": "string",
           "enum": [
             "generic",
+            "client-cert",
             "azure-blob-fuse-volume",
             "csi-azure-blob-volume",
             "csi-azure-key-vault-creds",
@@ -7438,7 +7281,7 @@
             "client-cert-auth",
             "oauth2-proxy"
           ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
+          "x-go-enum-desc": "generic SecretTypeGeneric\nclient-cert SecretTypeClientCert\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "azure-blob-fuse-volume"
         }
@@ -7520,131 +7363,8 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
     },
-    "TLS": {
-      "description": "TLS configuration and status for external DNS",
-      "type": "object",
-      "required": [
-        "useAutomation",
-        "status"
-      ],
-      "properties": {
-        "certificates": {
-          "description": "Certificates holds the X509 certificate chain\nThe first certificate in the list should be the host certificate and the rest should be intermediate certificates",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/X509Certificate"
-          },
-          "x-go-name": "Certificates"
-        },
-        "status": {
-          "description": "Status of TLS certificate and private key\nPending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
-          "type": "string",
-          "enum": [
-            "Pending",
-            "Consistent",
-            "Invalid"
-          ],
-          "x-go-enum-desc": "Pending TLSStatusPending  TLS certificate and private key not set\nConsistent TLSStatusConsistent  TLS certificate and private key is valid\nInvalid TLSStatusInvalid  TLS certificate and private key is invalid",
-          "x-go-name": "Status",
-          "example": "Consistent"
-        },
-        "statusMessages": {
-          "description": "StatusMessages contains a list of messages related to Status",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "StatusMessages"
-        },
-        "useAutomation": {
-          "description": "UseAutomation describes if TLS certificate is automatically issued using automation (ACME)",
-          "type": "boolean",
-          "x-go-name": "UseAutomation"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
-    },
-    "UpdateAlertingConfig": {
-      "description": "UpdateAlertingConfig contains fields for updating alert settings",
-      "type": "object",
-      "required": [
-        "receivers",
-        "receiverSecrets",
-        "alerts"
-      ],
-      "properties": {
-        "alerts": {
-          "$ref": "#/definitions/AlertConfigList"
-        },
-        "receiverSecrets": {
-          "$ref": "#/definitions/UpdateReceiverConfigSecretsMap"
-        },
-        "receivers": {
-          "$ref": "#/definitions/ReceiverConfigMap"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateExternalDnsTlsRequest": {
-      "description": "UpdateExternalDNSTLSRequest describes request body for setting private key and certificate for external DNS TLS",
-      "type": "object",
-      "required": [
-        "privateKey",
-        "certificate"
-      ],
-      "properties": {
-        "certificate": {
-          "description": "X509 certificate in PEM format",
-          "type": "string",
-          "x-go-name": "Certificate"
-        },
-        "privateKey": {
-          "description": "Private key in PEM format",
-          "type": "string",
-          "x-go-name": "PrivateKey"
-        },
-        "skipValidation": {
-          "description": "Skip validation of certificate and private key",
-          "type": "boolean",
-          "x-go-name": "SkipValidation"
-        }
-      },
-      "x-go-name": "UpdateExternalDNSTLSRequest",
-      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
-    },
-    "UpdateReceiverConfigSecrets": {
-      "description": "UpdateReceiverConfigSecrets defines secrets to be updated",
-      "type": "object",
-      "properties": {
-        "slackConfig": {
-          "$ref": "#/definitions/UpdateSlackConfigSecrets"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateReceiverConfigSecretsMap": {
-      "description": "UpdateReceiverConfigSecretsMap defines a map of UpdateReceiverConfigSecrets where key is the name of the receiver",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/UpdateReceiverConfigSecrets"
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UpdateSlackConfigSecrets": {
-      "description": "UpdateSlackConfig defines secrets to be updated for Slack",
-      "type": "object",
-      "properties": {
-        "webhookUrl": {
-          "description": "WebhookURL the Slack webhook URL where alerts are sent\nSecret key for webhook URL is updated if a non-nil value is present, and deleted if omitted or set to null\n\nrequired:",
-          "type": "string",
-          "x-go-name": "WebhookURL",
-          "x-nullable": true
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "X509Certificate": {
-      "description": "X509Certificate holds information about a X509 certificate",
+    "TLSCertificate": {
+      "description": "TLSCertificate holds information about a TLS certificate",
       "type": "object",
       "required": [
         "subject",
@@ -7686,7 +7406,59 @@
           "example": "CN=mysite.example.com,O=MyOrg,L=MyLocation,C=NO"
         }
       },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+      "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
+    },
+    "UpdateAlertingConfig": {
+      "description": "UpdateAlertingConfig contains fields for updating alert settings",
+      "type": "object",
+      "required": [
+        "receivers",
+        "receiverSecrets",
+        "alerts"
+      ],
+      "properties": {
+        "alerts": {
+          "$ref": "#/definitions/AlertConfigList"
+        },
+        "receiverSecrets": {
+          "$ref": "#/definitions/UpdateReceiverConfigSecretsMap"
+        },
+        "receivers": {
+          "$ref": "#/definitions/ReceiverConfigMap"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateReceiverConfigSecrets": {
+      "description": "UpdateReceiverConfigSecrets defines secrets to be updated",
+      "type": "object",
+      "properties": {
+        "slackConfig": {
+          "$ref": "#/definitions/UpdateSlackConfigSecrets"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateReceiverConfigSecretsMap": {
+      "description": "UpdateReceiverConfigSecretsMap defines a map of UpdateReceiverConfigSecrets where key is the name of the receiver",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/UpdateReceiverConfigSecrets"
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UpdateSlackConfigSecrets": {
+      "description": "UpdateSlackConfig defines secrets to be updated for Slack",
+      "type": "object",
+      "properties": {
+        "webhookUrl": {
+          "description": "WebhookURL the Slack webhook URL where alerts are sent\nSecret key for webhook URL is updated if a non-nil value is present, and deleted if omitted or set to null\n\nrequired:",
+          "type": "string",
+          "x-go-name": "WebhookURL",
+          "x-nullable": true
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
     }
   },
   "securityDefinitions": {

@@ -2,21 +2,16 @@ package secrets
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
-	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/labelselector"
-	"github.com/equinor/radix-api/api/utils/predicate"
 	sortUtils "github.com/equinor/radix-api/api/utils/sort"
-	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	apiModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
-	commonutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/slice"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -49,43 +44,48 @@ func WithAccounts(accounts apiModels.Accounts) SecretHandlerOptions {
 	}
 }
 
-// WithAccounts configures all SecretHandler fields
-func WithTLSValidator(tlsValidator tlsvalidation.Validator) SecretHandlerOptions {
-	return func(eh *SecretHandler) {
-		eh.tlsValidator = tlsValidator
-	}
-}
-
 // SecretHandler Instance variables
 type SecretHandler struct {
 	userAccount    apiModels.Account
 	serviceAccount apiModels.Account
 	deployHandler  deployments.DeployHandler
-	tlsValidator   tlsvalidation.Validator
 }
 
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' SecretHandler.
 // SecretHandlerOptions are processed in the sequence they are passed to this function.
-func Init(opts ...SecretHandlerOptions) *SecretHandler {
-	eh := &SecretHandler{}
+func Init(opts ...SecretHandlerOptions) SecretHandler {
+	eh := SecretHandler{}
 
 	for _, opt := range opts {
-		opt(eh)
+		opt(&eh)
 	}
 
 	return eh
 }
 
 // ChangeComponentSecret handler for HandleChangeComponentSecret
-func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envName, componentName, secretName string, componentSecret models.SecretParameters) error {
+func (eh SecretHandler) ChangeComponentSecret(ctx context.Context, appName, envName, componentName, secretName string, componentSecret models.SecretParameters) error {
 	newSecretValue := componentSecret.SecretValue
 	if strings.TrimSpace(newSecretValue) == "" {
 		return radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
+	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
+
 	var secretObjName, partName string
-	if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
+
+	if strings.HasSuffix(secretName, suffix.ExternalDNSTLSCert) {
+		// This is the cert part of the TLS secret
+		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSCert)
+		partName = corev1.TLSCertKey
+
+	} else if strings.HasSuffix(secretName, suffix.ExternalDNSTLSKey) {
+		// This is the key part of the TLS secret
+		secretObjName = strings.TrimSuffix(secretName, suffix.ExternalDNSTLSKey)
+		partName = corev1.TLSPrivateKeyKey
+
+	} else if strings.HasSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix) {
 		// This is the account key part of the blobfuse cred secret
 		secretObjName = strings.TrimSuffix(secretName, defaults.BlobFuseCredsAccountKeyPartSuffix)
 		partName = defaults.BlobFuseCredsAccountKeyPart
@@ -133,81 +133,29 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 		// This is a regular secret
 		secretObjName = operatorutils.GetComponentSecretName(componentName)
 		partName = secretName
+
 	}
 
-	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-	return eh.setSecretKeyValue(ctx, ns, secretObjName, map[string][]byte{partName: []byte(newSecretValue)})
-}
-
-func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string, skipValidation bool) error {
-	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
+	secretObject, err := eh.userAccount.Client.CoreV1().Secrets(ns).Get(ctx, secretObjName, metav1.GetOptions{})
 	if err != nil {
-		return radixhttp.UnexpectedError("Failed to get deployments", err)
+		return err
 	}
 
-	activeRd, found := slice.FindFirst(rdList, func(rd radixv1.RadixDeployment) bool { return predicate.IsActiveRadixDeployment(rd) })
-	if !found {
-		return radixhttp.NotFoundError(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName))
+	if secretObject.Data == nil {
+		secretObject.Data = make(map[string][]byte)
 	}
 
-	component := activeRd.GetComponentByName(componentName)
-	if component == nil {
-		return radixhttp.NotFoundError(fmt.Sprintf("Component %q does not exist", componentName))
-	}
+	secretObject.Data[partName] = []byte(newSecretValue)
 
-	externalDNS, found := slice.FindFirst(component.GetExternalDNS(), func(rded radixv1.RadixDeployExternalDNS) bool { return rded.FQDN == fqdn })
-	if !found {
-		return radixhttp.NotFoundError(fmt.Sprintf("External DNS %q not configured for component", fqdn))
-	}
-
-	if externalDNS.UseCertificateAutomation {
-		return &radixhttp.Error{Type: radixhttp.User, Message: fmt.Sprintf("External DNS %q is configured to use certificate automation", fqdn)}
-	}
-
-	certificateBytes, privateKeyBytes := []byte(certificate), []byte(privateKey)
-
-	if !skipValidation {
-		tlsValidator := eh.getTLSValidatorOrDefault()
-
-		if valid, validationMsgs := tlsValidator.ValidateX509Certificate(certificateBytes, privateKeyBytes, fqdn); !valid {
-			return radixhttp.ValidationError("TLS", strings.Join(validationMsgs, ", "))
-		}
-	}
-
-	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-	if err := eh.setSecretKeyValue(ctx, ns, fqdn, map[string][]byte{corev1.TLSCertKey: certificateBytes, corev1.TLSPrivateKeyKey: privateKeyBytes}); err != nil {
-		return radixhttp.UnexpectedError(fmt.Sprintf("Failed to update TLS private key and certificate for %q", fqdn), err)
+	_, err = eh.userAccount.Client.CoreV1().Secrets(ns).Update(ctx, secretObject, metav1.UpdateOptions{})
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (eh *SecretHandler) getTLSValidatorOrDefault() tlsvalidation.Validator {
-	if commonutils.IsNil(eh.tlsValidator) {
-		return tlsvalidation.DefaultValidator()
-	}
-	return eh.tlsValidator
-}
-
-func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secretName string, keyValue map[string][]byte) error {
-	secret, err := eh.userAccount.Client.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	if secret.Data == nil {
-		secret.Data = make(map[string][]byte)
-	}
-
-	for k, v := range keyValue {
-		secret.Data[k] = v
-	}
-
-	_, err = eh.userAccount.Client.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
-	return err
-}
-
-func (eh *SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
+func (eh SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName string) (secretIdToPodNameToSecretVersionMap, error) {
 	secretProviderClassMap, err := eh.getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
 		return nil, err
@@ -229,10 +177,10 @@ func (eh *SecretHandler) getAzureKeyVaultSecretVersionsMap(appName, envNamespace
 			secretStatusMap[secretVersion.ID][secretsInPod.Status.PodName] = secretVersion.Version
 		}
 	}
-	return secretStatusMap, nil
+	return secretStatusMap, nil // map[secretType/secretName][podName]secretVersion
 }
 
-func (eh *SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName string) (map[string]secretsstorev1.SecretProviderClass, error) {
+func (eh SecretHandler) getAzureKeyVaultSecretProviderClassMapForAppComponentStorage(appName, envNamespace, componentName, azureKeyVaultName string) (map[string]secretsstorev1.SecretProviderClass, error) {
 	labelSelector := getAzureKeyVaultSecretRefSecretProviderClassLabels(appName, componentName, azureKeyVaultName).String()
 	return eh.getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector)
 }
@@ -246,7 +194,7 @@ func getAzureKeyVaultSecretRefSecretProviderClassLabels(appName string, componen
 	}
 }
 
-func (eh *SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector string) (map[string]secretsstorev1.SecretProviderClass, error) {
+func (eh SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace, labelSelector string) (map[string]secretsstorev1.SecretProviderClass, error) {
 	secretProviderClassList, err := eh.serviceAccount.SecretProviderClient.SecretsstoreV1().SecretProviderClasses(envNamespace).
 		List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
@@ -261,7 +209,7 @@ func (eh *SecretHandler) getSecretProviderClassMapForLabelSelector(envNamespace,
 }
 
 // GetAzureKeyVaultSecretVersions Gets list of Azure Key vault secret versions for the storage in the component
-func (eh *SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
+func (eh SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, componentName, azureKeyVaultName, secretId string) ([]models.AzureKeyVaultSecretVersion, error) {
 	var envNamespace = operatorutils.GetEnvironmentNamespace(appName, envName)
 	azureKeyVaultSecretMap, err := eh.getAzureKeyVaultSecretVersionsMap(appName, envNamespace, componentName, azureKeyVaultName)
 	if err != nil {
@@ -275,7 +223,7 @@ func (eh *SecretHandler) GetAzureKeyVaultSecretVersions(appName, envName, compon
 	return eh.getAzKeyVaultSecretVersions(appName, envNamespace, componentName, podList.Items, azureKeyVaultSecretMap[secretId])
 }
 
-func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
+func (eh SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespace string, componentName string, pods []corev1.Pod, podSecretVersionMap podNameToSecretVersionMap) ([]models.AzureKeyVaultSecretVersion, error) {
 	jobMap, err := eh.getJobMap(appName, envNamespace, componentName)
 	if err != nil {
 		return nil, err
@@ -289,7 +237,7 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 		podCreated := pod.GetCreationTimestamp()
 		azureKeyVaultSecretVersion := models.AzureKeyVaultSecretVersion{
 			ReplicaName:    pod.GetName(),
-			ReplicaCreated: commonutils.FormatTime(&podCreated),
+			ReplicaCreated: radixutils.FormatTime(&podCreated),
 			Version:        secretVersion,
 		}
 		if _, ok := pod.ObjectMeta.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok {
@@ -308,12 +256,12 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 		}
 		azureKeyVaultSecretVersion.JobName = jobName
 		jobCreated := job.GetCreationTimestamp()
-		azureKeyVaultSecretVersion.JobCreated = commonutils.FormatTime(&jobCreated)
+		azureKeyVaultSecretVersion.JobCreated = radixutils.FormatTime(&jobCreated)
 		if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok {
 			if batch, ok := jobMap[batchName]; ok {
 				azureKeyVaultSecretVersion.BatchName = batchName
 				batchCreated := batch.GetCreationTimestamp()
-				azureKeyVaultSecretVersion.BatchCreated = commonutils.FormatTime(&batchCreated)
+				azureKeyVaultSecretVersion.BatchCreated = radixutils.FormatTime(&batchCreated)
 			}
 		}
 		azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
@@ -321,7 +269,7 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 	return azKeyVaultSecretVersions, nil
 }
 
-func (eh *SecretHandler) getJobMap(appName, namespace, componentName string) (map[string]batchv1.Job, error) {
+func (eh SecretHandler) getJobMap(appName, namespace, componentName string) (map[string]batchv1.Job, error) {
 	jobMap := make(map[string]batchv1.Job)
 	jobList, err := eh.userAccount.Client.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelselector.JobAndBatchJobsForComponent(appName, componentName)})
 	if err != nil {

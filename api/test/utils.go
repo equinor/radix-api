@@ -51,9 +51,9 @@ func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *htt
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
-		defer close(response)
 		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
+		close(response)
 	}()
 
 	return response
@@ -75,9 +75,9 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
-		defer close(response)
 		router.NewServer("anyClusterName", NewKubeUtilMock(tu.client, tu.radixclient, tu.secretproviderclient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
+		close(response)
 	}()
 
 	return response
@@ -105,6 +105,7 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, er
 func GetResponseBody(response *httptest.ResponseRecorder, target interface{}) error {
 	reader := bytes.NewReader(response.Body.Bytes()) //To allow read from response body multiple times
 	body, _ := io.ReadAll(reader)
+	log.Infof(string(body))
 	return json.Unmarshal(body, target)
 }
 

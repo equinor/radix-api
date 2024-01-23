@@ -1,22 +1,33 @@
 package environments
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
+	tlsvalidatormock "github.com/equinor/radix-api/api/utils/tlsvalidator/mock"
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	batchv1 "k8s.io/api/batch/v1"
@@ -132,6 +143,48 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Resource:    "",
 					Component:   jobName1,
 					Status:      secretModels.Consistent.String(),
+				},
+			},
+		},
+		{
+			name:       "External alias secrets with no secrets, must build secrets from deploy component",
+			components: []v1.RadixDeployComponent{{Name: componentName1, DNSExternalAlias: []string{"deployed-alias-1", "deployed-alias-2"}}},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "deployed-alias-1-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-1",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdKey,
+				},
+				{
+					Name:        "deployed-alias-1-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-1",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdCert,
+				},
+				{
+					Name:        "deployed-alias-2-key",
+					DisplayName: "Key",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdKey,
+				},
+				{
+					Name:        "deployed-alias-2-cert",
+					DisplayName: "Certificate",
+					Type:        secretModels.SecretTypeClientCert,
+					Resource:    "deployed-alias-2",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdCert,
 				},
 			},
 		},
@@ -763,6 +816,399 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetAuthenticationSecrets() {
 			s.assertSecrets(&commonScenario, actual.Secrets)
 		})
 	}
+}
+
+func Test_ExternalDnsAliasSecretTestSuite(t *testing.T) {
+	suite.Run(t, new(externalDnsAliasSecretTestSuite))
+}
+
+type externalDnsAliasSecretTestSuite struct {
+	suite.Suite
+	tlsValidator          *tlsvalidatormock.MockTLSSecretValidator
+	commonTestUtils       *commontest.Utils
+	envvironmentTestUtils *controllertest.Utils
+	kubeClient            kubernetes.Interface
+	radixClient           radixclient.Interface
+	secretProviderClient  secretsstoreclient.Interface
+	deployment            *v1.RadixDeployment
+	appName               string
+	componentName         string
+	environmentName       string
+	alias                 string
+}
+
+func (s *externalDnsAliasSecretTestSuite) buildCertificate(certCN, issuerCN string, dnsNames []string, notBefore, notAfter time.Time) []byte {
+	ca := &x509.Certificate{
+		SerialNumber: big.NewInt(1111),
+		Subject:      pkix.Name{CommonName: issuerCN},
+		IsCA:         true,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+	}
+	caPrivKey, _ := rsa.GenerateKey(rand.Reader, 4096)
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(2222),
+		Subject:      pkix.Name{CommonName: certCN},
+		DNSNames:     dnsNames,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+	}
+	certPrivKey, _ := rsa.GenerateKey(rand.Reader, 4096)
+	certBytes, _ := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
+	certPEM := new(bytes.Buffer)
+	err := pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+	require.NoError(s.T(), err)
+	return certPEM.Bytes()
+}
+
+func (s *externalDnsAliasSecretTestSuite) SetupTest() {
+	ctrl := gomock.NewController(s.T())
+	s.tlsValidator = tlsvalidatormock.NewMockTLSSecretValidator(ctrl)
+	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSSecretValidator(s.tlsValidator)})
+
+	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"
+
+	deployment, err := s.commonTestUtils.ApplyDeployment(operatorutils.
+		ARadixDeployment().
+		WithAppName(s.appName).
+		WithEnvironment(s.environmentName).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(s.componentName).WithDNSExternalAlias(s.alias)).
+		WithImageTag("master"))
+	require.NoError(s.T(), err)
+	s.deployment = deployment
+
+	_, err = s.commonTestUtils.ApplyApplication(operatorutils.
+		ARadixApplication().
+		WithAppName(s.appName).
+		WithEnvironment(s.environmentName, "master").
+		WithComponents(operatorutils.
+			AnApplicationComponent().
+			WithName(s.componentName)))
+	require.NoError(s.T(), err)
+}
+
+func (s *externalDnsAliasSecretTestSuite) executeRequest(appName, envName string) (environment *environmentModels.Environment, statusCode int, err error) {
+	responseChannel := s.envvironmentTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	response := <-responseChannel
+	var env environmentModels.Environment
+	err = controllertest.GetResponseBody(response, &env)
+	if err == nil {
+		environment = &env
+	}
+	statusCode = response.Code
+	return
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_Consistent() {
+	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
+	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
+	certCN, issuerCN := "one.example.com", "issuer.example.com"
+	dnsNames := []string{"dns1", "dns2"}
+	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
+
+	s.tlsValidator.EXPECT().ValidateTLSKey(keyBytes).Return(true, nil).Times(1)
+	s.tlsValidator.EXPECT().ValidateTLSCertificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: keyBytes,
+				corev1.TLSCertKey:       certBytes,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
+			},
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingKeyData() {
+	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
+	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
+	certCN, issuerCN := "one.example.com", "issuer.example.com"
+	dnsNames := []string{"dns1", "dns2"}
+	certBytes := s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
+
+	s.tlsValidator.EXPECT().ValidateTLSCertificate(certBytes, nil, s.alias).Return(true, nil).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: nil,
+				corev1.TLSCertKey:       certBytes,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Pending.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
+			},
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_KeyDataValidationError() {
+	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
+	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
+	certCN, issuerCN := "one.example.com", "issuer.example.com"
+	dnsNames := []string{"dns1", "dns2"}
+	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
+	keyValidationMsg := "any message"
+
+	s.tlsValidator.EXPECT().ValidateTLSKey(keyBytes).Return(false, []string{keyValidationMsg}).Times(1)
+	s.tlsValidator.EXPECT().ValidateTLSCertificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: keyBytes,
+				corev1.TLSCertKey:       certBytes,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Invalid.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+			StatusMessages: []string{keyValidationMsg},
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
+			},
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_MissingCertData() {
+	keyBytes := []byte("any key")
+
+	s.tlsValidator.EXPECT().ValidateTLSKey(keyBytes).Return(true, nil).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: keyBytes,
+				corev1.TLSCertKey:       nil,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:   secretModels.Pending.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataParseError() {
+	keyBytes, certBytes := []byte("any key"), []byte("any cert")
+
+	s.tlsValidator.EXPECT().ValidateTLSKey(keyBytes).Return(true, nil).Times(1)
+	s.tlsValidator.EXPECT().ValidateTLSCertificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: keyBytes,
+				corev1.TLSCertKey:       certBytes,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
+}
+
+func (s *externalDnsAliasSecretTestSuite) Test_ExternalAliasSecret_CertDataValidationError() {
+	notBefore, _ := time.Parse("2006-01-02", "2020-07-01")
+	notAfter, _ := time.Parse("2006-01-02", "2020-08-01")
+	certCN, issuerCN := "one.example.com", "issuer.example.com"
+	dnsNames := []string{"dns1", "dns2"}
+	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
+	certValidationMsg := "any msg"
+
+	s.tlsValidator.EXPECT().ValidateTLSKey(keyBytes).Return(true, nil).Times(1)
+	s.tlsValidator.EXPECT().ValidateTLSCertificate(certBytes, keyBytes, s.alias).Return(false, []string{certValidationMsg}).Times(1)
+
+	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient)
+	sut.tlsSecretValidator = s.tlsValidator
+
+	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: s.alias,
+			},
+			Data: map[string][]byte{
+				corev1.TLSPrivateKeyKey: keyBytes,
+				corev1.TLSCertKey:       certBytes,
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	require.NoError(s.T(), err)
+
+	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
+	s.Equal(statusCode, 200)
+	s.NoError(err)
+
+	expectedSecrets := []secretModels.Secret{
+		{Name: s.alias + "-key", DisplayName: "Key",
+			Status:   secretModels.Consistent.String(),
+			Resource: s.alias,
+			Type:     secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdKey,
+		},
+		{Name: s.alias + "-cert", DisplayName: "Certificate",
+			Status:         secretModels.Invalid.String(),
+			StatusMessages: []string{certValidationMsg},
+			Resource:       s.alias,
+			Type:           secretModels.SecretTypeClientCert, Component: s.componentName, ID: secretModels.SecretIdCert,
+			TLSCertificates: []secretModels.TLSCertificate{
+				{
+					Subject:   "CN=" + certCN,
+					Issuer:    "CN=" + issuerCN,
+					NotBefore: notBefore,
+					NotAfter:  notAfter,
+					DNSNames:  dnsNames,
+				},
+			},
+		},
+	}
+	s.ElementsMatch(expectedSecrets, environment.Secrets)
 }
 
 func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secrets []secretModels.Secret) {

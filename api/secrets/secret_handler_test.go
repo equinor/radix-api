@@ -267,6 +267,138 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: true,
 		},
 		{
+			name: "Change External DNS cert in the component",
+			components: []v1.RadixDeployComponent{{
+				Name:    componentName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretName:                  "some-external-dns-secret",
+			secretDataKey:               corev1.TLSCertKey,
+			secretValue:                 "current tls certificate text\nline2\nline3",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "some-external-dns-secret-cert",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls certificate text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name: "Change External DNS cert in the job",
+			jobs: []v1.RadixDeployJobComponent{{
+				Name:    jobName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretName:                  "some-external-dns-secret",
+			secretDataKey:               corev1.TLSCertKey,
+			secretValue:                 "current tls certificate text\nline2\nline3",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "some-external-dns-secret-cert",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls certificate text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name: "Failed change of not existing External DNS cert in the component",
+			components: []v1.RadixDeployComponent{{
+				Name:    componentName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretExists:                false,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "some-external-dns-secret-cert",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls certificate text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: true,
+		},
+		{
+			name: "Failed change of not existing External DNS cert in the job",
+			jobs: []v1.RadixDeployJobComponent{{
+				Name:    jobName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretExists:                false,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "some-external-dns-secret-cert",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls certificate text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: true,
+		},
+		{
+			name: "Change External DNS key in the component",
+			components: []v1.RadixDeployComponent{{
+				Name:    componentName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretName:                  "some-external-dns-secret",
+			secretDataKey:               corev1.TLSPrivateKeyKey,
+			secretValue:                 "current tls key text\nline2\nline3",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "some-external-dns-secret-key",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls key text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name: "Change External DNS key in the job",
+			jobs: []v1.RadixDeployJobComponent{{
+				Name:    jobName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretName:                  "some-external-dns-secret",
+			secretDataKey:               corev1.TLSPrivateKeyKey,
+			secretValue:                 "current tls key text\nline2\nline3",
+			secretExists:                true,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "some-external-dns-secret-key",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls key text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: false,
+		},
+		{
+			name: "Failed change of not existing External DNS key in the component",
+			components: []v1.RadixDeployComponent{{
+				Name:    componentName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretExists:                false,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          "some-external-dns-secret-key",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls key text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: true,
+		},
+		{
+			name: "Failed change of not existing External DNS key in the job",
+			jobs: []v1.RadixDeployJobComponent{{
+				Name:    jobName1,
+				Secrets: []string{"some-external-dns-secret"},
+			}},
+			secretExists:                false,
+			changingSecretComponentName: jobName1,
+			changingSecretName:          "some-external-dns-secret-key",
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "new tls key text\nline2\nline3",
+				Type:        secretModels.SecretTypeClientCert,
+			},
+			expectedError: true,
+		},
+		{
 			name: "Change CSI Azure Blob volume account name in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -713,7 +845,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new client certificate\nline2\nline3",
-				Type:        secretModels.SecretTypeClientCertificateAuth,
+				Type:        secretModels.SecretTypeClientCert,
 			},
 			expectedError: false,
 		},
@@ -727,7 +859,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new client certificate\nline2\nline3",
-				Type:        secretModels.SecretTypeClientCertificateAuth,
+				Type:        secretModels.SecretTypeClientCert,
 			},
 			expectedError: true,
 		},

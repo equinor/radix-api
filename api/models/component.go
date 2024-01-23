@@ -6,7 +6,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/predicate"
-	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	commonutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -20,27 +19,25 @@ import (
 )
 
 // BuildComponents builds a list of Component models.
-func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) []*deploymentModels.Component {
+func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) []*deploymentModels.Component {
 	var components []*deploymentModels.Component
 
 	for _, component := range rd.Spec.Components {
-		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, tlsValidator))
+		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList))
 	}
 
 	for _, job := range rd.Spec.Jobs {
-		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, tlsValidator))
+		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList))
 	}
 
 	return components
 }
 
-func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
-
+func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.Component {
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
-		WithHorizontalScalingSummary(getHpaSummary(ra.Name, radixComponent.GetName(), hpaList)).
-		WithExternalDNS(getComponentExternalDNS(radixComponent, secretList, tlsValidator))
+		WithHorizontalScalingSummary(getHpaSummary(ra.Name, radixComponent.GetName(), hpaList))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
 
@@ -70,54 +67,6 @@ func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radix
 		panic(err)
 	}
 	return component
-}
-
-func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) []deploymentModels.ExternalDNS {
-	var externalDNSList []deploymentModels.ExternalDNS
-
-	if tlsValidator == nil {
-		tlsValidator = tlsvalidation.DefaultValidator()
-	}
-
-	for _, externalAlias := range component.GetExternalDNS() {
-		var certData, keyData []byte
-		status := deploymentModels.TLSStatusConsistent
-
-		if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias.FQDN)); ok {
-			certData = secretValue.Data[corev1.TLSCertKey]
-			keyData = secretValue.Data[corev1.TLSPrivateKeyKey]
-			if certValue, keyValue := strings.TrimSpace(string(certData)), strings.TrimSpace(string(keyData)); len(certValue) == 0 || len(keyValue) == 0 || strings.EqualFold(certValue, secretDefaultData) || strings.EqualFold(keyValue, secretDefaultData) {
-				status = deploymentModels.TLSStatusPending
-			}
-		} else {
-			status = deploymentModels.TLSStatusPending
-		}
-
-		var x509Certs []deploymentModels.X509Certificate
-		var statusMessages []string
-		if status == deploymentModels.TLSStatusConsistent {
-			x509Certs = append(x509Certs, deploymentModels.ParseX509CertificatesFromPEM(certData)...)
-
-			if certIsValid, messages := tlsValidator.ValidateX509Certificate(certData, keyData, externalAlias.FQDN); !certIsValid {
-				status = deploymentModels.TLSStatusInvalid
-				statusMessages = append(statusMessages, messages...)
-			}
-		}
-
-		externalDNSList = append(externalDNSList,
-			deploymentModels.ExternalDNS{
-				FQDN: externalAlias.FQDN,
-				TLS: deploymentModels.TLS{
-					UseAutomation:  externalAlias.UseCertificateAutomation,
-					Status:         status,
-					StatusMessages: statusMessages,
-					Certificates:   x509Certs,
-				},
-			},
-		)
-	}
-
-	return externalDNSList
 }
 
 func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
