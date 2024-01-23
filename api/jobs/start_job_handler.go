@@ -22,8 +22,7 @@ import (
 )
 
 const (
-	pipelineTagEnvironmentVariable    = "PIPELINE_IMG_TAG"
-	radixTektonTagEnvironmentVariable = "RADIX_TEKTON_TAG"
+	pipelineTagEnvironmentVariable = "PIPELINE_IMG_TAG"
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
@@ -117,7 +116,6 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       getPipelineTag(),
-			TektonImage:         getRadixTektonTag(),
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
@@ -149,17 +147,6 @@ func getPipelineTag() string {
 		log.Infof("Using %s pipeline image tag", pipelineTag)
 	}
 	return pipelineTag
-}
-
-func getRadixTektonTag() string {
-	tektonTag := os.Getenv(radixTektonTagEnvironmentVariable)
-	if tektonTag == "" {
-		log.Warning("No radix tekton image tag defined. Using release-latest")
-		tektonTag = "release-latest"
-	} else {
-		log.Infof("Using %s radix tekton image tag", tektonTag)
-	}
-	return tektonTag
 }
 
 func getUniqueJobName(image string) (string, string) {
