@@ -38,7 +38,7 @@ spec:
               cpu: "2000m"
           variables:
             PIPELINE_IMG_TAG: "master-latest"
-            RADIX_TEKTON_TAG: "main-latest"
+            TEKTON_IMG_TAG: "main-latest"
             GOMAXPROCS: "1"
         - environment: prod
           runAsNonRoot: true
@@ -53,5 +53,5 @@ spec:
               cpu: "2000m"
           variables:
             PIPELINE_IMG_TAG: "release-latest"
-            RADIX_TEKTON_TAG: "release-latest"
+            TEKTON_IMG_TAG: "release-latest"
             GOMAXPROCS: "2"

@@ -44,7 +44,7 @@ The following env vars are needed. Useful default values in brackets.
 
 - `RADIX_CONTAINER_REGISTRY` - (`radixdev.azurecr.io`)
 - `PIPELINE_IMG_TAG` - (`master-latest`)
-- `RADIX_TEKTON_TAG` - (`release-latest`)
+- `TEKTON_IMG_TAG` - (`release-latest`)
 
 You also probably want to start with the argument `--useOutClusterClient=false`. When `useOutClusterClient` is `false`, several debugging settings are enabled:
 * a service principal with superpowers is used to authorize the requests, and the client's `Authorization` bearer token is ignored. 

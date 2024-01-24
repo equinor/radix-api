@@ -13,7 +13,7 @@
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "PIPELINE_IMG_TAG": "master-latest",
-                "RADIX_TEKTON_TAG": "main-latest",
+                "TEKTON_IMG_TAG": "main-latest",
                 "K8S_API_HOST": "https://weekly-14-clusters-16ede4-97pzjkre.hcp.northeurope.azmk8s.io",
                 "RADIX_CLUSTER_TYPE": "development",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",

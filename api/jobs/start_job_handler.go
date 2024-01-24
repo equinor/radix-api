@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	pipelineTagEnvironmentVariable    = "PIPELINE_IMG_TAG"
-	radixTektonTagEnvironmentVariable = "RADIX_TEKTON_TAG"
+	pipelineTagEnvironmentVariable = "PIPELINE_IMG_TAG"
+	tektonTagEnvironmentVariable   = "TEKTON_IMG_TAG"
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
@@ -152,7 +152,7 @@ func getPipelineTag() string {
 }
 
 func getRadixTektonTag() string {
-	tektonTag := os.Getenv(radixTektonTagEnvironmentVariable)
+	tektonTag := os.Getenv(tektonTagEnvironmentVariable)
 	if tektonTag == "" {
 		log.Warning("No radix tekton image tag defined. Using release-latest")
 		tektonTag = "release-latest"
