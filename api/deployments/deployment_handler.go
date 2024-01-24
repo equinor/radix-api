@@ -8,6 +8,7 @@ import (
 	"time"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils/slice"
@@ -180,16 +181,33 @@ func (deploy *deployHandler) GetDeploymentWithName(ctx context.Context, appName,
 	if err != nil {
 		return nil, err
 	}
+	radixJob, err := deploy.getRadixDeploymentRadixJob(ctx, appName, rd)
+	if err != nil {
+		return nil, err
+	}
 
 	dep, _ := deploymentModels.NewDeploymentBuilder().
 		WithRadixDeployment(rd).
 		WithComponents(components).
+		WithPipelineJob(radixJob).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation]).
 		WithRadixRegistration(rr).
 		BuildDeployment()
 
 	return dep, nil
+}
+
+func (deploy *deployHandler) getRadixDeploymentRadixJob(ctx context.Context, appName string, rd *v1.RadixDeployment) (*v1.RadixJob, error) {
+	jobName := rd.GetLabels()[kube.RadixJobNameLabel]
+	radixJob, err := kubequery.GetRadixJob(ctx, deploy.accounts.UserAccount.RadixClient, appName, jobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return radixJob, nil
 }
 
 func (deploy *deployHandler) getEnvironmentNames(ctx context.Context, appName string) ([]string, error) {

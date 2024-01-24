@@ -106,7 +106,14 @@ type Component struct {
 	// Commit ID for the component. It can be different from the Commit ID, specified in deployment label
 	//
 	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
 	CommitID string `json:"commitID,omitempty"`
+
+	// SkipDeployment The component should not be deployed, but used existing
+	//
+	// required: false
+	// example: true
+	SkipDeployment bool `json:"skipDeployment,omitempty"`
 
 	AuxiliaryResource `json:",inline"`
 }
@@ -233,6 +240,25 @@ type ComponentSummary struct {
 	// required: true
 	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image"`
+
+	// CommitID the commit ID of the branch to build
+	// REQUIRED for "build" and "build-deploy" pipelines
+	//
+	// required: false
+	// example: 4faca8595c5283a9d0f17a623b9255a0d9866a2e
+	CommitID string `json:"commitID,omitempty"`
+
+	// GitTags the git tags that the git commit hash points to
+	//
+	// required: false
+	// example: "v1.22.1 v1.22.3"
+	GitTags string `json:"gitTags,omitempty"`
+
+	// SkipDeployment The component should not be deployed, but used existing
+	//
+	// required: false
+	// example: true
+	SkipDeployment bool `json:"skipDeployment,omitempty"`
 }
 
 // ReplicaSummary describes condition of a pod
