@@ -117,7 +117,7 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       getPipelineTag(),
-			TektonImage:         getRadixTektonTag(),
+			TektonImage:         getTektonTag(),
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
@@ -151,7 +151,7 @@ func getPipelineTag() string {
 	return pipelineTag
 }
 
-func getRadixTektonTag() string {
+func getTektonTag() string {
 	tektonTag := os.Getenv(tektonTagEnvironmentVariable)
 	if tektonTag == "" {
 		log.Warning("No radix tekton image tag defined. Using release-latest")
