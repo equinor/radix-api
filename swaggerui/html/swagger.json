@@ -5495,6 +5495,12 @@
         "image"
       ],
       "properties": {
+        "commitID": {
+          "description": "Commit ID for the component. It can be different from the Commit ID, specified in deployment label",
+          "type": "string",
+          "x-go-name": "CommitID",
+          "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
         "externalDNS": {
           "description": "Array of external DNS configurations",
           "type": "array",
@@ -5580,6 +5586,12 @@
             "A_SECRET"
           ]
         },
+        "skipDeployment": {
+          "description": "SkipDeployment The component should not be deployed, but used existing",
+          "type": "boolean",
+          "x-go-name": "SkipDeployment",
+          "example": true
+        },
         "status": {
           "description": "Status of the component",
           "type": "string",
@@ -5623,6 +5635,18 @@
         "image"
       ],
       "properties": {
+        "commitID": {
+          "description": "CommitID the commit ID of the branch to build\nREQUIRED for \"build\" and \"build-deploy\" pipelines",
+          "type": "string",
+          "x-go-name": "CommitID",
+          "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "gitTags": {
+          "description": "GitTags the git tags that the git commit hash points to",
+          "type": "string",
+          "x-go-name": "GitTags",
+          "example": "\"v1.22.1 v1.22.3\""
+        },
         "image": {
           "description": "Image name",
           "type": "string",
@@ -5634,6 +5658,12 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "server"
+        },
+        "skipDeployment": {
+          "description": "SkipDeployment The component should not be deployed, but used existing",
+          "type": "boolean",
+          "x-go-name": "SkipDeployment",
+          "example": true
         },
         "type": {
           "description": "Type of component",
@@ -6617,6 +6647,14 @@
           "type": "string",
           "x-go-name": "CommitID",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "componentsToDeploy": {
+          "description": "ComponentsToDeploy List of components to deploy\nOPTIONAL If specified, only these components are deployed",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ComponentsToDeploy"
         },
         "imageTagNames": {
           "description": "Image tags names for components",

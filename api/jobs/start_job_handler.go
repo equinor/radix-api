@@ -23,6 +23,7 @@ import (
 
 const (
 	pipelineTagEnvironmentVariable = "PIPELINE_IMG_TAG"
+	tektonTagEnvironmentVariable   = "TEKTON_IMG_TAG"
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline job for an application
@@ -94,9 +95,10 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 		}
 	case v1.Deploy:
 		deploySpec = v1.RadixDeploySpec{
-			ToEnvironment: jobSpec.ToEnvironment,
-			ImageTagNames: jobSpec.ImageTagNames,
-			CommitID:      jobSpec.CommitID,
+			ToEnvironment:      jobSpec.ToEnvironment,
+			ImageTagNames:      jobSpec.ImageTagNames,
+			CommitID:           jobSpec.CommitID,
+			ComponentsToDeploy: jobSpec.ComponentsToDeploy,
 		}
 	}
 
@@ -115,6 +117,7 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       getPipelineTag(),
+			TektonImage:         getTektonTag(),
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
@@ -146,6 +149,17 @@ func getPipelineTag() string {
 		log.Infof("Using %s pipeline image tag", pipelineTag)
 	}
 	return pipelineTag
+}
+
+func getTektonTag() string {
+	tektonTag := os.Getenv(tektonTagEnvironmentVariable)
+	if tektonTag == "" {
+		log.Warning("No tekton image tag defined. Using release-latest")
+		tektonTag = "release-latest"
+	} else {
+		log.Infof("Using %s as tekton image tag", tektonTag)
+	}
+	return tektonTag
 }
 
 func getUniqueJobName(image string) (string, string) {

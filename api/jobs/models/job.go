@@ -181,8 +181,12 @@ func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 			PodName:    jobStep.PodName,
 			Components: jobStep.Components,
 		}
-		if jobStep.Started != nil {step.Started = &jobStep.Started.Time}
-		if jobStep.Ended != nil {step.Ended = &jobStep.Ended.Time}
+		if jobStep.Started != nil {
+			step.Started = &jobStep.Started.Time
+		}
+		if jobStep.Ended != nil {
+			step.Ended = &jobStep.Ended.Time
+		}
 
 		steps = append(steps, step)
 	}

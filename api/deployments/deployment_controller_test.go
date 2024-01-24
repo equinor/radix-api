@@ -336,13 +336,18 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	anyDeployment2Name := "ghijkl"
 	appDeployment1Created, _ := radixutils.ParseTimestamp("2018-11-12T12:00:00Z")
 	appDeployment2Created, _ := radixutils.ParseTimestamp("2018-11-14T12:00:00Z")
+	jobName1, jobName2 := "rj1", "rj2"
+	commitID1 := "commit1"
 
-	_, err := commonTestUtils.ApplyDeployment(builders.
+	_, err := commonTestUtils.ApplyJob(builders.ARadixBuildDeployJob().WithAppName(anyAppName).WithJobName(jobName1).WithCommitID(commitID1))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyDeployment(builders.
 		NewDeploymentBuilder().
 		WithRadixApplication(
 			builders.ARadixApplication().
 				WithAppName(anyAppName)).
 		WithAppName(anyAppName).
+		WithLabel(kube.RadixJobNameLabel, jobName1).
 		WithDeploymentName(anyDeployment1Name).
 		WithCreated(appDeployment1Created).
 		WithCondition(v1.DeploymentInactive).
@@ -372,6 +377,7 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 			builders.ARadixApplication().
 				WithAppName(anyAppName)).
 		WithAppName(anyAppName).
+		WithLabel(kube.RadixJobNameLabel, jobName2).
 		WithDeploymentName(anyDeployment2Name).
 		WithCreated(appDeployment2Created).
 		WithCondition(v1.DeploymentActive).

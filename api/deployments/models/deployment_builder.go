@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/equinor/radix-common/utils/slice"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 
 	radixutils "github.com/equinor/radix-common/utils"
@@ -151,6 +152,7 @@ func (b *deploymentBuilder) buildError() error {
 }
 
 func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error) {
+	b.setSkipDeploymentForComponentSummaries()
 	return &DeploymentSummary{
 		Name:                             b.name,
 		Components:                       b.componentSummaries,
@@ -161,6 +163,26 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		GitCommitHash:                    b.gitCommitHash,
 		GitTags:                          b.gitTags,
 	}, b.buildError()
+}
+
+func (b *deploymentBuilder) setSkipDeploymentForComponentSummaries() {
+	if b.pipelineJob == nil || len(b.pipelineJob.Spec.Deploy.ComponentsToDeploy) == 0 {
+		return
+	}
+	for i := 0; i < len(b.componentSummaries); i++ {
+		b.componentSummaries[i].SkipDeployment = !slice.Any(b.pipelineJob.Spec.Deploy.ComponentsToDeploy,
+			func(componentName string) bool { return b.componentSummaries[i].Name == componentName })
+	}
+}
+
+func (b *deploymentBuilder) setSkipDeploymentForComponents() {
+	if b.pipelineJob == nil || len(b.pipelineJob.Spec.Deploy.ComponentsToDeploy) == 0 {
+		return
+	}
+	for i := 0; i < len(b.components); i++ {
+		b.components[i].SkipDeployment = !slice.Any(b.pipelineJob.Spec.Deploy.ComponentsToDeploy,
+			func(componentName string) bool { return b.components[i].Name == componentName })
+	}
 }
 
 func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummaryPipelineJobInfo {
@@ -178,6 +200,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 }
 
 func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
+	b.setSkipDeploymentForComponents()
 	return &Deployment{
 		Name:          b.name,
 		Namespace:     b.namespace,
