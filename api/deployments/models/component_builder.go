@@ -48,6 +48,8 @@ type componentBuilder struct {
 	hpa                       *HorizontalScalingSummary
 	externalDNS               []ExternalDNS
 	errors                    []error
+	commitID                  string
+	gitTags                   string
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -89,6 +91,8 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	b.componentName = component.GetName()
 	b.componentType = string(component.GetType())
 	b.componentImage = component.GetImage()
+	b.commitID = component.GetEnvironmentVariables()[defaults.RadixCommitHashEnvironmentVariable]
+	b.gitTags = component.GetEnvironmentVariables()[defaults.RadixGitTagsEnvironmentVariable]
 
 	ports := []Port{}
 	if component.GetPorts() != nil {
@@ -198,9 +202,11 @@ func (b *componentBuilder) buildError() error {
 
 func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {
 	return &ComponentSummary{
-		Name:  b.componentName,
-		Type:  b.componentType,
-		Image: b.componentImage,
+		Name:     b.componentName,
+		Type:     b.componentType,
+		Image:    b.componentImage,
+		CommitID: b.commitID,
+		GitTags:  b.gitTags,
 	}, b.buildError()
 }
 
