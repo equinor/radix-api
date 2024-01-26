@@ -3,10 +3,12 @@ package applications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/deployments"
@@ -33,6 +35,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/util/retry"
@@ -613,9 +616,25 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 	if regenerateDeployKeyAndSecretData.PrivateKey == "" {
 		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
 		err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
-		if !k8serrors.IsNotFound(err) {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		}
+		// Wait for new secret to be created
+		err = wait.PollUntilContextTimeout(ctx, time.Second, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
+			_, err = ah.accounts.UserAccount.Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Get(ctx, defaults.GitPrivateKeySecretName, metav1.GetOptions{})
+			if err == nil {
+				return true, nil
+			}
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		})
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Warnf("context deadline exceeded while waiting for new deploy key secret to be created for application %s", appName)
+			return nil
+		}
+		return err
 	}
 	// Deriving the public key from the private key in order to test it for validity
 	if _, err := operatorUtils.DeriveDeployKeyFromPrivateKey(regenerateDeployKeyAndSecretData.PrivateKey); err != nil {
