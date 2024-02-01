@@ -1,6 +1,9 @@
 package models
 
 import (
+	"sort"
+	"strings"
+
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -173,6 +176,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 // GetJobStepsFromRadixJob Gets the steps from a Radix job
 func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 	var steps []Step
+	var buildSteps []Step
 
 	for _, jobStep := range job.Status.Steps {
 		step := Step{
@@ -187,9 +191,12 @@ func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 		if jobStep.Ended != nil {
 			step.Ended = &jobStep.Ended.Time
 		}
-
-		steps = append(steps, step)
+		if strings.HasPrefix(step.Name, "build-") {
+			buildSteps = append(buildSteps, step)
+		} else {
+			steps = append(steps, step)
+		}
 	}
-
-	return steps
+	sort.Slice(buildSteps, func(i, j int) bool { return buildSteps[i].Name < buildSteps[j].Name })
+	return append(steps, buildSteps...)
 }
