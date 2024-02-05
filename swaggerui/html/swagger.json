@@ -5509,6 +5509,12 @@
           },
           "x-go-name": "ExternalDNS"
         },
+        "gitTags": {
+          "description": "GitTags the git tags that the git commit hash points to",
+          "type": "string",
+          "x-go-name": "GitTags",
+          "example": "\"v1.22.1 v1.22.3\""
+        },
         "horizontalScalingSummary": {
           "$ref": "#/definitions/HorizontalScalingSummary"
         },
