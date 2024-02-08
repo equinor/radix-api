@@ -64,6 +64,9 @@ docker-push: $(addsuffix -push,$(IMAGES))
 	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/$*-server:$(IMAGE_TAG)
 
+.PHONY: deploy
+deploy: $(addsuffix -image,$(IMAGES)) $(addsuffix -push,$(IMAGES))
+
 HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 HAS_MOCKGEN       := $(shell command -v mockgen;)
