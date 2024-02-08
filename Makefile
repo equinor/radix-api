@@ -34,7 +34,7 @@ test:
 
 .PHONY: lint
 lint: bootstrap
-	golangci-lint run --max-same-issues 0
+	golangci-lint run --max-same-issues 0 --timeout 10m
 
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:latest --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
