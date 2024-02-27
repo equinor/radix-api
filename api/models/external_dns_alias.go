@@ -8,6 +8,9 @@ import (
 
 // BuildDNSExternalAliases builds DNSExternalAliases model list
 func BuildDNSExternalAliases(ra *radixv1.RadixApplication) []models.DNSExternalAlias {
+	if ra == nil {
+		return nil
+	}
 	return slice.Reduce(ra.Spec.DNSExternalAlias, make([]models.DNSExternalAlias, 0), func(acc []models.DNSExternalAlias, externalAlias radixv1.ExternalAlias) []models.DNSExternalAlias {
 		return append(acc, models.DNSExternalAlias{
 			URL:             externalAlias.Alias,
