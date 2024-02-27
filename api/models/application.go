@@ -9,12 +9,13 @@ import (
 // BuildApplication builds an Application model.
 func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, reList []radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, ingressList []networkingv1.Ingress, userIsAdmin bool, dnsAliases []applicationModels.DNSAlias) *applicationModels.Application {
 	application := applicationModels.Application{
-		Name:         rr.Name,
-		Registration: *BuildApplicationRegistration(rr),
-		Jobs:         BuildJobSummaryList(rjList),
-		AppAlias:     BuildApplicationAlias(ingressList, reList),
-		UserIsAdmin:  userIsAdmin,
-		DNSAliases:   dnsAliases,
+		Name:               rr.Name,
+		Registration:       *BuildApplicationRegistration(rr),
+		Jobs:               BuildJobSummaryList(rjList),
+		AppAlias:           BuildApplicationAlias(ingressList, reList),
+		UserIsAdmin:        userIsAdmin,
+		DNSAliases:         dnsAliases,
+		DNSExternalAliases: BuildDNSExternalAliases(ra),
 	}
 	if ra != nil {
 		application.Environments = BuildEnvironmentSummaryList(rr, ra, reList, rdList, rjList)
