@@ -34,6 +34,11 @@ type Application struct {
 	// required: false
 	DNSAliases []DNSAlias `json:"dnsAliases,omitempty"`
 
+	// List of external DNS names and which component and environment incoming requests shall be routed to.
+	//
+	// required: false
+	DNSExternalAliases []DNSExternalAlias `json:"dnsExternalAliases,omitempty"`
+
 	// App alias showing nicer endpoint for application
 	//
 	// required: false
