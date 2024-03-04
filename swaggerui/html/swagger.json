@@ -5022,6 +5022,14 @@
           },
           "x-go-name": "DNSAliases"
         },
+        "dnsExternalAliases": {
+          "description": "List of external DNS names and which component and environment incoming requests shall be routed to.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DNSExternalAlias"
+          },
+          "x-go-name": "DNSExternalAliases"
+        },
         "environments": {
           "description": "Environments List of environments for this application",
           "type": "array",
@@ -5728,6 +5736,36 @@
         "message": {
           "type": "string",
           "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "DNSExternalAlias": {
+      "description": "DNSExternalAlias holds public external DNS alias information",
+      "type": "object",
+      "required": [
+        "url",
+        "componentName",
+        "environmentName"
+      ],
+      "properties": {
+        "componentName": {
+          "description": "ComponentName the component exposing the endpoint",
+          "type": "string",
+          "x-go-name": "ComponentName",
+          "example": "frontend"
+        },
+        "environmentName": {
+          "description": "EnvironmentName the environment hosting the endpoint",
+          "type": "string",
+          "x-go-name": "EnvironmentName",
+          "example": "prod"
+        },
+        "url": {
+          "description": "URL the public endpoint",
+          "type": "string",
+          "x-go-name": "URL",
+          "example": "https://my-app.equinor.com"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
