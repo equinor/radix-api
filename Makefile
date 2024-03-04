@@ -34,7 +34,7 @@ test:
 
 .PHONY: lint
 lint: bootstrap
-	golangci-lint run --max-same-issues 0
+	golangci-lint run --max-same-issues 0 --timeout 10m
 
 build-kaniko:
 	docker run --rm -it -v $(CURRENT_FOLDER):/workspace gcr.io/kaniko-project/executor:latest --destination=$(DOCKER_REGISTRY)/radix-api-server:3hv6o --snapshotMode=time --cache=true
@@ -63,6 +63,9 @@ docker-push: $(addsuffix -push,$(IMAGES))
 %-push:
 	az acr login --name $(CONTAINER_REPO)
 	docker push $(DOCKER_REGISTRY)/$*-server:$(IMAGE_TAG)
+
+.PHONY: deploy
+deploy: $(addsuffix -image,$(IMAGES)) $(addsuffix -push,$(IMAGES))
 
 HAS_SWAGGER       := $(shell command -v swagger;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
