@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
@@ -34,15 +35,15 @@ func createGetLogEndpoint(appName, podName string) string {
 	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
 }
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
-	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient := apiUtils.SetupTest(t)
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, secretproviderclient, NewDeploymentController())
-	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient
+	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
@@ -56,7 +57,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 }
 
 func TestGetPodLog_No_Pod(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
 	_, err := commonTestUtils.ApplyApplication(builders.
@@ -77,7 +78,7 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 
 func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 
 	_, err := commonTestUtils.ApplyDeployment(builders.
 		ARadixDeployment().
@@ -164,7 +165,7 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 }
 
 func TestGetDeployments_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
@@ -188,7 +189,7 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = gitTags
 	annotations[kube.RadixCommitAnnotation] = gitCommitHash
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 	require.NoError(t, err)
 
@@ -228,7 +229,7 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 	require.NoError(t, err)
 
@@ -258,7 +259,7 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 	require.NoError(t, err)
 
@@ -296,7 +297,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 	require.NoError(t, err)
 
@@ -318,7 +319,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 }
 
 func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployName))
 	response := <-responseChannel
 
@@ -329,7 +330,7 @@ func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
 
 func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
 	anyDeployment1Name := "abcdef"

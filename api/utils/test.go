@@ -3,6 +3,7 @@ package utils
 import (
 	"testing"
 
+	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-operator/pkg/apis/application"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/config"
@@ -29,17 +30,18 @@ const (
 	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
-func SetupTest(t *testing.T) (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
+func SetupTest(t *testing.T) (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := fake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
+	certClient := certfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, secretProviderClient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient
+	return &commonTestUtils, kubeClient, radixClient, prometheusClient, secretProviderClient, certClient
 }
 
 // ApplyRegistrationWithSync syncs based on registration builder
@@ -78,7 +80,7 @@ func ApplyApplicationWithSync(client kubernetes.Interface, radixclient radixclie
 }
 
 // ApplyDeploymentWithSync syncs based on deployment builder, and default builders for application and registration.
-func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, prometheusClient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, deploymentBuilder operatorutils.DeploymentBuilder) error {
+func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclient.Interface, prometheusClient prometheusclient.Interface, commonTestUtils *commontest.Utils, secretproviderclient secretsstorevclient.Interface, certClient *certfake.Clientset, deploymentBuilder operatorutils.DeploymentBuilder) error {
 	applicationBuilder := deploymentBuilder.GetApplicationBuilder()
 	registrationBuilder := applicationBuilder.GetRegistrationBuilder()
 
@@ -89,6 +91,6 @@ func ApplyDeploymentWithSync(client kubernetes.Interface, radixclient radixclien
 
 	kubeUtils, _ := kube.New(client, radixclient, secretproviderclient)
 	rd, _ := commonTestUtils.ApplyDeployment(deploymentBuilder)
-	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, registrationBuilder.BuildRR(), rd, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{}, &config.Config{})
+	deploymentSyncer := deployment.NewDeploymentSyncer(client, kubeUtils, radixclient, prometheusClient, certClient, registrationBuilder.BuildRR(), rd, []ingress.AnnotationProvider{}, []deployment.AuxiliaryResourceManager{}, &config.Config{})
 	return deploymentSyncer.OnSync()
 }

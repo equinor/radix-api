@@ -82,7 +82,7 @@ func (s *externalDnsTestSuite) buildCertificate(certCN, issuerCN string, dnsName
 func (s *externalDnsTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.tlsValidator = tlsvalidationmock.NewMockValidator(ctrl)
-	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
+	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient, _ = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
 
 	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"
 

@@ -30,7 +30,7 @@ func createGetComponentsEndpoint(appName, deployName string) string {
 
 func TestGetComponents_non_existing_app(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
 
@@ -43,7 +43,7 @@ func TestGetComponents_non_existing_app(t *testing.T) {
 }
 
 func TestGetComponents_non_existing_deployment(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyApplication(operatorUtils.
 		ARadixApplication().
 		WithAppName(anyAppName))
@@ -63,7 +63,7 @@ func TestGetComponents_non_existing_deployment(t *testing.T) {
 
 func TestGetComponents_active_deployment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithJobComponents(
@@ -102,8 +102,8 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient, certClient := setupTest(t)
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -161,8 +161,8 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 
 func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient, certClient := setupTest(t)
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -210,8 +210,8 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 
 func TestGetComponents_OAuth2(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient, certClient := setupTest(t)
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
@@ -255,7 +255,7 @@ func TestGetComponents_OAuth2(t *testing.T) {
 
 func TestGetComponents_inactive_deployment(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 
 	initialDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-12T11:45:26Z")
 	activeDeploymentCreated, _ := radixutils.ParseTimestamp("2018-11-14T11:45:26Z")
@@ -335,7 +335,7 @@ func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
 
 func TestGetComponents_success(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -360,7 +360,7 @@ func TestGetComponents_success(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -406,7 +406,7 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -451,7 +451,7 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -496,7 +496,7 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 
 func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t)
 	_, err := commonTestUtils.ApplyDeployment(operatorUtils.
 		ARadixDeployment().
 		WithAppName(anyAppName).
@@ -542,7 +542,7 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
 
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient, certClient := setupTest(t)
 	testScenarios := []struct {
 		name              string
 		deploymentName    string
@@ -560,7 +560,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+			err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 				WithAppName(anyAppName).
 				WithEnvironment("prod").
 				WithDeploymentName(scenario.deploymentName).
@@ -597,9 +597,9 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 func TestGetComponents_WithIdentity(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient := setupTest(t)
+	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretProviderClient, certClient := setupTest(t)
 
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, operatorUtils.ARadixDeployment().
+	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithDeploymentName(anyDeployName).
