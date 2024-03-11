@@ -481,6 +481,17 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
+		if strings.EqualFold(summary.Status, jobSchedulerModels.Failed.String()) {
+			subMessage := status.Reason
+			if status.Reason == "OOMKilled" {
+				subMessage = "Out of memory."
+			}
+			if len(summary.Message) == 0 {
+				summary.Message = subMessage
+			} else {
+				summary.Message = fmt.Sprintf("%s\n%s", subMessage, summary.Message)
+			}
+		}
 		summary.FailedCount = status.Failed
 		summary.Restart = status.Restart
 	}
