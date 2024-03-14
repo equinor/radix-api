@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/negroni/v3"
 )
 
@@ -52,8 +53,11 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 
 	rec := negroni.NewRecovery()
 	rec.PrintStack = false
+
 	n := negroni.New(
 		rec,
+		setZerologLogger(zerologLoggerWithRequestId),
+		zerologRequestLogger(),
 	)
 	n.UseHandler(serveMux)
 
@@ -92,11 +96,14 @@ func getCORSHandler(clusterName string, handler http.Handler, useOutClusterClien
 	if !useOutClusterClient {
 		// debugging mode
 		corsOptions.Debug = true
+		corsLogger := log.Logger.With().Str("pkg", "cors-middleware").Logger()
+		corsOptions.Logger = &corsLogger
 		// necessary header to allow ajax requests directly from radix-web-console app in browser
 		corsOptions.AllowedHeaders = append(corsOptions.AllowedHeaders, "X-Requested-With")
 	}
 
 	c := cors.New(corsOptions)
+
 	return c.Handler(handler)
 }
 

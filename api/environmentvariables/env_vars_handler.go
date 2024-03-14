@@ -1,24 +1,25 @@
 package environmentvariables
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
+	"github.com/rs/zerolog/log"
 
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
 
 type EnvVarsHandler interface {
-	GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error)
-	ChangeEnvVar(appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error
+	GetComponentEnvVars(ctx context.Context, appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error)
+	ChangeEnvVar(ctx context.Context, appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error
 }
 
 // EnvVarsHandlerOptions defines a configuration function
@@ -52,8 +53,8 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 	return &eh
 }
 
-//GetComponentEnvVars Get environment variables with metadata for the component
-func (eh *envVarsHandler) GetComponentEnvVars(appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
+// GetComponentEnvVars Get environment variables with metadata for the component
+func (eh *envVarsHandler) GetComponentEnvVars(ctx context.Context, appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	rd, err := eh.kubeUtil.GetActiveDeployment(namespace)
 	if err != nil {
@@ -118,8 +119,8 @@ func appendSecretRefsKeysToMap(namesMap map[string]interface{}, secretRefs v1.Ra
 	return namesMap
 }
 
-//ChangeEnvVar Change environment variables
-func (eh *envVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error {
+// ChangeEnvVar Change environment variables
+func (eh *envVarsHandler) ChangeEnvVar(ctx context.Context, appName, envName, componentName string, envVarsParams []envvarsmodels.EnvVarParameter) error {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
 	currentEnvVarsConfigMap, envVarsMetadataConfigMap, envVarsMetadataMap, err := eh.kubeUtil.GetEnvVarsConfigMapAndMetadataMap(namespace, componentName)
 	desiredEnvVarsConfigMap := currentEnvVarsConfigMap.DeepCopy()
@@ -133,7 +134,8 @@ func (eh *envVarsHandler) ChangeEnvVar(appName, envName, componentName string, e
 		}
 		currentEnvVarValue, foundEnvVar := desiredEnvVarsConfigMap.Data[envVarParam.Name]
 		if !foundEnvVar {
-			log.Infof("Not found changing variable %s", envVarParam.Name)
+
+			log.Ctx(ctx).Info().Msgf("Not found changing variable %s", envVarParam.Name)
 			hasChanges = true
 			delete(envVarsMetadataMap, envVarParam.Name)
 			continue

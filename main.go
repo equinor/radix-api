@@ -2,21 +2,23 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 
 	"github.com/equinor/radix-api/api/buildstatus"
 
-	"github.com/gorilla/handlers"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
 	// Controllers
@@ -36,18 +38,13 @@ import (
 
 const (
 	logLevelEnvironmentVariable    = "LOG_LEVEL"
+	logPrettyEnvironmentVariable   = "LOG_PRETTY"
 	useProfilerEnvironmentVariable = "USE_PROFILER"
 )
 
 //go:generate swagger generate spec
 func main() {
-	switch os.Getenv(logLevelEnvironmentVariable) {
-	case "DEBUG":
-		log.SetLevel(log.DebugLevel)
-	default:
-		log.SetLevel(log.InfoLevel)
-	}
-
+	initLogger()
 	fs := initializeFlagSet()
 
 	var (
@@ -63,35 +60,60 @@ func main() {
 
 	controllers, err := getControllers()
 	if err != nil {
-		log.Fatalf("Failed to get controllers: %v", err)
+		log.Fatal().Err(err).Msg("Failed to get controllers")
 	}
 	errs := make(chan error)
+
 	go func() {
-		log.Infof("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), handlers.CombinedLoggingHandler(os.Stdout, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...)))
+		log.Info().Msgf("Api is serving on port %s", *port)
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
 		errs <- err
 	}()
 	if certPath != "" && keyPath != "" {
 		go func() {
-			log.Infof("Api is serving on port %s", httpsPort)
+			log.Info().Msgf("Api is serving on port %s", httpsPort)
 			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
 			errs <- err
 		}()
 	} else {
-		log.Info("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
+		log.Info().Msg("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
 	}
 
 	if useProfiler, _ := strconv.ParseBool(os.Getenv(useProfilerEnvironmentVariable)); useProfiler {
 		go func() {
-			log.Infof("Profiler endpoint is serving on port 7070")
+			log.Info().Msgf("Profiler endpoint is serving on port 7070")
 			errs <- http.ListenAndServe("localhost:7070", nil)
 		}()
 	}
 
 	err = <-errs
 	if err != nil {
-		log.Fatalf("Web api server crashed: %v", err)
+		log.Fatal().Err(err).Msg("Web api server crashed")
 	}
+}
+
+func initLogger() {
+	logLevelStr := os.Getenv(logLevelEnvironmentVariable)
+	if len(logLevelStr) == 0 {
+		logLevelStr = zerolog.LevelInfoValue
+	}
+
+	logLevel, err := zerolog.ParseLevel(logLevelStr)
+	if err != nil {
+		logLevel = zerolog.InfoLevel
+	}
+
+	logPretty, _ := strconv.ParseBool(os.Getenv(logPrettyEnvironmentVariable))
+
+	var logWriter io.Writer = os.Stderr
+	if logPretty {
+		logWriter = &zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly}
+	}
+
+	logger := zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger()
+
+	log.Logger = logger
+	zerolog.DefaultContextLogger = &logger
 }
 
 func getControllers() ([]models.Controller, error) {

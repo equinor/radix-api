@@ -29,7 +29,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -144,7 +144,8 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 	}
 	if len(application.SharedSecret) == 0 {
 		application.SharedSecret = radixutils.RandString(20)
-		log.Debugf("There is no Shared Secret specified for the registering application - a random Shared Secret has been generated")
+
+		log.Ctx(ctx).Debug().Msg("There is no Shared Secret specified for the registering application - a random Shared Secret has been generated")
 	}
 
 	radixRegistration, err := applicationModels.NewApplicationRegistrationBuilder().
@@ -431,7 +432,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, radixhttp.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
 	}
 
-	log.Infof("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
+	log.Ctx(ctx).Info().Msgf("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
 
 	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 
@@ -470,7 +471,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 		return nil, radixhttp.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
 	}
 
-	log.Infof("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)
+	log.Ctx(ctx).Info().Msgf("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)
 
 	pipeline, err := jobPipeline.GetPipelineFromName("deploy")
 	if err != nil {
@@ -502,7 +503,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	}
 
-	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
 	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
@@ -528,7 +529,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, err
 	}
 
-	log.Infof("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
@@ -631,7 +632,7 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 			return false, err
 		})
 		if errors.Is(err, context.DeadlineExceeded) {
-			log.Warnf("context deadline exceeded while waiting for new deploy key secret to be created for application %s", appName)
+			log.Ctx(ctx).Warn().Msgf("context deadline exceeded while waiting for new deploy key secret to be created for application %s", appName)
 			return nil
 		}
 		return err
@@ -708,7 +709,7 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	defer func() {
 		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
 		if err != nil {
-			log.Warnf("Failed to delete role %s: %v", role.GetName(), err)
+			log.Ctx(ctx).Warn().Msgf("Failed to delete role %s: %v", role.GetName(), err)
 		}
 	}()
 	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
@@ -718,7 +719,7 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 	defer func() {
 		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
 		if err != nil {
-			log.Warnf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
+			log.Ctx(ctx).Warn().Msgf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
 		}
 	}()
 

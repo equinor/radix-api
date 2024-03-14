@@ -8,7 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -20,7 +20,7 @@ var (
 
 // StopJob Stops an application job
 func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error {
-	log.Infof("Stopping the job: %s, %s", jobName, appName)
+	log.Ctx(ctx).Info().Msgf("Stopping the job: %s, %s", jobName, appName)
 	radixJob, err := jh.getPipelineJobByName(ctx, appName, jobName)
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (jh JobHandler) StopJob(ctx context.Context, appName, jobName string) error
 
 // RerunJob Reruns the pipeline job as a copy
 func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) error {
-	log.Infof("Rerunning the job %s in the application %s", jobName, appName)
+	log.Ctx(ctx).Info().Msgf("Rerunning the job %s in the application %s", jobName, appName)
 	radixJob, err := jh.getPipelineJobByName(ctx, appName, jobName)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) erro
 		return jobModels.JobHasInvalidConditionToRerunError(appName, jobName, radixJob.Status.Condition)
 	}
 
-	copiedRadixJob := jh.buildPipelineJobToRerunFrom(radixJob)
+	copiedRadixJob := jh.buildPipelineJobToRerunFrom(ctx, radixJob)
 	_, err = jh.createPipelineJob(ctx, appName, copiedRadixJob)
 	if err != nil {
 		return fmt.Errorf("failed to create a job %s to rerun: %v", radixJob.GetName(), err)
@@ -61,7 +61,7 @@ func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) erro
 	return nil
 }
 
-func (jh JobHandler) buildPipelineJobToRerunFrom(radixJob *radixv1.RadixJob) *radixv1.RadixJob {
+func (jh JobHandler) buildPipelineJobToRerunFrom(ctx context.Context, radixJob *radixv1.RadixJob) *radixv1.RadixJob {
 	rerunJobName, imageTag := getUniqueJobName(workerImage)
 	rerunRadixJob := radixv1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,7 +81,7 @@ func (jh JobHandler) buildPipelineJobToRerunFrom(radixJob *radixv1.RadixJob) *ra
 	rerunRadixJob.Spec.Stop = false
 	triggeredBy, err := jh.getTriggeredBy("")
 	if err != nil {
-		log.Warnf("failed to get triggeredBy: %v", err)
+		log.Ctx(ctx).Warn().Msgf("failed to get triggeredBy: %v", err)
 	}
 	rerunRadixJob.Spec.TriggeredBy = triggeredBy
 	return &rerunRadixJob

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	radixhttp "github.com/equinor/radix-common/net/http"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 // RadixHandlerFunc Pattern for handler functions
@@ -24,7 +24,7 @@ type DefaultController struct {
 func (c *DefaultController) ErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	err = radixhttp.ErrorResponse(w, r, err)
 	if err != nil {
-		log.Errorf("%s %s: failed to write response: %v", r.Method, r.URL.Path, err)
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }
 
@@ -32,32 +32,32 @@ func (c *DefaultController) ErrorResponse(w http.ResponseWriter, r *http.Request
 func (c *DefaultController) JSONResponse(w http.ResponseWriter, r *http.Request, result interface{}) {
 	err := radixhttp.JSONResponse(w, r, result)
 	if err != nil {
-		log.Errorf("%s %s: failed to write response: %v",r.Method, r.URL.Path, err)
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }
-
 
 // ReaderFileResponse writes the content from the reader to the response,
 // and sets Content-Disposition=attachment; filename=<filename arg>
-func (c *DefaultController)  ReaderFileResponse(w http.ResponseWriter, r *http.Request, reader io.Reader, fileName, contentType string) {
+func (c *DefaultController) ReaderFileResponse(w http.ResponseWriter, r *http.Request, reader io.Reader, fileName, contentType string) {
 	err := radixhttp.ReaderFileResponse(w, reader, fileName, contentType)
 	if err != nil {
-		log.Errorf("%s %s: failed to write response: %v", r.Method, r.URL.Path, err)
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }
+
 // ReaderResponse writes the content from the reader to the response,
-func (c *DefaultController)   ReaderResponse(w http.ResponseWriter, r *http.Request, reader io.Reader, contentType string)  {
+func (c *DefaultController) ReaderResponse(w http.ResponseWriter, r *http.Request, reader io.Reader, contentType string) {
 	err := radixhttp.ReaderResponse(w, reader, contentType)
 	if err != nil {
-		log.Errorf("%s %s: failed to write reader to response: %v", r.Method, r.URL.Path, err)
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 
 }
 
 // ByteArrayResponse Used for response data. I.e. image
-func (c *DefaultController)   ByteArrayResponse(w http.ResponseWriter, r *http.Request, contentType string, result []byte) {
+func (c *DefaultController) ByteArrayResponse(w http.ResponseWriter, r *http.Request, contentType string, result []byte) {
 	err := radixhttp.ByteArrayResponse(w, r, contentType, result)
 	if err != nil {
-		log.Errorf("%s %s: failed to write ByteArray response: %v", r.Method, r.URL.Path, err)
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }

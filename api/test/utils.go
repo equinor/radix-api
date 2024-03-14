@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/rs/zerolog/log"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 
@@ -16,7 +17,6 @@ import (
 	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	log "github.com/sirupsen/logrus"
 	kubernetes "k8s.io/client-go/kubernetes"
 )
 
@@ -94,7 +94,7 @@ func GetErrorResponse(response *httptest.ResponseRecorder) (*radixhttp.Error, er
 	errorResponse := &radixhttp.Error{}
 	err := GetResponseBody(response, errorResponse)
 	if err != nil {
-		log.Infof("%v", err)
+		log.Logger.Error().Err(err).Msg("Failed to get response body")
 		return nil, err
 	}
 

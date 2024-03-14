@@ -8,7 +8,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -56,20 +56,23 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
+	logger := log.Ctx(r.Context())
 	useOutClusterClient := handler.kubeUtil.IsUseOutClusterClient()
 	token, err := getBearerTokenFromHeader(r, useOutClusterClient)
 
 	if err != nil {
+		logger.Warn().Err(err).Msg("authorization error")
 		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			log.Errorf("handleAuthorization: failed to write error response: %v", err)
+			logger.Err(err).Msg("failed to write response")
 		}
 		return
 	}
 
 	impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 	if err != nil {
+		logger.Warn().Err(err).Msg("authorization error")
 		if err = radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err)); err != nil {
-			log.Errorf("handleAuthorization: failed to write error response: %v", err)
+			logger.Err(err).Msg("failed to write response")
 		}
 		return
 	}
@@ -93,8 +96,9 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {
 		if _, err := accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(r.Context(), appName, metav1.GetOptions{}); err != nil {
+			logger.Warn().Err(err).Msg("authorization error")
 			if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-				log.Errorf("handleAuthorization: failed to write error response: %v", err)
+				logger.Err(err).Msg("failed to write response")
 			}
 			return
 		}
