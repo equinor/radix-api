@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/cert-manager/cert-manager v1.14.2
-	github.com/equinor/radix-common v1.8.0
-	github.com/equinor/radix-job-scheduler v1.8.5
-	github.com/equinor/radix-operator v1.50.2
+	github.com/equinor/radix-common v1.9.2
+	github.com/equinor/radix-job-scheduler v1.9.1-0.20240314135648-a2487d847d4c
+	github.com/equinor/radix-operator v1.50.3-0.20240313152237-1dc5d2699a2e
 	github.com/evanphx/json-patch/v5 v5.7.0
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -21,7 +21,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/urfave/negroni/v3 v3.0.0
 	golang.org/x/sync v0.5.0
@@ -71,6 +71,8 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -84,6 +86,7 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
+	github.com/rs/zerolog v1.32.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

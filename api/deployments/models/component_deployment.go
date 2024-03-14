@@ -282,6 +282,18 @@ type ReplicaSummary struct {
 	// example: 2006-01-02T15:04:05Z
 	Created string `json:"created"`
 
+	// The time at which the batch job's pod startedAt
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	StartTime string `json:"startTime,omitempty"`
+
+	// The time at which the batch job's pod finishedAt.
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	EndTime string `json:"endTime,omitempty"`
+
 	// Container started timestamp
 	//
 	// required: false
@@ -314,6 +326,15 @@ type ReplicaSummary struct {
 	// required: false
 	// example: radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f
 	ImageId string `json:"imageId"`
+
+	// The index of the pod in the re-starts
+	PodIndex int `json:"podIndex"`
+
+	// Exit status from the last termination of the container
+	ExitCode int32 `json:"exitCode"`
+
+	// A brief CamelCase message indicating details about why the job is in this phase
+	Reason string `json:"reason,omitempty"`
 
 	// Resources Resource requirements for the pod
 	//
