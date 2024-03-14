@@ -36,11 +36,11 @@ func zerologRequestLogger() negroni.HandlerFunc {
 		var ev *zerolog.Event
 		switch {
 		case m.Code >= 400 && m.Code <= 499:
-			ev = logger.Warn()
+			ev = logger.Warn() //nolint:zerologlint // Msg for ev is called later
 		case m.Code >= 500:
-			ev = logger.Error()
+			ev = logger.Error() //nolint:zerologlint // Msg for ev is called later
 		default:
-			ev = logger.Info()
+			ev = logger.Info() //nolint:zerologlint // Msg for ev is called later
 		}
 
 		ev.
