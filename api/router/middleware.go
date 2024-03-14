@@ -10,29 +10,11 @@ import (
 	"github.com/urfave/negroni/v3"
 )
 
-// type loggingResponseWriter struct {
-// 	http.ResponseWriter
-// 	statusCode int
-// }
-
-// func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
-// 	return &loggingResponseWriter{w, http.StatusOK}
-// }
-// func (lrw *loggingResponseWriter) WriteHeader(code int) {
-// 	lrw.statusCode = code
-// 	lrw.ResponseWriter.WriteHeader(code)
-// }
-
 func zerologRequestLogger() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		logger := zerolog.Ctx(r.Context())
-		// start := time.Now()
-
-		// statusCodeWriter := newLoggingResponseWriter(w)
 		m := httpsnoop.CaptureMetrics(next, w, r)
 
-		// elapsed := time.Since(start)
-
+		logger := zerolog.Ctx(r.Context())
 		var ev *zerolog.Event
 		switch {
 		case m.Code >= 400 && m.Code <= 499:
