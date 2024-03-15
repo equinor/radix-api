@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/felixge/httpsnoop"
@@ -15,6 +16,7 @@ func zerologRequestLogger() negroni.HandlerFunc {
 		m := httpsnoop.CaptureMetrics(next, w, r)
 
 		logger := zerolog.Ctx(r.Context())
+
 		var ev *zerolog.Event
 		switch {
 		case m.Code >= 400 && m.Code <= 499:
@@ -25,8 +27,9 @@ func zerologRequestLogger() negroni.HandlerFunc {
 			ev = logger.Info() //nolint:zerologlint // Msg for ev is called later
 		}
 
+		remoteIp, _, _ := net.SplitHostPort(r.RemoteAddr)
 		ev.
-			Str("remote_addr", r.RemoteAddr).
+			Str("remote_addr", remoteIp).
 			Str("referer", r.Referer()).
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
