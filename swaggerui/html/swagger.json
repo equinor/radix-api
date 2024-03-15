@@ -7148,6 +7148,18 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "endTime": {
+          "description": "The time at which the batch job's pod finishedAt.",
+          "type": "string",
+          "x-go-name": "EndTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "exitCode": {
+          "description": "Exit status from the last termination of the container",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "ExitCode"
+        },
         "image": {
           "description": "The image the container is running.",
           "type": "string",
@@ -7166,6 +7178,17 @@
           "x-go-name": "Name",
           "example": "server-78fc8857c4-hm76l"
         },
+        "podIndex": {
+          "description": "The index of the pod in the re-starts",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "PodIndex"
+        },
+        "reason": {
+          "description": "A brief CamelCase message indicating details about why the job is in this phase",
+          "type": "string",
+          "x-go-name": "Reason"
+        },
         "replicaStatus": {
           "$ref": "#/definitions/ReplicaStatus"
         },
@@ -7177,6 +7200,12 @@
           "type": "integer",
           "format": "int32",
           "x-go-name": "RestartCount"
+        },
+        "startTime": {
+          "description": "The time at which the batch job's pod startedAt",
+          "type": "string",
+          "x-go-name": "StartTime",
+          "example": "2006-01-02T15:04:05Z"
         },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
