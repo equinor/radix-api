@@ -101,6 +101,7 @@ func initLogger() {
 	logLevel, err := zerolog.ParseLevel(logLevelStr)
 	if err != nil {
 		logLevel = zerolog.InfoLevel
+		log.Warn().Msgf("Invalid log level '%s', fallback to '%s'", logLevelStr, logLevel.String())
 	}
 
 	logPretty, _ := strconv.ParseBool(os.Getenv(logPrettyEnvironmentVariable))
