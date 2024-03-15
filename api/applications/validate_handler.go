@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/rs/zerolog/log"
 
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -16,7 +17,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils/git"
 	operatornumbers "github.com/equinor/radix-operator/pkg/apis/utils/numbers"
-	log "github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,7 +71,8 @@ func verifyDeployKey(ctx context.Context, client kubernetes.Interface, rr *v1.Ra
 			}
 			return radixhttp.ValidationError("Radix Registration", message)
 		default:
-			log.Debugf("Ongoing - build docker image")
+
+			log.Ctx(ctx).Debug().Msg("Ongoing - build docker image")
 		}
 	}
 

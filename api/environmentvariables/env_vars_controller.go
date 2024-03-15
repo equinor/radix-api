@@ -7,7 +7,7 @@ import (
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 const rootPath = "/applications/{appName}"
@@ -90,7 +90,7 @@ func (controller *envVarsController) GetComponentEnvVars(accounts models.Account
 	appName, envName, componentName := mux.Vars(r)["appName"], mux.Vars(r)["envName"], mux.Vars(r)["componentName"]
 
 	eh := controller.handlerFactory.createHandler(accounts)
-	envVars, err := eh.GetComponentEnvVars(appName, envName, componentName)
+	envVars, err := eh.GetComponentEnvVars(r.Context(), appName, envName, componentName)
 
 	if err != nil {
 		controller.ErrorResponse(w, r, err)
@@ -162,11 +162,11 @@ func (controller *envVarsController) ChangeEnvVar(accounts models.Accounts, w ht
 		return
 	}
 
-	log.Debugf("Update %d environment variables for app: %s, env: %s, component: %s", len(envVarParameters), appName, envName, componentName)
+	log.Ctx(r.Context()).Debug().Msgf("Update %d environment variables for app: %s, env: %s, component: %s", len(envVarParameters), appName, envName, componentName)
 
 	envVarsHandler := controller.handlerFactory.createHandler(accounts)
 
-	err := envVarsHandler.ChangeEnvVar(appName, envName, componentName, envVarParameters)
+	err := envVarsHandler.ChangeEnvVar(r.Context(), appName, envName, componentName, envVarParameters)
 	if err != nil {
 		controller.ErrorResponse(w, r, err)
 		return

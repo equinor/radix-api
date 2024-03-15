@@ -22,6 +22,8 @@ spec:
         REQUIRE_APP_CONFIGURATION_ITEM: "true"
         REQUIRE_APP_AD_GROUPS: "true"
         USE_PROFILER: "false"
+        LOG_LEVEL: info
+        LOG_PRETTY: "false"
       environmentConfig:
         - environment: qa
           runAsNonRoot: true
