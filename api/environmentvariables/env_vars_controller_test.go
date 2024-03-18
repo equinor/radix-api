@@ -69,7 +69,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
-		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
+		handler.EXPECT().GetComponentEnvVars(gomock.Any(), appName, environmentName, componentName).
 			Return([]envvarsmodels.EnvVar{
 				{
 					Name:     "VAR1",
@@ -112,7 +112,7 @@ func Test_GetComponentEnvVars(t *testing.T) {
 		commonTestUtils, controllerTestUtils, _, _, _, handler := setupTestWithMockHandler(t, mockCtrl)
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
-		handler.EXPECT().GetComponentEnvVars(appName, environmentName, componentName).
+		handler.EXPECT().GetComponentEnvVars(gomock.Any(), appName, environmentName, componentName).
 			Return(nil, fmt.Errorf("some-err"))
 
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", url)
@@ -154,7 +154,7 @@ func Test_ChangeEnvVar(t *testing.T) {
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 
-		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
+		handler.EXPECT().ChangeEnvVar(gomock.Any(), appName, environmentName, componentName, envVarsParams).
 			Return(nil)
 
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", url, envVarsParams)
@@ -172,7 +172,7 @@ func Test_ChangeEnvVar(t *testing.T) {
 		_, err := setupDeployment(commonTestUtils, appName, environmentName, componentName, nil)
 		require.NoError(t, err)
 
-		handler.EXPECT().ChangeEnvVar(appName, environmentName, componentName, envVarsParams).
+		handler.EXPECT().ChangeEnvVar(gomock.Any(), appName, environmentName, componentName, envVarsParams).
 			Return(fmt.Errorf("some-err"))
 
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", url, envVarsParams)

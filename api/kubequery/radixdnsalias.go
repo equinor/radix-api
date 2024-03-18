@@ -8,7 +8,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,7 +22,7 @@ func GetDNSAliases(ctx context.Context, client radixclient.Interface, radixAppli
 		radixDNSAlias, err := client.RadixV1().RadixDNSAliases().Get(ctx, dnsAlias.Alias, metav1.GetOptions{})
 		if err != nil {
 			if !errors.IsNotFound(err) && !errors.IsForbidden(err) {
-				log.Errorf("failed to get DNS alias %s: %v", dnsAlias.Alias, err)
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to get DNS alias %s", dnsAlias.Alias)
 			}
 			return acc
 		}

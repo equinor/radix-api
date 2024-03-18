@@ -5,6 +5,7 @@
 package environmentvariables
 
 import (
+	context "context"
 	reflect "reflect"
 
 	models "github.com/equinor/radix-api/api/environmentvariables/models"
@@ -35,30 +36,30 @@ func (m *MockEnvVarsHandler) EXPECT() *MockEnvVarsHandlerMockRecorder {
 }
 
 // ChangeEnvVar mocks base method.
-func (m *MockEnvVarsHandler) ChangeEnvVar(appName, envName, componentName string, envVarsParams []models.EnvVarParameter) error {
+func (m *MockEnvVarsHandler) ChangeEnvVar(ctx context.Context, appName, envName, componentName string, envVarsParams []models.EnvVarParameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChangeEnvVar", appName, envName, componentName, envVarsParams)
+	ret := m.ctrl.Call(m, "ChangeEnvVar", ctx, appName, envName, componentName, envVarsParams)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ChangeEnvVar indicates an expected call of ChangeEnvVar.
-func (mr *MockEnvVarsHandlerMockRecorder) ChangeEnvVar(appName, envName, componentName, envVarsParams interface{}) *gomock.Call {
+func (mr *MockEnvVarsHandlerMockRecorder) ChangeEnvVar(ctx, appName, envName, componentName, envVarsParams interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeEnvVar", reflect.TypeOf((*MockEnvVarsHandler)(nil).ChangeEnvVar), appName, envName, componentName, envVarsParams)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeEnvVar", reflect.TypeOf((*MockEnvVarsHandler)(nil).ChangeEnvVar), ctx, appName, envName, componentName, envVarsParams)
 }
 
 // GetComponentEnvVars mocks base method.
-func (m *MockEnvVarsHandler) GetComponentEnvVars(appName, envName, componentName string) ([]models.EnvVar, error) {
+func (m *MockEnvVarsHandler) GetComponentEnvVars(ctx context.Context, appName, envName, componentName string) ([]models.EnvVar, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetComponentEnvVars", appName, envName, componentName)
+	ret := m.ctrl.Call(m, "GetComponentEnvVars", ctx, appName, envName, componentName)
 	ret0, _ := ret[0].([]models.EnvVar)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetComponentEnvVars indicates an expected call of GetComponentEnvVars.
-func (mr *MockEnvVarsHandlerMockRecorder) GetComponentEnvVars(appName, envName, componentName interface{}) *gomock.Call {
+func (mr *MockEnvVarsHandlerMockRecorder) GetComponentEnvVars(ctx, appName, envName, componentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentEnvVars", reflect.TypeOf((*MockEnvVarsHandler)(nil).GetComponentEnvVars), appName, envName, componentName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentEnvVars", reflect.TypeOf((*MockEnvVarsHandler)(nil).GetComponentEnvVars), ctx, appName, envName, componentName)
 }

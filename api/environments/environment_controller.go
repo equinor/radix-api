@@ -14,7 +14,6 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 const rootPath = "/applications/{appName}"
@@ -272,7 +271,7 @@ func (c *environmentController) GetApplicationEnvironmentDeployments(accounts mo
 		c.ErrorResponse(w, r, err)
 	}
 
-	c.JSONResponse(w,r, appEnvironmentDeployments)
+	c.JSONResponse(w, r, appEnvironmentDeployments)
 }
 
 // CreateEnvironment Creates a new environment
@@ -1106,7 +1105,7 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		c.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
 	} else {
-		 c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
+		c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}
 }
 
@@ -1187,14 +1186,14 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 		c.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = logs.Close()}()
+	defer func() { _ = logs.Close() }()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		c.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
 
 	} else {
-		 c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
+		c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}
 }
 
@@ -2095,7 +2094,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 		c.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = logs.Close()}()
+	defer func() { _ = logs.Close() }()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
@@ -2161,7 +2160,8 @@ func (c *environmentController) GetJobPayload(accounts models.Accounts, w http.R
 		return
 	}
 
-	c.ReaderResponse(w, r, payload, "text/plain; charset=utf-8")}
+	c.ReaderResponse(w, r, payload, "text/plain; charset=utf-8")
+}
 
 // ScaleComponent Scale component replicas
 func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
@@ -2216,7 +2216,6 @@ func (c *environmentController) ScaleComponent(accounts models.Accounts, w http.
 	componentName := mux.Vars(r)["componentName"]
 	replicas, err := strconv.Atoi(mux.Vars(r)["replicas"])
 	if err != nil {
-		log.Error(err)
 		c.ErrorResponse(w, r, fmt.Errorf("invalid new desired number of replicas argument"))
 		return
 	}

@@ -13,7 +13,7 @@ import (
 	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -146,7 +146,8 @@ func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv
 	restartedTime, err := commonutils.ParseTimestamp(restarted)
 	if err != nil {
 		// TODO: How should we handle invalid value for restarted time?
-		logrus.Warnf("unable to parse restarted time %v: %v", restarted, err)
+
+		log.Logger.Warn().Err(err).Msgf("unable to parse restarted time %v", restarted)
 		return deploymentModels.ConsistentComponent
 	}
 	reconciledTime := rd.Status.Reconciled
