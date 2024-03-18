@@ -9,6 +9,7 @@ import (
 
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
+	"github.com/rs/zerolog/log"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
@@ -17,7 +18,6 @@ import (
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,12 +35,12 @@ func (jh JobHandler) HandleStartPipelineJob(ctx context.Context, appName string,
 		return nil, err
 	}
 
-	job := jh.buildPipelineJob(appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobParameters)
+	job := jh.buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobParameters)
 	return jh.createPipelineJob(ctx, appName, job)
 }
 
 func (jh JobHandler) createPipelineJob(ctx context.Context, appName string, job *v1.RadixJob) (*jobModels.JobSummary, error) {
-	log.Infof("Starting job: %s, %s", job.GetName(), workerImage)
+	log.Ctx(ctx).Info().Msgf("Starting job: %s, %s", job.GetName(), workerImage)
 	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
 	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
@@ -49,7 +49,7 @@ func (jh JobHandler) createPipelineJob(ctx context.Context, appName string, job 
 
 	metrics.AddJobTriggered(appName, string(job.Spec.PipeLineType))
 
-	log.Infof("Started job: %s, %s", job.GetName(), workerImage)
+	log.Ctx(ctx).Info().Msgf("Started job: %s, %s", job.GetName(), workerImage)
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
@@ -63,7 +63,7 @@ func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, er
 	return radixRegistration.Spec.RadixConfigFullName, nil
 }
 
-func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func (jh JobHandler) buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
 	jobName, imageTag := getUniqueJobName(workerImage)
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -75,7 +75,7 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 
 	triggeredBy, err := jh.getTriggeredBy(jobSpec.TriggeredBy)
 	if err != nil {
-		log.Warnf("failed to get triggeredBy: %v", err)
+		log.Ctx(ctx).Warn().Msgf("failed to get triggeredBy: %v", err)
 	}
 
 	switch pipeline.Type {
@@ -116,8 +116,8 @@ func (jh JobHandler) buildPipelineJob(appName, cloneURL, radixConfigFullName str
 			AppName:             appName,
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
-			PipelineImage:       getPipelineTag(),
-			TektonImage:         getTektonTag(),
+			PipelineImage:       getPipelineTag(ctx),
+			TektonImage:         getTektonTag(ctx),
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
@@ -140,24 +140,24 @@ func (jh JobHandler) getTriggeredBy(triggeredBy string) (string, error) {
 	return triggeredBy, nil
 }
 
-func getPipelineTag() string {
+func getPipelineTag(ctx context.Context) string {
 	pipelineTag := os.Getenv(pipelineTagEnvironmentVariable)
 	if pipelineTag == "" {
-		log.Warning("No pipeline image tag defined. Using latest")
+		log.Ctx(ctx).Warn().Msg("No pipeline image tag defined. Using latest")
 		pipelineTag = "latest"
 	} else {
-		log.Infof("Using %s pipeline image tag", pipelineTag)
+		log.Ctx(ctx).Info().Msgf("Using %s pipeline image tag", pipelineTag)
 	}
 	return pipelineTag
 }
 
-func getTektonTag() string {
+func getTektonTag(ctx context.Context) string {
 	tektonTag := os.Getenv(tektonTagEnvironmentVariable)
 	if tektonTag == "" {
-		log.Warning("No tekton image tag defined. Using release-latest")
+		log.Ctx(ctx).Warn().Msg("No tekton image tag defined. Using release-latest")
 		tektonTag = "release-latest"
 	} else {
-		log.Infof("Using %s as tekton image tag", tektonTag)
+		log.Ctx(ctx).Info().Msgf("Using %s as tekton image tag", tektonTag)
 	}
 	return tektonTag
 }

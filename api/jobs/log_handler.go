@@ -12,7 +12,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/tekton"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +29,6 @@ func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appNa
 		return nil, err
 	}
 	podHandler := pods.Init(jh.userAccount.Client)
-	if err != nil {
-		return nil, err
-	}
 	return podHandler.HandleGetAppPodLog(ctx, appName, podName, containerName, sinceTime, logLines)
 }
 
@@ -70,7 +67,7 @@ func (jh JobHandler) GetPipelineJobStepLogs(ctx context.Context, appName, jobNam
 	podHandler := pods.Init(jh.userAccount.Client)
 	logReader, err := podHandler.HandleGetAppPodLog(ctx, appName, stepPodName, stepName, sinceTime, logLines)
 	if err != nil {
-		log.Warnf("Failed to get build logs. %v", err)
+		log.Ctx(ctx).Warn().Msgf("Failed to get build logs. %v", err)
 		return nil, err
 	}
 	return logReader, nil

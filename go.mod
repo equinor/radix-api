@@ -5,20 +5,21 @@ go 1.21
 require (
 	github.com/cert-manager/cert-manager v1.14.2
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-job-scheduler v1.9.1-0.20240314135648-a2487d847d4c
-	github.com/equinor/radix-operator v1.50.3-0.20240313152237-1dc5d2699a2e
+	github.com/equinor/radix-job-scheduler v1.9.0
+	github.com/equinor/radix-operator v1.50.2
 	github.com/evanphx/json-patch/v5 v5.7.0
+	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-swagger/go-swagger v0.30.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
-	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/marstr/guid v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.70.0
 	github.com/prometheus/client_golang v1.18.0
 	github.com/rs/cors v1.10.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/rs/xid v1.5.0
+	github.com/rs/zerolog v1.32.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
@@ -45,7 +46,6 @@ require (
 	github.com/elnormous/contenttype v1.0.4 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
@@ -86,9 +86,9 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
-	github.com/rs/zerolog v1.32.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect

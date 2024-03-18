@@ -22,7 +22,9 @@
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true",
                 "REQUIRE_APP_AD_GROUPS": "true",
                 "RADIX_ENVIRONMENT":"qa",
-                "RADIX_APP":"radix-api"
+                "RADIX_APP":"radix-api",
+                "LOG_LEVEL":"info",
+                "LOG_PRETTY":"true"
             },
             "args": [
                 "--useOutClusterClient=false"

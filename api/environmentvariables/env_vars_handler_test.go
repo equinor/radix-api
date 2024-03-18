@@ -1,6 +1,7 @@
 package environmentvariables
 
 import (
+	"context"
 	"testing"
 
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
@@ -38,7 +39,7 @@ func Test_GetEnvVars(t *testing.T) {
 		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
 		require.NoError(t, err)
 
-		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
+		envVars, err := handler.GetComponentEnvVars(context.Background(), appName, environmentName, componentName)
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, envVars)
@@ -87,11 +88,11 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 				Value: "new-val3",
 			},
 		}
-		err = handler.ChangeEnvVar(appName, environmentName, componentName, params)
+		err = handler.ChangeEnvVar(context.Background(), appName, environmentName, componentName, params)
 
 		assert.NoError(t, err)
 
-		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
+		envVars, err := handler.GetComponentEnvVars(context.Background(), appName, environmentName, componentName)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, envVars)
 		assert.Len(t, envVars, 3)
@@ -136,11 +137,11 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 				Value: "new-val2",
 			},
 		}
-		err = handler.ChangeEnvVar(appName, environmentName, componentName, params)
+		err = handler.ChangeEnvVar(context.Background(), appName, environmentName, componentName, params)
 
 		require.NoError(t, err)
 
-		envVars, err := handler.GetComponentEnvVars(appName, environmentName, componentName)
+		envVars, err := handler.GetComponentEnvVars(context.Background(), appName, environmentName, componentName)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, envVars)
 		assert.Len(t, envVars, 2)

@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -116,7 +116,7 @@ func getInClusterClientConfig(options []RestClientConfigOption) *restclient.Conf
 	if err != nil {
 		config, err = restclient.InClusterConfig()
 		if err != nil {
-			log.Fatalf("getClusterConfig InClusterConfig: %v", err)
+			log.Fatal().Err(err).Msg("getClusterConfig InClusterConfig")
 		}
 	}
 
@@ -137,22 +137,22 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface) {
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("getClusterConfig k8s client: %v", err)
+		log.Fatal().Err(err).Msg("getClusterConfig k8s client")
 	}
 
 	radixClient, err := radixclient.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("getClusterConfig radix client: %v", err)
+		log.Fatal().Err(err).Msg("getClusterConfig radix client")
 	}
 
 	secretProviderClient, err := secretproviderclient.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("getClusterConfig secret provider client client: %v", err)
+		log.Fatal().Err(err).Msg("getClusterConfig secret provider client client")
 	}
 
 	tektonClient, err := tektonclient.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("getClusterConfig Tekton client client: %v", err)
+		log.Fatal().Err(err).Msg("getClusterConfig Tekton client client")
 	}
 	return client, radixClient, secretProviderClient, tektonClient
 }

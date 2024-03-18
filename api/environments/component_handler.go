@@ -13,7 +13,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	jsonPatch "github.com/evanphx/json-patch/v5"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,7 +27,8 @@ const (
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Infof("Stopping component %s, %s", componentName, appName)
+
+	log.Ctx(ctx).Info().Msgf("Stopping component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
@@ -47,7 +48,7 @@ func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName
 
 // StartComponent Starts a component
 func (eh EnvironmentHandler) StartComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Infof("Starting component %s, %s", componentName, appName)
+	log.Ctx(ctx).Info().Msgf("Starting component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
@@ -67,7 +68,7 @@ func (eh EnvironmentHandler) StartComponent(ctx context.Context, appName, envNam
 
 // RestartComponent Restarts a component
 func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Infof("Restarting component %s, %s", componentName, appName)
+	log.Ctx(ctx).Info().Msgf("Restarting component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
@@ -84,7 +85,7 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 
 // RestartComponentAuxiliaryResource Restarts a component's auxiliary resource
 func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Context, appName, envName, componentName, auxType string) error {
-	log.Infof("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
+	log.Ctx(ctx).Info().Msgf("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
 
 	deploySummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(ctx, appName, envName)
 	if err != nil {
@@ -136,7 +137,7 @@ func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envNam
 	if replicas > maxScaleReplicas {
 		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
 	}
-	log.Infof("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
+	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
@@ -184,9 +185,8 @@ func getReplicasForComponentInEnvironment(environmentConfig v1.RadixCommonEnviro
 
 func (eh EnvironmentHandler) patch(ctx context.Context, namespace, name string, oldJSON, newJSON []byte) error {
 	patchBytes, err := jsonPatch.CreateMergePatch(oldJSON, newJSON)
-
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	if patchBytes != nil {

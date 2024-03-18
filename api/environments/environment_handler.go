@@ -26,7 +26,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -299,12 +299,7 @@ func (eh EnvironmentHandler) getServiceAccount() models.Account {
 // GetLogs handler for GetLogs
 func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.client)
-	logger, err := podHandler.HandleGetEnvironmentPodLog(ctx, appName, envName, podName, "", sinceTime, logLines, previousLog)
-	if errors.IsNotFound(err) {
-		return nil, err
-	}
-
-	return logger, nil
+	return podHandler.HandleGetEnvironmentPodLog(ctx, appName, envName, podName, "", sinceTime, logLines, previousLog)
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
@@ -326,7 +321,7 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 		return err
 	}
 
-	log.Infof("Stopping components in environment %s, %s", envName, appName)
+	log.Ctx(ctx).Info().Msgf("Stopping components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
 		err := eh.StopComponent(ctx, appName, envName, deployComponent.GetName(), true)
 		if err != nil {
@@ -343,7 +338,7 @@ func (eh EnvironmentHandler) StartEnvironment(ctx context.Context, appName, envN
 		return err
 	}
 
-	log.Infof("Starting components in environment %s, %s", envName, appName)
+	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
 		err := eh.StartComponent(ctx, appName, envName, deployComponent.GetName(), true)
 		if err != nil {
@@ -360,7 +355,7 @@ func (eh EnvironmentHandler) RestartEnvironment(ctx context.Context, appName, en
 		return err
 	}
 
-	log.Infof("Restarting components in environment %s, %s", envName, appName)
+	log.Ctx(ctx).Info().Msgf("Restarting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
 		err := eh.RestartComponent(ctx, appName, envName, deployComponent.GetName(), true)
 		if err != nil {
@@ -376,7 +371,7 @@ func (eh EnvironmentHandler) StopApplication(ctx context.Context, appName string
 	if err != nil {
 		return err
 	}
-	log.Infof("Stopping components in the application %s", appName)
+	log.Ctx(ctx).Info().Msgf("Stopping components in the application %s", appName)
 	for _, environmentName := range environmentNames {
 		err := eh.StopEnvironment(ctx, appName, environmentName)
 		if err != nil {
@@ -392,7 +387,7 @@ func (eh EnvironmentHandler) StartApplication(ctx context.Context, appName strin
 	if err != nil {
 		return err
 	}
-	log.Infof("Starting components in the application %s", appName)
+	log.Ctx(ctx).Info().Msgf("Starting components in the application %s", appName)
 	for _, environmentName := range environmentNames {
 		err := eh.StartEnvironment(ctx, appName, environmentName)
 		if err != nil {
@@ -408,7 +403,7 @@ func (eh EnvironmentHandler) RestartApplication(ctx context.Context, appName str
 	if err != nil {
 		return err
 	}
-	log.Infof("Restarting components in the application %s", appName)
+	log.Ctx(ctx).Info().Msgf("Restarting components in the application %s", appName)
 	for _, environmentName := range environmentNames {
 		err := eh.RestartEnvironment(ctx, appName, environmentName)
 		if err != nil {
