@@ -303,9 +303,9 @@ func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podN
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
-func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName, replicaName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	handler := pods.Init(eh.client)
-	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, "", sinceTime, logLines)
+	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, replicaName, "", sinceTime, logLines)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog

@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/cert-manager/cert-manager v1.14.2
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-job-scheduler v1.9.0
-	github.com/equinor/radix-operator v1.50.2
+	github.com/equinor/radix-job-scheduler v1.9.1-0.20240314135648-a2487d847d4c
+	github.com/equinor/radix-operator v1.50.3-0.20240313152237-1dc5d2699a2e
 	github.com/evanphx/json-patch/v5 v5.7.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-swagger/go-swagger v0.30.5

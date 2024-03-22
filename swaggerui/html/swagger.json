@@ -3548,6 +3548,12 @@
           },
           {
             "type": "string",
+            "description": "Name of the job replica",
+            "name": "replicaName",
+            "in": "query"
+          },
+          {
+            "type": "string",
             "format": "date-time",
             "description": "Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)",
             "name": "sinceTime",
@@ -7438,6 +7444,7 @@
           "type": "string",
           "enum": [
             "Running",
+            "Active",
             "Succeeded",
             "Failed",
             "Waiting",

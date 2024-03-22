@@ -1135,6 +1135,11 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	//   description: Name of scheduled job
 	//   type: string
 	//   required: true
+	// - name: replicaName
+	//   in: query
+	//   description: Name of the job replica
+	//   type: string
+	//   required: false
 	// - name: sinceTime
 	//   in: query
 	//   description: Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)
@@ -1173,6 +1178,7 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	scheduledJobName := mux.Vars(r)["scheduledJobName"]
+	replicaName := r.FormValue("replicaName")
 
 	since, asFile, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
@@ -1181,7 +1187,7 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, &since, logLines)
+	logs, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, replicaName, &since, logLines)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
