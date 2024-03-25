@@ -2032,8 +2032,19 @@ func Test_GetBatches_Status(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
 			Status: v1.RadixBatchStatus{
-				Condition:   v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
-				JobStatuses: []v1.RadixBatchJobStatus{{Name: "j1"}, {Name: "j2", Phase: v1.BatchJobPhaseFailed}},
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+				JobStatuses: []v1.RadixBatchJobStatus{{Name: "j1"}, {
+					Name:    "j2",
+					Phase:   v1.BatchJobPhaseFailed,
+					EndTime: &metav1.Time{time.Now()},
+					Failed:  1,
+					RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+						Phase:        v1.PodFailed,
+						CreationTime: &metav1.Time{time.Now()},
+						StartTime:    &metav1.Time{time.Now()},
+						EndTime:      &metav1.Time{time.Now()},
+					}},
+				}},
 			},
 		},
 		{
