@@ -348,12 +348,14 @@ type ReplicaSummary struct {
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating
-	// - Failing = Container in Waiting state and the reason is anything else but ContainerCreating
+	// - Failed = Container is failed
+	// - Failing = Container is failed
 	// - Running = Container in Running state
+	// - Succeeded = Container in Succeeded state
 	// - Terminated = Container in Terminated state
 	//
 	// required: true
-	// enum: Pending,Failing,Running,Terminated,Starting
+	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting
 	// example: Running
 	Status string `json:"status"`
 }
@@ -418,7 +420,7 @@ type ResourceRequirements struct {
 	Requests Resources `json:"requests,omitempty"`
 }
 
-func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
+func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	replicaSummary := ReplicaSummary{}
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
@@ -473,6 +475,9 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.ImageId = containerStatus.ImageID
 	if len(pod.Spec.Containers) > 0 {
 		replicaSummary.Resources = pointers.Ptr(ConvertResourceRequirements(pod.Spec.Containers[0].Resources))
+	}
+	if len(replicaSummary.StatusMessage) == 0 && (replicaSummary.Status.Status == Failing.String() || replicaSummary.Status.Status == Pending.String()) {
+		replicaSummary.StatusMessage = lastEventWarning
 	}
 	return replicaSummary
 }

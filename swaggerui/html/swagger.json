@@ -7120,11 +7120,12 @@
       ],
       "properties": {
         "status": {
-          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailing = Container in Waiting state and the reason is anything else but ContainerCreating\nRunning = Container in Running state\nTerminated = Container in Terminated state",
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nTerminated = Container in Terminated state",
           "type": "string",
           "enum": [
             "Pending",
             "Failing",
+            "Failed",
             "Running",
             "Terminated",
             "Starting"

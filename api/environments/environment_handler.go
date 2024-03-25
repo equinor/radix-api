@@ -203,8 +203,12 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
+	eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, eh.tlsValidator)
 	return env, nil
 }
 

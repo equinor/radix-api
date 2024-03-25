@@ -561,11 +561,11 @@ func getReplicaStatusByJobPodStatusPhase(statusPhase radixv1.RadixBatchJobPodPha
 	replicaStatus := deploymentModels.ReplicaStatus{}
 	switch statusPhase {
 	case radixv1.PodFailed:
-		replicaStatus.Status = "Failing"
+		replicaStatus.Status = "Failed"
 	case radixv1.PodRunning:
 		replicaStatus.Status = "Running"
 	case radixv1.PodSucceeded:
-		replicaStatus.Status = "Terminated"
+		replicaStatus.Status = "Succeeded"
 	default:
 		replicaStatus.Status = "Pending"
 	}
