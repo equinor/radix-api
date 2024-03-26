@@ -461,24 +461,33 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 			summary.Resources = deploymentModels.ConvertRadixResourceRequirements(jobComponent.Resources)
 		}
 	}
+
+	stopJob := job.Stop != nil && *job.Stop
+
 	if statuses := slice.FindAll(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool { return jobStatus.Name == job.Name }); len(statuses) == 1 {
 		status := statuses[0]
-		summary.Status = getScheduledJobStatus(job, status).String()
+		summary.Status = getScheduledJobStatus(job, status, stopJob).String()
 		summary.Created = radixutils.FormatTime(status.CreationTime)
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
 		summary.Message = status.Message
 		summary.FailedCount = status.Failed
 		summary.Restart = status.Restart
+	} else if len(statuses) == 0 && stopJob {
+		summary.Status = jobSchedulerModels.Stopping.String()
 	}
-
 	return summary
 }
 
 func getScheduledBatchStatus(batch *radixv1.RadixBatch) (status jobSchedulerModels.ProgressStatus) {
 	switch {
 	case batch.Status.Condition.Type == radixv1.BatchConditionTypeActive:
-		return jobSchedulerModels.Running
+		if slice.Any(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
+			return jobStatus.Phase == radixv1.BatchJobPhaseRunning
+		}) {
+			return jobSchedulerModels.Running
+		}
+		return jobSchedulerModels.Active
 	case batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted:
 		if len(batch.Status.JobStatuses) > 0 && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
 			return jobStatus.Phase == radixv1.BatchJobPhaseFailed
@@ -490,7 +499,7 @@ func getScheduledBatchStatus(batch *radixv1.RadixBatch) (status jobSchedulerMode
 	return jobSchedulerModels.Waiting
 }
 
-func getScheduledJobStatus(job radixv1.RadixBatchJob, jobStatus radixv1.RadixBatchJobStatus) (status jobSchedulerModels.ProgressStatus) {
+func getScheduledJobStatus(job radixv1.RadixBatchJob, jobStatus radixv1.RadixBatchJobStatus, stopJob bool) (status jobSchedulerModels.ProgressStatus) {
 	status = jobSchedulerModels.Waiting
 	switch jobStatus.Phase {
 	case radixv1.BatchJobPhaseActive:
@@ -506,11 +515,7 @@ func getScheduledJobStatus(job radixv1.RadixBatchJob, jobStatus radixv1.RadixBat
 	case radixv1.BatchJobPhaseWaiting:
 		status = jobSchedulerModels.Waiting
 	}
-	var stop bool
-	if job.Stop != nil {
-		stop = *job.Stop
-	}
-	if stop && (status == jobSchedulerModels.Waiting || status == jobSchedulerModels.Active || status == jobSchedulerModels.Running) {
+	if stopJob && (status == jobSchedulerModels.Waiting || status == jobSchedulerModels.Active || status == jobSchedulerModels.Running) {
 		return jobSchedulerModels.Stopping
 	}
 	if len(jobStatus.RadixBatchJobPodStatuses) > 0 && slice.All(jobStatus.RadixBatchJobPodStatuses, func(jobPodStatus radixv1.RadixBatchJobPodStatus) bool {
