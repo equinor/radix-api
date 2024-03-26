@@ -23,7 +23,6 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -48,7 +47,6 @@ func (eh EnvironmentHandler) getJobs(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return nil, err
 	}
-
 	return eh.getScheduledJobSummaryList(radixBatches), nil
 }
 
@@ -337,32 +335,6 @@ func (eh EnvironmentHandler) getRadixBatch(ctx context.Context, appName, envName
 	return batch, nil
 }
 
-func (eh EnvironmentHandler) getPodsForBatch(ctx context.Context, appName, envName, batchName string) ([]corev1.Pod, error) {
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	selector := radixLabels.ForBatchName(batchName)
-
-	return eh.getPodsWithLabelSelector(ctx, namespace, selector.String())
-}
-
-func (eh EnvironmentHandler) getPodsForBatchJob(ctx context.Context, appName, envName, batchName, jobName string) ([]corev1.Pod, error) {
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	selector := radixLabels.Merge(
-		radixLabels.ForBatchName(batchName),
-		radixLabels.ForBatchJobName(jobName),
-	)
-
-	return eh.getPodsWithLabelSelector(ctx, namespace, selector.String())
-}
-
-func (eh EnvironmentHandler) getPodsWithLabelSelector(ctx context.Context, namespace, labelSelector string) ([]corev1.Pod, error) {
-	pods, err := eh.accounts.UserAccount.Client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
-	if err != nil {
-		return nil, err
-	}
-
-	return pods.Items, nil
-}
-
 func (eh EnvironmentHandler) getScheduledBatchSummaryList(batches []radixv1.RadixBatch) (summaries []deploymentModels.ScheduledBatchSummary) {
 	for _, batch := range batches {
 		summaries = append(summaries, eh.getScheduledBatchSummary(&batch))
@@ -466,7 +438,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 
 	if statuses := slice.FindAll(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool { return jobStatus.Name == job.Name }); len(statuses) == 1 {
 		status := statuses[0]
-		summary.Status = getScheduledJobStatus(job, status, stopJob).String()
+		summary.Status = getScheduledJobStatus(status, stopJob).String()
 		summary.Created = radixutils.FormatTime(status.CreationTime)
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
@@ -499,7 +471,7 @@ func getScheduledBatchStatus(batch *radixv1.RadixBatch) (status jobSchedulerMode
 	return jobSchedulerModels.Waiting
 }
 
-func getScheduledJobStatus(job radixv1.RadixBatchJob, jobStatus radixv1.RadixBatchJobStatus, stopJob bool) (status jobSchedulerModels.ProgressStatus) {
+func getScheduledJobStatus(jobStatus radixv1.RadixBatchJobStatus, stopJob bool) (status jobSchedulerModels.ProgressStatus) {
 	status = jobSchedulerModels.Waiting
 	switch jobStatus.Phase {
 	case radixv1.BatchJobPhaseActive:

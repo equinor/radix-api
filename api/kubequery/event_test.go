@@ -24,5 +24,6 @@ func Test_GetEvents(t *testing.T) {
 
 	// Get non-existing events (wrong namespace)
 	actual, err = GetEventsForEnvironment(context.Background(), client, "app3", "dev")
+	require.NoError(t, err)
 	assert.Len(t, actual, 0)
 }
