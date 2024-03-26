@@ -461,7 +461,8 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 			summary.Resources = deploymentModels.ConvertRadixResourceRequirements(jobComponent.Resources)
 		}
 	}
-	if status, ok := slice.FindFirst(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool { return jobStatus.Name == job.Name }); ok {
+	if statuses := slice.FindAll(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool { return jobStatus.Name == job.Name }); len(statuses) == 1 {
+		status := statuses[0]
 		summary.Status = getScheduledJobStatus(job, status).String()
 		summary.Created = radixutils.FormatTime(status.CreationTime)
 		summary.Started = radixutils.FormatTime(status.StartTime)

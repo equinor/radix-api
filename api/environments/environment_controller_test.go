@@ -1452,7 +1452,16 @@ func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
 			},
 			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{{Name: "no1", Stop: radixutils.BoolPtr(true)}, {Name: "no2", Stop: radixutils.BoolPtr(true)}, {Name: "no3", Stop: radixutils.BoolPtr(true)}, {Name: "no4", Stop: radixutils.BoolPtr(true)}, {Name: "no5", Stop: radixutils.BoolPtr(true)}, {Name: "no6", Stop: radixutils.BoolPtr(true)}, {Name: "no7", Stop: radixutils.BoolPtr(true)}}},
+				Jobs: []v1.RadixBatchJob{
+					{Name: "no1", Stop: radixutils.BoolPtr(true)},
+					{Name: "no2", Stop: radixutils.BoolPtr(true)},
+					{Name: "no3", Stop: radixutils.BoolPtr(true)},
+					{Name: "no4", Stop: radixutils.BoolPtr(true)},
+					{Name: "no5", Stop: radixutils.BoolPtr(true)},
+					{Name: "no6", Stop: radixutils.BoolPtr(true)},
+					{Name: "no7", Stop: radixutils.BoolPtr(true)},
+				},
+			},
 			Status: v1.RadixBatchStatus{
 				JobStatuses: []v1.RadixBatchJobStatus{
 					{Name: "no2"},
