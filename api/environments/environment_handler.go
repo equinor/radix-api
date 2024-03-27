@@ -203,8 +203,12 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
+	eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eh.tlsValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, eh.tlsValidator)
 	return env, nil
 }
 
@@ -303,9 +307,9 @@ func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podN
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
-func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName, replicaName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
 	handler := pods.Init(eh.client)
-	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, "", sinceTime, logLines)
+	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, replicaName, "", sinceTime, logLines)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog

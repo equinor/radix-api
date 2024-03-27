@@ -5,9 +5,12 @@ import (
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/event"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -169,7 +172,12 @@ func GetComponentStateFromSpec(
 		}
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
-		replicaSummaryList = getReplicaSummaryList(componentPods)
+		eventList, err := kubequery.GetEventsForEnvironment(ctx, kubeClient, appName, deployment.Environment)
+		if err != nil {
+			return nil, err
+		}
+		lastEventWarnings := event.ConvertToEventWarnings(eventList)
+		replicaSummaryList = getReplicaSummaryList(componentPods, lastEventWarnings)
 		auxResource, err = getAuxiliaryResources(ctx, kubeClient, appName, component, envNs)
 		if err != nil {
 			return nil, err
@@ -305,14 +313,10 @@ func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
 	return radixEnvironmentVariables
 }
 
-func getReplicaSummaryList(pods []corev1.Pod) []deploymentModels.ReplicaSummary {
-	replicaSummaryList := make([]deploymentModels.ReplicaSummary, 0, len(pods))
-
-	for _, pod := range pods {
-		replicaSummaryList = append(replicaSummaryList, deploymentModels.GetReplicaSummary(pod))
-	}
-
-	return replicaSummaryList
+func getReplicaSummaryList(pods []corev1.Pod, lastEventWarnings event.LastEventWarnings) []deploymentModels.ReplicaSummary {
+	return slice.Map(pods, func(pod corev1.Pod) deploymentModels.ReplicaSummary {
+		return deploymentModels.GetReplicaSummary(pod, lastEventWarnings[pod.GetName()])
+	})
 }
 
 func getAuxiliaryResources(ctx context.Context, kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
@@ -357,7 +361,7 @@ func getAuxiliaryResourceDeployment(ctx context.Context, kubeClient kubernetes.I
 	if err != nil {
 		return nil, err
 	}
-	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods.Items)
+	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods.Items, nil)
 	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(&deployment).String()
 	return &auxResourceDeployment, nil
 }

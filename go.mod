@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/cert-manager/cert-manager v1.14.2
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-job-scheduler v1.9.0
-	github.com/equinor/radix-operator v1.50.2
+	github.com/equinor/radix-job-scheduler v1.9.1
+	github.com/equinor/radix-operator v1.50.7
 	github.com/evanphx/json-patch/v5 v5.7.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-swagger/go-swagger v0.30.5
@@ -88,7 +88,6 @@ require (
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect

@@ -12,13 +12,15 @@ import (
 )
 
 // BuildDeployment builds a Deployment model.
-func BuildDeployment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator, rjList []radixv1.RadixJob) *deploymentModels.Deployment {
-	components := BuildComponents(ra, rd, deploymentList, podList, hpaList, secretList, tlsValidator)
+func BuildDeployment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment,
+	podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event,
+	tlsValidator tlsvalidation.Validator, rjList []radixv1.RadixJob) *deploymentModels.Deployment {
+	components := BuildComponents(ra, rd, deploymentList, podList, hpaList, secretList, eventList, tlsValidator)
 
 	// The only error that can be returned from DeploymentBuilder is related to errors from github.com/imdario/mergo
 	// This type of error will only happen if incorrect objects (e.g. incompatible structs) are sent as arguments to mergo,
 	// and we should consider to panic the error in the code calling merge.
-	// For now we will panic the error here.
+	// It will currently panic the error here.
 	radixJob, _ := slice.FindFirst(rjList, func(radixJob radixv1.RadixJob) bool {
 		return radixJob.GetName() == rd.GetLabels()[kube.RadixJobNameLabel]
 	})

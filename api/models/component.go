@@ -5,6 +5,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/event"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	commonutils "github.com/equinor/radix-common/utils"
@@ -20,22 +21,25 @@ import (
 )
 
 // BuildComponents builds a list of Component models.
-func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) []*deploymentModels.Component {
+func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
+	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event,
+	tlsValidator tlsvalidation.Validator) []*deploymentModels.Component {
+	lastEventWarnings := event.ConvertToEventWarnings(eventList)
 	var components []*deploymentModels.Component
-
 	for _, component := range rd.Spec.Components {
-		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, tlsValidator))
+		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, lastEventWarnings, tlsValidator))
 	}
 
 	for _, job := range rd.Spec.Jobs {
-		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, tlsValidator))
+		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, lastEventWarnings, tlsValidator))
 	}
 
 	return components
 }
 
-func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
-
+func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment,
+	deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
+	secretList []corev1.Secret, lastEventWarnings map[string]string, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
@@ -43,13 +47,12 @@ func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radix
 		WithExternalDNS(getComponentExternalDNS(radixComponent, secretList, tlsValidator))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
-
 	if rd.Status.ActiveTo.IsZero() {
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))
 		builder.WithRadixEnvironmentVariables(getRadixEnvironmentVariables(componentPods))
-		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods))
+		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods, lastEventWarnings))
 		builder.WithStatus(getComponentStatus(radixComponent, ra, rd, componentPods))
-		builder.WithAuxiliaryResource(getAuxiliaryResources(ra.Name, radixComponent, deploymentList, podList))
+		builder.WithAuxiliaryResource(getAuxiliaryResources(ra.Name, radixComponent, deploymentList, podList, lastEventWarnings))
 	}
 
 	// TODO: Use radixComponent.GetType() instead?

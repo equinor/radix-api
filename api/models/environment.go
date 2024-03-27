@@ -14,7 +14,10 @@ import (
 )
 
 // BuildEnvironment builds and Environment model.
-func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment, rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
+func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment,
+	rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
+	secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, eventList []corev1.Event,
+	tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
@@ -24,7 +27,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
-		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, tlsValidator, rjList)
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, tlsValidator, rjList)
 		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 	}
 

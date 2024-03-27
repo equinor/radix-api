@@ -9,11 +9,11 @@ import (
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/utils"
 	operatoralert "github.com/equinor/radix-operator/pkg/apis/alert"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdutils "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	corev1 "k8s.io/api/core/v1"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -195,7 +195,7 @@ func (h *handler) validateUpdateAlertingConfig(config *alertModels.UpdateAlertin
 			return InvalidAlertReceiverError(alert.Alert, alert.Receiver)
 		}
 		// Verify alert name is valid
-		if !slice.ContainsString(h.validAlertNames, alert.Alert) {
+		if !utils.ContainsString(h.validAlertNames, alert.Alert) {
 			return InvalidAlertError(alert.Alert)
 		}
 	}

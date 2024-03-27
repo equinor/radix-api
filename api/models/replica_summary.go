@@ -7,11 +7,8 @@ import (
 )
 
 // BuildReplicaSummaryList builds a list of ReplicaSummary models.
-func BuildReplicaSummaryList(podList []corev1.Pod) []deploymentModels.ReplicaSummary {
-	return slice.Map(podList, BuildReplicaSummary)
-}
-
-// BuildReplicaSummary builds a ReplicaSummary model.
-func BuildReplicaSummary(pod corev1.Pod) deploymentModels.ReplicaSummary {
-	return deploymentModels.GetReplicaSummary(pod)
+func BuildReplicaSummaryList(podList []corev1.Pod, lastEventWarnings map[string]string) []deploymentModels.ReplicaSummary {
+	return slice.Map(podList, func(pod corev1.Pod) deploymentModels.ReplicaSummary {
+		return deploymentModels.GetReplicaSummary(pod, lastEventWarnings[pod.GetName()])
+	})
 }
