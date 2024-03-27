@@ -2200,7 +2200,7 @@ func Test_GetBatches_Status(t *testing.T) {
 	assert.ElementsMatch(t, expected, actualMapped)
 }
 
-func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
+func Test_GetBatches_JobListShouldHaveJobWithStatusWaiting(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
@@ -2246,8 +2246,8 @@ func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
-	assert.Len(t, actual[0].JobList, 0)
-
+	assert.Len(t, actual[0].JobList, 1)
+	assert.Equal(t, string(v1.BatchJobPhaseWaiting), actual[0].JobList[0].Status)
 }
 
 func Test_StopJob(t *testing.T) {

@@ -349,6 +349,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *radixv1.RadixBatch)
 		DeploymentName: batch.Spec.RadixDeploymentJobRef.Name,
 		Status:         getScheduledBatchStatus(batch).String(),
 		TotalJobCount:  len(batch.Spec.Jobs),
+		JobList:        eh.getScheduledJobSummaries(batch),
 		Created:        radixutils.FormatTimestamp(batch.GetCreationTimestamp().Time),
 		Started:        radixutils.FormatTime(batch.Status.Condition.ActiveTime),
 		Ended:          radixutils.FormatTime(batch.Status.Condition.CompletionTime),
