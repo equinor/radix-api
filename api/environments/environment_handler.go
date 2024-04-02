@@ -203,7 +203,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-	eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.ServiceAccount.Client, appName, envName)
+	eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.UserAccount.Client, appName, envName)
 	if err != nil {
 		return nil, err
 	}
