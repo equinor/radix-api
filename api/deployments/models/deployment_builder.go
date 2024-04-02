@@ -4,12 +4,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/equinor/radix-common/utils/slice"
-	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 // DeploymentBuilder Builds DTOs

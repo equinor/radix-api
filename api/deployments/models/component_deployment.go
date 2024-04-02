@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -280,7 +281,19 @@ type ReplicaSummary struct {
 	//
 	// required: false
 	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created"`
+	Created string `json:"created,omitempty"`
+
+	// The time at which the batch job's pod startedAt
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	StartTime string `json:"startTime,omitempty"`
+
+	// The time at which the batch job's pod finishedAt.
+	//
+	// required: false
+	// example: 2006-01-02T15:04:05Z
+	EndTime string `json:"endTime,omitempty"`
 
 	// Container started timestamp
 	//
@@ -291,34 +304,43 @@ type ReplicaSummary struct {
 	// Status describes the component container status
 	//
 	// required: false
-	Status ReplicaStatus `json:"replicaStatus"`
+	Status ReplicaStatus `json:"replicaStatus,omitempty"`
 
 	// StatusMessage provides message describing the status of a component container inside a pod
 	//
 	// required: false
-	StatusMessage string `json:"statusMessage"`
+	StatusMessage string `json:"statusMessage,omitempty"`
 
 	// RestartCount count of restarts of a component container inside a pod
 	//
 	// required: false
-	RestartCount int32 `json:"restartCount"`
+	RestartCount int32 `json:"restartCount,omitempty"`
 
 	// The image the container is running.
 	//
 	// required: false
 	// example: radixdev.azurecr.io/app-server:cdgkg
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
 
 	// ImageID of the container's image.
 	//
 	// required: false
 	// example: radixdev.azurecr.io/app-server@sha256:d40cda01916ef63da3607c03785efabc56eb2fc2e0dab0726b1a843e9ded093f
-	ImageId string `json:"imageId"`
+	ImageId string `json:"imageId,omitempty"`
+
+	// The index of the pod in the re-starts
+	PodIndex int `json:"podIndex,omitempty"`
+
+	// Exit status from the last termination of the container
+	ExitCode int32 `json:"exitCode"`
+
+	// A brief CamelCase message indicating details about why the job is in this phase
+	Reason string `json:"reason,omitempty"`
 
 	// Resources Resource requirements for the pod
 	//
 	// required: false
-	Resources ResourceRequirements `json:"resources,omitempty"`
+	Resources *ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ReplicaStatus describes the status of a component container inside a pod
@@ -326,12 +348,14 @@ type ReplicaSummary struct {
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating
-	// - Failing = Container in Waiting state and the reason is anything else but ContainerCreating
+	// - Failed = Container is failed
+	// - Failing = Container is failed
 	// - Running = Container in Running state
+	// - Succeeded = Container in Succeeded state
 	// - Terminated = Container in Terminated state
 	//
 	// required: true
-	// enum: Pending,Failing,Running,Terminated,Starting
+	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting
 	// example: Running
 	Status string `json:"status"`
 }
@@ -396,7 +420,7 @@ type ResourceRequirements struct {
 	Requests Resources `json:"requests,omitempty"`
 }
 
-func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
+func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	replicaSummary := ReplicaSummary{}
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
@@ -450,7 +474,10 @@ func GetReplicaSummary(pod corev1.Pod) ReplicaSummary {
 	replicaSummary.Image = containerStatus.Image
 	replicaSummary.ImageId = containerStatus.ImageID
 	if len(pod.Spec.Containers) > 0 {
-		replicaSummary.Resources = ConvertResourceRequirements(pod.Spec.Containers[0].Resources)
+		replicaSummary.Resources = pointers.Ptr(ConvertResourceRequirements(pod.Spec.Containers[0].Resources))
+	}
+	if len(replicaSummary.StatusMessage) == 0 && (replicaSummary.Status.Status == Failing.String() || replicaSummary.Status.Status == Pending.String()) {
+		replicaSummary.StatusMessage = lastEventWarning
 	}
 	return replicaSummary
 }
