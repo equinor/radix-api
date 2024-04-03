@@ -7,6 +7,7 @@ import (
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -268,6 +269,29 @@ type ComponentSummary struct {
 	SkipDeployment bool `json:"skipDeployment,omitempty"`
 }
 
+// ReplicaType The replica type
+type ReplicaType int
+
+const (
+	// JobManager Replica of a Radix job-component scheduler
+	JobManager ReplicaType = iota
+	// JobManagerAux Replica of a Radix job-component scheduler auxiliary
+	JobManagerAux
+	// OAuth2 Replica of a Radix OAuth2 component
+	OAuth2
+	// Undefined Replica without defined type - to be extended
+	Undefined
+	numReplicaType
+)
+
+// Convert ReplicaType to a string
+func (p ReplicaType) String() string {
+	if p >= numReplicaType {
+		return "Unsupported"
+	}
+	return [...]string{"JobManager", "JobManagerAux", "OAuth2", "Undefined"}[p]
+}
+
 // ReplicaSummary describes condition of a pod
 // swagger:model ReplicaSummary
 type ReplicaSummary struct {
@@ -276,6 +300,19 @@ type ReplicaSummary struct {
 	// required: true
 	// example: server-78fc8857c4-hm76l
 	Name string `json:"name"`
+
+	// Pod type
+	// - ComponentReplica = Replica of a Radix component
+	// - ScheduledJobReplica = Replica of a Radix job-component
+	// - JobManager = Replica of a Radix job-component scheduler
+	// - JobManagerAux = Replica of a Radix job-component scheduler auxiliary
+	// - OAuth2 = Replica of a Radix OAuth2 component
+	// - Undefined = Replica without defined type - to be extended
+	//
+	// required: false
+	// enum: ComponentReplica,ScheduledJobReplica,JobManager,JobManagerAux,OAuth2,Undefined
+	// example: ComponentReplica
+	Type string `json:"type"`
 
 	// Created timestamp
 	//
@@ -421,7 +458,9 @@ type ResourceRequirements struct {
 }
 
 func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
-	replicaSummary := ReplicaSummary{}
+	replicaSummary := ReplicaSummary{
+		Type: getReplicaType(pod).String(),
+	}
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
 	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
@@ -480,6 +519,19 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 		replicaSummary.StatusMessage = lastEventWarning
 	}
 	return replicaSummary
+}
+
+func getReplicaType(pod corev1.Pod) ReplicaType {
+	switch {
+	case pod.GetLabels()[kube.RadixPodIsJobSchedulerLabel] == "true":
+		return JobManager
+	case pod.GetLabels()[kube.RadixPodIsJobAuxObjectLabel] == "true":
+		return JobManagerAux
+	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == "oauth":
+		return OAuth2
+	default:
+		return Undefined
+	}
 }
 
 func getReplicaStatusByPodStatus(podPhase corev1.PodPhase) string {
