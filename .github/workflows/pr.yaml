@@ -1,6 +1,8 @@
 name: Pull-Request Testing
 on:
   pull_request:
+    branches: 
+      - master
   workflow_dispatch:
 
 jobs:
