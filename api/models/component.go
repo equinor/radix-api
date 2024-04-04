@@ -86,7 +86,7 @@ func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secre
 		var certData, keyData []byte
 		status := deploymentModels.TLSStatusConsistent
 
-		if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(externalAlias.FQDN)); ok {
+		if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(operatorutils.GetExternalDnsTlsSecretName(externalAlias))); ok {
 			certData = secretValue.Data[corev1.TLSCertKey]
 			keyData = secretValue.Data[corev1.TLSPrivateKeyKey]
 			if certValue, keyValue := strings.TrimSpace(string(certData)), strings.TrimSpace(string(keyData)); len(certValue) == 0 || len(keyValue) == 0 || strings.EqualFold(certValue, secretDefaultData) || strings.EqualFold(keyValue, secretDefaultData) {
