@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
+	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	event "github.com/equinor/radix-api/api/events"
@@ -63,22 +64,23 @@ const (
 	subscriptionId   = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
-	certClient := certfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
+
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, secrets.NewSecretController(nil))
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, secrets.NewSecretController(nil))
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
 	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient, certClient
 }
@@ -1187,11 +1189,11 @@ func TestCreateSecret(t *testing.T) {
 }
 
 func Test_GetEnvironmentEvents_Handler(t *testing.T) {
-	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient, _ := setupTest(t, nil)
+	commonTestUtils, _, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, nil)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	eventHandler := eventMock.NewMockEventHandler(ctrl)
-	handler := initHandler(kubeclient, radixclient, secretproviderclient, WithEventHandler(eventHandler))
+	handler := initHandler(kubeclient, radixclient, secretproviderclient, certClient, WithEventHandler(eventHandler))
 	raBuilder := operatorutils.ARadixApplication().WithAppName(anyAppName).WithEnvironment(anyEnvironment, "master")
 
 	_, err := commonTestUtils.ApplyApplication(raBuilder)
@@ -2700,8 +2702,9 @@ func Test_DeleteBatch(t *testing.T) {
 func initHandler(client kubernetes.Interface,
 	radixclient radixclient.Interface,
 	secretproviderclient secretsstorevclient.Interface,
+	certClient certclient.Interface,
 	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, secretproviderclient, nil, client, radixclient, secretproviderclient, nil, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, secretproviderclient, nil, certClient, client, radixclient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)

@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-api/api/deployments"
 	. "github.com/equinor/radix-api/api/jobs"
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
@@ -40,24 +41,25 @@ const (
 	anyUser         = "a_user@equinor.com"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface) {
+func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewJobController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewJobController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, secretproviderclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, secretproviderclient, certClient
 }
 
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, secretproviderclient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, secretproviderclient, certClient := setupTest()
 
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -71,7 +73,7 @@ func TestGetApplicationJob(t *testing.T) {
 		TriggeredBy: anyUser,
 	}
 
-	accounts := models.NewAccounts(client, radixclient, secretproviderclient, nil, client, radixclient, secretproviderclient, nil, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, secretproviderclient, nil, certClient, client, radixclient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
 	handler := Init(accounts, deployments.Init(accounts))
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
@@ -122,7 +124,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	anyJobName := "any-job"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 	job, _ := commonTestUtils.ApplyJob(builders.AStartedBuildDeployJob().WithAppName(anyAppName).WithJobName(anyJobName))
 
 	// Test
@@ -140,7 +142,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 }
 
 func TestGetPipelineJobLogsError(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _ := setupTest()
 
 	t.Run("job doesn't exist", func(t *testing.T) {
 		aJobName := "aJobName"

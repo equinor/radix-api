@@ -14,7 +14,7 @@ import (
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/require"
@@ -30,9 +30,9 @@ const (
 	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
-func SetupTest(t *testing.T) (*commontest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+func SetupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *radixfake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
-	radixClient := fake.NewSimpleClientset()
+	radixClient := radixfake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certfake.NewSimpleClientset()

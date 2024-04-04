@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -26,13 +27,11 @@ import (
 
 type JobHandlerTestSuite struct {
 	suite.Suite
-	accounts                models.Accounts
-	inKubeClient            *kubefake.Clientset
-	inRadixClient           *radixfake.Clientset
-	outKubeClient           *kubefake.Clientset
-	outRadixClient          *radixfake.Clientset
-	inSecretProviderClient  *secretproviderfake.Clientset
-	outSecretProviderClient *secretproviderfake.Clientset
+	accounts             models.Accounts
+	kubeClient           *kubefake.Clientset
+	radixClient          *radixfake.Clientset
+	secretProviderClient *secretproviderfake.Clientset
+	certClient           *certclientfake.Clientset
 }
 
 type jobCreatedScenario struct {
@@ -73,16 +72,17 @@ func (s *JobHandlerTestSuite) SetupTest() {
 }
 
 func (s *JobHandlerTestSuite) setupTest() {
-	s.inKubeClient, s.inRadixClient, s.outKubeClient, s.outRadixClient, s.inSecretProviderClient, s.outSecretProviderClient = s.getUtils()
-	accounts := models.NewAccounts(s.inKubeClient, s.inRadixClient, s.inSecretProviderClient, nil, s.outKubeClient, s.outRadixClient, s.outSecretProviderClient, nil, "", radixmodels.Impersonation{})
+	s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient = s.getUtils()
+	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.secretProviderClient, nil, s.certClient, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 
-func (s *JobHandlerTestSuite) getUtils() (inKubeClient *kubefake.Clientset, inRadixClient *radixfake.Clientset, outKubeClient *kubefake.Clientset, outRadixClient *radixfake.Clientset, inSecretProviderClient *secretproviderfake.Clientset, outSecretProviderClient *secretproviderfake.Clientset) {
-	inKubeClient, outKubeClient = kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
-	inRadixClient, outRadixClient = radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
-	inSecretProviderClient, outSecretProviderClient = secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
-	return
+func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset) {
+	kubeClient := kubefake.NewSimpleClientset()
+	radixClient := radixfake.NewSimpleClientset()
+	secretProviderClient := secretproviderfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
+	return kubeClient, radixClient, secretProviderClient, certClient
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
@@ -113,7 +113,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 			},
 		},
 	}
-	_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
+	_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
 	s.NoError(err)
 
 	deploymentName := "a_deployment"
@@ -212,7 +212,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Created() {
 			if scenario.jobStatusCreated != emptyTime {
 				rj.Status.Created = &scenario.jobStatusCreated
 			}
-			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
+			_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
 			s.NoError(err)
 			actualJob, err := h.GetApplicationJob(context.Background(), appName, scenario.jobName)
 			s.NoError(err)
@@ -245,7 +245,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob_Status() {
 				Status:     radixv1.RadixJobStatus{Condition: scenario.condition},
 			}
 
-			_, err := s.outRadixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
+			_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), &rj, metav1.CreateOptions{})
 			s.NoError(err)
 			actualJob, err := h.GetApplicationJob(context.Background(), appName, scenario.jobName)
 			s.NoError(err)

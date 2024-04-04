@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
 	"github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
@@ -27,10 +28,11 @@ type HandlerTestSuite struct {
 }
 
 func (s *HandlerTestSuite) SetupTest() {
-	inKubeClient, outKubeClient := kubefake.NewSimpleClientset(), kubefake.NewSimpleClientset()
-	inRadixClient, outRadixClient := radixfake.NewSimpleClientset(), radixfake.NewSimpleClientset()
-	inSecretProviderClient, outSecretProviderClient := secretproviderfake.NewSimpleClientset(), secretproviderfake.NewSimpleClientset()
-	s.accounts = models.NewAccounts(inKubeClient, inRadixClient, inSecretProviderClient, nil, outKubeClient, outRadixClient, outSecretProviderClient, nil, "", radixmodels.Impersonation{})
+	kubeClient := kubefake.NewSimpleClientset()
+	radixClient := radixfake.NewSimpleClientset()
+	secretProviderClient := secretproviderfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
+	s.accounts = models.NewAccounts(kubeClient, radixClient, secretProviderClient, nil, certClient, kubeClient, radixClient, secretProviderClient, nil, certClient, "", radixmodels.Impersonation{})
 }
 
 func TestHandlerTestSuite(t *testing.T) {

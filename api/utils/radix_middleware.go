@@ -78,18 +78,20 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	}
 
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
-	outClusterClient, outClusterRadixClient, outClusterSecretProviderClient, outClusterTektonClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	outClusterClient, outClusterRadixClient, outClusterSecretProviderClient, outClusterTektonClient, outClusterCertManagerClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
 
 	accounts := models.NewAccounts(
 		inClusterClient,
 		inClusterRadixClient,
 		inClusterSecretProviderClient,
 		inClusterTektonClient,
+		inClusterCertManagerClient,
 		outClusterClient,
 		outClusterRadixClient,
 		outClusterSecretProviderClient,
 		outClusterTektonClient,
+		outClusterCertManagerClient,
 		token,
 		impersonation)
 
@@ -123,9 +125,9 @@ func (handler *RadixMiddleware) getRestClientOptions() []RestClientConfigOption 
 
 func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
 
-	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient)
+	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient)
 	accounts := models.Accounts{ServiceAccount: sa}
 
 	handler.next(accounts, w, r)

@@ -186,7 +186,8 @@ func (ac *applicationController) ShowApplications(accounts models.Accounts, w ht
 		return
 	}
 
-	ac.JSONResponse(w, r, appRegistrations)}
+	ac.JSONResponse(w, r, appRegistrations)
+}
 
 // SearchApplications Gets applications by list of application names
 func (ac *applicationController) SearchApplications(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {

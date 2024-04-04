@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
@@ -48,14 +49,14 @@ func setupTest(t *testing.T, tlsValidator tlsvalidation.Validator) (*commontest.
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
-
+	certClient := certclientfake.NewSimpleClientset()
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewSecretController(tlsValidator))
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewSecretController(tlsValidator))
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }

@@ -9,15 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-api/api/buildsecrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -28,18 +27,19 @@ const (
 	subscriptionId = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface) {
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
+	radixclient := radixfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewBuildSecretsController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewBuildSecretsController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
 }

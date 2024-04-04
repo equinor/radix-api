@@ -33,14 +33,12 @@ import (
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
@@ -51,7 +49,7 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
 		ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
@@ -60,7 +58,7 @@ func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups boo
 	))
 }
 
-func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -79,6 +77,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 		kubeclient,
 		radixclient,
 		secretproviderclient,
+		certClient,
 		NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
@@ -91,7 +90,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 }
 
 func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, _ := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
 
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
@@ -105,6 +104,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			kubeclient,
 			radixclient,
 			secretproviderclient,
+			certClient,
 			NewApplicationController(
 				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 					return false, nil
@@ -122,7 +122,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to single app", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -139,7 +139,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to all app", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -197,7 +197,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 
 func TestSearchApplicationsPost(t *testing.T) {
 	// Setup
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, _ := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
@@ -219,7 +219,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
 		}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -301,7 +301,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -374,7 +374,7 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 func TestSearchApplicationsGet(t *testing.T) {
 	// Setup
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, _ := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
@@ -396,7 +396,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
 		}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -468,7 +468,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},

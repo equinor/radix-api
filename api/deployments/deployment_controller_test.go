@@ -38,7 +38,7 @@ func createGetLogEndpoint(appName, podName string) string {
 func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
 	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, secretproviderclient, NewDeploymentController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, secretproviderclient, certClient, NewDeploymentController())
 	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {
