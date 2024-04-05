@@ -3,6 +3,7 @@ package models
 import (
 	"strings"
 
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/event"
@@ -22,16 +23,16 @@ import (
 
 // BuildComponents builds a list of Component models.
 func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
-	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event,
+	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, certRequests []cmv1.CertificateRequest,
 	tlsValidator tlsvalidation.Validator) []*deploymentModels.Component {
 	lastEventWarnings := event.ConvertToEventWarnings(eventList)
 	var components []*deploymentModels.Component
 	for _, component := range rd.Spec.Components {
-		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, lastEventWarnings, tlsValidator))
+		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, certRequests, lastEventWarnings, tlsValidator))
 	}
 
 	for _, job := range rd.Spec.Jobs {
-		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, lastEventWarnings, tlsValidator))
+		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, certRequests, lastEventWarnings, tlsValidator))
 	}
 
 	return components
@@ -39,12 +40,12 @@ func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, 
 
 func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment,
 	deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
-	secretList []corev1.Secret, lastEventWarnings map[string]string, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
+	secretList []corev1.Secret, certRequests []cmv1.CertificateRequest, lastEventWarnings map[string]string, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
 		WithHorizontalScalingSummary(getHpaSummary(ra.Name, radixComponent.GetName(), hpaList)).
-		WithExternalDNS(getComponentExternalDNS(radixComponent, secretList, tlsValidator))
+		WithExternalDNS(getComponentExternalDNS(radixComponent, secretList, certRequests, tlsValidator))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
 	if rd.Status.ActiveTo.IsZero() {
@@ -75,7 +76,7 @@ func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radix
 	return component
 }
 
-func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secretList []corev1.Secret, tlsValidator tlsvalidation.Validator) []deploymentModels.ExternalDNS {
+func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secretList []corev1.Secret, certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator) []deploymentModels.ExternalDNS {
 	var externalDNSList []deploymentModels.ExternalDNS
 
 	if tlsValidator == nil {
@@ -111,16 +112,28 @@ func getComponentExternalDNS(component radixv1.RadixCommonDeployComponent, secre
 			deploymentModels.ExternalDNS{
 				FQDN: externalAlias.FQDN,
 				TLS: deploymentModels.TLS{
-					UseAutomation:  externalAlias.UseCertificateAutomation,
-					Status:         status,
-					StatusMessages: statusMessages,
-					Certificates:   x509Certs,
+					UseAutomation:       externalAlias.UseCertificateAutomation,
+					AutomationCondition: getExternalDNSAutomationCondition(externalAlias, certRequests),
+					Status:              status,
+					StatusMessages:      statusMessages,
+					Certificates:        x509Certs,
 				},
 			},
 		)
 	}
 
 	return externalDNSList
+}
+
+func getExternalDNSAutomationCondition(externalAlias radixv1.RadixDeployExternalDNS, certRequests []cmv1.CertificateRequest) (condition deploymentModels.TLSAutomationCondition) {
+	if !externalAlias.UseCertificateAutomation {
+		return
+	}
+
+	condition.Status = deploymentModels.TLSAutomationConditionPending
+	condition.StatusMessage = "Waiting on certificate issuance from order oauth-demo-dev/another.example.com-1-226174084"
+
+	return
 }
 
 func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
