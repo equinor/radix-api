@@ -14,9 +14,9 @@ import (
 
 // BuildDeployment builds a Deployment model.
 func BuildDeployment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment,
-	podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, rjList []radixv1.RadixJob, certRequests []cmv1.CertificateRequest,
-	tlsValidator tlsvalidation.Validator) *deploymentModels.Deployment {
-	components := BuildComponents(ra, rd, deploymentList, podList, hpaList, secretList, eventList, certRequests, tlsValidator)
+	podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, rjList []radixv1.RadixJob,
+	certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator) *deploymentModels.Deployment {
+	components := BuildComponents(ra, rd, deploymentList, podList, hpaList, secretList, eventList, certs, certRequests, tlsValidator)
 
 	// The only error that can be returned from DeploymentBuilder is related to errors from github.com/imdario/mergo
 	// This type of error will only happen if incorrect objects (e.g. incompatible structs) are sent as arguments to mergo,

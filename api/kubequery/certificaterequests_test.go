@@ -17,12 +17,11 @@ func Test_GetCertificateRequestsForEnvironment(t *testing.T) {
 	anyExternalDNS := v1.RadixDeployExternalDNS{FQDN: "any.domain.com"}
 	matched1 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "matched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
 	matched2 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
-	matched3 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "matched3", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
 	unmatched1 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app2", anyExternalDNS)}}
 	unmatched2 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "unmatched2", Namespace: "app1-env2", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
 	unmatched3 := cmv1.CertificateRequest{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env1"}}
-	client := certclientfake.NewSimpleClientset(&matched1, &matched2, &matched3, &unmatched1, &unmatched2, &unmatched3)
-	expected := []cmv1.CertificateRequest{matched1, matched2, matched3}
+	client := certclientfake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3)
+	expected := []cmv1.CertificateRequest{matched1, matched2}
 	actual, err := GetCertificateRequestsForEnvironment(context.Background(), client, "app1", "env1")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expected, actual)

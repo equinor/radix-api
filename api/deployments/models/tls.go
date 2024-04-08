@@ -26,11 +26,11 @@ type TLS struct {
 	// required: true
 	UseAutomation bool `json:"useAutomation"`
 
-	// AutomationCondition describes the current condition of a certificate automation request
+	// Automation describes the current condition of a certificate automation request
 	// Only set if UseAutomation is true
 	//
 	// required: false
-	AutomationCondition TLSAutomationCondition `json:"automationCondition"`
+	Automation *TLSAutomation `json:"automation,omitempty"`
 
 	// Status of TLS certificate and private key
 	//
@@ -50,27 +50,33 @@ type TLS struct {
 	Certificates []X509Certificate `json:"certificates,omitempty"`
 }
 
-// swagger:enum TLSAutomationConditionStatusEnum
-type TLSAutomationConditionStatusEnum string
+// swagger:enum TLSAutomationStatusEnum
+type TLSAutomationStatusEnum string
 
 const (
 	// Certificate automation request pending
-	TLSAutomationConditionPending TLSAutomationConditionStatusEnum = "Pending"
+	TLSAutomationPending TLSAutomationStatusEnum = "Pending"
+
+	// Certificate automation request succeeded
+	TLSAutomationSucceeded TLSAutomationStatusEnum = "Succeeded"
+
+	// Certificate automation request failed
+	TLSAutomationFailed TLSAutomationStatusEnum = "Failed"
 )
 
-// TLSAutomationCondition describes the current condition of TLS automation
-// swagger:model TLSAutomationCondition
-type TLSAutomationCondition struct {
+// TLSAutomation describes the current condition of TLS automation
+// swagger:model TLSAutomation
+type TLSAutomation struct {
 	// Status of certificate automation request
 	//
 	// required: true
 	// example: Pending
-	Status TLSAutomationConditionStatusEnum `json:"status"`
+	Status TLSAutomationStatusEnum `json:"status"`
 
-	// StatusMessage is a human readable description of the reason for the status
+	// Message is a human readable description of the reason for the status
 	//
 	// required: false
-	StatusMessage string `json:"statusMessage"`
+	Message string `json:"message"`
 }
 
 // X509Certificate holds information about a X509 certificate
