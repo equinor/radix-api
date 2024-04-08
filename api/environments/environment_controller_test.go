@@ -1360,12 +1360,31 @@ func Test_GetJobs_Status(t *testing.T) {
 				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}}},
 			Status: v1.RadixBatchStatus{
 				JobStatuses: []v1.RadixBatchJobStatus{
-					{Name: "no2"},
-					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
-					{Name: "no4", Phase: v1.BatchJobPhaseActive},
-					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
-					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
-					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{
+						Name:                     "no2",
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodPending}},
+					},
+					{
+						Name:                     "no3",
+						Phase:                    v1.BatchJobPhaseWaiting,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodPending}},
+					},
+					{
+						Name: "no4", Phase: v1.BatchJobPhaseActive,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodPending}},
+					},
+					{
+						Name: "no5", Phase: v1.BatchJobPhaseSucceeded,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodSucceeded}},
+					},
+					{
+						Name: "no6", Phase: v1.BatchJobPhaseFailed,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodFailed}},
+					},
+					{
+						Name: "no7", Phase: v1.BatchJobPhaseStopped,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodSucceeded}},
+					},
 					{Name: "not-defined"},
 				},
 			},
@@ -1396,7 +1415,7 @@ func Test_GetJobs_Status(t *testing.T) {
 		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
 		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
 		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Running.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Active.String()},
 		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
 		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
 		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
@@ -1433,7 +1452,16 @@ func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
 			},
 			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{{Name: "no1", Stop: radixutils.BoolPtr(true)}, {Name: "no2", Stop: radixutils.BoolPtr(true)}, {Name: "no3", Stop: radixutils.BoolPtr(true)}, {Name: "no4", Stop: radixutils.BoolPtr(true)}, {Name: "no5", Stop: radixutils.BoolPtr(true)}, {Name: "no6", Stop: radixutils.BoolPtr(true)}, {Name: "no7", Stop: radixutils.BoolPtr(true)}}},
+				Jobs: []v1.RadixBatchJob{
+					{Name: "no1", Stop: radixutils.BoolPtr(true)},
+					{Name: "no2", Stop: radixutils.BoolPtr(true)},
+					{Name: "no3", Stop: radixutils.BoolPtr(true)},
+					{Name: "no4", Stop: radixutils.BoolPtr(true)},
+					{Name: "no5", Stop: radixutils.BoolPtr(true)},
+					{Name: "no6", Stop: radixutils.BoolPtr(true)},
+					{Name: "no7", Stop: radixutils.BoolPtr(true)},
+				},
+			},
 			Status: v1.RadixBatchStatus{
 				JobStatuses: []v1.RadixBatchJobStatus{
 					{Name: "no2"},
@@ -1577,6 +1605,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 	creationTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 5, 0, time.UTC))
 	startTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 10, 0, time.UTC))
+	podCreationTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 15, 0, time.UTC))
 	endTime := metav1.NewTime(time.Date(2022, 1, 2, 3, 4, 15, 0, time.UTC))
 	defaultBackoffLimit := numbers.Int32Ptr(3)
 
@@ -1645,7 +1674,18 @@ func Test_GetJob_AllProps(t *testing.T) {
 			},
 			Status: v1.RadixBatchStatus{
 				JobStatuses: []v1.RadixBatchJobStatus{
-					{Name: "job1", Phase: v1.BatchJobPhaseSucceeded, Message: "anymessage", CreationTime: &creationTime, StartTime: &startTime, EndTime: &endTime},
+					{
+						Name:         "job1",
+						Phase:        v1.BatchJobPhaseSucceeded,
+						Message:      "anymessage",
+						CreationTime: &creationTime,
+						StartTime:    &startTime,
+						EndTime:      &endTime,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							CreationTime: &podCreationTime,
+							Phase:        v1.PodSucceeded,
+						}},
+					},
 				},
 			},
 		},
@@ -1676,6 +1716,10 @@ func Test_GetJob_AllProps(t *testing.T) {
 		},
 		Node:           &deploymentModels.Node{Gpu: "gpu1", GpuCount: "2"},
 		DeploymentName: anyDeployment,
+		ReplicaList: []deploymentModels.ReplicaSummary{{
+			Created: radixutils.FormatTimestamp(podCreationTime.Time),
+			Status:  deploymentModels.ReplicaStatus{Status: "Succeeded"},
+		}},
 	}, actual)
 
 	// Test job2 props - override props from RD jobComponent
@@ -1814,15 +1858,16 @@ func Test_GetBatch_JobList(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
 			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}}},
+				Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}, {Name: "no3"}, {Name: "no4"}, {Name: "no5"}, {Name: "no6"}, {Name: "no7"}, {Name: "no8"}}},
 			Status: v1.RadixBatchStatus{
 				JobStatuses: []v1.RadixBatchJobStatus{
 					{Name: "no2"},
 					{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
 					{Name: "no4", Phase: v1.BatchJobPhaseActive},
-					{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
-					{Name: "no6", Phase: v1.BatchJobPhaseFailed},
-					{Name: "no7", Phase: v1.BatchJobPhaseStopped},
+					{Name: "no5", Phase: v1.BatchJobPhaseRunning},
+					{Name: "no6", Phase: v1.BatchJobPhaseSucceeded},
+					{Name: "no7", Phase: v1.BatchJobPhaseFailed},
+					{Name: "no8", Phase: v1.BatchJobPhaseStopped},
 					{Name: "not-defined"},
 				},
 			},
@@ -1840,7 +1885,7 @@ func Test_GetBatch_JobList(t *testing.T) {
 	var actual deploymentModels.ScheduledBatchSummary
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
-	require.Len(t, actual.JobList, 7)
+	require.Len(t, actual.JobList, 8)
 	type assertMapped struct {
 		Name   string
 		Status string
@@ -1852,10 +1897,11 @@ func Test_GetBatch_JobList(t *testing.T) {
 		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
 		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
 		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Running.String()},
-		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
-		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Active.String()},
+		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Running.String()},
+		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Failed.String()},
+		{Name: anyBatchName + "-no8", Status: jobSchedulerModels.Stopped.String()},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -1979,6 +2025,26 @@ func Test_GetBatches_Status(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
 			Status: v1.RadixBatchStatus{
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "j1"},
+					{
+						Name:  "j2",
+						Phase: v1.BatchJobPhaseActive,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodRunning,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+						}},
+					},
+					{
+						Name:  "j3",
+						Phase: v1.BatchJobPhaseWaiting,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodPending,
+							CreationTime: &metav1.Time{Time: time.Now()},
+						}},
+					},
+				},
 				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
 			},
 		},
@@ -1988,7 +2054,29 @@ func Test_GetBatches_Status(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
 			Status: v1.RadixBatchStatus{
-				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{Name: "j1"},
+					{
+						Name:  "j2",
+						Phase: v1.BatchJobPhaseRunning,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodRunning,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+						}},
+					},
+					{
+						Name:  "j3",
+						Phase: v1.BatchJobPhaseSucceeded,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodSucceeded,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+							EndTime:      &metav1.Time{Time: time.Now()},
+						}},
+					},
+				},
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeActive},
 			},
 		},
 		{
@@ -1997,8 +2085,76 @@ func Test_GetBatches_Status(t *testing.T) {
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
 			Status: v1.RadixBatchStatus{
-				Condition:   v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
-				JobStatuses: []v1.RadixBatchJobStatus{{Name: "j1"}, {Name: "j2", Phase: v1.BatchJobPhaseFailed}},
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job6",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{
+						Name:    "j1",
+						Phase:   v1.BatchJobPhaseFailed,
+						EndTime: &metav1.Time{Time: time.Now()},
+						Failed:  1,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodFailed,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+							EndTime:      &metav1.Time{Time: time.Now()},
+						}},
+					},
+					{
+						Name:    "j2",
+						Phase:   v1.BatchJobPhaseFailed,
+						EndTime: &metav1.Time{Time: time.Now()},
+						Failed:  1,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodFailed,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+							EndTime:      &metav1.Time{Time: time.Now()},
+						}},
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "batch-job7",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{Type: v1.BatchConditionTypeCompleted},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{
+						Name:    "j1",
+						Phase:   v1.BatchJobPhaseFailed,
+						EndTime: &metav1.Time{Time: time.Now()},
+						Failed:  1,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodFailed,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+							EndTime:      &metav1.Time{Time: time.Now()},
+						}},
+					},
+					{
+						Name:    "j2",
+						Phase:   v1.BatchJobPhaseSucceeded,
+						EndTime: &metav1.Time{Time: time.Now()},
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							Phase:        v1.PodSucceeded,
+							CreationTime: &metav1.Time{Time: time.Now()},
+							StartTime:    &metav1.Time{Time: time.Now()},
+							EndTime:      &metav1.Time{Time: time.Now()},
+						}},
+					},
+				},
 			},
 		},
 		{
@@ -2035,14 +2191,16 @@ func Test_GetBatches_Status(t *testing.T) {
 	expected := []assertMapped{
 		{Name: "batch-job1", Status: jobSchedulerModels.Waiting.String()},
 		{Name: "batch-job2", Status: jobSchedulerModels.Waiting.String()},
-		{Name: "batch-job3", Status: jobSchedulerModels.Running.String()},
-		{Name: "batch-job4", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: "batch-job5", Status: jobSchedulerModels.Failed.String()},
+		{Name: "batch-job3", Status: jobSchedulerModels.Active.String()},
+		{Name: "batch-job4", Status: jobSchedulerModels.Running.String()},
+		{Name: "batch-job5", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: "batch-job6", Status: jobSchedulerModels.Failed.String()},
+		{Name: "batch-job7", Status: jobSchedulerModels.Succeeded.String()},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
 
-func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
+func Test_GetBatches_JobListShouldHaveJobWithStatusWaiting(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 
 	// Setup
@@ -2088,8 +2246,8 @@ func Test_GetBatches_JobListShouldBeEmpty(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
-	assert.Len(t, actual[0].JobList, 0)
-
+	assert.Len(t, actual[0].JobList, 1)
+	assert.Equal(t, string(v1.BatchJobPhaseWaiting), actual[0].JobList[0].Status)
 }
 
 func Test_StopJob(t *testing.T) {

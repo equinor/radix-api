@@ -3548,6 +3548,12 @@
           },
           {
             "type": "string",
+            "description": "Name of the job replica",
+            "name": "replicaName",
+            "in": "query"
+          },
+          {
+            "type": "string",
             "format": "date-time",
             "description": "Get log only from sinceTime (example 2020-03-18T07:20:41+00:00)",
             "name": "sinceTime",
@@ -7114,11 +7120,13 @@
       ],
       "properties": {
         "status": {
-          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailing = Container in Waiting state and the reason is anything else but ContainerCreating\nRunning = Container in Running state\nTerminated = Container in Terminated state",
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nTerminated = Container in Terminated state",
           "type": "string",
           "enum": [
             "Pending",
+            "Succeeded",
             "Failing",
+            "Failed",
             "Running",
             "Terminated",
             "Starting"
@@ -7148,6 +7156,18 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "endTime": {
+          "description": "The time at which the batch job's pod finishedAt.",
+          "type": "string",
+          "x-go-name": "EndTime",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "exitCode": {
+          "description": "Exit status from the last termination of the container",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "ExitCode"
+        },
         "image": {
           "description": "The image the container is running.",
           "type": "string",
@@ -7166,6 +7186,17 @@
           "x-go-name": "Name",
           "example": "server-78fc8857c4-hm76l"
         },
+        "podIndex": {
+          "description": "The index of the pod in the re-starts",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "PodIndex"
+        },
+        "reason": {
+          "description": "A brief CamelCase message indicating details about why the job is in this phase",
+          "type": "string",
+          "x-go-name": "Reason"
+        },
         "replicaStatus": {
           "$ref": "#/definitions/ReplicaStatus"
         },
@@ -7177,6 +7208,12 @@
           "type": "integer",
           "format": "int32",
           "x-go-name": "RestartCount"
+        },
+        "startTime": {
+          "description": "The time at which the batch job's pod startedAt",
+          "type": "string",
+          "x-go-name": "StartTime",
+          "example": "2006-01-02T15:04:05Z"
         },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
@@ -7409,6 +7446,7 @@
           "type": "string",
           "enum": [
             "Running",
+            "Active",
             "Succeeded",
             "Failed",
             "Waiting",
