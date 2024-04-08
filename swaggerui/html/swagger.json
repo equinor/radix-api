@@ -7219,6 +7219,20 @@
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
           "type": "string",
           "x-go-name": "StatusMessage"
+        },
+        "type": {
+          "description": "Pod type\nComponentReplica = Replica of a Radix component\nScheduledJobReplica = Replica of a Radix job-component\nJobManager = Replica of a Radix job-component scheduler\nJobManagerAux = Replica of a Radix job-component scheduler auxiliary\nOAuth2 = Replica of a Radix OAuth2 component\nUndefined = Replica without defined type - to be extended",
+          "type": "string",
+          "enum": [
+            "ComponentReplica",
+            "ScheduledJobReplica",
+            "JobManager",
+            "JobManagerAux",
+            "OAuth2",
+            "Undefined"
+          ],
+          "x-go-name": "Type",
+          "example": "ComponentReplica"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
