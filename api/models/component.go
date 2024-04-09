@@ -28,6 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+const (
+	certManagerCertificateRevisionAnnotation = "cert-manager.io/certificate-revision"
+)
+
 // BuildComponents builds a list of Component models.
 func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
 	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest,
@@ -195,7 +199,7 @@ func certificateRequestNewOrCurrentForCertificate(cert *cmv1.Certificate) func(c
 	}
 
 	return func(cr cmv1.CertificateRequest) bool {
-		certRequestForRevision, err := strconv.Atoi(cr.Annotations["cert-manager.io/certificate-revision"])
+		certRequestForRevision, err := strconv.Atoi(cr.Annotations[certManagerCertificateRevisionAnnotation])
 		if err != nil {
 			return false
 		}
@@ -206,8 +210,8 @@ func certificateRequestNewOrCurrentForCertificate(cert *cmv1.Certificate) func(c
 func sortCertificateRequestByCertificateRevisionDesc(a cmv1.CertificateRequest, b cmv1.CertificateRequest) int {
 	// CertificateRequest should always have this annotation, and the value should be convertible to int, ref docs: https://cert-manager.io/docs/reference/api-docs/
 	// We therefore ignore any errors returnd by Atoi since a parsing error will return 0 and thus sort in "lower" than any valid values
-	revisionA, _ := strconv.Atoi(a.Annotations["cert-manager.io/certificate-revision"])
-	revisionB, _ := strconv.Atoi(b.Annotations["cert-manager.io/certificate-revision"])
+	revisionA, _ := strconv.Atoi(a.Annotations[certManagerCertificateRevisionAnnotation])
+	revisionB, _ := strconv.Atoi(b.Annotations[certManagerCertificateRevisionAnnotation])
 	return cmp.Compare(revisionB, revisionA)
 }
 
