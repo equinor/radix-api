@@ -100,12 +100,13 @@ func (s *externalDnsAutomationTestSuite) Test_CertReady() {
 	s.Equal(expectedExternalDNS, *environment.ActiveDeployment.Components[0].ExternalDNS[0].TLS.Automation)
 }
 
-func (s *externalDnsAutomationTestSuite) Test_CertReady_IncorrentAppNameLabel() {
+func (s *externalDnsAutomationTestSuite) Test_CertReady_IncorrectAppNameLabel() {
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{kube.RadixAppLabel: "otherapp", kube.RadixExternalAliasFQDNLabel: s.fqdn}},
 		Status:     cmv1.CertificateStatus{Conditions: []cmv1.CertificateCondition{{Type: cmv1.CertificateConditionReady, Status: v1.ConditionTrue}}},
 	}
-	s.certClient.CertmanagerV1().Certificates(s.environmentNamespace()).Create(context.Background(), cert, metav1.CreateOptions{})
+	_, err := s.certClient.CertmanagerV1().Certificates(s.environmentNamespace()).Create(context.Background(), cert, metav1.CreateOptions{})
+	s.Require().NoError(err)
 
 	environment, statusCode, err := s.executeRequest(s.appName, s.environmentName)
 	s.Equal(statusCode, 200)
@@ -118,7 +119,7 @@ func (s *externalDnsAutomationTestSuite) Test_CertReady_IncorrentAppNameLabel() 
 	s.Equal(expectedExternalDNS, *environment.ActiveDeployment.Components[0].ExternalDNS[0].TLS.Automation)
 }
 
-func (s *externalDnsAutomationTestSuite) Test_CertReady_IncorrentFQDNLabel() {
+func (s *externalDnsAutomationTestSuite) Test_CertReady_IncorrectFQDNLabel() {
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{kube.RadixAppLabel: s.appName, kube.RadixExternalAliasFQDNLabel: "other-fqdn"}},
 		Status:     cmv1.CertificateStatus{Conditions: []cmv1.CertificateCondition{{Type: cmv1.CertificateConditionReady, Status: v1.ConditionTrue}}},
@@ -156,7 +157,7 @@ func (s *externalDnsAutomationTestSuite) Test_CertReady_WrongNamespace() {
 	s.Equal(expectedExternalDNS, *environment.ActiveDeployment.Components[0].ExternalDNS[0].TLS.Automation)
 }
 
-func (s *externalDnsAutomationTestSuite) Test_CertReady_ConditionFalse() {
+func (s *externalDnsAutomationTestSuite) Test_CertReady_StatusFalse() {
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{kube.RadixAppLabel: s.appName, kube.RadixExternalAliasFQDNLabel: s.fqdn}},
 		Status:     cmv1.CertificateStatus{Conditions: []cmv1.CertificateCondition{{Type: cmv1.CertificateConditionReady, Status: v1.ConditionFalse}}},
@@ -175,7 +176,7 @@ func (s *externalDnsAutomationTestSuite) Test_CertReady_ConditionFalse() {
 	s.Equal(expectedExternalDNS, *environment.ActiveDeployment.Components[0].ExternalDNS[0].TLS.Automation)
 }
 
-func (s *externalDnsAutomationTestSuite) Test_CertReady_ConditionUnknown() {
+func (s *externalDnsAutomationTestSuite) Test_CertReady_StatusUnknown() {
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{kube.RadixAppLabel: s.appName, kube.RadixExternalAliasFQDNLabel: s.fqdn}},
 		Status:     cmv1.CertificateStatus{Conditions: []cmv1.CertificateCondition{{Type: cmv1.CertificateConditionReady, Status: v1.ConditionUnknown}}},
@@ -194,7 +195,7 @@ func (s *externalDnsAutomationTestSuite) Test_CertReady_ConditionUnknown() {
 	s.Equal(expectedExternalDNS, *environment.ActiveDeployment.Components[0].ExternalDNS[0].TLS.Automation)
 }
 
-func (s *externalDnsAutomationTestSuite) Test_CertReady_MissingReadyCondition() {
+func (s *externalDnsAutomationTestSuite) Test_Cert_MissingReadyCondition() {
 	cert := &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{kube.RadixAppLabel: s.appName, kube.RadixExternalAliasFQDNLabel: s.fqdn}},
 		Status:     cmv1.CertificateStatus{Conditions: []cmv1.CertificateCondition{{Type: cmv1.CertificateConditionIssuing, Status: v1.ConditionTrue}}},
