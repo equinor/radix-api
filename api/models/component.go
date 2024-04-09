@@ -137,7 +137,7 @@ func getExternalDNSAutomationCondition(appName string, externalAlias radixv1.Rad
 		return nil
 	}
 
-	// Find certifgicate belonging to the externalAlias.
+	// Find certificate belonging to the externalAlias.
 	// A non-existing certificate most likely mean that radix-operator has not successfully
 	// synced the RD that defines the externalAlias, and therefore not yet created the certificate object.
 	certForAlias, found := slice.FindFirst(certs, certificateForExternalAliasPredicate(appName, externalAlias))
@@ -148,7 +148,7 @@ func getExternalDNSAutomationCondition(appName string, externalAlias radixv1.Rad
 	// Check if the certificate Ready condition is True, which indicates that certificate issuance is successful
 	// If False or not found we need to inspect the CertificateRequests belonging to the certificate
 	if cond, found := slice.FindFirst(certForAlias.Status.Conditions, certificateConditionReady); found && cond.Status == cmmetav1.ConditionTrue {
-		return &deploymentModels.TLSAutomation{Status: deploymentModels.TLSAutomationSucceeded}
+		return &deploymentModels.TLSAutomation{Status: deploymentModels.TLSAutomationSuccess}
 	}
 
 	// Find all certificaterequests whos certificate revision is equal to or greater than the certificate's revision
@@ -164,8 +164,8 @@ func getExternalDNSAutomationCondition(appName string, externalAlias radixv1.Rad
 	slices.SortFunc(certRequestsForAlias, sortCertificateRequestByCertificateRevisionDesc)
 	latestCertRequest := certRequestsForAlias[0]
 
-	// Check if the certificate request has a condition of type Denied or InvalidRequest, which indicates a failure.
-	if cond, found := slice.FindFirst(latestCertRequest.Status.Conditions, certificateRequestConditionDeniedOrInvalid); found && cond.Status == cmmetav1.ConditionTrue {
+	// Check if the certificate request has a condition of type Denied, InvalidRequest or a non-true Ready status with Reason=Failed, which indicates a failure.
+	if cond, found := slice.FindFirst(latestCertRequest.Status.Conditions, certificateRequestConditionFailed); found {
 		return &deploymentModels.TLSAutomation{Status: deploymentModels.TLSAutomationFailed, Message: cond.Message}
 	}
 
@@ -211,8 +211,10 @@ func sortCertificateRequestByCertificateRevisionDesc(a cmv1.CertificateRequest, 
 	return cmp.Compare(revisionB, revisionA)
 }
 
-func certificateRequestConditionDeniedOrInvalid(condition cmv1.CertificateRequestCondition) bool {
-	return condition.Type == cmv1.CertificateRequestConditionDenied || condition.Type == cmv1.CertificateRequestConditionInvalidRequest
+func certificateRequestConditionFailed(condition cmv1.CertificateRequestCondition) bool {
+	return (condition.Type == cmv1.CertificateRequestConditionDenied && condition.Status == cmmetav1.ConditionTrue) ||
+		(condition.Type == cmv1.CertificateRequestConditionInvalidRequest && condition.Status == cmmetav1.ConditionTrue) ||
+		(condition.Type == cmv1.CertificateRequestConditionReady && condition.Status != cmmetav1.ConditionTrue && condition.Reason == "Failed")
 }
 
 func certificateConditionReady(condition cmv1.CertificateCondition) bool {

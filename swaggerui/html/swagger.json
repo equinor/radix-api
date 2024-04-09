@@ -7714,14 +7714,14 @@
           "x-go-name": "Message"
         },
         "status": {
-          "description": "Status of certificate automation request\nPending TLSAutomationPending  Certificate automation request pending\nSucceeded TLSAutomationSucceeded  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
+          "description": "Status of certificate automation request\nPending TLSAutomationPending  Certificate automation request pending\nSuccess TLSAutomationSuccess  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
           "type": "string",
           "enum": [
             "Pending",
-            "Succeeded",
+            "Success",
             "Failed"
           ],
-          "x-go-enum-desc": "Pending TLSAutomationPending  Certificate automation request pending\nSucceeded TLSAutomationSucceeded  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
+          "x-go-enum-desc": "Pending TLSAutomationPending  Certificate automation request pending\nSuccess TLSAutomationSuccess  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
           "x-go-name": "Status",
           "example": "Pending"
         }

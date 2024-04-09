@@ -58,7 +58,7 @@ const (
 	TLSAutomationPending TLSAutomationStatusEnum = "Pending"
 
 	// Certificate automation request succeeded
-	TLSAutomationSucceeded TLSAutomationStatusEnum = "Succeeded"
+	TLSAutomationSuccess TLSAutomationStatusEnum = "Success"
 
 	// Certificate automation request failed
 	TLSAutomationFailed TLSAutomationStatusEnum = "Failed"
