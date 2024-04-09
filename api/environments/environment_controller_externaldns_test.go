@@ -21,14 +21,12 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	secretsstoreclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 )
 
 func Test_ExternalDnsTestSuite(t *testing.T) {
@@ -37,18 +35,14 @@ func Test_ExternalDnsTestSuite(t *testing.T) {
 
 type externalDnsTestSuite struct {
 	suite.Suite
-	tlsValidator          *tlsvalidationmock.MockValidator
-	commonTestUtils       *commontest.Utils
-	envvironmentTestUtils *controllertest.Utils
-	kubeClient            kubernetes.Interface
-	radixClient           radixclient.Interface
-	secretProviderClient  secretsstoreclient.Interface
-	certClient            *certclientfake.Clientset
-	deployment            *v1.RadixDeployment
-	appName               string
-	componentName         string
-	environmentName       string
-	alias                 string
+	tlsValidator         *tlsvalidationmock.MockValidator
+	commonTestUtils      *commontest.Utils
+	environmentTestUtils *controllertest.Utils
+	kubeClient           kubernetes.Interface
+	certClient           *certclientfake.Clientset
+	appName              string
+	environmentName      string
+	alias                string
 }
 
 func (s *externalDnsTestSuite) buildCertificate(certCN, issuerCN string, dnsNames []string, notBefore, notAfter time.Time) []byte {
@@ -84,18 +78,18 @@ func (s *externalDnsTestSuite) buildCertificate(certCN, issuerCN string, dnsName
 func (s *externalDnsTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.tlsValidator = tlsvalidationmock.NewMockValidator(ctrl)
-	s.commonTestUtils, s.envvironmentTestUtils, _, s.kubeClient, s.radixClient, _, s.secretProviderClient, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
+	s.commonTestUtils, s.environmentTestUtils, _, s.kubeClient, _, _, _, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
 
-	s.appName, s.componentName, s.environmentName, s.alias = "any-app", "backend", "dev", "cdn.myalias.com"
+	s.appName, s.environmentName, s.alias = "any-app", "dev", "cdn.myalias.com"
+	componentName := "backend"
 
-	deployment, err := s.commonTestUtils.ApplyDeployment(operatorutils.
+	_, err := s.commonTestUtils.ApplyDeployment(operatorutils.
 		ARadixDeployment().
 		WithAppName(s.appName).
 		WithEnvironment(s.environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(s.componentName).WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: s.alias})).
+		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: s.alias})).
 		WithImageTag("master"))
 	require.NoError(s.T(), err)
-	s.deployment = deployment
 
 	_, err = s.commonTestUtils.ApplyApplication(operatorutils.
 		ARadixApplication().
@@ -103,12 +97,12 @@ func (s *externalDnsTestSuite) SetupTest() {
 		WithEnvironment(s.environmentName, "master").
 		WithComponents(operatorutils.
 			AnApplicationComponent().
-			WithName(s.componentName)))
+			WithName(componentName)))
 	require.NoError(s.T(), err)
 }
 
 func (s *externalDnsTestSuite) executeRequest(appName, envName string) (environment *environmentModels.Environment, statusCode int, err error) {
-	responseChannel := s.envvironmentTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
+	responseChannel := s.environmentTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", appName, envName))
 	response := <-responseChannel
 	var env environmentModels.Environment
 	err = controllertest.GetResponseBody(response, &env)
@@ -127,9 +121,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_Consistent() {
 	keyBytes, certBytes := []byte("any key"), s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
 
 	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(true, nil).Times(1)
-
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient)
-	sut.tlsValidator = s.tlsValidator
 
 	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
@@ -172,9 +163,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingPrivateKeyData() {
 	dnsNames := []string{"dns1", "dns2"}
 	certBytes := s.buildCertificate(certCN, issuerCN, dnsNames, notBefore, notAfter)
 
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient)
-	sut.tlsValidator = s.tlsValidator
-
 	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -204,8 +192,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_MissingPrivateKeyData() {
 
 func (s *externalDnsTestSuite) Test_ExternalDNS_MissingCertData() {
 	keyBytes := []byte("any key")
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient)
-	sut.tlsValidator = s.tlsValidator
 
 	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{
@@ -243,9 +229,6 @@ func (s *externalDnsTestSuite) Test_ExternalDNS_CertDataValidationError() {
 	certValidationMsg := "any msg"
 
 	s.tlsValidator.EXPECT().ValidateX509Certificate(certBytes, keyBytes, s.alias).Return(false, []string{certValidationMsg}).Times(1)
-
-	sut := initHandler(s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient)
-	sut.tlsValidator = s.tlsValidator
 
 	_, err := s.kubeClient.CoreV1().Secrets(s.appName+"-"+s.environmentName).Create(context.Background(),
 		&corev1.Secret{

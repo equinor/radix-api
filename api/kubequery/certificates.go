@@ -12,7 +12,7 @@ import (
 
 //
 
-// GetEventsForEnvironment returns all Events for the specified application and environment.
+// GetCertificatessForEnvironment returns all Certificates for the specified application and environment.
 func GetCertificatessForEnvironment(ctx context.Context, client certclient.Interface, appName, envName string) ([]cmv1.Certificate, error) {
 	ns := utils.GetEnvironmentNamespace(appName, envName)
 	certList, err := client.CertmanagerV1().Certificates(ns).List(ctx, v1.ListOptions{LabelSelector: labels.ForApplicationName(appName).AsSelector().String()})

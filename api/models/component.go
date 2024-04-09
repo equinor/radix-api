@@ -216,7 +216,7 @@ func sortCertificateRequestByCertificateRevisionDesc(a cmv1.CertificateRequest, 
 }
 
 func certificateRequestConditionFailed(condition cmv1.CertificateRequestCondition) bool {
-	return (condition.Type == cmv1.CertificateRequestConditionDenied && condition.Status == cmmetav1.ConditionTrue) ||
+	return (condition.Type == cmv1.CertificateRequestConditionDenied) ||
 		(condition.Type == cmv1.CertificateRequestConditionInvalidRequest && condition.Status == cmmetav1.ConditionTrue) ||
 		(condition.Type == cmv1.CertificateRequestConditionReady && condition.Status != cmmetav1.ConditionTrue && condition.Reason == "Failed")
 }
