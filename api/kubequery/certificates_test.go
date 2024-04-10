@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_GetCertificatessForEnvironment(t *testing.T) {
+func Test_GetCertificatesForEnvironment(t *testing.T) {
 	anyExternalDNS := v1.RadixDeployExternalDNS{FQDN: "any.domain.com"}
 	matched1 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
 	matched2 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
@@ -22,7 +22,7 @@ func Test_GetCertificatessForEnvironment(t *testing.T) {
 	unmatched3 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env1"}}
 	client := certclientfake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3)
 	expected := []cmv1.Certificate{matched1, matched2}
-	actual, err := GetCertificatessForEnvironment(context.Background(), client, "app1", "env1")
+	actual, err := GetCertificatesForEnvironment(context.Background(), client, "app1", "env1")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, expected, actual)
 }

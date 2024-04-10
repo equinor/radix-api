@@ -207,7 +207,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-	certs, err := kubequery.GetCertificatessForEnvironment(ctx, eh.accounts.ServiceAccount.CertManagerClient, appName, envName)
+	certs, err := kubequery.GetCertificatesForEnvironment(ctx, eh.accounts.ServiceAccount.CertManagerClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
