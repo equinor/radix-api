@@ -32,7 +32,7 @@ func NewAccounts(
 			RadixClient:          inClusterRadixClient,
 			SecretProviderClient: inClusterSecretProviderClient,
 			TektonClient:         inClusterTektonClient,
-			CertManagerClient:    outClusterCertManagerClient,
+			CertManagerClient:    inClusterCertManagerClient,
 		},
 		token:         token,
 		impersonation: impersonation,
