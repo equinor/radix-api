@@ -1,6 +1,7 @@
 package models
 
 import (
+	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
@@ -13,4 +14,5 @@ type Account struct {
 	RadixClient          radixclient.Interface
 	SecretProviderClient secretProviderClient.Interface
 	TektonClient         tektonclient.Interface
+	CertManagerClient    certclient.Interface
 }

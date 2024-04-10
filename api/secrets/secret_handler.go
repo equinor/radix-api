@@ -175,7 +175,7 @@ func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Contex
 	}
 
 	ns := operatorutils.GetEnvironmentNamespace(appName, envName)
-	if err := eh.setSecretKeyValue(ctx, ns, fqdn, map[string][]byte{corev1.TLSCertKey: certificateBytes, corev1.TLSPrivateKeyKey: privateKeyBytes}); err != nil {
+	if err := eh.setSecretKeyValue(ctx, ns, operatorutils.GetExternalDnsTlsSecretName(externalDNS), map[string][]byte{corev1.TLSCertKey: certificateBytes, corev1.TLSPrivateKeyKey: privateKeyBytes}); err != nil {
 		return radixhttp.UnexpectedError(fmt.Sprintf("Failed to update TLS private key and certificate for %q", fqdn), err)
 	}
 

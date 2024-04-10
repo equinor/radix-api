@@ -1,6 +1,7 @@
 package models
 
 import (
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -17,7 +18,7 @@ import (
 func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment,
 	rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
 	secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, eventList []corev1.Event,
-	tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
+	certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
@@ -27,7 +28,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
-		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, tlsValidator, rjList)
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, rjList, certs, certRequests, tlsValidator)
 		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 	}
 
