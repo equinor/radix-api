@@ -26,6 +26,12 @@ type TLS struct {
 	// required: true
 	UseAutomation bool `json:"useAutomation"`
 
+	// Automation describes the current condition of a certificate automation request
+	// Only set if UseAutomation is true
+	//
+	// required: false
+	Automation *TLSAutomation `json:"automation,omitempty"`
+
 	// Status of TLS certificate and private key
 	//
 	// required: true
@@ -42,6 +48,35 @@ type TLS struct {
 	//
 	// required: false
 	Certificates []X509Certificate `json:"certificates,omitempty"`
+}
+
+// swagger:enum TLSAutomationStatusEnum
+type TLSAutomationStatusEnum string
+
+const (
+	// Certificate automation request pending
+	TLSAutomationPending TLSAutomationStatusEnum = "Pending"
+
+	// Certificate automation request succeeded
+	TLSAutomationSuccess TLSAutomationStatusEnum = "Success"
+
+	// Certificate automation request failed
+	TLSAutomationFailed TLSAutomationStatusEnum = "Failed"
+)
+
+// TLSAutomation describes the current condition of TLS automation
+// swagger:model TLSAutomation
+type TLSAutomation struct {
+	// Status of certificate automation request
+	//
+	// required: true
+	// example: Pending
+	Status TLSAutomationStatusEnum `json:"status"`
+
+	// Message is a human readable description of the reason for the status
+	//
+	// required: false
+	Message string `json:"message"`
 }
 
 // X509Certificate holds information about a X509 certificate

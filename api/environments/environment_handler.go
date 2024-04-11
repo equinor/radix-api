@@ -207,8 +207,16 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
+	certs, err := kubequery.GetCertificatesForEnvironment(ctx, eh.accounts.ServiceAccount.CertManagerClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	certRequests, err := kubequery.GetCertificateRequestsForEnvironment(ctx, eh.accounts.ServiceAccount.CertManagerClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, eh.tlsValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator)
 	return env, nil
 }
 

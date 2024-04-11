@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
@@ -33,30 +33,31 @@ const (
 )
 
 func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient := setupTest(t)
+	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient, certClient := setupTest(t)
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
 	handlerFactory.EXPECT().createHandler(gomock.Any()).Return(handler)
 	controller := (&envVarsController{}).withHandlerFactory(handlerFactory)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, controller)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, controller)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
-func setupTest(t *testing.T) (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, secretsstorevclient.Interface) {
+func setupTest(t *testing.T) (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
+	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient
+	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient, certClient
 }
 
 func Test_GetComponentEnvVars(t *testing.T) {

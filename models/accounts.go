@@ -2,8 +2,10 @@ package models
 
 import (
 	"fmt"
+
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
+	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/golang-jwt/jwt/v4"
@@ -12,7 +14,10 @@ import (
 )
 
 // NewAccounts creates a new Accounts struct
-func NewAccounts(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface, inClusterSecretProviderClient secretProviderClient.Interface, inClusterTektonClient tektonclient.Interface, outClusterClient kubernetes.Interface, outClusterRadixClient radixclient.Interface, outClusterSecretProviderClient secretProviderClient.Interface, outClusterTektonClient tektonclient.Interface, token string, impersonation radixmodels.Impersonation) Accounts {
+func NewAccounts(
+	inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface, inClusterSecretProviderClient secretProviderClient.Interface, inClusterTektonClient tektonclient.Interface, inClusterCertManagerClient certclient.Interface,
+	outClusterClient kubernetes.Interface, outClusterRadixClient radixclient.Interface, outClusterSecretProviderClient secretProviderClient.Interface, outClusterTektonClient tektonclient.Interface, outClusterCertManagerClient certclient.Interface,
+	token string, impersonation radixmodels.Impersonation) Accounts {
 
 	return Accounts{
 		UserAccount: Account{
@@ -20,24 +25,27 @@ func NewAccounts(inClusterClient kubernetes.Interface, inClusterRadixClient radi
 			RadixClient:          outClusterRadixClient,
 			SecretProviderClient: outClusterSecretProviderClient,
 			TektonClient:         outClusterTektonClient,
+			CertManagerClient:    outClusterCertManagerClient,
 		},
 		ServiceAccount: Account{
 			Client:               inClusterClient,
 			RadixClient:          inClusterRadixClient,
 			SecretProviderClient: inClusterSecretProviderClient,
 			TektonClient:         inClusterTektonClient,
+			CertManagerClient:    inClusterCertManagerClient,
 		},
 		token:         token,
 		impersonation: impersonation,
 	}
 }
 
-func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface, inClusterSecretProviderClient secretProviderClient.Interface, inClusterTektonClient tektonclient.Interface) Account {
+func NewServiceAccount(inClusterClient kubernetes.Interface, inClusterRadixClient radixclient.Interface, inClusterSecretProviderClient secretProviderClient.Interface, inClusterTektonClient tektonclient.Interface, inClusterCertManagerClient certclient.Interface) Account {
 	return Account{
 		Client:               inClusterClient,
 		RadixClient:          inClusterRadixClient,
 		SecretProviderClient: inClusterSecretProviderClient,
 		TektonClient:         inClusterTektonClient,
+		CertManagerClient:    inClusterCertManagerClient,
 	}
 }
 

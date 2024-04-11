@@ -16,7 +16,7 @@ func Test_GetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Get existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _ := setupTest(t)
+		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
@@ -55,7 +55,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Change existing env var", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _ := setupTest(t)
+		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
@@ -105,7 +105,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	})
 	t.Run("Skipped changing not-existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _ := setupTest(t)
+		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",

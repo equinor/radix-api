@@ -7662,6 +7662,9 @@
         "status"
       ],
       "properties": {
+        "automation": {
+          "$ref": "#/definitions/TLSAutomation"
+        },
         "certificates": {
           "description": "Certificates holds the X509 certificate chain\nThe first certificate in the list should be the host certificate and the rest should be intermediate certificates",
           "type": "array",
@@ -7694,6 +7697,33 @@
           "description": "UseAutomation describes if TLS certificate is automatically issued using automation (ACME)",
           "type": "boolean",
           "x-go-name": "UseAutomation"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "TLSAutomation": {
+      "description": "TLSAutomation describes the current condition of TLS automation",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "message": {
+          "description": "Message is a human readable description of the reason for the status",
+          "type": "string",
+          "x-go-name": "Message"
+        },
+        "status": {
+          "description": "Status of certificate automation request\nPending TLSAutomationPending  Certificate automation request pending\nSuccess TLSAutomationSuccess  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Success",
+            "Failed"
+          ],
+          "x-go-enum-desc": "Pending TLSAutomationPending  Certificate automation request pending\nSuccess TLSAutomationSuccess  Certificate automation request succeeded\nFailed TLSAutomationFailed  Certificate automation request failed",
+          "x-go-name": "Status",
+          "example": "Pending"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
