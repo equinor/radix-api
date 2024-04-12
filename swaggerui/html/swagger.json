@@ -4447,6 +4447,59 @@
         }
       }
     },
+    "/applications/{appName}/pipelines/apply-config": {
+      "post": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Run a apply config pipeline for a given application and environment",
+        "operationId": "triggerPipelineApplyConfig",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Pipeline parameters",
+            "name": "PipelineParametersApplyConfig",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PipelineParametersApplyConfig"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/JobSummary"
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/pipelines/build": {
       "post": {
         "tags": [
@@ -6638,6 +6691,25 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/events/models"
+    },
+    "PipelineParametersApplyConfig": {
+      "description": "PipelineParametersApplyConfig describes base info",
+      "type": "object",
+      "properties": {
+        "commitID": {
+          "description": "CommitID the commit ID of the branch\nOPTIONAL for information only",
+          "type": "string",
+          "x-go-name": "CommitID",
+          "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "triggeredBy": {
+          "description": "TriggeredBy of the job - if empty will use user token upn (user principle name)",
+          "type": "string",
+          "x-go-name": "TriggeredBy",
+          "example": "a_user@equinor.com"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "PipelineParametersBuild": {
       "description": "PipelineParametersBuild describe branch to build and its commit ID",

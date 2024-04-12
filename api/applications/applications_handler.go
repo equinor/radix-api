@@ -488,6 +488,30 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 	return jobSummary, nil
 }
 
+// TriggerPipelineApplyConfig Triggers apply config pipeline for an application
+func (ah *ApplicationHandler) TriggerPipelineApplyConfig(ctx context.Context, appName string, r *http.Request) (*jobModels.JobSummary, error) {
+	var pipelineParameters applicationModels.PipelineParametersApplyConfig
+	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
+		return nil, err
+	}
+
+	log.Ctx(ctx).Info().Msgf("Creating apply config pipeline job for %s", appName)
+
+	pipeline, err := jobPipeline.GetPipelineFromName("apply-config")
+	if err != nil {
+		return nil, err
+	}
+
+	jobParameters := pipelineParameters.MapPipelineParametersApplyConfigToJobParameter()
+
+	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSummary, nil
+}
+
 func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Context, appName, pipelineName string, r *http.Request) (*jobModels.JobSummary, error) {
 	var pipelineParameters applicationModels.PipelineParametersBuild
 	userAccount := ah.getUserAccount()
