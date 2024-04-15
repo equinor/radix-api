@@ -6696,12 +6696,6 @@
       "description": "PipelineParametersApplyConfig describes base info",
       "type": "object",
       "properties": {
-        "commitID": {
-          "description": "CommitID the commit ID of the branch\nOPTIONAL for information only",
-          "type": "string",
-          "x-go-name": "CommitID",
-          "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
-        },
         "triggeredBy": {
           "description": "TriggeredBy of the job - if empty will use user token upn (user principle name)",
           "type": "string",

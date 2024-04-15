@@ -15,7 +15,7 @@ func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 		AppAlias:           BuildApplicationAlias(ingressList, reList),
 		UserIsAdmin:        userIsAdmin,
 		DNSAliases:         dnsAliases,
-		DNSExternalAliases: BuildDNSExternalAliases(ra),
+		DNSExternalAliases: BuildDNSExternalAliases(rdList),
 	}
 	if ra != nil {
 		application.Environments = BuildEnvironmentSummaryList(rr, ra, reList, rdList, rjList)
