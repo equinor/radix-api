@@ -5634,6 +5634,9 @@
             "server-78fc8857c4-asfa2"
           ]
         },
+        "resources": {
+          "$ref": "#/definitions/ResourceRequirements"
+        },
         "scheduledJobPayloadPath": {
           "description": "ScheduledJobPayloadPath defines the payload path, where payload for Job Scheduler will be mapped as a file. From radixconfig.yaml",
           "type": "string",
@@ -5731,6 +5734,9 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "server"
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourceRequirements"
         },
         "skipDeployment": {
           "description": "SkipDeployment The component should not be deployed, but used existing",

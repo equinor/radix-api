@@ -124,6 +124,11 @@ type Component struct {
 	SkipDeployment bool `json:"skipDeployment,omitempty"`
 
 	AuxiliaryResource `json:",inline"`
+
+	// Resources Resource requirements for the pod
+	//
+	// required: false
+	Resources *ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ExternalDNS describes an external DNS entry for a component
@@ -267,6 +272,11 @@ type ComponentSummary struct {
 	// required: false
 	// example: true
 	SkipDeployment bool `json:"skipDeployment,omitempty"`
+
+	// Resources Resource requirements for the component
+	//
+	// required: false
+	Resources *ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ReplicaType The replica type
