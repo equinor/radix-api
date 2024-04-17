@@ -142,3 +142,19 @@ func (deployParam PipelineParametersDeploy) MapPipelineParametersDeployToJobPara
 		ComponentsToDeploy: deployParam.ComponentsToDeploy,
 	}
 }
+
+// PipelineParametersApplyConfig describes base info
+// swagger:model PipelineParametersApplyConfig
+type PipelineParametersApplyConfig struct {
+	// TriggeredBy of the job - if empty will use user token upn (user principle name)
+	//
+	// example: a_user@equinor.com
+	TriggeredBy string `json:"triggeredBy,omitempty"`
+}
+
+// MapPipelineParametersApplyConfigToJobParameter maps to JobParameter
+func (param PipelineParametersApplyConfig) MapPipelineParametersApplyConfigToJobParameter() *jobModels.JobParameters {
+	return &jobModels.JobParameters{
+		TriggeredBy: param.TriggeredBy,
+	}
+}

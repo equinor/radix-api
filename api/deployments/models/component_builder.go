@@ -5,6 +5,7 @@ import (
 
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
@@ -50,6 +51,7 @@ type componentBuilder struct {
 	errors                    []error
 	commitID                  string
 	gitTags                   string
+	resources                 *v1.ResourceRequirements
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -91,6 +93,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	b.componentName = component.GetName()
 	b.componentType = string(component.GetType())
 	b.componentImage = component.GetImage()
+	b.resources = component.GetResources()
 	b.commitID = component.GetEnvironmentVariables()[defaults.RadixCommitHashEnvironmentVariable]
 	b.gitTags = component.GetEnvironmentVariables()[defaults.RadixGitTagsEnvironmentVariable]
 
@@ -201,13 +204,17 @@ func (b *componentBuilder) buildError() error {
 }
 
 func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {
-	return &ComponentSummary{
+	summary := ComponentSummary{
 		Name:     b.componentName,
 		Type:     b.componentType,
 		Image:    b.componentImage,
 		CommitID: b.commitID,
 		GitTags:  b.gitTags,
-	}, b.buildError()
+	}
+	if b.resources != nil && (len(b.resources.Limits) > 0 || len(b.resources.Requests) > 0) {
+		summary.Resources = pointers.Ptr(ConvertRadixResourceRequirements(*b.resources))
+	}
+	return &summary, b.buildError()
 }
 
 func (b *componentBuilder) BuildComponent() (*Component, error) {
@@ -220,7 +227,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		variables[name] = value
 	}
 
-	return &Component{
+	component := Component{
 		Name:                     b.componentName,
 		Type:                     b.componentType,
 		Status:                   b.status.String(),
@@ -239,7 +246,11 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		HorizontalScalingSummary: b.hpa,
 		CommitID:                 variables[defaults.RadixCommitHashEnvironmentVariable],
 		GitTags:                  variables[defaults.RadixGitTagsEnvironmentVariable],
-	}, b.buildError()
+	}
+	if b.resources != nil && (len(b.resources.Limits) > 0 || len(b.resources.Requests) > 0) {
+		component.Resources = pointers.Ptr(ConvertRadixResourceRequirements(*b.resources))
+	}
+	return &component, b.buildError()
 }
 
 // NewComponentBuilder Constructor for application component

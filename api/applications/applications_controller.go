@@ -113,6 +113,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.TriggerPipelineDeploy,
 		},
 		models.Route{
+			Path:        appPath + "/pipelines/apply-config",
+			Method:      "POST",
+			HandlerFunc: ac.TriggerPipelineApplyConfig,
+		},
+		models.Route{
 			Path:        appPath + "/deploykey-valid",
 			Method:      "GET",
 			HandlerFunc: ac.IsDeployKeyValidHandler,
@@ -890,6 +895,55 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelineDeploy(r.Context(), appName, r)
+
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	ac.JSONResponse(w, r, &jobSummary)
+}
+
+// TriggerPipelineApplyConfig creates an apply config pipeline job for the application
+func (ac *applicationController) TriggerPipelineApplyConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/pipelines/apply-config application triggerPipelineApplyConfig
+	// ---
+	// summary: Run a apply config pipeline for a given application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: PipelineParametersApplyConfig
+	//   description: Pipeline parameters
+	//   in: body
+	//   required: true
+	//   schema:
+	//     "$ref": "#/definitions/PipelineParametersApplyConfig"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/JobSummary"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := ac.applicationHandlerFactory.Create(accounts)
+	jobSummary, err := handler.TriggerPipelineApplyConfig(r.Context(), appName, r)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
