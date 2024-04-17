@@ -908,7 +908,7 @@ func (ac *applicationController) TriggerPipelineDeploy(accounts models.Accounts,
 func (ac *applicationController) TriggerPipelineApplyConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/pipelines/apply-config application triggerPipelineApplyConfig
 	// ---
-	// summary: Run a apply config pipeline for a given application and environment
+	// summary: Run a apply config pipeline for a given application
 	// parameters:
 	// - name: appName
 	//   in: path

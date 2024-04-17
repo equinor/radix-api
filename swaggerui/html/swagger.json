@@ -4452,7 +4452,7 @@
         "tags": [
           "application"
         ],
-        "summary": "Run a apply config pipeline for a given application and environment",
+        "summary": "Run a apply config pipeline for a given application",
         "operationId": "triggerPipelineApplyConfig",
         "parameters": [
           {
