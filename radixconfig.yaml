@@ -12,6 +12,7 @@ spec:
         from: master
   components:
     - name: "server"
+      readOnlyFileSystem: true
       src: "."
       dockerfileName: "Dockerfile"
       ports:
