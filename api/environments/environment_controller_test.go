@@ -2266,6 +2266,7 @@ func Test_StopJob(t *testing.T) {
 		{name: "validJob2", jobStatus: v1.RadixBatchJobStatus{Name: "validJob2", Phase: ""}},
 		{name: "validJob3", jobStatus: v1.RadixBatchJobStatus{Name: "validJob3", Phase: v1.BatchJobPhaseWaiting}},
 		{name: "validJob4", jobStatus: v1.RadixBatchJobStatus{Name: "validJob4", Phase: v1.BatchJobPhaseActive}},
+		{name: "validJob5", jobStatus: v1.RadixBatchJobStatus{Name: "validJob5", Phase: v1.BatchJobPhaseRunning}},
 	}
 	invalidJobs := []JobTestData{
 		{name: "invalidJob1", jobStatus: v1.RadixBatchJobStatus{Name: "invalidJob1", Phase: v1.BatchJobPhaseSucceeded}},
@@ -2294,6 +2295,14 @@ func Test_StopJob(t *testing.T) {
 		WithActiveFrom(time.Now()))
 	require.NoError(t, err)
 
+	jobSpecList := append(
+		slice.Map(validJobs, func(j JobTestData) v1.RadixBatchJob { return v1.RadixBatchJob{Name: j.name} }),
+		slice.Map(invalidJobs, func(j JobTestData) v1.RadixBatchJob { return v1.RadixBatchJob{Name: j.name} })...,
+	)
+	jobStatuses := append(
+		slice.Map(validJobs, func(j JobTestData) v1.RadixBatchJobStatus { return j.jobStatus }),
+		slice.Map(invalidJobs, func(j JobTestData) v1.RadixBatchJobStatus { return j.jobStatus })...,
+	)
 	// Insert test data
 	testData := []v1.RadixBatch{
 		{
@@ -2301,16 +2310,9 @@ func Test_StopJob(t *testing.T) {
 				Name:   batchTypeBatchName,
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
-			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{
-					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
-					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
-				}},
+			Spec: v1.RadixBatchSpec{Jobs: jobSpecList},
 			Status: v1.RadixBatchStatus{
-				JobStatuses: []v1.RadixBatchJobStatus{
-					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
-					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
-				},
+				JobStatuses: jobStatuses,
 			},
 		},
 		{
@@ -2318,16 +2320,9 @@ func Test_StopJob(t *testing.T) {
 				Name:   batchTypeJobName,
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
 			},
-			Spec: v1.RadixBatchSpec{
-				Jobs: []v1.RadixBatchJob{
-					{Name: validJobs[0].name}, {Name: validJobs[1].name}, {Name: validJobs[2].name}, {Name: validJobs[3].name},
-					{Name: invalidJobs[0].name}, {Name: invalidJobs[1].name}, {Name: invalidJobs[2].name},
-				}},
+			Spec: v1.RadixBatchSpec{Jobs: jobSpecList},
 			Status: v1.RadixBatchStatus{
-				JobStatuses: []v1.RadixBatchJobStatus{
-					validJobs[0].jobStatus, validJobs[1].jobStatus, validJobs[2].jobStatus, validJobs[3].jobStatus,
-					invalidJobs[0].jobStatus, invalidJobs[1].jobStatus, invalidJobs[2].jobStatus,
-				},
+				JobStatuses: jobStatuses,
 			},
 		},
 	}

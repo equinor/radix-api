@@ -553,12 +553,17 @@ func getReplicaStatusByJobPodStatusPhase(statusPhase radixv1.RadixBatchJobPodPha
 
 // check if batch can be stopped
 func isBatchStoppable(condition radixv1.RadixBatchCondition) bool {
-	return condition.Type == "" || condition.Type == radixv1.BatchConditionTypeActive || condition.Type == radixv1.BatchConditionTypeWaiting
+	return condition.Type == "" ||
+		condition.Type == radixv1.BatchConditionTypeActive ||
+		condition.Type == radixv1.BatchConditionTypeWaiting
 }
 
 // check if batch job can be stopped
 func isBatchJobStoppable(status radixv1.RadixBatchJobStatus) bool {
-	return status.Phase == "" || status.Phase == radixv1.BatchJobPhaseActive || status.Phase == radixv1.BatchJobPhaseWaiting
+	return status.Phase == "" ||
+		status.Phase == radixv1.BatchJobPhaseActive ||
+		status.Phase == radixv1.BatchJobPhaseWaiting ||
+		status.Phase == radixv1.BatchJobPhaseRunning
 }
 
 func batchNotFoundError(batchName string) error {
