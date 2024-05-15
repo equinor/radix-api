@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
@@ -87,7 +88,7 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 	}
 
 	if component.GetType() == v1.RadixComponentTypeComponent {
-		hpaSummary, err := deploy.getHpaSummary(ctx, component, envNs)
+		hpaSummary, err := deploy.getHpaSummary(ctx, component, ra.Name, envNs)
 		if err != nil {
 			return nil, err
 		}
@@ -96,14 +97,22 @@ func (deploy *deployHandler) getComponent(ctx context.Context, component v1.Radi
 	return deploymentComponent, nil
 }
 
-func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	hpa, err := deploy.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).Get(ctx, component.GetName(), metav1.GetOptions{})
+func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, appName, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
+	selector := labelselector.ForComponent(appName, component.GetName()).String()
+	hpas, err := deploy.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	if len(hpas.Items) == 0 {
+		return nil, nil
+	}
+	if len(hpas.Items) > 1 {
+		return nil, fmt.Errorf("found more than 1 HPA for component %s", component.GetName())
+	}
+	hpa := &hpas.Items[0]
 
 	minReplicas := int32(1)
 	if hpa.Spec.MinReplicas != nil {
