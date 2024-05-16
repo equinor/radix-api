@@ -19,7 +19,6 @@ import (
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -101,9 +100,6 @@ func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.Rad
 	selector := labelselector.ForComponent(appName, component.GetName()).String()
 	hpas, err := deploy.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	if len(hpas.Items) == 0 {
