@@ -45,8 +45,8 @@ jobs:
         run: |
           make verify-generate
 
-  test-swagger:
-    name: Test Swagger
+  report-swagger-changes:
+    name: Report Changes In Swagger Spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
