@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/equinor/radix-api/api/secrets"
@@ -40,59 +45,101 @@ const (
 	logLevelEnvironmentVariable    = "LOG_LEVEL"
 	logPrettyEnvironmentVariable   = "LOG_PRETTY"
 	useProfilerEnvironmentVariable = "USE_PROFILER"
+	defaultPort                    = "3002"
+	defaultMetricsPort             = "9090"
+	defaultProfilePort             = "7070"
 )
 
 //go:generate swagger generate spec
 func main() {
-	initLogger()
+	setupLogger()
 	fs := initializeFlagSet()
 
 	var (
-		port                = fs.StringP("port", "p", defaultPort(), "Port where API will be served")
+		port                = fs.StringP("port", "p", defaultPort, "Port where API will be served")
+		metricsPort         = fs.String("metrics-port", defaultMetricsPort, "The metrics API server port")
 		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
 		clusterName         = os.Getenv(defaults.ClusternameEnvironmentVariable)
-		certPath            = os.Getenv("server_cert_path") // "/etc/webhook/certs/cert.pem"
-		keyPath             = os.Getenv("server_key_path")  // "/etc/webhook/certs/key.pem"
-		httpsPort           = "3003"
 	)
 
 	parseFlagsFromArgs(fs)
 
-	controllers, err := getControllers()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to get controllers")
-	}
-	errs := make(chan error)
+	var servers []*http.Server
 
-	go func() {
-		log.Info().Msgf("Api is serving on port %s", *port)
-		err := http.ListenAndServe(fmt.Sprintf(":%s", *port), router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
-		errs <- err
-	}()
-	if certPath != "" && keyPath != "" {
-		go func() {
-			log.Info().Msgf("Api is serving on port %s", httpsPort)
-			err := http.ListenAndServeTLS(fmt.Sprintf(":%s", httpsPort), certPath, keyPath, router.NewServer(clusterName, utils.NewKubeUtil(*useOutClusterClient), controllers...))
-			errs <- err
-		}()
-	} else {
-		log.Info().Msg("Https support disabled - Env variable server_cert_path and server_key_path is empty.")
+	srv, err := initializeServer(*port, clusterName, *useOutClusterClient)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize API server")
 	}
+
+	servers = append(servers, srv, initializeMetricsServer(*metricsPort))
 
 	if useProfiler, _ := strconv.ParseBool(os.Getenv(useProfilerEnvironmentVariable)); useProfiler {
-		go func() {
-			log.Info().Msgf("Profiler endpoint is serving on port 7070")
-			errs <- http.ListenAndServe("localhost:7070", nil)
-		}()
+		log.Info().Msgf("Initializing profile server on port %s", defaultProfilePort)
+		servers = append(servers, &http.Server{Addr: fmt.Sprintf("localhost:%s", defaultProfilePort)})
 	}
 
-	err = <-errs
+	startServers(servers...)
+	shutdownServersGracefulOnSignal(servers...)
+}
+
+func initializeServer(port, clusterName string, useOutClusterClient bool) (*http.Server, error) {
+	controllers, err := getControllers()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Web api server crashed")
+		return nil, fmt.Errorf("failed to initialize controllers: %w", err)
+	}
+	handler := router.NewAPIHandler(clusterName, utils.NewKubeUtil(useOutClusterClient), controllers...)
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: handler,
+	}
+
+	return srv, nil
+}
+
+func initializeMetricsServer(port string) *http.Server {
+	log.Info().Msgf("Initializing metrics server on port %s", port)
+	return &http.Server{
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: router.NewMetricsHandler(),
 	}
 }
 
-func initLogger() {
+func startServers(servers ...*http.Server) {
+	for _, srv := range servers {
+		go func() {
+			log.Info().Msgf("Starting server on address %s", srv.Addr)
+			if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				log.Fatal().Err(err).Msgf("Unable to start server on address %s", srv.Addr)
+			}
+		}()
+	}
+}
+
+func shutdownServersGracefulOnSignal(servers ...*http.Server) {
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, syscall.SIGTERM, syscall.SIGINT)
+	s := <-stopCh
+	log.Info().Msgf("Received %v signal", s)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var wg sync.WaitGroup
+
+	for _, srv := range servers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Info().Msgf("Shutting down server on address %s", srv.Addr)
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				log.Warn().Err(err).Msgf("shutdown of server on address %s returned an error", srv.Addr)
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+func setupLogger() {
 	logLevelStr := os.Getenv(logLevelEnvironmentVariable)
 	if len(logLevelStr) == 0 {
 		logLevelStr = zerolog.LevelInfoValue
@@ -169,8 +216,4 @@ func parseFlagsFromArgs(fs *pflag.FlagSet) {
 		fs.Usage()
 		os.Exit(2)
 	}
-}
-
-func defaultPort() string {
-	return "3002"
 }

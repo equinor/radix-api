@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/apis/duck/v1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 const (
@@ -268,7 +268,7 @@ func getLastReadyCondition(conditions []apis.Condition) *apis.Condition {
 	return nil
 }
 
-func sortPipelineTaskStatusConditionsDesc(conditions []apis.Condition) v1.Conditions {
+func sortPipelineTaskStatusConditionsDesc(conditions []apis.Condition) duckv1.Conditions {
 	sort.Slice(conditions, func(i, j int) bool {
 		if conditions[i].LastTransitionTime.Inner.IsZero() || conditions[j].LastTransitionTime.Inner.IsZero() {
 			return false

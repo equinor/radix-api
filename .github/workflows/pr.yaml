@@ -18,7 +18,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.55.2
+          version: v1.58.2
 
   test:
     name: Unit Test
@@ -33,8 +33,20 @@ jobs:
       - name: Run Tests
         run: go test -cover `go list ./...`
 
-  test-swagger:
-    name: Test Swagger
+  verify-code-generation:
+    name: Verify Code Generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: Verify Code Generation
+        run: |
+          make verify-generate
+
+  report-swagger-changes:
+    name: Report Changes In Swagger Spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,14 +54,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - name: Install dependencies
-        run: go mod download
+      # - name: Install dependencies
+      #   run: go mod download
       - name: Install Swagger
-        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.5
-      - name: Generate Swagger
-        run: swagger generate spec -o ./swagger.json --scan-models --exclude-deps
-      - name: Validate no changes
-        run: diff swagger.json ./swaggerui/html/swagger.json
+        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
+      # - name: Generate Swagger
+      #   run: swagger generate spec -o ./swagger.json --scan-models --exclude-deps
+      # - name: Validate no changes
+      #   run: diff swagger.json ./swaggerui/html/swagger.json
       - name: Check breaking changes
         if: always()
         id: breaking
