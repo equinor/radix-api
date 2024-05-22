@@ -10,7 +10,6 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-api/swaggerui"
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/negroni/v3"
@@ -25,8 +24,8 @@ const (
 	swaggerUIPath                   = "/swaggerui"
 )
 
-// NewServer Constructor function
-func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
+// NewAPIHandler Constructor function
+func NewAPIHandler(clusterName string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	initializeSwaggerUI(router)
@@ -45,10 +44,6 @@ func NewServer(clusterName string, kubeUtil utils.KubeUtil, controllers ...model
 	// TODO: We should maybe have oauth to stop any non-radix user from being able to see the API
 	serveMux.Handle("/swaggerui/", negroni.New(
 		negroni.Wrap(router),
-	))
-
-	serveMux.Handle("/metrics", negroni.New(
-		negroni.Wrap(promhttp.Handler()),
 	))
 
 	rec := negroni.NewRecovery()
