@@ -59,7 +59,7 @@ func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *htt
 	go func() {
 		rr := httptest.NewRecorder()
 		defer close(response)
-		router.NewServer("anyClusterName", NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
+		router.NewAPIHandler("anyClusterName", NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 	}()
 
@@ -83,7 +83,7 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	go func() {
 		rr := httptest.NewRecorder()
 		defer close(response)
-		router.NewServer("anyClusterName", NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
+		router.NewAPIHandler("anyClusterName", NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 	}()
 

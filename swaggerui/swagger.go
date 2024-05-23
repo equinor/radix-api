@@ -3,8 +3,6 @@ package swaggerui
 import (
 	"embed"
 	"io/fs"
-
-	_ "github.com/go-swagger/go-swagger"
 )
 
 //go:embed html
