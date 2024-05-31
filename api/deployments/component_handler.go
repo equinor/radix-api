@@ -9,6 +9,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/event"
+	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -131,28 +132,24 @@ func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.Rad
 }
 
 func getHpaMetrics(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {
-	// currentResourceUtil := getHpaCurrentMetric(hpa, resourceName)
-	return nil, nil
-
-	// TODO: FIX
-
-	// // find resource utilization target
-	// var targetResourceUtil *int32
-	// targetResourceMetric := crdUtils.GetHpaMetric(hpa, resourceName)
-	// if targetResourceMetric != nil {
-	// 	targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
-	// }
-	// return currentResourceUtil, targetResourceUtil
+	currentResourceUtil := getHpaCurrentMetric(hpa, resourceName)
+	// find resource utilization target
+	var targetResourceUtil *int32
+	targetResourceMetric := horizontalscaling.GetHpaMetric(hpa, resourceName)
+	if targetResourceMetric != nil {
+		targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
+	}
+	return currentResourceUtil, targetResourceUtil
 }
 
-// func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
-// 	for _, metric := range hpa.Status.CurrentMetrics {
-// 		if metric.Resource != nil && metric.Resource.Name == resourceName {
-// 			return metric.Resource.Current.AverageUtilization
-// 		}
-// 	}
-// 	return nil
-// }
+func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
+	for _, metric := range hpa.Status.CurrentMetrics {
+		if metric.Resource != nil && metric.Resource.Name == resourceName {
+			return metric.Resource.Current.AverageUtilization
+		}
+	}
+	return nil
+}
 
 // GetComponentStateFromSpec Returns a component with the current state
 func GetComponentStateFromSpec(

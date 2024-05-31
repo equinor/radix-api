@@ -16,5 +16,5 @@ type Account struct {
 	SecretProviderClient secretProviderClient.Interface
 	TektonClient         tektonclient.Interface
 	CertManagerClient    certclient.Interface
-	KedaClient           kedav2.Interface // TODO Initialize?
+	KedaClient           kedav2.Interface
 }
