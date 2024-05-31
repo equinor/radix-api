@@ -6,19 +6,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
-	"github.com/stretchr/testify/require"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -558,32 +559,23 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
 
-	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promclient, secretProviderClient, certClient := setupTest(t)
 	testScenarios := []struct {
-		name              string
-		deploymentName    string
-		minReplicas       int32
-		maxReplicas       int32
-		targetCpu         *int32
-		targetMemory      *int32
-		expectedTargetCpu *int32
+		name           string
+		deploymentName string
+		minReplicas    int32
+		maxReplicas    int32
+		targetCpu      *int32
+		targetMemory   *int32
 	}{
-		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, numbers.Int32Ptr(defaultTargetCPUUtilization)},
-		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, numbers.Int32Ptr(75), nil},
-		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, numbers.Int32Ptr(60), nil, numbers.Int32Ptr(60)},
-		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, numbers.Int32Ptr(62), numbers.Int32Ptr(79), numbers.Int32Ptr(62)},
+		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil},
+		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, numbers.Int32Ptr(75)},
+		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, numbers.Int32Ptr(60), nil},
+		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, numbers.Int32Ptr(62), numbers.Int32Ptr(79)},
 	}
 
 	for _, scenario := range testScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			horizontalScaling := operatorUtils.NewHorizontalScalingBuilder().WithMinReplicas(scenario.minReplicas).WithMaxReplicas(scenario.maxReplicas)
-			if scenario.targetCpu != nil {
-				horizontalScaling.WithCPUTrigger(int(*scenario.targetCpu))
-			}
-			if scenario.targetMemory != nil {
-				horizontalScaling.WithMemoryTrigger(int(*scenario.targetMemory))
-			}
-
+			commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promclient, secretProviderClient, certClient := setupTest(t)
 			err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
 				WithAppName(anyAppName).
 				WithEnvironment("prod").
@@ -593,8 +585,12 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 					operatorUtils.NewDeployComponentBuilder().
 						WithName("frontend").
 						WithPort("http", 8080).
-						WithPublicPort("http").
-						WithHorizontalScaling(horizontalScaling.Build())))
+						WithPublicPort("http")))
+			require.NoError(t, err)
+
+			ns := operatorUtils.GetEnvironmentNamespace(anyAppName, "prod")
+			autoscaler := createAutoscaler("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)
+			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &autoscaler, metav1.CreateOptions{})
 			require.NoError(t, err)
 
 			// Test
@@ -607,16 +603,57 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			var components []deploymentModels.Component
 			err = controllertest.GetResponseBody(response, &components)
 			require.NoError(t, err)
+			require.NotNil(t, components[0].HorizontalScalingSummary)
 
-			assert.NotNil(t, components[0].HorizontalScalingSummary)
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
 			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
 			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage) // using assert.Equal() fails because simple nil and *int32 typed nil do not pass equality test
-			assert.Equal(t, scenario.expectedTargetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
+			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
 			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
 			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
 		})
 	}
+}
+
+func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) v2.HorizontalPodAutoscaler {
+	var metrics []v2.MetricSpec
+
+	if targetCpu != nil {
+		metrics = append(metrics, v2.MetricSpec{
+			Resource: &v2.ResourceMetricSource{
+				Name: "cpu",
+				Target: v2.MetricTarget{
+					Type:               "cpu",
+					AverageUtilization: targetCpu,
+				},
+			},
+		})
+	}
+
+	if targetMemory != nil {
+		metrics = append(metrics, v2.MetricSpec{
+			Resource: &v2.ResourceMetricSource{
+				Name: "memory",
+				Target: v2.MetricTarget{
+					Type:               "memory",
+					AverageUtilization: targetMemory,
+				},
+			},
+		})
+	}
+
+	autoscaler := v2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labelselector.ForComponent(anyAppName, "frontend"),
+		},
+		Spec: v2.HorizontalPodAutoscalerSpec{
+			MinReplicas: minReplicas,
+			MaxReplicas: maxReplicas,
+			Metrics:     metrics,
+		},
+	}
+	return autoscaler
 }
 
 func TestGetComponents_WithIdentity(t *testing.T) {
