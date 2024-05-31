@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
@@ -12,9 +13,9 @@ import (
 )
 
 // UpdatePrivateImageHubsSecretsPassword update secret password
-func UpdatePrivateImageHubsSecretsPassword(kubeUtil *kube.Kube, appName, server, password string) error {
+func UpdatePrivateImageHubsSecretsPassword(ctx context.Context, kubeUtil *kube.Kube, appName, server, password string) error {
 	namespace := operatorutils.GetAppNamespace(appName)
-	secret, _ := kubeUtil.GetSecret(namespace, defaults.PrivateImageHubSecretName)
+	secret, _ := kubeUtil.GetSecret(ctx, namespace, defaults.PrivateImageHubSecretName)
 	if secret == nil {
 		return fmt.Errorf("private image hub secret does not exist for app %s", appName)
 	}
@@ -31,16 +32,16 @@ func UpdatePrivateImageHubsSecretsPassword(kubeUtil *kube.Kube, appName, server,
 		if err != nil {
 			return err
 		}
-		return applicationconfig.ApplyPrivateImageHubSecret(kubeUtil, namespace, appName, secretValue)
+		return applicationconfig.ApplyPrivateImageHubSecret(ctx, kubeUtil, namespace, appName, secretValue)
 	}
 	return fmt.Errorf("private image hub secret does not contain config for server %s", server)
 }
 
 // GetPendingPrivateImageHubSecrets returns a list of private image hubs where secret value is not set
-func GetPendingPrivateImageHubSecrets(kubeUtil *kube.Kube, appName string) ([]string, error) {
+func GetPendingPrivateImageHubSecrets(ctx context.Context, kubeUtil *kube.Kube, appName string) ([]string, error) {
 	pendingSecrets := []string{}
 	ns := operatorutils.GetAppNamespace(appName)
-	secret, err := kubeUtil.GetSecret(ns, defaults.PrivateImageHubSecretName)
+	secret, err := kubeUtil.GetSecret(ctx, ns, defaults.PrivateImageHubSecretName)
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}

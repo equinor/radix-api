@@ -33,6 +33,7 @@ import (
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,7 +50,7 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
+func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
 		ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
@@ -58,16 +59,17 @@ func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups boo
 	))
 }
 
-func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
+func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
@@ -76,6 +78,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	controllerTestUtils := controllertest.NewTestUtils(
 		kubeclient,
 		radixclient,
+		kedaClient,
 		secretproviderclient,
 		certClient,
 		NewApplicationController(
@@ -86,11 +89,11 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 		),
 	)
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient, certClient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
 func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, true, true)
 
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
@@ -103,6 +106,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(
 			kubeclient,
 			radixclient,
+			kedaClient,
 			secretproviderclient,
 			certClient,
 			NewApplicationController(
@@ -122,7 +126,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to single app", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -139,7 +143,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to all app", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -158,7 +162,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 
 func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithCloneURL("git@github.com:Equinor/my-app.git"))
 	require.NoError(t, err)
@@ -197,7 +201,7 @@ func TestGetApplications_WithFilterOnSSHRepo_Filter(t *testing.T) {
 
 func TestSearchApplicationsPost(t *testing.T) {
 	// Setup
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, true, true)
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
@@ -209,6 +213,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	err := createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 	require.NoError(t, err)
 	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
 		builders.
 			ARadixDeployment().
 			WithAppName(appNames[1]).
@@ -219,7 +224,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
 		}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -301,7 +306,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -321,7 +326,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 
 func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	apps := []applicationModels.Application{
 		{Name: "app-1", Jobs: []*jobModels.JobSummary{
 			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
@@ -374,7 +379,7 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 func TestSearchApplicationsGet(t *testing.T) {
 	// Setup
-	commonTestUtils, _, kubeclient, radixclient, _, secretproviderclient, certClient := setupTest(t, true, true)
+	commonTestUtils, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, true, true)
 	appNames := []string{"app-1", "app-2"}
 
 	for _, appName := range appNames {
@@ -386,6 +391,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	err := createRadixJob(commonTestUtils, appNames[1], "app-2-job-1", app2Job1Started)
 	require.NoError(t, err)
 	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
 		builders.
 			ARadixDeployment().
 			WithAppName(appNames[1]).
@@ -396,7 +402,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
 		}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -468,7 +474,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewApplicationController(
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
@@ -488,7 +494,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 
 func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	apps := []applicationModels.Application{
 		{Name: "app-1", Jobs: []*jobModels.JobSummary{
 			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
@@ -539,7 +545,7 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 
 func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -556,7 +562,7 @@ func TestCreateApplication_NoName_ValidationError(t *testing.T) {
 
 func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -577,7 +583,7 @@ func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *
 
 func TestCreateApplication_WhenOptionalConfigurationItemIsNotSet_ReturnSuccess(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, false, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, false, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -595,7 +601,7 @@ func TestCreateApplication_WhenOptionalConfigurationItemIsNotSet_ReturnSuccess(t
 
 func TestCreateApplication_WhenRequiredAdGroupsIsNotSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -616,7 +622,7 @@ func TestCreateApplication_WhenRequiredAdGroupsIsNotSet_ReturnError(t *testing.T
 
 func TestCreateApplication_WhenOptionalAdGroupsIsNotSet_ReturnSuccess(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, false)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, false)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -635,7 +641,7 @@ func TestCreateApplication_WhenOptionalAdGroupsIsNotSet_ReturnSuccess(t *testing
 
 func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -657,7 +663,7 @@ func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
 
 func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	configBranch := "main.."
@@ -701,7 +707,7 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 	for _, scenario := range scenarios {
 		t.Run(fmt.Sprintf("Test for radixConfigFullName: '%s'", scenario.radixConfigFullName), func(t *testing.T) {
 			// Setup
-			_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+			_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 			// Test
 			configBranch := "main"
@@ -735,7 +741,7 @@ func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
 
 func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -769,7 +775,7 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 
 func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -802,7 +808,7 @@ func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *
 
 func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -839,7 +845,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 
 func TestGetApplication_WithJobs(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("any-name"))
 	require.NoError(t, err)
@@ -868,7 +874,7 @@ func TestGetApplication_WithJobs(t *testing.T) {
 
 func TestGetApplication_WithEnvironments(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, radix, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, radix, _, _, _, _ := setupTest(t, true, true)
 
 	anyAppName := "any-app"
 	anyOrphanedEnvironment := "feature"
@@ -885,18 +891,20 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironment("prod", "release"))
 	require.NoError(t, err)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
+	_, err = commonTestUtils.ApplyDeployment(context.Background(), builders.
 		NewDeploymentBuilder().
 		WithAppName(anyAppName).
 		WithEnvironment("dev").
 		WithImageTag("someimageindev"))
 	require.NoError(t, err)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment(anyOrphanedEnvironment).
-		WithImageTag("someimageinfeature"))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			NewDeploymentBuilder().
+			WithAppName(anyAppName).
+			WithEnvironment(anyOrphanedEnvironment).
+			WithImageTag("someimageinfeature"))
 	require.NoError(t, err)
 
 	// Set RE statuses
@@ -946,7 +954,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 
 func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -991,7 +999,7 @@ func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 
 func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -1038,7 +1046,7 @@ func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t 
 
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(anApplicationRegistration().WithName("any-name").Build(), false)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
@@ -1069,7 +1077,7 @@ func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperati
 
 func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	builder :=
 		anApplicationRegistration().
@@ -1144,7 +1152,7 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 
 func TestModifyApplication_AbleToSetField(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	builder := anApplicationRegistration().
 		WithName("any-name").
@@ -1279,7 +1287,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 
 func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	builder := anApplicationRegistration().
 		WithName("any-name").
@@ -1310,7 +1318,7 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 	// Setup
 	appName := "any-name"
-	_, controllerTestUtils, _, radixClient, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, radixClient, _, _, _, _ := setupTest(t, true, true)
 	rr := builders.ARadixRegistration().
 		WithName(appName).
 		WithConfigurationItem("any").
@@ -1340,7 +1348,7 @@ func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
 
 func TestModifyApplication_IgnoreRequireCIValidationWhenRequiredButCurrentIsEmpty(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, radixClient, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, radixClient, _, _, _, _ := setupTest(t, true, true)
 
 	rr, err := anApplicationRegistration().
 		WithName("any-name").
@@ -1364,7 +1372,7 @@ func TestModifyApplication_IgnoreRequireCIValidationWhenRequiredButCurrentIsEmpt
 
 func TestModifyApplication_IgnoreRequireADGroupValidationWhenRequiredButCurrentIsEmpty(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, radixClient, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, radixClient, _, _, _, _ := setupTest(t, true, true)
 
 	rr, err := anApplicationRegistration().
 		WithName("any-name").
@@ -1455,7 +1463,7 @@ func TestModifyApplication_UpdateADGroupValidation(t *testing.T) {
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			_, controllerTestUtils, _, radixClient, _, _, _ := setupTestWithFactory(t, newTestApplicationHandlerFactory(
+			_, controllerTestUtils, _, radixClient, _, _, _, _ := setupTestWithFactory(t, newTestApplicationHandlerFactory(
 				ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: ts.requireAppADGroups},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return ts.hasAccessToAdGroups, nil
@@ -1486,7 +1494,7 @@ func TestModifyApplication_UpdateADGroupValidation(t *testing.T) {
 
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 	anyAppName := "any-app"
 	configBranch := "magic"
 
@@ -1529,7 +1537,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedForExisting(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	registerAppParam := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -1600,7 +1608,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			_, controllerTestUtils, _, radixclient, _, _, _ := setupTest(t, true, true)
+			_, controllerTestUtils, _, radixclient, _, _, _, _ := setupTest(t, true, true)
 			registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
 			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Deploy), ts.params)
@@ -1616,7 +1624,7 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 }
 
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, radixclient, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, radixclient, _, _, _, _ := setupTest(t, true, true)
 
 	const (
 		appName         = "an-app"
@@ -1631,13 +1639,15 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 		ToEnvironment:   toEnvironment,
 		DeploymentName:  deploymentName,
 	}
-	_, err := commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName(appName).
-		WithDeploymentName(deploymentName).
-		WithEnvironment(fromEnvironment).
-		WithLabel(kube.RadixCommitLabel, commitId).
-		WithCondition(v1.DeploymentInactive))
+	_, err := commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAppName(appName).
+			WithDeploymentName(deploymentName).
+			WithEnvironment(fromEnvironment).
+			WithLabel(kube.RadixCommitLabel, commitId).
+			WithCondition(v1.DeploymentInactive))
 	require.NoError(t, err)
 
 	registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
@@ -1658,7 +1668,7 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 
 func TestIsDeployKeyValid(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
@@ -1728,7 +1738,7 @@ func TestIsDeployKeyValid(t *testing.T) {
 
 func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -1757,8 +1767,8 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, promclient, secretproviderclient, certClient := setupTest(t, true, true)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, promclient, commonTestUtils, secretproviderclient, certClient, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promclient, secretproviderclient, certClient := setupTest(t, true, true)
+	err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, promclient, commonTestUtils, secretproviderclient, certClient, builders.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithComponents(
@@ -1789,7 +1799,7 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 	supportedPipelines := jobPipeline.GetSupportedPipelines()
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName("some-app").
 		WithPublicKey("some-public-key").
@@ -1808,7 +1818,7 @@ func TestListPipeline_ReturnesAvailablePipelines(t *testing.T) {
 
 func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t, true, true)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
 	// Test
 	parameters := buildApplicationRegistrationRequest(
@@ -1837,12 +1847,12 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 
 func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _ := setupTest(t, true, true)
 	appName := "any-name"
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
 	require.NoError(t, err)
 
 	// Check that secret has been created
@@ -1857,7 +1867,7 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, response.Code)
 
 	// forcing resync of RR
-	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
 	require.NoError(t, err)
 
 	// Check that secret has been re-created and is different from first secret
@@ -1869,12 +1879,12 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 
 func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _ := setupTest(t, true, true)
 	appName := "any-name"
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
 	require.NoError(t, err)
 
 	// make some valid private key
@@ -1888,7 +1898,7 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	assert.Equal(t, http.StatusNoContent, response.Code)
 
 	// forcing resync of RR
-	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err = utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
 	require.NoError(t, err)
 
 	// Check that secret has been re-created and is equal to the one in the web parameter
@@ -1899,12 +1909,12 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 
 func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _ := setupTest(t, true, true)
 	appName := "any-name"
 	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
 
 	// Creating RR and syncing it
-	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, commonTestUtils, rrBuilder)
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
 	require.NoError(t, err)
 
 	// calling regenerate-deploy-key with invalid private key, expecting error

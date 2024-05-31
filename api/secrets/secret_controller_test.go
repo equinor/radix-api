@@ -19,6 +19,7 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
@@ -47,16 +48,17 @@ func setupTest(t *testing.T, tlsValidator tlsvalidation.Validator) (*commontest.
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewSecretController(tlsValidator))
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewSecretController(tlsValidator))
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }
@@ -271,6 +273,7 @@ func (s *externalDNSSecretTestSuite) SetupTest() {
 
 func (s *externalDNSSecretTestSuite) setupTestResources(appName, envName, componentName string, externalAliases []radixv1.RadixDeployExternalDNS, rdCondition radixv1.RadixDeployCondition) error {
 	_, err := s.commonTestUtils.ApplyDeployment(
+		context.Background(),
 		operatorutils.NewDeploymentBuilder().
 			WithRadixApplication(
 				operatorutils.NewRadixApplicationBuilder().
