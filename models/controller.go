@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -22,10 +24,23 @@ type DefaultController struct {
 
 // ErrorResponse Marshals error for user requester
 func (c *DefaultController) ErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+
+	logError(r.Context(), err)
 	err = radixhttp.ErrorResponse(w, r, err)
 	if err != nil {
-		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
+		log.Ctx(r.Context()).Error().Err(err).Msg("failed to write response")
 	}
+}
+
+func logError(ctx context.Context, err error) {
+	event := log.Ctx(ctx).Warn().Err(err)
+
+	var httpErr *radixhttp.Error
+	if errors.As(err, &httpErr) {
+		event.Str("user_message", httpErr.Message)
+	}
+
+	event.Msg("controller error")
 }
 
 // JSONResponse Marshals response with header
