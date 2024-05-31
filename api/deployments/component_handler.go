@@ -26,10 +26,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	defaultTargetCPUUtilization = int32(80)
-)
-
 // GetComponentsForDeployment Gets a list of components for a given deployment
 func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
