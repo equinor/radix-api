@@ -17,6 +17,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +33,7 @@ type JobHandlerTestSuite struct {
 	radixClient          *radixfake.Clientset
 	secretProviderClient *secretproviderfake.Clientset
 	certClient           *certclientfake.Clientset
+	kedaClient           *kedafake.Clientset
 }
 
 type jobCreatedScenario struct {
@@ -72,17 +74,18 @@ func (s *JobHandlerTestSuite) SetupTest() {
 }
 
 func (s *JobHandlerTestSuite) setupTest() {
-	s.kubeClient, s.radixClient, s.secretProviderClient, s.certClient = s.getUtils()
-	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.secretProviderClient, nil, s.certClient, "", radixmodels.Impersonation{})
+	s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.certClient = s.getUtils()
+	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, "", radixmodels.Impersonation{})
 	s.accounts = accounts
 }
 
-func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset) {
+func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := radixfake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
-	return kubeClient, radixClient, secretProviderClient, certClient
+	return kubeClient, radixClient, kedaClient, secretProviderClient, certClient
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {

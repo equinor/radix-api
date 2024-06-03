@@ -19,7 +19,7 @@ type PrivateImageHubHandler struct {
 
 // Init Constructor
 func Init(accounts sharedModels.Accounts) PrivateImageHubHandler {
-	kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
+	kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.UserAccount.SecretProviderClient)
 	return PrivateImageHubHandler{
 		userAccount:    accounts.UserAccount,
 		serviceAccount: accounts.ServiceAccount,
@@ -34,7 +34,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 	if err != nil {
 		return []models.ImageHubSecret{}, nil
 	}
-	pendingImageHubSecrets, err := internal.GetPendingPrivateImageHubSecrets(ph.kubeUtil, appName)
+	pendingImageHubSecrets, err := internal.GetPendingPrivateImageHubSecrets(ctx, ph.kubeUtil, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +53,8 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 }
 
 // UpdatePrivateImageHubValue updates the private image hub value with new password
-func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(appName, server, password string) error {
-	return internal.UpdatePrivateImageHubsSecretsPassword(ph.kubeUtil, appName, server, password)
+func (ph PrivateImageHubHandler) UpdatePrivateImageHubValue(ctx context.Context, appName, server, password string) error {
+	return internal.UpdatePrivateImageHubsSecretsPassword(ctx, ph.kubeUtil, appName, server, password)
 }
 
 func getImageHubSecretStatus(pendingImageHubSecrets []string, server string) models.ImageHubSecretStatus {

@@ -1,6 +1,7 @@
 package deployments
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -8,6 +9,7 @@ import (
 
 	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
@@ -35,15 +37,15 @@ func createGetLogEndpoint(appName, podName string) string {
 	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
 }
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
-	commonTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
+	commonTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, secretproviderclient, certClient, NewDeploymentController())
-	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, prometheusClient, secretproviderclient, certClient
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, NewDeploymentController())
+	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
@@ -57,7 +59,7 @@ func TestGetPodLog_no_radixconfig(t *testing.T) {
 }
 
 func TestGetPodLog_No_Pod(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	endpoint := createGetLogEndpoint(anyAppName, anyPodName)
 
 	_, err := commonTestUtils.ApplyApplication(builders.
@@ -78,45 +80,53 @@ func TestGetPodLog_No_Pod(t *testing.T) {
 
 func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 
-	_, err := commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName("any-app-1").
-		WithEnvironment("prod").
-		WithImageTag("abcdef").
-		WithCondition(v1.DeploymentInactive))
+	_, err := commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAppName("any-app-1").
+			WithEnvironment("prod").
+			WithImageTag("abcdef").
+			WithCondition(v1.DeploymentInactive))
 	require.NoError(t, err)
 
 	// Ensure the second image is considered the latest version
 	firstDeploymentActiveFrom := time.Now()
 	secondDeploymentActiveFrom := time.Now().AddDate(0, 0, 1)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName("any-app-2").
-		WithEnvironment("dev").
-		WithImageTag("ghijklm").
-		WithCreated(firstDeploymentActiveFrom).
-		WithCondition(v1.DeploymentInactive).
-		WithActiveFrom(firstDeploymentActiveFrom).
-		WithActiveTo(secondDeploymentActiveFrom))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAppName("any-app-2").
+			WithEnvironment("dev").
+			WithImageTag("ghijklm").
+			WithCreated(firstDeploymentActiveFrom).
+			WithCondition(v1.DeploymentInactive).
+			WithActiveFrom(firstDeploymentActiveFrom).
+			WithActiveTo(secondDeploymentActiveFrom))
 	require.NoError(t, err)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName("any-app-2").
-		WithEnvironment("dev").
-		WithImageTag("nopqrst").
-		WithCondition(v1.DeploymentActive).
-		WithActiveFrom(secondDeploymentActiveFrom))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAppName("any-app-2").
+			WithEnvironment("dev").
+			WithImageTag("nopqrst").
+			WithCondition(v1.DeploymentActive).
+			WithActiveFrom(secondDeploymentActiveFrom))
 	require.NoError(t, err)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAppName("any-app-2").
-		WithEnvironment("prod").
-		WithImageTag("uvwxyza"))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAppName("any-app-2").
+			WithEnvironment("prod").
+			WithImageTag("uvwxyza"))
 	require.NoError(t, err)
 
 	// Test
@@ -165,7 +175,7 @@ func TestGetDeployments_Filter_FilterIsApplied(t *testing.T) {
 }
 
 func TestGetDeployments_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments", anyAppName))
 	response := <-responseChannel
 
@@ -189,7 +199,7 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = gitTags
 	annotations[kube.RadixCommitAnnotation] = gitCommitHash
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 	require.NoError(t, err)
 
@@ -229,7 +239,7 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev"}, annotations)
 	require.NoError(t, err)
 
@@ -259,7 +269,7 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 	require.NoError(t, err)
 
@@ -297,7 +307,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	annotations := make(map[string]string)
 	annotations[kube.RadixGitTagsAnnotation] = "some tags go here"
 	annotations[kube.RadixCommitAnnotation] = "gfsjrgnsdkfgnlnfgdsMYCOMMIT"
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	err := setupGetDeploymentsTest(commonTestUtils, anyAppName, deploymentOneImage, deploymentTwoImage, deploymentThreeImage, deploymentOneCreated, deploymentTwoCreated, deploymentThreeCreated, []string{"dev", "prod"}, annotations)
 	require.NoError(t, err)
 
@@ -319,7 +329,7 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 }
 
 func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
-	_, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deployments/%s", anyAppName, anyDeployName))
 	response := <-responseChannel
 
@@ -330,7 +340,7 @@ func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
 
 func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithComponents(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t)
 	anyAppName := "any-app"
 	anyEnvironment := "dev"
 	anyDeployment1Name := "abcdef"
@@ -342,57 +352,61 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 
 	_, err := commonTestUtils.ApplyJob(builders.ARadixBuildDeployJob().WithAppName(anyAppName).WithJobName(jobName1).WithCommitID(commitID1))
 	require.NoError(t, err)
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithRadixApplication(
-			builders.ARadixApplication().
-				WithAppName(anyAppName)).
-		WithAppName(anyAppName).
-		WithLabel(kube.RadixJobNameLabel, jobName1).
-		WithDeploymentName(anyDeployment1Name).
-		WithCreated(appDeployment1Created).
-		WithCondition(v1.DeploymentInactive).
-		WithActiveFrom(appDeployment1Created).
-		WithActiveTo(appDeployment2Created).
-		WithEnvironment(anyEnvironment).
-		WithImageTag(anyDeployment1Name).
-		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job1"),
-			builders.NewDeployJobComponentBuilder().WithName("job2"),
-		).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithImage("radixdev.azurecr.io/some-image:imagetag").
-				WithName("frontend").
-				WithPort("http", 8080).
-				WithReplicas(commontest.IntPtr(1)),
-			builders.NewDeployComponentBuilder().
-				WithImage("radixdev.azurecr.io/another-image:imagetag").
-				WithName("backend").
-				WithReplicas(commontest.IntPtr(1))))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			NewDeploymentBuilder().
+			WithRadixApplication(
+				builders.ARadixApplication().
+					WithAppName(anyAppName)).
+			WithAppName(anyAppName).
+			WithLabel(kube.RadixJobNameLabel, jobName1).
+			WithDeploymentName(anyDeployment1Name).
+			WithCreated(appDeployment1Created).
+			WithCondition(v1.DeploymentInactive).
+			WithActiveFrom(appDeployment1Created).
+			WithActiveTo(appDeployment2Created).
+			WithEnvironment(anyEnvironment).
+			WithImageTag(anyDeployment1Name).
+			WithJobComponents(
+				builders.NewDeployJobComponentBuilder().WithName("job1"),
+				builders.NewDeployJobComponentBuilder().WithName("job2"),
+			).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithImage("radixdev.azurecr.io/some-image:imagetag").
+					WithName("frontend").
+					WithPort("http", 8080).
+					WithReplicas(commontest.IntPtr(1)),
+				builders.NewDeployComponentBuilder().
+					WithImage("radixdev.azurecr.io/another-image:imagetag").
+					WithName("backend").
+					WithReplicas(commontest.IntPtr(1))))
 	require.NoError(t, err)
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		NewDeploymentBuilder().
-		WithRadixApplication(
-			builders.ARadixApplication().
-				WithAppName(anyAppName)).
-		WithAppName(anyAppName).
-		WithLabel(kube.RadixJobNameLabel, jobName2).
-		WithDeploymentName(anyDeployment2Name).
-		WithCreated(appDeployment2Created).
-		WithCondition(v1.DeploymentActive).
-		WithActiveFrom(appDeployment2Created).
-		WithEnvironment(anyEnvironment).
-		WithImageTag(anyDeployment2Name).
-		WithJobComponents(
-			builders.NewDeployJobComponentBuilder().WithName("job1"),
-		).
-		WithComponents(
-			builders.NewDeployComponentBuilder().
-				WithImage("radixdev.azurecr.io/another-second-image:imagetag").
-				WithName("backend").
-				WithReplicas(commontest.IntPtr(1))))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			NewDeploymentBuilder().
+			WithRadixApplication(
+				builders.ARadixApplication().
+					WithAppName(anyAppName)).
+			WithAppName(anyAppName).
+			WithLabel(kube.RadixJobNameLabel, jobName2).
+			WithDeploymentName(anyDeployment2Name).
+			WithCreated(appDeployment2Created).
+			WithCondition(v1.DeploymentActive).
+			WithActiveFrom(appDeployment2Created).
+			WithEnvironment(anyEnvironment).
+			WithImageTag(anyDeployment2Name).
+			WithJobComponents(
+				builders.NewDeployJobComponentBuilder().WithName("job1"),
+			).
+			WithComponents(
+				builders.NewDeployComponentBuilder().
+					WithImage("radixdev.azurecr.io/another-second-image:imagetag").
+					WithName("backend").
+					WithReplicas(commontest.IntPtr(1))))
 	require.NoError(t, err)
 
 	// Test
@@ -431,46 +445,52 @@ func setupGetDeploymentsTest(commonTestUtils *commontest.Utils, appName, deploym
 		deploymentTwoCondition = v1.DeploymentActive
 	}
 
-	_, err := commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAnnotations(annotations).
-		WithDeploymentName(deploymentOneImage).
-		WithAppName(appName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentOneImage).
-		WithCreated(deploymentOneCreated).
-		WithCondition(v1.DeploymentInactive).
-		WithActiveFrom(deploymentOneCreated).
-		WithActiveTo(deploymentOneActiveTo))
+	_, err := commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAnnotations(annotations).
+			WithDeploymentName(deploymentOneImage).
+			WithAppName(appName).
+			WithEnvironment(environmentOne).
+			WithImageTag(deploymentOneImage).
+			WithCreated(deploymentOneCreated).
+			WithCondition(v1.DeploymentInactive).
+			WithActiveFrom(deploymentOneCreated).
+			WithActiveTo(deploymentOneActiveTo))
 	if err != nil {
 		return err
 	}
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAnnotations(annotations).
-		WithDeploymentName(deploymentTwoImage).
-		WithAppName(appName).
-		WithEnvironment(environmentTwo).
-		WithImageTag(deploymentTwoImage).
-		WithCreated(deploymentTwoCreated).
-		WithCondition(deploymentTwoCondition).
-		WithActiveFrom(deploymentTwoCreated).
-		WithActiveTo(deploymentTwoActiveTo))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAnnotations(annotations).
+			WithDeploymentName(deploymentTwoImage).
+			WithAppName(appName).
+			WithEnvironment(environmentTwo).
+			WithImageTag(deploymentTwoImage).
+			WithCreated(deploymentTwoCreated).
+			WithCondition(deploymentTwoCondition).
+			WithActiveFrom(deploymentTwoCreated).
+			WithActiveTo(deploymentTwoActiveTo))
 	if err != nil {
 		return err
 	}
 
-	_, err = commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithAnnotations(annotations).
-		WithDeploymentName(deploymentThreeImage).
-		WithAppName(appName).
-		WithEnvironment(environmentOne).
-		WithImageTag(deploymentThreeImage).
-		WithCreated(deploymentThreeCreated).
-		WithCondition(v1.DeploymentActive).
-		WithActiveFrom(deploymentThreeCreated))
+	_, err = commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithAnnotations(annotations).
+			WithDeploymentName(deploymentThreeImage).
+			WithAppName(appName).
+			WithEnvironment(environmentOne).
+			WithImageTag(deploymentThreeImage).
+			WithCreated(deploymentThreeCreated).
+			WithCondition(v1.DeploymentActive).
+			WithActiveFrom(deploymentThreeCreated))
 	if err != nil {
 		return err
 	}

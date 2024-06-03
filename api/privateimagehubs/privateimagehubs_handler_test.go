@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +30,7 @@ const (
 func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
 	client, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{})
 	require.NoError(t, err)
-	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(kubeUtil, "any-app")
+	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
 
 	secret, _ := client.CoreV1().Secrets("any-app-app").Get(context.TODO(), defaults.PrivateImageHubSecretName, metav1.GetOptions{})
 
@@ -38,7 +39,7 @@ func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
 		"{\"auths\":{}}",
 		string(secret.Data[corev1.DockerConfigJsonKey]))
 	assert.Equal(t, 0, len(pendingSecrets))
-	assert.Error(t, internal.UpdatePrivateImageHubsSecretsPassword(kubeUtil, "any-app", "privaterepodeleteme.azurecr.io", "a-password"))
+	assert.Error(t, internal.UpdatePrivateImageHubsSecretsPassword(context.Background(), kubeUtil, "any-app", "privaterepodeleteme.azurecr.io", "a-password"))
 }
 
 func Test_WithPrivateImageHubSet_SecretsCorrectly_SetPassword(t *testing.T) {
@@ -49,15 +50,15 @@ func Test_WithPrivateImageHubSet_SecretsCorrectly_SetPassword(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(kubeUtil, "any-app")
+	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
 
 	assert.Equal(t, "privaterepodeleteme.azurecr.io", pendingSecrets[0])
 
-	if err := internal.UpdatePrivateImageHubsSecretsPassword(kubeUtil, "any-app", "privaterepodeleteme.azurecr.io", "a-password"); err != nil {
+	if err := internal.UpdatePrivateImageHubsSecretsPassword(context.Background(), kubeUtil, "any-app", "privaterepodeleteme.azurecr.io", "a-password"); err != nil {
 		require.NoError(t, err)
 	}
 	secret, _ := client.CoreV1().Secrets("any-app-app").Get(context.TODO(), defaults.PrivateImageHubSecretName, metav1.GetOptions{})
-	pendingSecrets, _ = internal.GetPendingPrivateImageHubSecrets(kubeUtil, "any-app")
+	pendingSecrets, _ = internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
 
 	assert.Equal(t,
 		"{\"auths\":{\"privaterepodeleteme.azurecr.io\":{\"username\":\"814607e6-3d71-44a7-8476-50e8b281abbc\",\"password\":\"a-password\",\"email\":\"radix@equinor.com\",\"auth\":\"ODE0NjA3ZTYtM2Q3MS00NGE3LTg0NzYtNTBlOGIyODFhYmJjOmEtcGFzc3dvcmQ=\"}}}",
@@ -88,8 +89,9 @@ func setupTest() (*test.Utils, kubernetes.Interface, *kube.Kube, radixclient.Int
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := radixfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
-	kubeUtil, _ := kube.New(kubeClient, radixClient, secretproviderclient)
-	handlerTestUtils := test.NewTestUtils(kubeClient, radixClient, secretproviderclient)
+	kedaClient := kedafake.NewSimpleClientset()
+	kubeUtil, _ := kube.New(kubeClient, radixClient, kedaClient, secretproviderclient)
+	handlerTestUtils := test.NewTestUtils(kubeClient, radixClient, kedaClient, secretproviderclient)
 	if err := handlerTestUtils.CreateClusterPrerequisites(clusterName, "0.0.0.0", "anysubid"); err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -111,7 +113,7 @@ func applyApplicationWithSync(tu *test.Utils, client kubernetes.Interface, kubeU
 
 	applicationConfig := applicationconfig.NewApplicationConfig(client, kubeUtil, radixClient, radixRegistration, ra, nil)
 
-	err = applicationConfig.OnSync()
+	err = applicationConfig.OnSync(context.Background())
 	if err != nil {
 		return err
 	}

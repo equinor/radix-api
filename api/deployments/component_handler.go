@@ -9,6 +9,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/event"
+	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -23,10 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	defaultTargetCPUUtilization = int32(80)
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
@@ -132,10 +129,9 @@ func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.Rad
 
 func getHpaMetrics(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {
 	currentResourceUtil := getHpaCurrentMetric(hpa, resourceName)
-
 	// find resource utilization target
 	var targetResourceUtil *int32
-	targetResourceMetric := crdUtils.GetHpaMetric(hpa, resourceName)
+	targetResourceMetric := horizontalscaling.GetHpaMetric(hpa, resourceName)
 	if targetResourceMetric != nil {
 		targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
 	}

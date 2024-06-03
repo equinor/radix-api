@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/metrics"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,9 +36,9 @@ func WithBurst(burst int) RestClientConfigOption {
 
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
-	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
-	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
+	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
+	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
+	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
 	IsUseOutClusterClient() bool
 }
 
@@ -65,12 +66,12 @@ func NewKubeUtil(useOutClusterClient bool) KubeUtil {
 }
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
 	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{}, options...)
 }
 
 // GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
 	if ku.useOutClusterClient {
 		config := getOutClusterClientConfig(token, impersonation, options)
 		return getKubernetesClientFromConfig(config)
@@ -80,7 +81,7 @@ func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string,
 }
 
 // GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
-func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
 	config := getInClusterClientConfig(options)
 	return getKubernetesClientFromConfig(config)
 }
@@ -135,7 +136,7 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 	return config
 }
 
-func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Fatal().Err(err).Msg("getClusterConfig k8s client")
@@ -144,6 +145,11 @@ func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interf
 	radixClient, err := radixclient.NewForConfig(config)
 	if err != nil {
 		log.Fatal().Err(err).Msg("getClusterConfig radix client")
+	}
+
+	kedaClient, err := kedav2.NewForConfig(config)
+	if err != nil {
+		log.Fatal().Err(err).Msg("getClusterConfig keda client")
 	}
 
 	secretProviderClient, err := secretproviderclient.NewForConfig(config)
@@ -160,5 +166,5 @@ func getKubernetesClientFromConfig(config *restclient.Config) (kubernetes.Interf
 	if err != nil {
 		log.Fatal().Err(err).Msg("getClusterConfig Tekton client client")
 	}
-	return client, radixClient, secretProviderClient, tektonClient, certClient
+	return client, radixClient, kedaClient, secretProviderClient, tektonClient, certClient
 }

@@ -26,7 +26,7 @@ func CreateApplicationConfig(ctx context.Context, user *models.Account, appName 
 		return nil, err
 	}
 
-	kubeUtils, _ := kube.New(user.Client, user.RadixClient, user.SecretProviderClient)
+	kubeUtils, _ := kube.New(user.Client, user.RadixClient, user.KedaClient, user.SecretProviderClient)
 	return applicationconfig.NewApplicationConfig(user.Client, kubeUtils, user.RadixClient, registration, radixApp, &dnsalias.DNSConfig{}), nil
 }
 

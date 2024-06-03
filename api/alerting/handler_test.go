@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
@@ -30,9 +31,10 @@ type HandlerTestSuite struct {
 func (s *HandlerTestSuite) SetupTest() {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := radixfake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
-	s.accounts = models.NewAccounts(kubeClient, radixClient, secretProviderClient, nil, certClient, kubeClient, radixClient, secretProviderClient, nil, certClient, "", radixmodels.Impersonation{})
+	s.accounts = models.NewAccounts(kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient, kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient, "", radixmodels.Impersonation{})
 }
 
 func TestHandlerTestSuite(t *testing.T) {
