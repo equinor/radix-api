@@ -18,7 +18,12 @@ spec:
       ports:
         - name: http
           port: 3002
-      public: true
+        - name: metrics
+          port: 9090
+      publicPort: http
+      monitoring: true
+      monitoringConfig:
+        portName: metrics
       variables:
         REQUIRE_APP_CONFIGURATION_ITEM: "true"
         REQUIRE_APP_AD_GROUPS: "true"
@@ -27,11 +32,9 @@ spec:
         LOG_PRETTY: "false"
       environmentConfig:
         - environment: qa
-          runAsNonRoot: true
           horizontalScaling:
             minReplicas: 1
             maxReplicas: 2
-          monitoring: true
           resources:
             requests:
               memory: "400M"
@@ -44,9 +47,7 @@ spec:
             TEKTON_IMG_TAG: "main-latest"
             GOMAXPROCS: "1"
         - environment: prod
-          runAsNonRoot: true
           replicas: 2
-          monitoring: true
           resources:
             requests:
               memory: "700M"
