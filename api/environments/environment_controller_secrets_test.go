@@ -780,7 +780,7 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 }
 
 func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, appName, envName, deploymentName string) *controllertest.Utils {
-	_, environmentControllerTestUtils, _, kubeClient, radixClient, _, secretClient, _ := setupTest(s.T(), nil)
+	_, environmentControllerTestUtils, _, kubeClient, radixClient, _, _, secretClient, _ := setupTest(s.T(), nil)
 	_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), &v1.RadixRegistration{ObjectMeta: metav1.ObjectMeta{Name: appName}}, metav1.CreateOptions{})
 	require.NoError(s.T(), err)
 	appAppNamespace := operatorutils.GetAppNamespace(appName)

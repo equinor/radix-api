@@ -2,9 +2,9 @@ package models
 
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
-	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -40,7 +40,7 @@ func getHpaMetrics(hpa *autoscalingv2.HorizontalPodAutoscaler, resourceName core
 
 	// find resource utilization target
 	var targetResourceUtil *int32
-	targetResourceMetric := operatorutils.GetHpaMetric(hpa, resourceName)
+	targetResourceMetric := horizontalscaling.GetHpaMetric(hpa, resourceName)
 	if targetResourceMetric != nil {
 		targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
 	}

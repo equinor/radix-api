@@ -78,17 +78,19 @@ func (s *externalDnsTestSuite) buildCertificate(certCN, issuerCN string, dnsName
 func (s *externalDnsTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.tlsValidator = tlsvalidationmock.NewMockValidator(ctrl)
-	s.commonTestUtils, s.environmentTestUtils, _, s.kubeClient, _, _, _, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
+	s.commonTestUtils, s.environmentTestUtils, _, s.kubeClient, _, _, _, _, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(s.tlsValidator)})
 
 	s.appName, s.environmentName, s.alias = "any-app", "dev", "cdn.myalias.com"
 	componentName := "backend"
 
-	_, err := s.commonTestUtils.ApplyDeployment(operatorutils.
-		ARadixDeployment().
-		WithAppName(s.appName).
-		WithEnvironment(s.environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: s.alias})).
-		WithImageTag("master"))
+	_, err := s.commonTestUtils.ApplyDeployment(
+		context.Background(),
+		operatorutils.
+			ARadixDeployment().
+			WithAppName(s.appName).
+			WithEnvironment(s.environmentName).
+			WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithExternalDNS(v1.RadixDeployExternalDNS{FQDN: s.alias})).
+			WithImageTag("master"))
 	require.NoError(s.T(), err)
 
 	_, err = s.commonTestUtils.ApplyApplication(operatorutils.

@@ -41,18 +41,20 @@ func (s *externalDnsAutomationTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	tlsValidator := tlsvalidationmock.NewMockValidator(ctrl)
 	tlsValidator.EXPECT().ValidateX509Certificate(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
-	s.commonTestUtils, s.environmentTestUtils, _, _, _, _, _, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(tlsValidator)})
+	s.commonTestUtils, s.environmentTestUtils, _, _, _, _, _, _, s.certClient = setupTest(s.T(), []EnvironmentHandlerOptions{WithTLSValidator(tlsValidator)})
 
 	s.appName, s.environmentName, s.fqdn = "any-app", "dev", "any.alias.com"
 	componentName := "backend"
 
-	_, err := s.commonTestUtils.ApplyDeployment(operatorutils.
-		ARadixDeployment().
-		WithAppName(s.appName).
-		WithEnvironment(s.environmentName).
-		WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithExternalDNS(radixv1.RadixDeployExternalDNS{FQDN: s.fqdn, UseCertificateAutomation: true})).
-		WithJobComponents().
-		WithImageTag("master"))
+	_, err := s.commonTestUtils.ApplyDeployment(
+		context.Background(),
+		operatorutils.
+			ARadixDeployment().
+			WithAppName(s.appName).
+			WithEnvironment(s.environmentName).
+			WithComponents(operatorutils.NewDeployComponentBuilder().WithName(componentName).WithExternalDNS(radixv1.RadixDeployExternalDNS{FQDN: s.fqdn, UseCertificateAutomation: true})).
+			WithJobComponents().
+			WithImageTag("master"))
 	require.NoError(s.T(), err)
 
 	_, err = s.commonTestUtils.ApplyApplication(operatorutils.

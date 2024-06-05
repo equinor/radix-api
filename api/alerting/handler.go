@@ -142,7 +142,7 @@ func (h *handler) updateRadixAlertFromAlertingConfig(ctx context.Context, radixA
 		if err != nil {
 			return nil, err
 		}
-		if err := h.updateConfigSecret(*configSecret, &config); err != nil {
+		if err := h.updateConfigSecret(ctx, *configSecret, &config); err != nil {
 			return nil, err
 		}
 	}
@@ -152,7 +152,7 @@ func (h *handler) updateRadixAlertFromAlertingConfig(ctx context.Context, radixA
 	return h.applyRadixAlert(ctx, &radixAlert)
 }
 
-func (h *handler) updateConfigSecret(secret corev1.Secret, config *alertModels.UpdateAlertingConfig) error {
+func (h *handler) updateConfigSecret(ctx context.Context, secret corev1.Secret, config *alertModels.UpdateAlertingConfig) error {
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
@@ -163,8 +163,8 @@ func (h *handler) updateConfigSecret(secret corev1.Secret, config *alertModels.U
 		}
 	}
 
-	kubeUtil, _ := kube.New(h.accounts.UserAccount.Client, h.accounts.UserAccount.RadixClient, h.accounts.UserAccount.SecretProviderClient)
-	_, err := kubeUtil.ApplySecret(h.namespace, &secret)
+	kubeUtil, _ := kube.New(h.accounts.UserAccount.Client, h.accounts.UserAccount.RadixClient, h.accounts.UserAccount.KedaClient, h.accounts.UserAccount.SecretProviderClient)
+	_, err := kubeUtil.ApplySecret(ctx, h.namespace, &secret)
 	return err
 }
 

@@ -45,9 +45,9 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.SecretProviderClient)
+		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.UserAccount.SecretProviderClient)
 		eh.kubeUtil = kubeUtil
-		kubeUtilsForServiceAccount, _ := kube.New(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, accounts.ServiceAccount.SecretProviderClient)
+		kubeUtilsForServiceAccount, _ := kube.New(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.ServiceAccount.SecretProviderClient)
 		eh.kubeUtilForServiceAccount = kubeUtilsForServiceAccount
 		eh.jobSchedulerHandlerFactory = jobscheduler.NewFactory(kubeUtil)
 	}

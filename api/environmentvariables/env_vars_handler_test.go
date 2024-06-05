@@ -16,7 +16,7 @@ func Test_GetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Get existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
@@ -33,10 +33,10 @@ func Test_GetEnvVars(t *testing.T) {
 			accounts:        models.Accounts{},
 		}
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsConfigMapName(componentName))
 		require.NoError(t, err)
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
 		require.NoError(t, err)
 
 		envVars, err := handler.GetComponentEnvVars(context.Background(), appName, environmentName, componentName)
@@ -55,7 +55,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Change existing env var", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
@@ -72,10 +72,10 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			accounts:        models.Accounts{},
 		}
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsConfigMapName(componentName))
 		require.NoError(t, err)
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
 		require.NoError(t, err)
 
 		params := []envvarsmodels.EnvVarParameter{
@@ -105,7 +105,7 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	})
 	t.Run("Skipped changing not-existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
@@ -121,10 +121,10 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 			accounts:        models.Accounts{},
 		}
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsConfigMapName(componentName))
 		require.NoError(t, err)
 
-		_, err = kubeUtil.GetConfigMap(namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
+		_, err = kubeUtil.GetConfigMap(context.Background(), namespace, kube.GetEnvVarsMetadataConfigMapName(componentName))
 		require.NoError(t, err)
 
 		params := []envvarsmodels.EnvVarParameter{

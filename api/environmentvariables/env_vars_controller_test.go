@@ -1,6 +1,7 @@
 package environmentvariables
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,8 +13,9 @@ import (
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
@@ -33,31 +35,32 @@ const (
 )
 
 func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, prometheusclient, commonTestUtils, _, secretproviderclient, certClient := setupTest(t)
+	kubeclient, radixclient, kedaClient, prometheusclient, commonTestUtils, _, secretproviderclient, certClient := setupTest(t)
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
 	handlerFactory.EXPECT().createHandler(gomock.Any()).Return(handler)
 	controller := (&envVarsController{}).withHandlerFactory(handlerFactory)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, controller)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, controller)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, handler
 }
 
-func setupTest(t *testing.T) (*kubefake.Clientset, *fake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
+func setupTest(t *testing.T) (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
+	radixclient := radixfake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	return kubeclient, radixclient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient, certClient
+	return kubeclient, radixclient, kedaClient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient, certClient
 }
 
 func Test_GetComponentEnvVars(t *testing.T) {
@@ -191,11 +194,13 @@ func setupDeployment(commonTestUtils *commontest.Utils, appName, environmentName
 	if modifyComponentBuilder != nil {
 		modifyComponentBuilder(componentBuilder)
 	}
-	return commonTestUtils.ApplyDeployment(builders.
-		ARadixDeployment().
-		WithDeploymentName("some-depl").
-		WithAppName(appName).
-		WithEnvironment(environmentName).
-		WithComponent(componentBuilder).
-		WithImageTag("1234"))
+	return commonTestUtils.ApplyDeployment(
+		context.Background(),
+		builders.
+			ARadixDeployment().
+			WithDeploymentName("some-depl").
+			WithAppName(appName).
+			WithEnvironment(environmentName).
+			WithComponent(componentBuilder).
+			WithImageTag("1234"))
 }

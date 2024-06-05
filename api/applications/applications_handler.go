@@ -156,13 +156,13 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 		return nil, err
 	}
 
-	err = ah.isValidRegistrationInsert(radixRegistration)
+	err = ah.isValidRegistrationInsert(ctx, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
 
 	if !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResponse, err := ah.getRegistrationInsertResponseForWarnings(radixRegistration); upsertResponse != nil || err != nil {
+		if upsertResponse, err := ah.getRegistrationInsertResponseForWarnings(ctx, radixRegistration); upsertResponse != nil || err != nil {
 			return upsertResponse, err
 		}
 	}
@@ -182,8 +182,8 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 	}, nil
 }
 
-func (ah *ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	warnings, err := ah.getRegistrationInsertWarnings(radixRegistration)
+func (ah *ApplicationHandler) getRegistrationInsertResponseForWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	warnings, err := ah.getRegistrationInsertWarnings(ctx, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +193,8 @@ func (ah *ApplicationHandler) getRegistrationInsertResponseForWarnings(radixRegi
 	return nil, nil
 }
 
-func (ah *ApplicationHandler) getRegistrationUpdateResponseForWarnings(radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	warnings, err := ah.getRegistrationUpdateWarnings(radixRegistration)
+func (ah *ApplicationHandler) getRegistrationUpdateResponseForWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
+	warnings, err := ah.getRegistrationUpdateWarnings(ctx, radixRegistration)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 
 	needToRevalidateWarnings := updatedRegistration.Spec.CloneURL != currentRegistration.Spec.CloneURL
 	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(radixRegistration); upsertResponse != nil || err != nil {
+		if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(ctx, radixRegistration); upsertResponse != nil || err != nil {
 			return upsertResponse, err
 		}
 	}
@@ -348,7 +348,7 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 
 		needToRevalidateWarnings := currentRegistration.Spec.CloneURL != updatedRegistration.Spec.CloneURL
 		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
-			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(updatedRegistration); upsertResponse != nil || err != nil {
+			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(ctx, updatedRegistration); upsertResponse != nil || err != nil {
 				return upsertResponse, err
 			}
 		}
@@ -563,18 +563,18 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	return jobSummary, nil
 }
 
-func (ah *ApplicationHandler) getRegistrationInsertWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
-	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+func (ah *ApplicationHandler) getRegistrationInsertWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ctx, ah.getServiceAccount().RadixClient, radixRegistration)
 }
 
-func (ah *ApplicationHandler) getRegistrationUpdateWarnings(radixRegistration *v1.RadixRegistration) ([]string, error) {
-	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ah.getServiceAccount().RadixClient, radixRegistration)
+func (ah *ApplicationHandler) getRegistrationUpdateWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) ([]string, error) {
+	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ctx, ah.getServiceAccount().RadixClient, radixRegistration)
 }
 
-func (ah *ApplicationHandler) isValidRegistrationInsert(radixRegistration *v1.RadixRegistration) error {
+func (ah *ApplicationHandler) isValidRegistrationInsert(ctx context.Context, radixRegistration *v1.RadixRegistration) error {
 	// Need to use in-cluster client of the API server, because the user might not have enough privileges
 	// to run a full validation
-	return radixvalidators.CanRadixRegistrationBeInserted(ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
+	return radixvalidators.CanRadixRegistrationBeInserted(ctx, ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
 }
 
 func (ah *ApplicationHandler) isValidRegistrationUpdate(updatedRegistration, currentRegistration *v1.RadixRegistration) error {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 
@@ -27,21 +28,22 @@ const (
 	subscriptionId = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset) {
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := radixfake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, secretproviderclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, secretproviderclient, certClient, NewBuildSecretsController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewBuildSecretsController())
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient
 }
 
 func TestGetBuildSecrets_ListsAll(t *testing.T) {
@@ -50,9 +52,9 @@ func TestGetBuildSecrets_ListsAll(t *testing.T) {
 	anyBuildSecret3 := "secret3"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest(t)
+	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient := setupTest(t)
 
-	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err := utils.ApplyApplicationWithSync(client, radixclient, kedaClient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret2))
@@ -69,7 +71,7 @@ func TestGetBuildSecrets_ListsAll(t *testing.T) {
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, anyBuildSecret2, buildSecrets[1].Name)
 
-	err = utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err = utils.ApplyApplicationWithSync(client, radixclient, kedaClient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret2, anyBuildSecret3))
@@ -86,7 +88,7 @@ func TestGetBuildSecrets_ListsAll(t *testing.T) {
 	assert.Equal(t, anyBuildSecret2, buildSecrets[1].Name)
 	assert.Equal(t, anyBuildSecret3, buildSecrets[2].Name)
 
-	err = utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err = utils.ApplyApplicationWithSync(client, radixclient, kedaClient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1, anyBuildSecret3))
@@ -107,9 +109,9 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	anyBuildSecret1 := "secret1"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient := setupTest(t)
+	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient := setupTest(t)
 
-	err := utils.ApplyApplicationWithSync(client, radixclient, commonTestUtils,
+	err := utils.ApplyApplicationWithSync(client, radixclient, kedaClient, commonTestUtils,
 		builders.ARadixApplication().
 			WithAppName(anyAppName).
 			WithBuildSecrets(anyBuildSecret1))
