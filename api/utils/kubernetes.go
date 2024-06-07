@@ -111,7 +111,7 @@ func getOutClusterClientConfig(token string, impersonation radixmodels.Impersona
 		kubeConfig.Impersonate = impersonationConfig
 	}
 	kubeConfig.Wrap(logs.Logger(func(e *zerolog.Event) {
-		e.Str("client", "out-cluster").Bool("impersonated", impersonation.PerformImpersonation())
+		e.Str("client", "out-cluster")
 	}))
 
 	return addCommonConfigs(kubeConfig, options)
