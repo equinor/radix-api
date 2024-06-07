@@ -38,10 +38,6 @@ func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 				ev = logger.Trace()
 			}
 
-			if !ev.Enabled() {
-				return resp, err
-			}
-
 			for _, fn := range fns {
 				ev.Func(fn)
 			}
