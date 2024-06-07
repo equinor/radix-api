@@ -6,6 +6,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	v2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,4 +30,14 @@ func (eh EnvironmentHandler) getRadixApplicationInAppNamespace(ctx context.Conte
 
 func (eh EnvironmentHandler) getRadixEnvironment(ctx context.Context, name string) (*v1.RadixEnvironment, error) {
 	return eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Get(ctx, name, metav1.GetOptions{})
+}
+
+func (eh EnvironmentHandler) getHPAsInEnvironment(ctx context.Context, appName, envName string) ([]v2.HorizontalPodAutoscaler, error) {
+	envNs := operatorutils.GetEnvironmentNamespace(appName, envName)
+	hpas, err := eh.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return hpas.Items, nil
 }
