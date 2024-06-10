@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func getHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
+func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
 	hpa, ok := slice.FindFirst(hpaList, predicate.IsHpaForComponent(appName, componentName))
 	if !ok {
 		return nil

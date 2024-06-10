@@ -33,9 +33,11 @@ const (
 )
 
 // BuildComponents builds a list of Component models.
-func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
-	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest,
-	tlsValidator tlsvalidation.Validator) []*deploymentModels.Component {
+func BuildComponents(
+	ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
+	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, certs []cmv1.Certificate,
+	certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator,
+) []*deploymentModels.Component {
 	lastEventWarnings := event.ConvertToEventWarnings(eventList)
 	var components []*deploymentModels.Component
 	for _, component := range rd.Spec.Components {
@@ -49,13 +51,16 @@ func BuildComponents(ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, 
 	return components
 }
 
-func buildComponent(radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment,
+func buildComponent(
+	radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment,
 	deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
-	secretList []corev1.Secret, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, lastEventWarnings map[string]string, tlsValidator tlsvalidation.Validator) *deploymentModels.Component {
+	secretList []corev1.Secret, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, lastEventWarnings map[string]string,
+	tlsValidator tlsvalidation.Validator,
+) *deploymentModels.Component {
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
-		WithHorizontalScalingSummary(getHpaSummary(ra.Name, radixComponent.GetName(), hpaList)).
+		WithHorizontalScalingSummary(GetHpaSummary(ra.Name, radixComponent.GetName(), hpaList)).
 		WithExternalDNS(getComponentExternalDNS(ra.Name, radixComponent, secretList, certs, certRequests, tlsValidator))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))

@@ -78,11 +78,11 @@ func TestGetComponents_active_deployment(t *testing.T) {
 			WithDeploymentName(anyDeployName))
 	require.NoError(t, err)
 
-	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job")
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -300,9 +300,9 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 			WithActiveFrom(activeDeploymentCreated))
 	require.NoError(t, err)
 
-	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job")
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, "initial-deployment")
@@ -323,18 +323,19 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 	assert.Equal(t, 0, len(job.Replicas))
 }
 
-func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel string) error {
-	podSpec := getPodSpec(podName, radixComponentLabel)
+func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixAppLabel, radixComponentLabel string) error {
+	podSpec := getPodSpec(podName, radixAppLabel, radixComponentLabel)
 	_, err := kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 	return err
 }
 
-func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
+func getPodSpec(podName, radixAppLabel, radixComponentLabel string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
 				kube.RadixComponentLabel: radixComponentLabel,
+				kube.RadixAppLabel:       radixAppLabel,
 			},
 		},
 	}
@@ -384,12 +385,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	require.NoError(t, err)
 
 	message1 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message1, deploymentModels.Failing, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message1, deploymentModels.Failing, true)
 	require.NoError(t, err)
 	message2 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/job"
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message2, deploymentModels.Failing, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -405,12 +406,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 2, len(app.ReplicaList))
+	require.Equal(t, 2, len(app.ReplicaList))
 	assert.Equal(t, deploymentModels.Failing.String(), app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message1, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
-	assert.Equal(t, 1, len(job.ReplicaList))
+	require.Equal(t, 1, len(job.ReplicaList))
 	assert.Equal(t, deploymentModels.Failing.String(), job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message2, job.ReplicaList[0].StatusMessage)
 }
@@ -432,11 +433,11 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Running, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -479,11 +480,11 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, false)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, false)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Running, false)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -526,11 +527,11 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -702,8 +703,8 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	assert.Nil(t, getComponentByName("comp2", components).Identity)
 }
 
-func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) error {
-	podSpec := getPodSpec(podName, radixComponentLabel)
+func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixAppLabel, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) error {
+	podSpec := getPodSpec(podName, radixAppLabel, radixComponentLabel)
 	containerState := getContainerState(message, status)
 	podStatus := corev1.PodStatus{
 		ContainerStatuses: []corev1.ContainerStatus{

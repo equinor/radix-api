@@ -38,18 +38,18 @@ func (m *MockDeployHandler) EXPECT() *MockDeployHandlerMockRecorder {
 }
 
 // GetComponentsForDeployment mocks base method.
-func (m *MockDeployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *models.DeploymentSummary) ([]*models.Component, error) {
+func (m *MockDeployHandler) GetComponentsForDeployment(ctx context.Context, appName, deploymentName, envName string) ([]*models.Component, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetComponentsForDeployment", ctx, appName, deployment)
+	ret := m.ctrl.Call(m, "GetComponentsForDeployment", ctx, appName, deploymentName, envName)
 	ret0, _ := ret[0].([]*models.Component)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetComponentsForDeployment indicates an expected call of GetComponentsForDeployment.
-func (mr *MockDeployHandlerMockRecorder) GetComponentsForDeployment(ctx, appName, deployment interface{}) *gomock.Call {
+func (mr *MockDeployHandlerMockRecorder) GetComponentsForDeployment(ctx, appName, deploymentName, envName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentsForDeployment", reflect.TypeOf((*MockDeployHandler)(nil).GetComponentsForDeployment), ctx, appName, deployment)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentsForDeployment", reflect.TypeOf((*MockDeployHandler)(nil).GetComponentsForDeployment), ctx, appName, deploymentName, envName)
 }
 
 // GetComponentsForDeploymentName mocks base method.

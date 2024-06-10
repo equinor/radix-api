@@ -2,14 +2,12 @@ package deployments
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/kubequery"
-	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils/event"
-	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
@@ -18,7 +16,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	v2 "k8s.io/api/autoscaling/v2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,33 +25,49 @@ import (
 )
 
 // GetComponentsForDeployment Gets a list of components for a given deployment
-func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error) {
-	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
-	rd, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deployment.Name, metav1.GetOptions{})
+func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, appName, deploymentName, envName string) ([]*deploymentModels.Component, error) {
+	rd, err := kubequery.GetRadixDeploymentByName(ctx, deploy.accounts.UserAccount.RadixClient, appName, envName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	ra, err := kubequery.GetRadixApplication(ctx, deploy.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+	deploymentList, err := kubequery.GetDeploymentsForEnvironment(ctx, deploy.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	podList, err := kubequery.GetPodsForEnvironmentComponents(ctx, deploy.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	hpas, err := kubequery.GetHorizontalPodAutoscalersForEnvironment(ctx, deploy.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
+	if err != nil {
+		return nil, err
+	}
+	secretList, err := kubequery.GetSecretsForEnvironment(ctx, deploy.accounts.UserAccount.Client, appName, envName, *noJobPayloadReq)
+	if err != nil {
+		return nil, err
+	}
+	eventList, err := kubequery.GetEventsForEnvironment(ctx, deploy.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	certs, err := kubequery.GetCertificatesForEnvironment(ctx, deploy.accounts.UserAccount.CertManagerClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	certRequests, err := kubequery.GetCertificateRequestsForEnvironment(ctx, deploy.accounts.UserAccount.CertManagerClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
 
-	ra, _ := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
-	var components []*deploymentModels.Component
-
-	for _, component := range rd.Spec.Components {
-		componentModel, err := deploy.getComponent(ctx, &component, ra, rd, deployment)
-		if err != nil {
-			return nil, err
-		}
-		components = append(components, componentModel)
-	}
-
-	for _, component := range rd.Spec.Jobs {
-		componentModel, err := deploy.getComponent(ctx, &component, ra, rd, deployment)
-		if err != nil {
-			return nil, err
-		}
-		components = append(components, componentModel)
-	}
-
-	return components, nil
+	return models.BuildComponents(ra, rd, deploymentList, podList, hpas, secretList, eventList, certs, certRequests, nil), nil
 }
 
 // GetComponentsForDeploymentName handler for GetDeployments
@@ -65,86 +79,11 @@ func (deploy *deployHandler) GetComponentsForDeploymentName(ctx context.Context,
 
 	for _, depl := range deployments {
 		if strings.EqualFold(depl.Name, deploymentName) {
-			return deploy.GetComponentsForDeployment(ctx, appName, depl)
+			return deploy.GetComponentsForDeployment(ctx, appName, depl.Name, depl.Environment)
 		}
 	}
 
 	return nil, deploymentModels.NonExistingDeployment(nil, deploymentName)
-}
-
-func (deploy *deployHandler) getComponent(ctx context.Context, component v1.RadixCommonDeployComponent, ra *v1.RadixApplication, rd *v1.RadixDeployment, deployment *deploymentModels.DeploymentSummary) (*deploymentModels.Component, error) {
-	envNs := crdUtils.GetEnvironmentNamespace(ra.Name, deployment.Environment)
-
-	// TODO: Add interface for RA + EnvConfig
-	environmentConfig := utils.GetComponentEnvironmentConfig(ra, deployment.Environment, component.GetName())
-
-	deploymentComponent, err := GetComponentStateFromSpec(ctx, deploy.accounts.UserAccount.Client, ra.Name, deployment, rd.Status, environmentConfig, component)
-	if err != nil {
-		return nil, err
-	}
-
-	if component.GetType() == v1.RadixComponentTypeComponent {
-		hpaSummary, err := deploy.getHpaSummary(ctx, component, ra.Name, envNs)
-		if err != nil {
-			return nil, err
-		}
-		deploymentComponent.HorizontalScalingSummary = hpaSummary
-	}
-	return deploymentComponent, nil
-}
-
-func (deploy *deployHandler) getHpaSummary(ctx context.Context, component v1.RadixCommonDeployComponent, appName, envNs string) (*deploymentModels.HorizontalScalingSummary, error) {
-	selector := labelselector.ForComponent(appName, component.GetName()).String()
-	hpas, err := deploy.accounts.UserAccount.Client.AutoscalingV2().HorizontalPodAutoscalers(envNs).List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		return nil, err
-	}
-	if len(hpas.Items) == 0 {
-		return nil, nil
-	}
-	if len(hpas.Items) > 1 {
-		return nil, fmt.Errorf("found more than 1 HPA for component %s", component.GetName())
-	}
-	hpa := &hpas.Items[0]
-
-	minReplicas := int32(1)
-	if hpa.Spec.MinReplicas != nil {
-		minReplicas = *hpa.Spec.MinReplicas
-	}
-	maxReplicas := hpa.Spec.MaxReplicas
-
-	currentCpuUtil, targetCpuUtil := getHpaMetrics(hpa, corev1.ResourceCPU)
-	currentMemoryUtil, targetMemoryUtil := getHpaMetrics(hpa, corev1.ResourceMemory)
-
-	hpaSummary := deploymentModels.HorizontalScalingSummary{
-		MinReplicas:                        minReplicas,
-		MaxReplicas:                        maxReplicas,
-		CurrentCPUUtilizationPercentage:    currentCpuUtil,
-		TargetCPUUtilizationPercentage:     targetCpuUtil,
-		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
-		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
-	}
-	return &hpaSummary, nil
-}
-
-func getHpaMetrics(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {
-	currentResourceUtil := getHpaCurrentMetric(hpa, resourceName)
-	// find resource utilization target
-	var targetResourceUtil *int32
-	targetResourceMetric := horizontalscaling.GetHpaMetric(hpa, resourceName)
-	if targetResourceMetric != nil {
-		targetResourceUtil = targetResourceMetric.Resource.Target.AverageUtilization
-	}
-	return currentResourceUtil, targetResourceUtil
-}
-
-func getHpaCurrentMetric(hpa *v2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) *int32 {
-	for _, metric := range hpa.Status.CurrentMetrics {
-		if metric.Resource != nil && metric.Resource.Name == resourceName {
-			return metric.Resource.Current.AverageUtilization
-		}
-	}
-	return nil
 }
 
 // GetComponentStateFromSpec Returns a component with the current state
@@ -155,12 +94,15 @@ func GetComponentStateFromSpec(
 	deployment *deploymentModels.DeploymentSummary,
 	deploymentStatus v1.RadixDeployStatus,
 	environmentConfig v1.RadixCommonEnvironmentConfig,
-	component v1.RadixCommonDeployComponent) (*deploymentModels.Component, error) {
+	component v1.RadixCommonDeployComponent,
+	hpas []autoscalingv2.HorizontalPodAutoscaler,
+) (*deploymentModels.Component, error) {
 
 	var componentPodNames []string
 	var environmentVariables map[string]string
 	var replicaSummaryList []deploymentModels.ReplicaSummary
 	var auxResource deploymentModels.AuxiliaryResource
+	var horizontalScalingSummary *deploymentModels.HorizontalScalingSummary
 
 	envNs := crdUtils.GetEnvironmentNamespace(appName, deployment.Environment)
 	status := deploymentModels.ConsistentComponent
@@ -200,6 +142,10 @@ func GetComponentStateFromSpec(
 		componentBuilder.WithNotifications(jobComponent.Notifications)
 	}
 
+	if component.GetType() == v1.RadixComponentTypeComponent {
+		horizontalScalingSummary = models.GetHpaSummary(appName, component.GetName(), hpas)
+	}
+
 	return componentBuilder.
 		WithComponent(component).
 		WithStatus(status).
@@ -207,6 +153,7 @@ func GetComponentStateFromSpec(
 		WithReplicaSummaryList(replicaSummaryList).
 		WithRadixEnvironmentVariables(environmentVariables).
 		WithAuxiliaryResource(auxResource).
+		WithHorizontalScalingSummary(horizontalScalingSummary).
 		BuildComponent()
 }
 

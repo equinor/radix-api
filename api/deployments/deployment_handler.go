@@ -27,7 +27,7 @@ type DeployHandler interface {
 	GetDeploymentWithName(ctx context.Context, appName, deploymentName string) (*deploymentModels.Deployment, error)
 	GetDeploymentsForApplicationEnvironment(ctx context.Context, appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(ctx context.Context, appName, deploymentID string) ([]*deploymentModels.Component, error)
-	GetComponentsForDeployment(ctx context.Context, appName string, deployment *deploymentModels.DeploymentSummary) ([]*deploymentModels.Component, error)
+	GetComponentsForDeployment(ctx context.Context, appName, deploymentName, envName string) ([]*deploymentModels.Component, error)
 	GetLatestDeploymentForApplicationEnvironment(ctx context.Context, appName, environment string) (*deploymentModels.DeploymentSummary, error)
 	GetDeploymentsForPipelineJob(context.Context, string, string) ([]*deploymentModels.DeploymentSummary, error)
 	GetJobComponentDeployments(context.Context, string, string, string) ([]*deploymentModels.DeploymentItem, error)
@@ -171,7 +171,7 @@ func (deploy *deployHandler) GetDeploymentWithName(ctx context.Context, appName,
 		return nil, err
 	}
 
-	components, err := deploy.GetComponentsForDeployment(ctx, appName, deploymentSummary)
+	components, err := deploy.GetComponentsForDeployment(ctx, appName, deploymentName, deploymentSummary.Environment)
 	if err != nil {
 		return nil, err
 	}

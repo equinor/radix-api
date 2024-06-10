@@ -2743,12 +2743,7 @@ func Test_DeleteBatch(t *testing.T) {
 	}
 }
 
-func initHandler(client kubernetes.Interface,
-	radixclient radixclient.Interface,
-	kedaClient kedav2.Interface,
-	secretproviderclient secretsstorevclient.Interface,
-	certClient certclient.Interface,
-	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
+func initHandler(client kubernetes.Interface, radixclient radixclient.Interface, kedaClient kedav2.Interface, secretproviderclient secretsstorevclient.Interface, certClient certclient.Interface, handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
 	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)

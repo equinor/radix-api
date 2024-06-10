@@ -449,12 +449,17 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 		updater = &radixDeployJobComponentUpdater{base: baseUpdater}
 	}
 
+	hpas, err := eh.getHPAsInEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
 	baseUpdater.componentIndex = componentIndex
 	baseUpdater.componentToPatch = componentToPatch
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(ctx, appName)
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch)
+	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas)
 	if err != nil {
 		return nil, err
 	}
