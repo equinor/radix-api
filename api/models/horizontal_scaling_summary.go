@@ -1,38 +1,155 @@
 package models
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
+
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler) *deploymentModels.HorizontalScalingSummary {
-	hpa, ok := slice.FindFirst(hpaList, predicate.IsHpaForComponent(appName, componentName))
+var triggerIndexRegex = regexp.MustCompile(`/^s(\d+)-/`)
+
+func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler, scalerList []v1alpha1.ScaledObject) *deploymentModels.HorizontalScalingSummary {
+	scaler, ok := slice.FindFirst(scalerList, predicate.IsScaledObjectForComponent(appName, componentName))
+	if !ok {
+		return nil
+	}
+	hpa, ok := slice.FindFirst(hpaList, func(s autoscalingv2.HorizontalPodAutoscaler) bool {
+		return s.Name == scaler.Status.HpaName
+	})
 	if !ok {
 		return nil
 	}
 
-	minReplicas := int32(1)
-	if hpa.Spec.MinReplicas != nil {
-		minReplicas = *hpa.Spec.MinReplicas
+	var minReplicas, maxReplicas, cooldownPeriod, pollingInterval int32
+	if scaler.Spec.MinReplicaCount != nil {
+		minReplicas = *scaler.Spec.MinReplicaCount
 	}
-	maxReplicas := hpa.Spec.MaxReplicas
+	if scaler.Spec.MaxReplicaCount != nil {
+		maxReplicas = *scaler.Spec.MaxReplicaCount
+	}
+	if scaler.Spec.CooldownPeriod != nil {
+		cooldownPeriod = *scaler.Spec.CooldownPeriod
+	}
+	if scaler.Spec.PollingInterval != nil {
+		pollingInterval = *scaler.Spec.PollingInterval
+	}
 
 	currentCpuUtil, targetCpuUtil := getHpaMetrics(&hpa, corev1.ResourceCPU)
 	currentMemoryUtil, targetMemoryUtil := getHpaMetrics(&hpa, corev1.ResourceMemory)
 
+	var triggers []deploymentModels.HorizontalScalingSummaryTriggerStatus
+
+	// ResourceMetricNames lists resource types, not metric names
+	for _, resourceType := range scaler.Status.ResourceMetricNames {
+		trigger, ok := slice.FindFirst(scaler.Spec.Triggers, func(t v1alpha1.ScaleTriggers) bool {
+			return t.Type == resourceType
+		})
+		if !ok {
+			continue
+		}
+
+		triggers = append(triggers, getResourceStatus(corev1.ResourceName(trigger.Type), trigger, &hpa))
+	}
+
+	for _, triggerName := range scaler.Status.ExternalMetricNames {
+		index, err := strconv.Atoi(triggerIndexRegex.FindString(triggerName))
+		if err != nil {
+			continue
+		}
+
+		trigger := scaler.Spec.Triggers[index]
+		metricStatus, ok := slice.FindFirst(hpa.Status.CurrentMetrics, func(s autoscalingv2.MetricStatus) bool {
+			return s.External != nil && s.External.Metric.Name == triggerName
+		})
+		if !ok {
+			continue
+		}
+		health, ok := scaler.Status.Health[triggerName]
+		if !ok {
+			continue
+		}
+
+		switch trigger.Type {
+		case "cron":
+			triggers = append(triggers, getCronStatus(trigger, metricStatus, health))
+		case "azure-servicebus":
+			triggers = append(triggers, getAzureServiceBusStatus(trigger, metricStatus, health))
+		}
+	}
+
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
 		MinReplicas:                        minReplicas,
 		MaxReplicas:                        maxReplicas,
+		CooldownPeriod:                     cooldownPeriod,
+		PollingInterval:                    pollingInterval,
 		CurrentCPUUtilizationPercentage:    currentCpuUtil,
 		TargetCPUUtilizationPercentage:     targetCpuUtil,
 		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
 		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
+		Triggers:                           triggers,
 	}
 	return &hpaSummary
+}
+
+func getResourceStatus(triggerType corev1.ResourceName, trigger v1alpha1.ScaleTriggers, hpa *autoscalingv2.HorizontalPodAutoscaler) deploymentModels.HorizontalScalingSummaryTriggerStatus {
+	var current, target string
+
+	if c := getHpaCurrentMetric(hpa, triggerType); c != nil {
+		current = strconv.Itoa(int(*c))
+	}
+	if t := horizontalscaling.GetHpaMetric(hpa, triggerType); t != nil {
+		target = trigger.Metadata["value"]
+	}
+
+	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
+		Name:               trigger.Name,
+		CurrentUtilization: current,
+		TargetUtilization:  target,
+		Type:               string(triggerType),
+		Error:              "",
+	}
+}
+func getCronStatus(trigger v1alpha1.ScaleTriggers, metricStatus autoscalingv2.MetricStatus, health v1alpha1.HealthStatus) deploymentModels.HorizontalScalingSummaryTriggerStatus {
+	var err string
+
+	current := metricStatus.External.Current.AverageValue.String()
+	target := trigger.Metadata["desiredReplicas"]
+
+	if health.Status != "Happy" {
+		err = fmt.Sprintf("%s: number of failurs: %d", health.Status, health.NumberOfFailures)
+	}
+	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
+		Name:               trigger.Name,
+		CurrentUtilization: current,
+		TargetUtilization:  target,
+		Type:               trigger.Type,
+		Error:              err,
+	}
+}
+func getAzureServiceBusStatus(trigger v1alpha1.ScaleTriggers, metricStatus autoscalingv2.MetricStatus, health v1alpha1.HealthStatus) deploymentModels.HorizontalScalingSummaryTriggerStatus {
+	var err string
+
+	current := metricStatus.External.Current.AverageValue.String()
+	target := trigger.Metadata["messageCount"]
+
+	if health.Status != "Happy" {
+		err = fmt.Sprintf("%s: number of failurs: %d", health.Status, health.NumberOfFailures)
+	}
+	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
+		Name:               trigger.Name,
+		CurrentUtilization: current,
+		TargetUtilization:  target,
+		Type:               trigger.Type,
+		Error:              err,
+	}
 }
 
 func getHpaMetrics(hpa *autoscalingv2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {

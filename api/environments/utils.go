@@ -6,6 +6,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	v2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,4 +41,14 @@ func (eh EnvironmentHandler) getHPAsInEnvironment(ctx context.Context, appName, 
 	}
 
 	return hpas.Items, nil
+}
+
+func (eh EnvironmentHandler) getScaledObjectsInEnvironment(ctx context.Context, appName, envName string) ([]v1alpha1.ScaledObject, error) {
+	envNs := operatorutils.GetEnvironmentNamespace(appName, envName)
+	scaledObjects, err := eh.accounts.UserAccount.KedaClient.KedaV1alpha1().ScaledObjects(envNs).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return scaledObjects.Items, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +47,10 @@ func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, app
 	if err != nil {
 		return nil, err
 	}
+	scaledObjects, err := kubequery.GetScaledObjectsForEnvironment(ctx, deploy.accounts.UserAccount.KedaClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
 	if err != nil {
 		return nil, err
@@ -67,7 +72,7 @@ func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, app
 		return nil, err
 	}
 
-	return models.BuildComponents(ra, rd, deploymentList, podList, hpas, secretList, eventList, certs, certRequests, nil), nil
+	return models.BuildComponents(ra, rd, deploymentList, podList, hpas, secretList, eventList, certs, certRequests, nil, scaledObjects), nil
 }
 
 // GetComponentsForDeploymentName handler for GetDeployments
@@ -96,6 +101,7 @@ func GetComponentStateFromSpec(
 	environmentConfig v1.RadixCommonEnvironmentConfig,
 	component v1.RadixCommonDeployComponent,
 	hpas []autoscalingv2.HorizontalPodAutoscaler,
+	scaledObjects []v1alpha1.ScaledObject,
 ) (*deploymentModels.Component, error) {
 
 	var componentPodNames []string
@@ -143,7 +149,7 @@ func GetComponentStateFromSpec(
 	}
 
 	if component.GetType() == v1.RadixComponentTypeComponent {
-		horizontalScalingSummary = models.GetHpaSummary(appName, component.GetName(), hpas)
+		horizontalScalingSummary = models.GetHpaSummary(appName, component.GetName(), hpas, scaledObjects)
 	}
 
 	return componentBuilder.

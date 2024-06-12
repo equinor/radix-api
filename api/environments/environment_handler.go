@@ -190,7 +190,10 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-
+	scaledObjects, err := kubequery.GetScaledObjectsForEnvironment(ctx, eh.accounts.UserAccount.KedaClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
 	if err != nil {
 		return nil, err
@@ -216,7 +219,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 		return nil, err
 	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator, scaledObjects)
 	return env, nil
 }
 
@@ -453,13 +456,17 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	scalers, err := eh.getScaledObjectsInEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 
 	baseUpdater.componentIndex = componentIndex
 	baseUpdater.componentToPatch = componentToPatch
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(ctx, appName)
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas)
+	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}

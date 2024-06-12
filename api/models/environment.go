@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +19,8 @@ import (
 func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplication, re *radixv1.RadixEnvironment, rdList []radixv1.RadixDeployment,
 	rjList []radixv1.RadixJob, deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
 	secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, eventList []corev1.Event,
-	certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator) *environmentModels.Environment {
+	certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator, scaledObjects []v1alpha1.ScaledObject,
+) *environmentModels.Environment {
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
@@ -28,7 +30,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
-		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, rjList, certs, certRequests, tlsValidator)
+		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, rjList, certs, certRequests, tlsValidator, scaledObjects)
 		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 	}
 

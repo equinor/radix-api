@@ -13,10 +13,12 @@ import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -590,8 +592,10 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			require.NoError(t, err)
 
 			ns := operatorUtils.GetEnvironmentNamespace(anyAppName, "prod")
-			autoscaler := createAutoscaler("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)
-			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &autoscaler, metav1.CreateOptions{})
+			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)
+			_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(context.Background(), &scaler, metav1.CreateOptions{})
+			require.NoError(t, err)
+			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &hpa, metav1.CreateOptions{})
 			require.NoError(t, err)
 
 			// Test
@@ -608,18 +612,58 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
 			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
-			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage) // using assert.Equal() fails because simple nil and *int32 typed nil do not pass equality test
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
 			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
-			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
 			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
+
+			memoryTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "memory"
+			})
+			if scenario.targetMemory == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, string(*scenario.targetMemory), memoryTrigger.TargetUtilization)
+				assert.Empty(t, memoryTrigger.CurrentUtilization)
+				assert.Empty(t, memoryTrigger.Error)
+				assert.Equal(t, "memory", memoryTrigger.Type)
+			}
+
+			cpuTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "cpu"
+			})
+			if scenario.targetCpu == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, string(*scenario.targetCpu), cpuTrigger.TargetUtilization)
+				assert.Empty(t, cpuTrigger.CurrentUtilization)
+				assert.Empty(t, cpuTrigger.Error)
+				assert.Equal(t, "cpu", cpuTrigger.Type)
+			}
+
+			// todo: test CRON trigger and AzureServiceBus
 		})
 	}
 }
 
-func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) v2.HorizontalPodAutoscaler {
+func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
+	var triggers []v1alpha1.ScaleTriggers
 	var metrics []v2.MetricSpec
+	resourceMetricNames := []string{}
 
 	if targetCpu != nil {
+		resourceMetricNames = append(resourceMetricNames, "cpu")
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "cpu",
+			Name: "cpu",
+			Metadata: map[string]string{
+				"value": string(*targetCpu),
+			},
+			AuthenticationRef: nil,
+			MetricType:        "Utilization",
+		})
 		metrics = append(metrics, v2.MetricSpec{
 			Resource: &v2.ResourceMetricSource{
 				Name: "cpu",
@@ -632,6 +676,15 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 	}
 
 	if targetMemory != nil {
+		resourceMetricNames = append(resourceMetricNames, "memory")
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "memory",
+			Name: "memory",
+			Metadata: map[string]string{
+				"value": string(*targetMemory),
+			},
+			MetricType: "Utilization",
+		})
 		metrics = append(metrics, v2.MetricSpec{
 			Resource: &v2.ResourceMetricSource{
 				Name: "memory",
@@ -643,9 +696,25 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 		})
 	}
 
-	autoscaler := v2.HorizontalPodAutoscaler{
+	scaler := v1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
+			Labels: labelselector.ForComponent(anyAppName, "frontend"),
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			MinReplicaCount: minReplicas,
+			MaxReplicaCount: &maxReplicas,
+			Triggers:        triggers,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			HpaName:             fmt.Sprintf("hpa-%s", name),
+			ResourceMetricNames: resourceMetricNames,
+		},
+	}
+
+	hpa := v2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   fmt.Sprintf("hpa-%s", name),
 			Labels: labelselector.ForComponent(anyAppName, "frontend"),
 		},
 		Spec: v2.HorizontalPodAutoscalerSpec{
@@ -654,7 +723,8 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 			Metrics:     metrics,
 		},
 	}
-	return autoscaler
+
+	return scaler, hpa
 }
 
 func TestGetComponents_WithIdentity(t *testing.T) {

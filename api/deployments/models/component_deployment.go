@@ -422,29 +422,68 @@ type HorizontalScalingSummary struct {
 	// example: 5
 	MaxReplicas int32 `json:"maxReplicas"`
 
+	// CooldownPeriod in seconds. From radixconfig.yaml
+	//
+	// required: false
+	// example: 300
+	CooldownPeriod int32 `json:"cooldownPeriod"`
+
+	// PollingInterval in seconds. From radixconfig.yaml
+	//
+	// required: false
+	// example: 30
+	PollingInterval int32 `json:"pollingInterval"`
+
+	// Triggers lists status of all triggers found in radixconfig.yaml
+	//
+	// required: false
+	// example: 30
+	Triggers []HorizontalScalingSummaryTriggerStatus `json:"triggers"`
+
 	// Component current average CPU utilization over all pods, represented as a percentage of requested CPU
 	//
 	// required: false
 	// example: 70
+	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage"`
 
 	// Component target average CPU utilization over all pods
 	//
 	// required: false
 	// example: 80
+	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	TargetCPUUtilizationPercentage *int32 `json:"targetCPUUtilizationPercentage"`
 
 	// Component current average memory utilization over all pods, represented as a percentage of requested memory
 	//
 	// required: false
 	// example: 80
+	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	CurrentMemoryUtilizationPercentage *int32 `json:"currentMemoryUtilizationPercentage"`
 
 	// Component target average memory utilization over all pods
 	//
 	// required: false
 	// example: 80
+	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	TargetMemoryUtilizationPercentage *int32 `json:"targetMemoryUtilizationPercentage"`
+}
+
+type HorizontalScalingSummaryTriggerStatus struct {
+	// Name of trigger
+	Name string `json:"name"`
+
+	// CurrentUtilization is the last measured utilization
+	CurrentUtilization string `json:"current_utilization"`
+
+	// TargetUtilization  is the average target across replicas
+	TargetUtilization string `json:"target_utilization"`
+
+	// Type of trigger
+	Type string `json:"type"`
+
+	// Error contains short description if trigger have problems
+	Error string `json:"error,omitempty"`
 }
 
 // Node Defines node attributes, where pod should be scheduled

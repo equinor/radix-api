@@ -20,6 +20,7 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -36,16 +37,16 @@ const (
 func BuildComponents(
 	ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, deploymentList []appsv1.Deployment, podList []corev1.Pod,
 	hpaList []autoscalingv2.HorizontalPodAutoscaler, secretList []corev1.Secret, eventList []corev1.Event, certs []cmv1.Certificate,
-	certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator,
+	certRequests []cmv1.CertificateRequest, tlsValidator tlsvalidation.Validator, scaledObjects []v1alpha1.ScaledObject,
 ) []*deploymentModels.Component {
 	lastEventWarnings := event.ConvertToEventWarnings(eventList)
 	var components []*deploymentModels.Component
 	for _, component := range rd.Spec.Components {
-		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, certs, certRequests, lastEventWarnings, tlsValidator))
+		components = append(components, buildComponent(&component, ra, rd, deploymentList, podList, hpaList, secretList, certs, certRequests, lastEventWarnings, tlsValidator, scaledObjects))
 	}
 
 	for _, job := range rd.Spec.Jobs {
-		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, certs, certRequests, lastEventWarnings, tlsValidator))
+		components = append(components, buildComponent(&job, ra, rd, deploymentList, podList, hpaList, secretList, certs, certRequests, lastEventWarnings, tlsValidator, scaledObjects))
 	}
 
 	return components
@@ -54,13 +55,13 @@ func BuildComponents(
 func buildComponent(
 	radixComponent radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment,
 	deploymentList []appsv1.Deployment, podList []corev1.Pod, hpaList []autoscalingv2.HorizontalPodAutoscaler,
-	secretList []corev1.Secret, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest, lastEventWarnings map[string]string,
-	tlsValidator tlsvalidation.Validator,
+	secretList []corev1.Secret, certs []cmv1.Certificate, certRequests []cmv1.CertificateRequest,
+	lastEventWarnings map[string]string, tlsValidator tlsvalidation.Validator, scaledObjects []v1alpha1.ScaledObject,
 ) *deploymentModels.Component {
 	builder := deploymentModels.NewComponentBuilder().
 		WithComponent(radixComponent).
 		WithStatus(deploymentModels.ConsistentComponent).
-		WithHorizontalScalingSummary(GetHpaSummary(ra.Name, radixComponent.GetName(), hpaList)).
+		WithHorizontalScalingSummary(GetHpaSummary(ra.Name, radixComponent.GetName(), hpaList, scaledObjects)).
 		WithExternalDNS(getComponentExternalDNS(ra.Name, radixComponent, secretList, certs, certRequests, tlsValidator))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
