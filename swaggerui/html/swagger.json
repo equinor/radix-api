@@ -6301,6 +6301,13 @@
       "description": "HorizontalScalingSummary describe the summary of horizontal scaling of a component",
       "type": "object",
       "properties": {
+        "cooldownPeriod": {
+          "description": "CooldownPeriod in seconds. From radixconfig.yaml",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "CooldownPeriod",
+          "example": 300
+        },
         "currentCPUUtilizationPercentage": {
           "description": "Component current average CPU utilization over all pods, represented as a percentage of requested CPU",
           "type": "integer",
@@ -6329,6 +6336,13 @@
           "x-go-name": "MinReplicas",
           "example": 2
         },
+        "pollingInterval": {
+          "description": "PollingInterval in seconds. From radixconfig.yaml",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "PollingInterval",
+          "example": 30
+        },
         "targetCPUUtilizationPercentage": {
           "description": "Component target average CPU utilization over all pods",
           "type": "integer",
@@ -6342,6 +6356,46 @@
           "format": "int32",
           "x-go-name": "TargetMemoryUtilizationPercentage",
           "example": 80
+        },
+        "triggers": {
+          "description": "Triggers lists status of all triggers found in radixconfig.yaml",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HorizontalScalingSummaryTriggerStatus"
+          },
+          "x-go-name": "Triggers",
+          "example": "30"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "HorizontalScalingSummaryTriggerStatus": {
+      "type": "object",
+      "properties": {
+        "current_utilization": {
+          "description": "CurrentUtilization is the last measured utilization",
+          "type": "string",
+          "x-go-name": "CurrentUtilization"
+        },
+        "error": {
+          "description": "Error contains short description if trigger have problems",
+          "type": "string",
+          "x-go-name": "Error"
+        },
+        "name": {
+          "description": "Name of trigger",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "target_utilization": {
+          "description": "TargetUtilization  is the average target across replicas",
+          "type": "string",
+          "x-go-name": "TargetUtilization"
+        },
+        "type": {
+          "description": "Type of trigger",
+          "type": "string",
+          "x-go-name": "Type"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
