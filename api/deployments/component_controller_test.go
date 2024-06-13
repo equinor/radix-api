@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -563,17 +565,21 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
 
 	testScenarios := []struct {
-		name           string
-		deploymentName string
-		minReplicas    int32
-		maxReplicas    int32
-		targetCpu      *int32
-		targetMemory   *int32
+		name                  string
+		deploymentName        string
+		minReplicas           int32
+		maxReplicas           int32
+		targetCpu             *int32
+		targetMemory          *int32
+		targetCron            *int32
+		targetAzureServiceBus *int32
 	}{
-		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil},
-		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, numbers.Int32Ptr(75)},
-		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, numbers.Int32Ptr(60), nil},
-		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, numbers.Int32Ptr(62), numbers.Int32Ptr(79)},
+		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, nil, nil},
+		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, pointers.Ptr[int32](75), nil, nil},
+		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, pointers.Ptr[int32](60), nil, nil, nil},
+		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, pointers.Ptr[int32](62), pointers.Ptr[int32](79), nil, nil},
+		{"Test CRON trigger is found", "dep5", 2, 6, nil, nil, pointers.Ptr[int32](5), nil},
+		{"Test Azure trigger is found", "dep6", 2, 6, nil, nil, nil, pointers.Ptr[int32](15)},
 	}
 
 	for _, scenario := range testScenarios {
@@ -592,7 +598,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			require.NoError(t, err)
 
 			ns := operatorUtils.GetEnvironmentNamespace(anyAppName, "prod")
-			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)
+			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory, scenario.targetCron, scenario.targetAzureServiceBus)
 			_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(context.Background(), &scaler, metav1.CreateOptions{})
 			require.NoError(t, err)
 			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &hpa, metav1.CreateOptions{})
@@ -624,7 +630,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 				assert.False(t, ok)
 			} else {
 				require.True(t, ok)
-				assert.Equal(t, string(*scenario.targetMemory), memoryTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetMemory), memoryTrigger.TargetUtilization)
 				assert.Empty(t, memoryTrigger.CurrentUtilization)
 				assert.Empty(t, memoryTrigger.Error)
 				assert.Equal(t, "memory", memoryTrigger.Type)
@@ -637,21 +643,48 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 				assert.False(t, ok)
 			} else {
 				require.True(t, ok)
-				assert.Equal(t, string(*scenario.targetCpu), cpuTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCpu), cpuTrigger.TargetUtilization)
 				assert.Empty(t, cpuTrigger.CurrentUtilization)
 				assert.Empty(t, cpuTrigger.Error)
 				assert.Equal(t, "cpu", cpuTrigger.Type)
 			}
 
-			// todo: test CRON trigger and AzureServiceBus
+			cronTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "cron"
+			})
+			if scenario.targetCron == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCron), cronTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCron), cronTrigger.CurrentUtilization)
+				assert.Empty(t, cronTrigger.Error)
+				assert.Equal(t, "cron", cronTrigger.Type)
+			}
+
+			azureTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "azure-servicebus"
+			})
+			if scenario.targetAzureServiceBus == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.CurrentUtilization)
+				assert.Empty(t, azureTrigger.Error)
+				assert.Equal(t, "azure-servicebus", azureTrigger.Type)
+			}
 		})
 	}
 }
 
-func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
+func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32, targetCron *int32, targetAzureServiceBus *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
 	var triggers []v1alpha1.ScaleTriggers
 	var metrics []v2.MetricSpec
 	resourceMetricNames := []string{}
+	externalMetricNames := []string{}
+	health := map[string]v1alpha1.HealthStatus{}
+	metricStatus := []v2.MetricStatus{}
 
 	if targetCpu != nil {
 		resourceMetricNames = append(resourceMetricNames, "cpu")
@@ -659,7 +692,7 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 			Type: "cpu",
 			Name: "cpu",
 			Metadata: map[string]string{
-				"value": string(*targetCpu),
+				"value": fmt.Sprintf("%d", *targetCpu),
 			},
 			AuthenticationRef: nil,
 			MetricType:        "Utilization",
@@ -681,7 +714,7 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 			Type: "memory",
 			Name: "memory",
 			Metadata: map[string]string{
-				"value": string(*targetMemory),
+				"value": fmt.Sprintf("%d", *targetMemory),
 			},
 			MetricType: "Utilization",
 		})
@@ -691,6 +724,63 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 				Target: v2.MetricTarget{
 					Type:               "memory",
 					AverageUtilization: targetMemory,
+				},
+			},
+		})
+	}
+
+	if targetCron != nil {
+		externalMetricName := fmt.Sprintf("s%d-cron-Europe-Oslo-08xx1-5-016xx1-5", len(triggers))
+		externalMetricNames = append(externalMetricNames, externalMetricName)
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "cron",
+			Name: "cron",
+			Metadata: map[string]string{
+				"end":             "0 16 * * 1-5",
+				"start":           "0 8 * * 1-5",
+				"timezone":        "Europe/Oslo",
+				"desiredReplicas": fmt.Sprintf("%d", *targetCron),
+			},
+		})
+		health[externalMetricName] = v1alpha1.HealthStatus{
+			NumberOfFailures: pointers.Ptr[int32](0),
+			Status:           "Happy",
+		}
+		metricStatus = append(metricStatus, v2.MetricStatus{
+			Type: "External",
+			External: &v2.ExternalMetricStatus{
+				Current: v2.MetricValueStatus{
+					AverageValue: resource.NewQuantity(int64(*targetCron), resource.DecimalSI),
+				},
+				Metric: v2.MetricIdentifier{
+					Name: externalMetricName,
+				},
+			},
+		})
+	}
+
+	if targetAzureServiceBus != nil {
+		externalMetricName := fmt.Sprintf("s%d-azure-servicebus-orders", len(triggers))
+		externalMetricNames = append(externalMetricNames, externalMetricName)
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "azure-servicebus",
+			Name: "azure-servicebus",
+			Metadata: map[string]string{
+				"messageCount": fmt.Sprintf("%d", *targetAzureServiceBus),
+			},
+		})
+		health[externalMetricName] = v1alpha1.HealthStatus{
+			NumberOfFailures: pointers.Ptr[int32](0),
+			Status:           "Happy",
+		}
+		metricStatus = append(metricStatus, v2.MetricStatus{
+			Type: "External",
+			External: &v2.ExternalMetricStatus{
+				Current: v2.MetricValueStatus{
+					AverageValue: resource.NewQuantity(int64(*targetAzureServiceBus), resource.DecimalSI),
+				},
+				Metric: v2.MetricIdentifier{
+					Name: externalMetricName,
 				},
 			},
 		})
@@ -708,7 +798,9 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 		},
 		Status: v1alpha1.ScaledObjectStatus{
 			HpaName:             fmt.Sprintf("hpa-%s", name),
+			Health:              health,
 			ResourceMetricNames: resourceMetricNames,
+			ExternalMetricNames: externalMetricNames,
 		},
 	}
 
@@ -721,6 +813,9 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 			MinReplicas: minReplicas,
 			MaxReplicas: maxReplicas,
 			Metrics:     metrics,
+		},
+		Status: v2.HorizontalPodAutoscalerStatus{
+			CurrentMetrics: metricStatus,
 		},
 	}
 

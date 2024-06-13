@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var triggerIndexRegex = regexp.MustCompile(`/^s(\d+)-/`)
+var triggerIndexRegex = regexp.MustCompile(`^s(\d+)-`)
 
 func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.HorizontalPodAutoscaler, scalerList []v1alpha1.ScaledObject) *deploymentModels.HorizontalScalingSummary {
 	scaler, ok := slice.FindFirst(scalerList, predicate.IsScaledObjectForComponent(appName, componentName))
@@ -49,40 +49,29 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 
 	// ResourceMetricNames lists resource types, not metric names
 	for _, resourceType := range scaler.Status.ResourceMetricNames {
-		trigger, ok := slice.FindFirst(scaler.Spec.Triggers, func(t v1alpha1.ScaleTriggers) bool {
+		var trigger v1alpha1.ScaleTriggers
+
+		if trigger, ok = slice.FindFirst(scaler.Spec.Triggers, func(t v1alpha1.ScaleTriggers) bool {
 			return t.Type == resourceType
-		})
-		if !ok {
+		}); !ok {
 			continue
 		}
 
-		triggers = append(triggers, getResourceStatus(corev1.ResourceName(trigger.Type), trigger, &hpa))
+		triggers = append(triggers, getResourceMetricStatus(hpa, trigger))
 	}
 
 	for _, triggerName := range scaler.Status.ExternalMetricNames {
-		index, err := strconv.Atoi(triggerIndexRegex.FindString(triggerName))
+		match := triggerIndexRegex.FindStringSubmatch(triggerName)
+		if len(match) != 2 {
+			continue
+		}
+		index, err := strconv.Atoi(match[1])
 		if err != nil {
 			continue
 		}
 
 		trigger := scaler.Spec.Triggers[index]
-		metricStatus, ok := slice.FindFirst(hpa.Status.CurrentMetrics, func(s autoscalingv2.MetricStatus) bool {
-			return s.External != nil && s.External.Metric.Name == triggerName
-		})
-		if !ok {
-			continue
-		}
-		health, ok := scaler.Status.Health[triggerName]
-		if !ok {
-			continue
-		}
-
-		switch trigger.Type {
-		case "cron":
-			triggers = append(triggers, getCronStatus(trigger, metricStatus, health))
-		case "azure-servicebus":
-			triggers = append(triggers, getAzureServiceBusStatus(trigger, metricStatus, health))
-		}
+		triggers = append(triggers, getExternalMetricStatus(hpa, triggerName, scaler, trigger))
 	}
 
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
@@ -99,57 +88,52 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 	return &hpaSummary
 }
 
-func getResourceStatus(triggerType corev1.ResourceName, trigger v1alpha1.ScaleTriggers, hpa *autoscalingv2.HorizontalPodAutoscaler) deploymentModels.HorizontalScalingSummaryTriggerStatus {
-	var current, target string
-
-	if c := getHpaCurrentMetric(hpa, triggerType); c != nil {
-		current = strconv.Itoa(int(*c))
-	}
-	if t := horizontalscaling.GetHpaMetric(hpa, triggerType); t != nil {
-		target = trigger.Metadata["value"]
+func getResourceMetricStatus(hpa autoscalingv2.HorizontalPodAutoscaler, trigger v1alpha1.ScaleTriggers) deploymentModels.HorizontalScalingSummaryTriggerStatus {
+	var current string
+	if metricStatus, ok := slice.FindFirst(hpa.Status.CurrentMetrics, func(s autoscalingv2.MetricStatus) bool {
+		return s.Resource != nil && s.Resource.Name.String() == trigger.Type
+	}); ok && metricStatus.Resource != nil {
+		current = fmt.Sprintf("%d", *metricStatus.Resource.Current.AverageUtilization)
 	}
 
-	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
+	status := deploymentModels.HorizontalScalingSummaryTriggerStatus{
 		Name:               trigger.Name,
 		CurrentUtilization: current,
-		TargetUtilization:  target,
-		Type:               string(triggerType),
+		TargetUtilization:  trigger.Metadata["value"],
+		Type:               trigger.Type,
 		Error:              "",
 	}
+	return status
 }
-func getCronStatus(trigger v1alpha1.ScaleTriggers, metricStatus autoscalingv2.MetricStatus, health v1alpha1.HealthStatus) deploymentModels.HorizontalScalingSummaryTriggerStatus {
-	var err string
 
-	current := metricStatus.External.Current.AverageValue.String()
-	target := trigger.Metadata["desiredReplicas"]
+func getExternalMetricStatus(hpa autoscalingv2.HorizontalPodAutoscaler, triggerName string, scaler v1alpha1.ScaledObject, trigger v1alpha1.ScaleTriggers) deploymentModels.HorizontalScalingSummaryTriggerStatus {
+	var current, target, errStr string
 
-	if health.Status != "Happy" {
-		err = fmt.Sprintf("%s: number of failurs: %d", health.Status, health.NumberOfFailures)
+	if metricStatus, ok := slice.FindFirst(hpa.Status.CurrentMetrics, func(s autoscalingv2.MetricStatus) bool {
+		return s.External != nil && s.External.Metric.Name == triggerName
+	}); ok && metricStatus.External != nil {
+		current = metricStatus.External.Current.AverageValue.String()
 	}
-	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
+
+	if health, ok := scaler.Status.Health[triggerName]; ok && health.Status != "Happy" {
+		errStr = fmt.Sprintf("%s: number of failurs: %d", health.Status, *health.NumberOfFailures)
+	}
+
+	switch trigger.Type {
+	case "cron":
+		target = trigger.Metadata["desiredReplicas"]
+	case "azure-servicebus":
+		target = trigger.Metadata["messageCount"]
+	}
+
+	status := deploymentModels.HorizontalScalingSummaryTriggerStatus{
 		Name:               trigger.Name,
 		CurrentUtilization: current,
 		TargetUtilization:  target,
 		Type:               trigger.Type,
-		Error:              err,
+		Error:              errStr,
 	}
-}
-func getAzureServiceBusStatus(trigger v1alpha1.ScaleTriggers, metricStatus autoscalingv2.MetricStatus, health v1alpha1.HealthStatus) deploymentModels.HorizontalScalingSummaryTriggerStatus {
-	var err string
-
-	current := metricStatus.External.Current.AverageValue.String()
-	target := trigger.Metadata["messageCount"]
-
-	if health.Status != "Happy" {
-		err = fmt.Sprintf("%s: number of failurs: %d", health.Status, health.NumberOfFailures)
-	}
-	return deploymentModels.HorizontalScalingSummaryTriggerStatus{
-		Name:               trigger.Name,
-		CurrentUtilization: current,
-		TargetUtilization:  target,
-		Type:               trigger.Type,
-		Error:              err,
-	}
+	return status
 }
 
 func getHpaMetrics(hpa *autoscalingv2.HorizontalPodAutoscaler, resourceName corev1.ResourceName) (*int32, *int32) {
