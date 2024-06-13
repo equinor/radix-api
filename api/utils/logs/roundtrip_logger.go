@@ -47,7 +47,7 @@ func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 			ev.
 				Str("method", r.Method).
 				Stringer("path", r.URL).
-				Int64("ellapsed_ms", time.Since(start).Milliseconds()).
+				Int64("elapsed_ms", time.Since(start).Milliseconds()).
 				Msg(http.StatusText(resp.StatusCode))
 			return resp, err
 		})
