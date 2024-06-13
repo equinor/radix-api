@@ -822,6 +822,47 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 	return scaler, hpa
 }
 
+func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) v2.HorizontalPodAutoscaler {
+	var metrics []v2.MetricSpec
+
+	if targetCpu != nil {
+		metrics = append(metrics, v2.MetricSpec{
+			Resource: &v2.ResourceMetricSource{
+				Name: "cpu",
+				Target: v2.MetricTarget{
+					Type:               "cpu",
+					AverageUtilization: targetCpu,
+				},
+			},
+		})
+	}
+
+	if targetMemory != nil {
+		metrics = append(metrics, v2.MetricSpec{
+			Resource: &v2.ResourceMetricSource{
+				Name: "memory",
+				Target: v2.MetricTarget{
+					Type:               "memory",
+					AverageUtilization: targetMemory,
+				},
+			},
+		})
+	}
+
+	autoscaler := v2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labelselector.ForComponent(anyAppName, "frontend"),
+		},
+		Spec: v2.HorizontalPodAutoscalerSpec{
+			MinReplicas: minReplicas,
+			MaxReplicas: maxReplicas,
+			Metrics:     metrics,
+		},
+	}
+	return autoscaler
+}
+
 func TestGetComponents_WithIdentity(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promclient, secretProviderClient, certClient := setupTest(t)
