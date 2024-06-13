@@ -8,7 +8,6 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils/event"
-	"github.com/equinor/radix-api/api/utils/horizontalscaling"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
