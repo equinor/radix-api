@@ -50,7 +50,7 @@ func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, app
 	if err != nil {
 		return nil, err
 	}
-	certs, err := kubequery.GetCertificatesForEnvironment(ctx, deploy.accounts.UserAccount.CertManagerClient, appName, envName)
+	certs, err := kubequery.GetCertificatesForEnvironment(ctx, deploy.accounts.ServiceAccount.CertManagerClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
