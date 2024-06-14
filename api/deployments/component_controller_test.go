@@ -102,9 +102,9 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 2, len(app.Replicas))
+	assert.Equal(t, 2, len(app.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 	job := getComponentByName("job", components)
-	assert.Equal(t, 1, len(job.Replicas))
+	assert.Equal(t, 1, len(job.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 }
 
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
@@ -322,9 +322,9 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 0, len(app.Replicas))
+	assert.Equal(t, 0, len(app.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 	job := getComponentByName("job", components)
-	assert.Equal(t, 0, len(job.Replicas))
+	assert.Equal(t, 0, len(job.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 }
 
 func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixAppLabel, radixComponentLabel string) error {
@@ -618,10 +618,10 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
 			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
-			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)
-			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
-			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
-			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)                            // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)       // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)                         // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 
 			memoryTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
 				return s.Name == "memory"

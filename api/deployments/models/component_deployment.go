@@ -74,12 +74,10 @@ type Component struct {
 	// required: false
 	Variables map[string]string `json:"variables"`
 
-	// Array of pod names
+	// Deprecated: Array of pod names. Use ReplicaList instead
 	//
 	// required: false
-	// deprecated: true
 	// example: ["server-78fc8857c4-hm76l", "server-78fc8857c4-asfa2"]
-	// Deprecated: Use ReplicaList instead.
 	Replicas []string `json:"replicas"`
 
 	// Array of ReplicaSummary
@@ -440,32 +438,28 @@ type HorizontalScalingSummary struct {
 	// example: 30
 	Triggers []HorizontalScalingSummaryTriggerStatus `json:"triggers"`
 
-	// Component current average CPU utilization over all pods, represented as a percentage of requested CPU
+	// Deprecated: Component current average CPU utilization over all pods, represented as a percentage of requested CPU. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
 	// required: false
 	// example: 70
-	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage"`
 
-	// Component target average CPU utilization over all pods
+	// Deprecated: Component target average CPU utilization over all pods. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
 	// required: false
 	// example: 80
-	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	TargetCPUUtilizationPercentage *int32 `json:"targetCPUUtilizationPercentage"`
 
-	// Component current average memory utilization over all pods, represented as a percentage of requested memory
+	// Deprecated: Component current average memory utilization over all pods, represented as a percentage of requested memory. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
 	// required: false
 	// example: 80
-	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	CurrentMemoryUtilizationPercentage *int32 `json:"currentMemoryUtilizationPercentage"`
 
-	// Component target average memory utilization over all pods
+	// Deprecated: Component target average memory utilization over all pods. use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
 	// required: false
 	// example: 80
-	// deprecated: use Triggers instead. Will be removed from Radix API 2025-01-01.
 	TargetMemoryUtilizationPercentage *int32 `json:"targetMemoryUtilizationPercentage"`
 }
 

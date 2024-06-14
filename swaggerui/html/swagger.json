@@ -5623,7 +5623,7 @@
           "x-go-name": "ReplicaList"
         },
         "replicas": {
-          "description": "Array of pod names",
+          "description": "Deprecated: Array of pod names. Use ReplicaList instead",
           "type": "array",
           "items": {
             "type": "string"
@@ -6309,14 +6309,14 @@
           "example": 300
         },
         "currentCPUUtilizationPercentage": {
-          "description": "Component current average CPU utilization over all pods, represented as a percentage of requested CPU",
+          "description": "Deprecated: Component current average CPU utilization over all pods, represented as a percentage of requested CPU. Use Triggers instead. Will be removed from Radix API 2025-01-01.",
           "type": "integer",
           "format": "int32",
           "x-go-name": "CurrentCPUUtilizationPercentage",
           "example": 70
         },
         "currentMemoryUtilizationPercentage": {
-          "description": "Component current average memory utilization over all pods, represented as a percentage of requested memory",
+          "description": "Deprecated: Component current average memory utilization over all pods, represented as a percentage of requested memory. Use Triggers instead. Will be removed from Radix API 2025-01-01.",
           "type": "integer",
           "format": "int32",
           "x-go-name": "CurrentMemoryUtilizationPercentage",
@@ -6344,14 +6344,14 @@
           "example": 30
         },
         "targetCPUUtilizationPercentage": {
-          "description": "Component target average CPU utilization over all pods",
+          "description": "Deprecated: Component target average CPU utilization over all pods. Use Triggers instead. Will be removed from Radix API 2025-01-01.",
           "type": "integer",
           "format": "int32",
           "x-go-name": "TargetCPUUtilizationPercentage",
           "example": 80
         },
         "targetMemoryUtilizationPercentage": {
-          "description": "Component target average memory utilization over all pods",
+          "description": "Deprecated: Component target average memory utilization over all pods. use Triggers instead. Will be removed from Radix API 2025-01-01.",
           "type": "integer",
           "format": "int32",
           "x-go-name": "TargetMemoryUtilizationPercentage",
