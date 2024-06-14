@@ -116,7 +116,7 @@ func getExternalMetricStatus(hpa autoscalingv2.HorizontalPodAutoscaler, triggerN
 	}
 
 	if health, ok := scaler.Status.Health[triggerName]; ok && health.Status != "Happy" {
-		errStr = fmt.Sprintf("%s: number of failurs: %d", health.Status, *health.NumberOfFailures)
+		errStr = fmt.Sprintf("Number of failures: %d", *health.NumberOfFailures)
 	}
 
 	switch trigger.Type {
