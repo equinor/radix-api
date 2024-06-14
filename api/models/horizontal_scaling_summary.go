@@ -84,6 +84,8 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
 		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
 		Triggers:                           triggers,
+		CurrentReplicas:                    hpa.Status.CurrentReplicas,
+		DesiredReplicas:                    hpa.Status.DesiredReplicas,
 	}
 	return &hpaSummary
 }
@@ -116,7 +118,7 @@ func getExternalMetricStatus(hpa autoscalingv2.HorizontalPodAutoscaler, triggerN
 	}
 
 	if health, ok := scaler.Status.Health[triggerName]; ok && health.Status != "Happy" {
-		errStr = fmt.Sprintf("%s: number of failurs: %d", health.Status, *health.NumberOfFailures)
+		errStr = fmt.Sprintf("Number of failures: %d", *health.NumberOfFailures)
 	}
 
 	switch trigger.Type {
