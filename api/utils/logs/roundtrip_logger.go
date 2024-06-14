@@ -20,7 +20,7 @@ type WithFunc func(e *zerolog.Event)
 
 // Logger returns a http.RoundTripper that logs failed requests, and add traces for successfull requests
 //
-// nolint Zerolog complains about potential unsent event, but we send the event on line 50
+// nolint Zerolog complains about potential unsent event, but we send the event on the end of the function
 func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 	return func(t http.RoundTripper) http.RoundTripper {
 		return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
@@ -58,7 +58,7 @@ func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 			for _, fn := range fns {
 				ev.Func(fn)
 			}
-			ev.Int64("elapsed_ms", elapsedMs).Int("status_code", resp.StatusCode).Msg(http.StatusText(resp.StatusCode))
+			ev.Int64("elapsed_ms", elapsedMs).Int("status", resp.StatusCode).Msg(http.StatusText(resp.StatusCode))
 			return resp, err
 		})
 	}
