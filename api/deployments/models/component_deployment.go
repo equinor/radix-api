@@ -461,6 +461,16 @@ type HorizontalScalingSummary struct {
 	// required: false
 	// example: 80
 	TargetMemoryUtilizationPercentage *int32 `json:"targetMemoryUtilizationPercentage"`
+
+	// CurrentReplicas returns the current number of replicas
+	// required: false
+	// example: 1
+	CurrentReplicas int32 `json:"currentReplicas"`
+
+	// DesiredReplicas returns the target number of replicas across all triggers
+	// required: false
+	// example: 2
+	DesiredReplicas int32 `json:"desiredReplicas"`
 }
 
 type HorizontalScalingSummaryTriggerStatus struct {
@@ -468,10 +478,10 @@ type HorizontalScalingSummaryTriggerStatus struct {
 	Name string `json:"name"`
 
 	// CurrentUtilization is the last measured utilization
-	CurrentUtilization string `json:"current_utilization"`
+	CurrentUtilization string `json:"currentUtilization"`
 
 	// TargetUtilization  is the average target across replicas
-	TargetUtilization string `json:"target_utilization"`
+	TargetUtilization string `json:"targetUtilization"`
 
 	// Type of trigger
 	Type string `json:"type"`

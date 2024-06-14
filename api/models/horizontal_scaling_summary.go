@@ -84,6 +84,8 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
 		TargetMemoryUtilizationPercentage:  targetMemoryUtil,
 		Triggers:                           triggers,
+		CurrentReplicas:                    hpa.Status.CurrentReplicas,
+		DesiredReplicas:                    hpa.Status.DesiredReplicas,
 	}
 	return &hpaSummary
 }
