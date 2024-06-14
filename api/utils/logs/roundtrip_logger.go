@@ -24,15 +24,29 @@ type WithFunc func(e *zerolog.Event)
 func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 	return func(t http.RoundTripper) http.RoundTripper {
 		return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
-			start := time.Now()
-			logger := log.Ctx(r.Context())
+			logger := log.Ctx(r.Context()).With().
+				Str("method", r.Method).
+				Stringer("path", r.URL).
+				Logger()
 
+			start := time.Now()
 			resp, err := t.RoundTrip(r)
+			elapsedMs := time.Since(start).Milliseconds()
+
+			if err != nil {
+				errEvent := logger.Error().Err(err)
+				for _, fn := range fns {
+					errEvent.Func(fn)
+				}
+				errEvent.
+					Int64("elapsed_ms", elapsedMs).
+					Msg("Failed to send request")
+
+				return resp, err
+			}
 
 			var ev *zerolog.Event
 			switch {
-			case err != nil:
-				logger.Error().Err(err)
 			case resp.StatusCode >= 400 && resp.StatusCode <= 499:
 				ev = logger.Warn()
 			case resp.StatusCode >= 500:
@@ -44,11 +58,7 @@ func Logger(fns ...WithFunc) func(t http.RoundTripper) http.RoundTripper {
 			for _, fn := range fns {
 				ev.Func(fn)
 			}
-			ev.
-				Str("method", r.Method).
-				Stringer("path", r.URL).
-				Int64("elapsed_ms", time.Since(start).Milliseconds()).
-				Msg(http.StatusText(resp.StatusCode))
+			ev.Int64("elapsed_ms", elapsedMs).Int("status_code", resp.StatusCode).Msg(http.StatusText(resp.StatusCode))
 			return resp, err
 		})
 	}
