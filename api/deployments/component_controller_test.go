@@ -13,14 +13,18 @@ import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/numbers"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -78,11 +82,11 @@ func TestGetComponents_active_deployment(t *testing.T) {
 			WithDeploymentName(anyDeployName))
 	require.NoError(t, err)
 
-	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job")
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -98,9 +102,9 @@ func TestGetComponents_active_deployment(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 2, len(app.Replicas))
+	assert.Equal(t, 2, len(app.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 	job := getComponentByName("job", components)
-	assert.Equal(t, 1, len(job.Replicas))
+	assert.Equal(t, 1, len(job.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 }
 
 func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) {
@@ -300,9 +304,9 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 			WithActiveFrom(activeDeploymentCreated))
 	require.NoError(t, err)
 
-	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app")
+	err = createComponentPod(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app")
 	require.NoError(t, err)
-	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job")
+	err = createComponentPod(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job")
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, "initial-deployment")
@@ -318,23 +322,24 @@ func TestGetComponents_inactive_deployment(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 0, len(app.Replicas))
+	assert.Equal(t, 0, len(app.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 	job := getComponentByName("job", components)
-	assert.Equal(t, 0, len(job.Replicas))
+	assert.Equal(t, 0, len(job.Replicas)) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 }
 
-func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel string) error {
-	podSpec := getPodSpec(podName, radixComponentLabel)
+func createComponentPod(kubeclient kubernetes.Interface, podName, namespace, radixAppLabel, radixComponentLabel string) error {
+	podSpec := getPodSpec(podName, radixAppLabel, radixComponentLabel)
 	_, err := kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
 	return err
 }
 
-func getPodSpec(podName, radixComponentLabel string) *corev1.Pod {
+func getPodSpec(podName, radixAppLabel, radixComponentLabel string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
 				kube.RadixComponentLabel: radixComponentLabel,
+				kube.RadixAppLabel:       radixAppLabel,
 			},
 		},
 	}
@@ -384,12 +389,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	require.NoError(t, err)
 
 	message1 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/www"
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message1, deploymentModels.Failing, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message1, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message1, deploymentModels.Failing, true)
 	require.NoError(t, err)
 	message2 := "Couldn't find key TEST_SECRET in Secret radix-demo-hello-nodejs-dev/job"
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message2, deploymentModels.Failing, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message2, deploymentModels.Failing, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -405,12 +410,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
-	assert.Equal(t, 2, len(app.ReplicaList))
+	require.Equal(t, 2, len(app.ReplicaList))
 	assert.Equal(t, deploymentModels.Failing.String(), app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message1, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
-	assert.Equal(t, 1, len(job.ReplicaList))
+	require.Equal(t, 1, len(job.ReplicaList))
 	assert.Equal(t, deploymentModels.Failing.String(), job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message2, job.ReplicaList[0].StatusMessage)
 }
@@ -432,11 +437,11 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Running, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -479,11 +484,11 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, false)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Running, false)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Running, false)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Running, false)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -526,11 +531,11 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	require.NoError(t, err)
 
 	message := ""
-	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod1", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "app", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod2", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "app", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
-	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), "job", message, deploymentModels.Pending, true)
+	err = createComponentPodWithContainerState(kubeclient, "pod3", operatorUtils.GetEnvironmentNamespace(anyAppName, "dev"), anyAppName, "job", message, deploymentModels.Pending, true)
 	require.NoError(t, err)
 
 	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
@@ -560,17 +565,21 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 	// Setup
 
 	testScenarios := []struct {
-		name           string
-		deploymentName string
-		minReplicas    int32
-		maxReplicas    int32
-		targetCpu      *int32
-		targetMemory   *int32
+		name                  string
+		deploymentName        string
+		minReplicas           int32
+		maxReplicas           int32
+		targetCpu             *int32
+		targetMemory          *int32
+		targetCron            *int32
+		targetAzureServiceBus *int32
 	}{
-		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil},
-		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, numbers.Int32Ptr(75)},
-		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, numbers.Int32Ptr(60), nil},
-		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, numbers.Int32Ptr(62), numbers.Int32Ptr(79)},
+		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, nil, nil},
+		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, pointers.Ptr[int32](75), nil, nil},
+		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, pointers.Ptr[int32](60), nil, nil, nil},
+		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, pointers.Ptr[int32](62), pointers.Ptr[int32](79), nil, nil},
+		{"Test CRON trigger is found", "dep5", 2, 6, nil, nil, pointers.Ptr[int32](5), nil},
+		{"Test Azure trigger is found", "dep6", 2, 6, nil, nil, nil, pointers.Ptr[int32](15)},
 	}
 
 	for _, scenario := range testScenarios {
@@ -589,8 +598,10 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			require.NoError(t, err)
 
 			ns := operatorUtils.GetEnvironmentNamespace(anyAppName, "prod")
-			autoscaler := createAutoscaler("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory)
-			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &autoscaler, metav1.CreateOptions{})
+			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory, scenario.targetCron, scenario.targetAzureServiceBus)
+			_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(context.Background(), &scaler, metav1.CreateOptions{})
+			require.NoError(t, err)
+			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &hpa, metav1.CreateOptions{})
 			require.NoError(t, err)
 
 			// Test
@@ -607,18 +618,85 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
 			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
-			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage) // using assert.Equal() fails because simple nil and *int32 typed nil do not pass equality test
-			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)
-			assert.True(t, nil == components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)
-			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage)
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)                            // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)       // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)                         // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			assert.Equal(t, scenario.targetMemory, components[0].HorizontalScalingSummary.TargetMemoryUtilizationPercentage) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+
+			memoryTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "memory"
+			})
+			if scenario.targetMemory == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetMemory), memoryTrigger.TargetUtilization)
+				assert.Empty(t, memoryTrigger.CurrentUtilization)
+				assert.Empty(t, memoryTrigger.Error)
+				assert.Equal(t, "memory", memoryTrigger.Type)
+			}
+
+			cpuTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "cpu"
+			})
+			if scenario.targetCpu == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCpu), cpuTrigger.TargetUtilization)
+				assert.Empty(t, cpuTrigger.CurrentUtilization)
+				assert.Empty(t, cpuTrigger.Error)
+				assert.Equal(t, "cpu", cpuTrigger.Type)
+			}
+
+			cronTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "cron"
+			})
+			if scenario.targetCron == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCron), cronTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetCron), cronTrigger.CurrentUtilization)
+				assert.Empty(t, cronTrigger.Error)
+				assert.Equal(t, "cron", cronTrigger.Type)
+			}
+
+			azureTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "azure-servicebus"
+			})
+			if scenario.targetAzureServiceBus == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.CurrentUtilization)
+				assert.Empty(t, azureTrigger.Error)
+				assert.Equal(t, "azure-servicebus", azureTrigger.Type)
+			}
 		})
 	}
 }
 
-func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32) v2.HorizontalPodAutoscaler {
+func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32, targetCron *int32, targetAzureServiceBus *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
+	var triggers []v1alpha1.ScaleTriggers
 	var metrics []v2.MetricSpec
+	resourceMetricNames := []string{}
+	externalMetricNames := []string{}
+	health := map[string]v1alpha1.HealthStatus{}
+	metricStatus := []v2.MetricStatus{}
 
 	if targetCpu != nil {
+		resourceMetricNames = append(resourceMetricNames, "cpu")
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "cpu",
+			Name: "cpu",
+			Metadata: map[string]string{
+				"value": fmt.Sprintf("%d", *targetCpu),
+			},
+			AuthenticationRef: nil,
+			MetricType:        "Utilization",
+		})
 		metrics = append(metrics, v2.MetricSpec{
 			Resource: &v2.ResourceMetricSource{
 				Name: "cpu",
@@ -631,6 +709,15 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 	}
 
 	if targetMemory != nil {
+		resourceMetricNames = append(resourceMetricNames, "memory")
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "memory",
+			Name: "memory",
+			Metadata: map[string]string{
+				"value": fmt.Sprintf("%d", *targetMemory),
+			},
+			MetricType: "Utilization",
+		})
 		metrics = append(metrics, v2.MetricSpec{
 			Resource: &v2.ResourceMetricSource{
 				Name: "memory",
@@ -642,9 +729,84 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 		})
 	}
 
-	autoscaler := v2.HorizontalPodAutoscaler{
+	if targetCron != nil {
+		externalMetricName := fmt.Sprintf("s%d-cron-Europe-Oslo-08xx1-5-016xx1-5", len(triggers))
+		externalMetricNames = append(externalMetricNames, externalMetricName)
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "cron",
+			Name: "cron",
+			Metadata: map[string]string{
+				"end":             "0 16 * * 1-5",
+				"start":           "0 8 * * 1-5",
+				"timezone":        "Europe/Oslo",
+				"desiredReplicas": fmt.Sprintf("%d", *targetCron),
+			},
+		})
+		health[externalMetricName] = v1alpha1.HealthStatus{
+			NumberOfFailures: pointers.Ptr[int32](0),
+			Status:           "Happy",
+		}
+		metricStatus = append(metricStatus, v2.MetricStatus{
+			Type: "External",
+			External: &v2.ExternalMetricStatus{
+				Current: v2.MetricValueStatus{
+					AverageValue: resource.NewQuantity(int64(*targetCron), resource.DecimalSI),
+				},
+				Metric: v2.MetricIdentifier{
+					Name: externalMetricName,
+				},
+			},
+		})
+	}
+
+	if targetAzureServiceBus != nil {
+		externalMetricName := fmt.Sprintf("s%d-azure-servicebus-orders", len(triggers))
+		externalMetricNames = append(externalMetricNames, externalMetricName)
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "azure-servicebus",
+			Name: "azure-servicebus",
+			Metadata: map[string]string{
+				"messageCount": fmt.Sprintf("%d", *targetAzureServiceBus),
+			},
+		})
+		health[externalMetricName] = v1alpha1.HealthStatus{
+			NumberOfFailures: pointers.Ptr[int32](0),
+			Status:           "Happy",
+		}
+		metricStatus = append(metricStatus, v2.MetricStatus{
+			Type: "External",
+			External: &v2.ExternalMetricStatus{
+				Current: v2.MetricValueStatus{
+					AverageValue: resource.NewQuantity(int64(*targetAzureServiceBus), resource.DecimalSI),
+				},
+				Metric: v2.MetricIdentifier{
+					Name: externalMetricName,
+				},
+			},
+		})
+	}
+
+	scaler := v1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
+			Labels: labelselector.ForComponent(anyAppName, "frontend"),
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			MinReplicaCount: minReplicas,
+			MaxReplicaCount: &maxReplicas,
+			Triggers:        triggers,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			HpaName:             fmt.Sprintf("hpa-%s", name),
+			Health:              health,
+			ResourceMetricNames: resourceMetricNames,
+			ExternalMetricNames: externalMetricNames,
+		},
+	}
+
+	hpa := v2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   fmt.Sprintf("hpa-%s", name),
 			Labels: labelselector.ForComponent(anyAppName, "frontend"),
 		},
 		Spec: v2.HorizontalPodAutoscalerSpec{
@@ -652,8 +814,12 @@ func createAutoscaler(name string, minReplicas *int32, maxReplicas int32, target
 			MaxReplicas: maxReplicas,
 			Metrics:     metrics,
 		},
+		Status: v2.HorizontalPodAutoscalerStatus{
+			CurrentMetrics: metricStatus,
+		},
 	}
-	return autoscaler
+
+	return scaler, hpa
 }
 
 func TestGetComponents_WithIdentity(t *testing.T) {
@@ -702,8 +868,8 @@ func TestGetComponents_WithIdentity(t *testing.T) {
 	assert.Nil(t, getComponentByName("comp2", components).Identity)
 }
 
-func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) error {
-	podSpec := getPodSpec(podName, radixComponentLabel)
+func createComponentPodWithContainerState(kubeclient kubernetes.Interface, podName, namespace, radixAppLabel, radixComponentLabel, message string, status deploymentModels.ContainerStatus, ready bool) error {
+	podSpec := getPodSpec(podName, radixAppLabel, radixComponentLabel)
 	containerState := getContainerState(message, status)
 	podStatus := corev1.PodStatus{
 		ContainerStatuses: []corev1.ContainerStatus{

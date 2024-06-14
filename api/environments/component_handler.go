@@ -92,7 +92,7 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Conte
 		return err
 	}
 
-	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, deploySummary)
+	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, deploySummary.Name, envName)
 	if err != nil {
 		return err
 	}

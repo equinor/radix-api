@@ -46,9 +46,6 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
 		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.UserAccount.SecretProviderClient)
-		eh.kubeUtil = kubeUtil
-		kubeUtilsForServiceAccount, _ := kube.New(accounts.ServiceAccount.Client, accounts.ServiceAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.ServiceAccount.SecretProviderClient)
-		eh.kubeUtilForServiceAccount = kubeUtilsForServiceAccount
 		eh.jobSchedulerHandlerFactory = jobscheduler.NewFactory(kubeUtil)
 	}
 }
@@ -97,8 +94,6 @@ type EnvironmentHandler struct {
 	deployHandler              deployments.DeployHandler
 	eventHandler               events.EventHandler
 	accounts                   models.Accounts
-	kubeUtil                   *kube.Kube
-	kubeUtilForServiceAccount  *kube.Kube
 	tlsValidator               tlsvalidation.Validator
 	jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface
 }
@@ -190,7 +185,10 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 	if err != nil {
 		return nil, err
 	}
-
+	scaledObjects, err := kubequery.GetScaledObjectsForEnvironment(ctx, eh.accounts.UserAccount.KedaClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
 	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})
 	if err != nil {
 		return nil, err
@@ -216,7 +214,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 		return nil, err
 	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator)
+	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator, scaledObjects)
 	return env, nil
 }
 
@@ -247,8 +245,7 @@ func (eh EnvironmentHandler) CreateEnvironment(ctx context.Context, appName, env
 
 // DeleteEnvironment Handler for DeleteEnvironment. Deletes an environment if it is considered orphaned
 func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, envName string) error {
-	uniqueName := k8sObjectUtils.GetEnvironmentNamespace(appName, envName)
-	re, err := eh.getRadixEnvironment(ctx, uniqueName)
+	re, err := kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
@@ -259,7 +256,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 	}
 
 	// idempotent removal of RadixEnvironment
-	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(ctx, uniqueName, metav1.DeleteOptions{})
+	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(ctx, re.Name, metav1.DeleteOptions{})
 	// if an error is anything other than not-found, return it
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -270,7 +267,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 
 // GetEnvironmentEvents Handler for GetEnvironmentEvents
 func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.getRadixApplicationInAppNamespace(ctx, appName)
+	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -449,12 +446,21 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 		updater = &radixDeployJobComponentUpdater{base: baseUpdater}
 	}
 
+	hpas, err := kubequery.GetHorizontalPodAutoscalersForEnvironment(ctx, eh.accounts.UserAccount.Client, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	scalers, err := kubequery.GetScaledObjectsForEnvironment(ctx, eh.accounts.UserAccount.KedaClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
 	baseUpdater.componentIndex = componentIndex
 	baseUpdater.componentToPatch = componentToPatch
 
-	ra, _ := eh.getRadixApplicationInAppNamespace(ctx, appName)
+	ra, _ := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch)
+	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}
