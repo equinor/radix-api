@@ -7246,7 +7246,7 @@
       ],
       "properties": {
         "status": {
-          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nTerminated = Container in Terminated state",
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nStopped = Replica was deleted du to job stopped\nTerminated = Container in Terminated state",
           "type": "string",
           "enum": [
             "Pending",
@@ -7255,7 +7255,8 @@
             "Failed",
             "Running",
             "Terminated",
-            "Starting"
+            "Starting",
+            "Stopped"
           ],
           "x-go-name": "Status",
           "example": "Running"

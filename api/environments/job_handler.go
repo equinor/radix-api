@@ -461,13 +461,12 @@ func getScheduledBatchStatus(batch *radixv1.RadixBatch) (status jobSchedulerMode
 			return jobSchedulerModels.Running
 		}
 		return jobSchedulerModels.Active
-	case batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted:
-		if len(batch.Status.JobStatuses) > 0 && slice.All(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool {
-			return jobStatus.Phase == radixv1.BatchJobPhaseFailed
-		}) {
-			return jobSchedulerModels.Failed
-		}
+	case batch.Status.Condition.Type == radixv1.BatchConditionTypeCompleted || batch.Status.Condition.Type == radixv1.BatchConditionTypeSucceeded:
 		return jobSchedulerModels.Succeeded
+	case batch.Status.Condition.Type == radixv1.BatchConditionTypeStopped:
+		return jobSchedulerModels.Stopped
+	case batch.Status.Condition.Type == radixv1.BatchConditionTypeFailed:
+		return jobSchedulerModels.Failed
 	}
 	return jobSchedulerModels.Waiting
 }
@@ -543,6 +542,8 @@ func getReplicaStatusByJobPodStatusPhase(statusPhase radixv1.RadixBatchJobPodPha
 		replicaStatus.Status = "Failed"
 	case radixv1.PodRunning:
 		replicaStatus.Status = "Running"
+	case radixv1.PodStopped:
+		replicaStatus.Status = "Stopped"
 	case radixv1.PodSucceeded:
 		replicaStatus.Status = "Succeeded"
 	default:

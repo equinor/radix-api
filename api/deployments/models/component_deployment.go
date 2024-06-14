@@ -397,10 +397,11 @@ type ReplicaStatus struct {
 	// - Failing = Container is failed
 	// - Running = Container in Running state
 	// - Succeeded = Container in Succeeded state
+	// - Stopped = Replica was deleted du to job stopped
 	// - Terminated = Container in Terminated state
 	//
 	// required: true
-	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting
+	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting,Stopped
 	// example: Running
 	Status string `json:"status"`
 }
