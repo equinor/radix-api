@@ -466,7 +466,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 
 	ra, _ := eh.getRadixApplicationInAppNamespace(ctx, appName)
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = deployments.GetComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
+	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}
