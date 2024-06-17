@@ -616,8 +616,8 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, components[0].HorizontalScalingSummary)
 
-			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
-			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
+			assert.Equal(t, scenario.minReplicas, *components[0].HorizontalScalingSummary.MinReplicas)
+			assert.Equal(t, scenario.maxReplicas, *components[0].HorizontalScalingSummary.MaxReplicas)
 			assert.EqualValues(t, 2, components[0].HorizontalScalingSummary.CurrentReplicas)
 			assert.EqualValues(t, 4, components[0].HorizontalScalingSummary.DesiredReplicas)
 			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)                            // nolint:staticcheck // SA1019: Ignore linting deprecated fields

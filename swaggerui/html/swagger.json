@@ -6300,6 +6300,11 @@
     "HorizontalScalingSummary": {
       "description": "HorizontalScalingSummary describe the summary of horizontal scaling of a component",
       "type": "object",
+      "required": [
+        "triggers",
+        "currentReplicas",
+        "desiredReplicas"
+      ],
       "properties": {
         "cooldownPeriod": {
           "description": "CooldownPeriod in seconds. From radixconfig.yaml",

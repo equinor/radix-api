@@ -28,20 +28,6 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 		return nil
 	}
 
-	var minReplicas, maxReplicas, cooldownPeriod, pollingInterval int32
-	if scaler.Spec.MinReplicaCount != nil {
-		minReplicas = *scaler.Spec.MinReplicaCount
-	}
-	if scaler.Spec.MaxReplicaCount != nil {
-		maxReplicas = *scaler.Spec.MaxReplicaCount
-	}
-	if scaler.Spec.CooldownPeriod != nil {
-		cooldownPeriod = *scaler.Spec.CooldownPeriod
-	}
-	if scaler.Spec.PollingInterval != nil {
-		pollingInterval = *scaler.Spec.PollingInterval
-	}
-
 	currentCpuUtil, targetCpuUtil := getHpaMetrics(&hpa, corev1.ResourceCPU)
 	currentMemoryUtil, targetMemoryUtil := getHpaMetrics(&hpa, corev1.ResourceMemory)
 
@@ -75,10 +61,10 @@ func GetHpaSummary(appName, componentName string, hpaList []autoscalingv2.Horizo
 	}
 
 	hpaSummary := deploymentModels.HorizontalScalingSummary{
-		MinReplicas:                        minReplicas,
-		MaxReplicas:                        maxReplicas,
-		CooldownPeriod:                     cooldownPeriod,
-		PollingInterval:                    pollingInterval,
+		MinReplicas:                        scaler.Spec.MinReplicaCount,
+		MaxReplicas:                        scaler.Spec.MaxReplicaCount,
+		CooldownPeriod:                     scaler.Spec.CooldownPeriod,
+		PollingInterval:                    scaler.Spec.PollingInterval,
 		CurrentCPUUtilizationPercentage:    currentCpuUtil,
 		TargetCPUUtilizationPercentage:     targetCpuUtil,
 		CurrentMemoryUtilizationPercentage: currentMemoryUtil,
