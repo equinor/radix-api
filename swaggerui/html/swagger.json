@@ -6322,6 +6322,20 @@
           "x-go-name": "CurrentMemoryUtilizationPercentage",
           "example": 80
         },
+        "currentReplicas": {
+          "description": "CurrentReplicas returns the current number of replicas",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "CurrentReplicas",
+          "example": 1
+        },
+        "desiredReplicas": {
+          "description": "DesiredReplicas returns the target number of replicas across all triggers",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "DesiredReplicas",
+          "example": 2
+        },
         "maxReplicas": {
           "description": "Component maximum replicas. From radixconfig.yaml",
           "type": "integer",
@@ -6372,7 +6386,7 @@
     "HorizontalScalingSummaryTriggerStatus": {
       "type": "object",
       "properties": {
-        "current_utilization": {
+        "currentUtilization": {
           "description": "CurrentUtilization is the last measured utilization",
           "type": "string",
           "x-go-name": "CurrentUtilization"
@@ -6387,7 +6401,7 @@
           "type": "string",
           "x-go-name": "Name"
         },
-        "target_utilization": {
+        "targetUtilization": {
           "description": "TargetUtilization  is the average target across replicas",
           "type": "string",
           "x-go-name": "TargetUtilization"

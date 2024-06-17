@@ -618,6 +618,8 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 
 			assert.Equal(t, scenario.minReplicas, components[0].HorizontalScalingSummary.MinReplicas)
 			assert.Equal(t, scenario.maxReplicas, components[0].HorizontalScalingSummary.MaxReplicas)
+			assert.EqualValues(t, 2, components[0].HorizontalScalingSummary.CurrentReplicas)
+			assert.EqualValues(t, 4, components[0].HorizontalScalingSummary.DesiredReplicas)
 			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentCPUUtilizationPercentage)                            // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 			assert.Equal(t, scenario.targetCpu, components[0].HorizontalScalingSummary.TargetCPUUtilizationPercentage)       // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 			assert.Nil(t, components[0].HorizontalScalingSummary.CurrentMemoryUtilizationPercentage)                         // nolint:staticcheck // SA1019: Ignore linting deprecated fields
@@ -815,7 +817,9 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 			Metrics:     metrics,
 		},
 		Status: v2.HorizontalPodAutoscalerStatus{
-			CurrentMetrics: metricStatus,
+			CurrentMetrics:  metricStatus,
+			CurrentReplicas: 2,
+			DesiredReplicas: 4,
 		},
 	}
 
