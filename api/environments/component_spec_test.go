@@ -1,4 +1,4 @@
-package deployments
+package environments
 
 import (
 	"testing"
@@ -40,7 +40,6 @@ func TestRunningReplicaDiffersFromConfig_NoHPA(t *testing.T) {
 	isDifferent = runningReplicaDiffersFromConfig(raEnvironmentConfig, actualPods)
 	assert.True(t, isDifferent)
 }
-
 func TestRunningReplicaDiffersFromConfig_WithHPA(t *testing.T) {
 	// Test replicas 0, pods 3, minReplicas 2, maxReplicas 6
 	replicas := 0
@@ -184,7 +183,6 @@ func TestRunningReplicaNotOutdatedImage_(t *testing.T) {
 	isOutdated := runningReplicaIsOutdated(&rdComponent, actualPods)
 	assert.False(t, isOutdated)
 }
-
 func TestRunningReplicaNotOutdatedImage_TerminatingPod(t *testing.T) {
 	// Test replicas 0, pods 1, minReplicas 2, maxReplicas 6
 	replicas := 0

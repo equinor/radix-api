@@ -3,6 +3,7 @@ package predicate
 import (
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +44,12 @@ func IsHpaForComponent(appName, componentName string) func(autoscalingv2.Horizon
 	selector := labels.SelectorFromSet(radixlabels.Merge(radixlabels.ForApplicationName(appName), radixlabels.ForComponentName(componentName)))
 	return func(hpa autoscalingv2.HorizontalPodAutoscaler) bool {
 		return selector.Matches(labels.Set(hpa.Labels))
+	}
+}
+func IsScaledObjectForComponent(appName, componentName string) func(object v1alpha1.ScaledObject) bool {
+	selector := labels.SelectorFromSet(radixlabels.Merge(radixlabels.ForApplicationName(appName), radixlabels.ForComponentName(componentName)))
+	return func(object v1alpha1.ScaledObject) bool {
+		return selector.Matches(labels.Set(object.Labels))
 	}
 }
 

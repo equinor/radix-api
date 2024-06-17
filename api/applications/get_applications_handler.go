@@ -133,7 +133,7 @@ func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, deploy
 
 		envName := env.Name
 		g.Go(func() error {
-			componentModels, err := deploy.GetComponentsForDeployment(ctx, appName, deployment)
+			componentModels, err := deploy.GetComponentsForDeployment(ctx, appName, deployment.Name, deployment.Environment)
 			if err == nil {
 				chanData <- &ChannelData{key: envName, components: componentModels}
 			}

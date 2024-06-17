@@ -6,12 +6,14 @@ import (
 
 	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-api/api/metrics"
+	"github.com/equinor/radix-api/api/utils/logs"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tektonclient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
@@ -108,6 +110,9 @@ func getOutClusterClientConfig(token string, impersonation radixmodels.Impersona
 
 		kubeConfig.Impersonate = impersonationConfig
 	}
+	kubeConfig.Wrap(logs.Logger(func(e *zerolog.Event) {
+		e.Str("client", "out-cluster")
+	}))
 
 	return addCommonConfigs(kubeConfig, options)
 }
@@ -121,6 +126,9 @@ func getInClusterClientConfig(options []RestClientConfigOption) *restclient.Conf
 			log.Fatal().Err(err).Msg("getClusterConfig InClusterConfig")
 		}
 	}
+	config.Wrap(logs.Logger(func(e *zerolog.Event) {
+		e.Str("client", "in-cluster")
+	}))
 
 	return addCommonConfigs(config, options)
 }
