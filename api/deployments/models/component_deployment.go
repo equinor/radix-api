@@ -410,66 +410,58 @@ type ReplicaStatus struct {
 type HorizontalScalingSummary struct {
 	// Component minimum replicas. From radixconfig.yaml
 	//
-	// required: false
 	// example: 2
-	MinReplicas int32 `json:"minReplicas"`
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
 
 	// Component maximum replicas. From radixconfig.yaml
 	//
-	// required: false
 	// example: 5
-	MaxReplicas int32 `json:"maxReplicas"`
+	MaxReplicas *int32 `json:"maxReplicas,omitempty"`
 
 	// CooldownPeriod in seconds. From radixconfig.yaml
 	//
-	// required: false
 	// example: 300
-	CooldownPeriod int32 `json:"cooldownPeriod"`
+	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 
 	// PollingInterval in seconds. From radixconfig.yaml
 	//
-	// required: false
 	// example: 30
-	PollingInterval int32 `json:"pollingInterval"`
+	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 
 	// Triggers lists status of all triggers found in radixconfig.yaml
 	//
-	// required: false
 	// example: 30
+	// required: true
 	Triggers []HorizontalScalingSummaryTriggerStatus `json:"triggers"`
 
 	// Deprecated: Component current average CPU utilization over all pods, represented as a percentage of requested CPU. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
-	// required: false
 	// example: 70
 	CurrentCPUUtilizationPercentage *int32 `json:"currentCPUUtilizationPercentage"`
 
 	// Deprecated: Component target average CPU utilization over all pods. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
-	// required: false
 	// example: 80
 	TargetCPUUtilizationPercentage *int32 `json:"targetCPUUtilizationPercentage"`
 
 	// Deprecated: Component current average memory utilization over all pods, represented as a percentage of requested memory. Use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
-	// required: false
 	// example: 80
 	CurrentMemoryUtilizationPercentage *int32 `json:"currentMemoryUtilizationPercentage"`
 
 	// Deprecated: Component target average memory utilization over all pods. use Triggers instead. Will be removed from Radix API 2025-01-01.
 	//
-	// required: false
 	// example: 80
 	TargetMemoryUtilizationPercentage *int32 `json:"targetMemoryUtilizationPercentage"`
 
 	// CurrentReplicas returns the current number of replicas
-	// required: false
 	// example: 1
+	// required: true
 	CurrentReplicas int32 `json:"currentReplicas"`
 
 	// DesiredReplicas returns the target number of replicas across all triggers
-	// required: false
 	// example: 2
+	// required: true
 	DesiredReplicas int32 `json:"desiredReplicas"`
 }
 
