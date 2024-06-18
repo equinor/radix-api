@@ -42,7 +42,9 @@ func (deploy *deployHandler) GetComponentsForDeployment(ctx context.Context, app
 	if err != nil {
 		return nil, err
 	}
-	secretList, err := kubequery.GetSecretsForEnvironment(ctx, deploy.accounts.ServiceAccount.Client, appName, envName, *noJobPayloadReq)
+	//	secretList, err := kubequery.GetSecretsForEnvironment(ctx, deploy.accounts.ServiceAccount.Client, appName, envName, *noJobPayloadReq)
+	secretList, err := kubequery.GetSecretsForEnvironment(ctx, deploy.accounts.UserAccount.Client, appName, envName, *noJobPayloadReq)
+
 	if err != nil {
 		return nil, err
 	}
