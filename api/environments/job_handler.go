@@ -16,6 +16,7 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
+	batchesv1 "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	jobsSchedulerModels "github.com/equinor/radix-job-scheduler/models"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	jobSchedulerV1Models "github.com/equinor/radix-job-scheduler/models/v1"
@@ -136,15 +137,23 @@ func (eh EnvironmentHandler) getJob(ctx context.Context, appName, envName, jobCo
 	}
 
 	var jobComponent *radixv1.RadixDeployJobComponent
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	if rd, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Get(ctx, batch.Spec.RadixDeploymentJobRef.Name, metav1.GetOptions{}); err == nil {
-		if rdJobs := slice.FindAll(rd.Spec.Jobs, func(job radixv1.RadixDeployJobComponent) bool { return job.Name == jobComponentName }); len(rdJobs) > 0 {
-			jobComponent = &rdJobs[0]
-		}
+	deploymentName := batch.Spec.RadixDeploymentJobRef.Name
+	jobComponent, err = eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, deploymentName)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
 	}
-
 	jobSummary := eh.getScheduledJobSummary(batch, jobs[0], jobComponent)
 	return &jobSummary, nil
+}
+
+func (eh EnvironmentHandler) getRadixJobDeployComponent(ctx context.Context, appName, envName, deploymentName, jobComponentName string) (*radixv1.RadixDeployJobComponent, error) {
+	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	radixDeployment, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rdJob, _ := slice.FindFirst(radixDeployment.Spec.Jobs, func(job radixv1.RadixDeployJobComponent) bool { return job.Name == jobComponentName })
+	return &rdJob, nil
 }
 
 // GetBatches Get batches
@@ -211,7 +220,10 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 // CopyBatch Copy batch by name
 func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledBatchRequest environmentModels.ScheduledBatchRequest) (*deploymentModels.ScheduledBatchSummary, error) {
 	deploymentName := scheduledBatchRequest.DeploymentName
-	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName))
+	jobSchedulerBatchHandler, err := eh.jobSchedulerBatchHandler(ctx, appName, envName, jobComponentName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
 	batchStatus, err := jobSchedulerBatchHandler.CopyBatch(ctx, batchName, deploymentName)
 	if err != nil {
 		return nil, err
@@ -219,10 +231,23 @@ func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jo
 	return eh.getScheduledBatchStatus(batchStatus, deploymentName), nil
 }
 
+func (eh EnvironmentHandler) jobSchedulerBatchHandler(ctx context.Context, appName string, envName string, jobComponentName string, deploymentName string) (batchesv1.BatchHandler, error) {
+	jobComponent, err := eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	jobSchedulerBatchHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerBatchHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName), jobComponent)
+	return jobSchedulerBatchHandler, nil
+}
+
 // CopyJob Copy job by name
 func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobComponentName, jobName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledJobSummary, error) {
 	deploymentName := scheduledJobRequest.DeploymentName
-	jobSchedulerJobHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerJobHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName))
+	jobComponent, err := eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+	jobSchedulerJobHandler := eh.jobSchedulerHandlerFactory.CreateJobSchedulerJobHandlerForEnv(getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName), jobComponent)
 	jobStatus, err := jobSchedulerJobHandler.CopyJob(ctx, jobName, deploymentName)
 	if err != nil {
 		return nil, err
@@ -306,6 +331,17 @@ func (eh EnvironmentHandler) getRadixBatches(ctx context.Context, appName, envNa
 	return batches.Items, nil
 }
 
+func (eh EnvironmentHandler) getRadixBatchStatus(ctx context.Context, appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (*jobSchedulerV1Models.BatchStatus, error) {
+
+	deploymentName := batch.Spec.RadixDeploymentJobRef.Name
+	if batchType == kube.RadixBatchTypeJob {
+		jobSchedulerBatchHandler, err := eh.jobSchedulerBatchHandler(ctx, appName, envName, jobComponentName, deploymentName)
+		if err != nil {
+			return nil, err
+		}
+		return jobSchedulerBatchHandler.GetBatch(ctx, batchName)
+	}
+}
 func (eh EnvironmentHandler) getRadixBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, batchType kube.RadixBatchType) (*radixv1.RadixBatch, error) {
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	labelSelector := radixLabels.Merge(
@@ -347,7 +383,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(batch *radixv1.RadixBatch)
 	return deploymentModels.ScheduledBatchSummary{
 		Name:           batch.Name,
 		DeploymentName: batch.Spec.RadixDeploymentJobRef.Name,
-		Status:         getScheduledBatchStatus(batch).String(),
+		Status:         getScheduledBatchStatus(batch),
 		TotalJobCount:  len(batch.Spec.Jobs),
 		JobList:        eh.getScheduledJobSummaries(batch),
 		Created:        radixutils.FormatTimestamp(batch.GetCreationTimestamp().Time),
@@ -360,7 +396,7 @@ func (eh EnvironmentHandler) getScheduledBatchStatus(batchStatus *jobSchedulerV1
 	return &deploymentModels.ScheduledBatchSummary{
 		Name:           batchStatus.Name,
 		DeploymentName: deploymentName,
-		Status:         batchStatus.Status,
+		Status:         string(batchStatus.Status),
 		TotalJobCount:  len(batchStatus.JobStatuses),
 		Created:        batchStatus.Created,
 		Started:        batchStatus.Started,
@@ -374,7 +410,7 @@ func (eh EnvironmentHandler) getScheduledJobStatus(jobStatus *jobSchedulerV1Mode
 		DeploymentName: deploymentName,
 		BatchName:      jobStatus.BatchName,
 		JobId:          jobStatus.JobId,
-		Status:         jobStatus.Status,
+		Status:         string(jobStatus.Status),
 	}
 }
 
@@ -405,7 +441,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		BatchName:      batchName,
 		JobId:          job.JobId,
 		ReplicaList:    getReplicaSummariesForJob(batch, job),
-		Status:         jobSchedulerModels.Waiting.String(),
+		Status:         radixv1.RadixBatchJobApiStatusWaiting,
 	}
 
 	if jobComponent != nil {
@@ -439,7 +475,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 
 	if statuses := slice.FindAll(batch.Status.JobStatuses, func(jobStatus radixv1.RadixBatchJobStatus) bool { return jobStatus.Name == job.Name }); len(statuses) == 1 {
 		status := statuses[0]
-		summary.Status = getScheduledJobStatus(status, stopJob).String()
+		summary.Status = status.Phase
 		summary.Created = radixutils.FormatTime(status.CreationTime)
 		summary.Started = radixutils.FormatTime(status.StartTime)
 		summary.Ended = radixutils.FormatTime(status.EndTime)
@@ -447,7 +483,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(batch *radixv1.RadixBatch, j
 		summary.FailedCount = status.Failed
 		summary.Restart = status.Restart
 	} else if len(statuses) == 0 && stopJob {
-		summary.Status = jobSchedulerModels.Stopping.String()
+		summary.Status = radixv1.RadixBatchJobApiStatusStopping
 	}
 	return summary
 }
