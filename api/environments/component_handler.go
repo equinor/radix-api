@@ -113,7 +113,7 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Conte
 	// Get Kubernetes deployment object for auxiliary resource
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
 	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	deploymentList, err := eh.client.AppsV1().Deployments(envNs).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	deploymentList, err := eh.accounts.UserAccount.Client.AppsV1().Deployments(envNs).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(ctx context.Context, deployment *appsv1.Deployment) error {
-	deployClient := eh.client.AppsV1().Deployments(deployment.GetNamespace())
+	deployClient := eh.accounts.UserAccount.Client.AppsV1().Deployments(deployment.GetNamespace())
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		deployToPatch, err := deployClient.Get(ctx, deployment.GetName(), metav1.GetOptions{})
@@ -190,7 +190,7 @@ func (eh EnvironmentHandler) patch(ctx context.Context, namespace, name string, 
 	}
 
 	if patchBytes != nil {
-		_, err := eh.radixclient.RadixV1().RadixDeployments(namespace).Patch(ctx, name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+		_, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(namespace).Patch(ctx, name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
 		if err != nil {
 			return err
 		}
