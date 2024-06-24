@@ -7419,9 +7419,6 @@
     "Runtime": {
       "description": "Runtime requirements for the component or job",
       "type": "object",
-      "required": [
-        "architecture"
-      ],
       "properties": {
         "architecture": {
           "description": "CPU architecture",
