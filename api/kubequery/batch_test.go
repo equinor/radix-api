@@ -61,14 +61,18 @@ func Test_GetRadixBatchesForJobComponent(t *testing.T) {
 	}}
 
 	client := radixfake.NewSimpleClientset()
-	client.RadixV1().RadixBatches(matchjob1.Namespace).Create(context.Background(), &matchjob1, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(matchjob2.Namespace).Create(context.Background(), &matchjob2, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(matchbatch1.Namespace).Create(context.Background(), &matchbatch1, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(unmatched1.Namespace).Create(context.Background(), &unmatched1, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(unmatched2.Namespace).Create(context.Background(), &unmatched2, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(unmatched3.Namespace).Create(context.Background(), &unmatched3, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(unmatched4.Namespace).Create(context.Background(), &unmatched4, metav1.CreateOptions{})
-	client.RadixV1().RadixBatches(unmatched5.Namespace).Create(context.Background(), &unmatched5, metav1.CreateOptions{})
+	applyRb := func(rb *radixv1.RadixBatch) error {
+		_, err := client.RadixV1().RadixBatches(rb.Namespace).Create(context.Background(), rb, metav1.CreateOptions{})
+		return err
+	}
+	require.NoError(t, applyRb(&matchjob1))
+	require.NoError(t, applyRb(&matchjob2))
+	require.NoError(t, applyRb(&matchbatch1))
+	require.NoError(t, applyRb(&unmatched1))
+	require.NoError(t, applyRb(&unmatched2))
+	require.NoError(t, applyRb(&unmatched3))
+	require.NoError(t, applyRb(&unmatched4))
+	require.NoError(t, applyRb(&unmatched5))
 
 	// Get batches of type job
 	actual, err := kubequery.GetRadixBatchesForJobComponent(context.Background(), client, app, env, comp, kube.RadixBatchTypeJob)
