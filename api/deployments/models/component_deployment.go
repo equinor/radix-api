@@ -127,6 +127,9 @@ type Component struct {
 	//
 	// required: false
 	Resources *ResourceRequirements `json:"resources,omitempty"`
+
+	// Runtime requirements for the component or job
+	Runtime *Runtime `json:"runtime,omitempty"`
 }
 
 // ExternalDNS describes an external DNS entry for a component
@@ -275,6 +278,9 @@ type ComponentSummary struct {
 	//
 	// required: false
 	Resources *ResourceRequirements `json:"resources,omitempty"`
+
+	// Runtime requirements for the component or job
+	Runtime *Runtime `json:"runtime,omitempty"`
 }
 
 // ReplicaType The replica type
@@ -500,6 +506,14 @@ type Resources struct {
 type ResourceRequirements struct {
 	Limits   Resources `json:"limits,omitempty"`
 	Requests Resources `json:"requests,omitempty"`
+}
+
+// Runtime requirements for the component or job
+type Runtime struct {
+	// CPU architecture
+	//
+	// example: amd64
+	Architecture string `json:"architecture"`
 }
 
 func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {

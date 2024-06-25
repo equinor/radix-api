@@ -79,6 +79,9 @@ type ScheduledJobSummary struct {
 	// required: false
 	Node *Node `json:"node,omitempty"`
 
+	// Runtime requirements for the batch job
+	Runtime *Runtime `json:"runtime,omitempty"`
+
 	// DeploymentName name of RadixDeployment for the job
 	//
 	// required: false

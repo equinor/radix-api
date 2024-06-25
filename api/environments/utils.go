@@ -16,7 +16,7 @@ func (eh EnvironmentHandler) getRadixDeployment(ctx context.Context, appName, en
 		return nil, nil, err
 	}
 
-	radixDeployment, err := eh.radixclient.RadixV1().RadixDeployments(envNs).Get(ctx, deploymentSummary.Name, metav1.GetOptions{})
+	radixDeployment, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(envNs).Get(ctx, deploymentSummary.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
