@@ -9,7 +9,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
@@ -21,11 +21,12 @@ type ComponentBuilder interface {
 	WithSchedulerPort(schedulerPort *int32) ComponentBuilder
 	WithScheduledJobPayloadPath(scheduledJobPayloadPath string) ComponentBuilder
 	WithRadixEnvironmentVariables(map[string]string) ComponentBuilder
-	WithComponent(v1.RadixCommonDeployComponent) ComponentBuilder
+	WithComponent(radixv1.RadixCommonDeployComponent) ComponentBuilder
 	WithAuxiliaryResource(AuxiliaryResource) ComponentBuilder
-	WithNotifications(*v1.Notifications) ComponentBuilder
+	WithNotifications(*radixv1.Notifications) ComponentBuilder
 	WithHorizontalScalingSummary(*HorizontalScalingSummary) ComponentBuilder
 	WithExternalDNS(externalDNS []ExternalDNS) ComponentBuilder
+	WithRuntime(*radixv1.Runtime) ComponentBuilder
 	BuildComponentSummary() (*ComponentSummary, error)
 	BuildComponent() (*Component, error)
 }
@@ -51,7 +52,8 @@ type componentBuilder struct {
 	errors                    []error
 	commitID                  string
 	gitTags                   string
-	resources                 *v1.ResourceRequirements
+	resources                 *radixv1.ResourceRequirements
+	runtime                   *radixv1.Runtime
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -89,13 +91,14 @@ func (b *componentBuilder) WithAuxiliaryResource(auxResource AuxiliaryResource) 
 	return b
 }
 
-func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent) ComponentBuilder {
+func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComponent) ComponentBuilder {
 	b.componentName = component.GetName()
 	b.componentType = string(component.GetType())
 	b.componentImage = component.GetImage()
 	b.resources = component.GetResources()
 	b.commitID = component.GetEnvironmentVariables()[defaults.RadixCommitHashEnvironmentVariable]
 	b.gitTags = component.GetEnvironmentVariables()[defaults.RadixGitTagsEnvironmentVariable]
+	b.runtime = component.GetRuntime()
 
 	ports := []Port{}
 	if component.GetPorts() != nil {
@@ -113,11 +116,11 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	for _, volumeMount := range component.GetVolumeMounts() {
 		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
-		case v1.MountTypeBlob:
+		case radixv1.MountTypeBlob:
 			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
-		case v1.MountTypeBlobFuse2FuseCsiAzure, v1.MountTypeBlobFuse2Fuse2CsiAzure, v1.MountTypeBlobFuse2NfsCsiAzure, v1.MountTypeAzureFileCsiAzure:
+		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure, radixv1.MountTypeBlobFuse2NfsCsiAzure, radixv1.MountTypeAzureFileCsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
@@ -150,7 +153,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2ClientSecret)
 			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2CookieSecret)
 
-			if oauth2.SessionStoreType == v1.SessionStoreRedis {
+			if oauth2.SessionStoreType == radixv1.SessionStoreRedis {
 				b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2RedisPassword)
 			}
 		}
@@ -174,7 +177,7 @@ func (b *componentBuilder) WithComponent(component v1.RadixCommonDeployComponent
 	return b
 }
 
-func (b *componentBuilder) WithNotifications(notifications *v1.Notifications) ComponentBuilder {
+func (b *componentBuilder) WithNotifications(notifications *radixv1.Notifications) ComponentBuilder {
 	if notifications == nil {
 		b.notifications = nil
 		return b
@@ -195,12 +198,23 @@ func (b *componentBuilder) WithExternalDNS(externalDNS []ExternalDNS) ComponentB
 	return b
 }
 
+func (b *componentBuilder) WithRuntime(runtime *radixv1.Runtime) ComponentBuilder {
+	b.runtime = runtime
+	return b
+}
+
 func (b *componentBuilder) buildError() error {
 	if len(b.errors) == 0 {
 		return nil
 	}
 
 	return errors.Join(b.errors...)
+}
+
+func (b *componentBuilder) buildRuntimeModel() *Runtime {
+	return &Runtime{
+		Architecture: utils.GetArchitectureFromRuntime(b.runtime),
+	}
 }
 
 func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {
@@ -210,6 +224,7 @@ func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {
 		Image:    b.componentImage,
 		CommitID: b.commitID,
 		GitTags:  b.gitTags,
+		Runtime:  b.buildRuntimeModel(),
 	}
 	if b.resources != nil && (len(b.resources.Limits) > 0 || len(b.resources.Requests) > 0) {
 		summary.Resources = pointers.Ptr(ConvertRadixResourceRequirements(*b.resources))
@@ -218,7 +233,7 @@ func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {
 }
 
 func (b *componentBuilder) BuildComponent() (*Component, error) {
-	variables := v1.EnvVarsMap{}
+	variables := radixv1.EnvVarsMap{}
 	for name, value := range b.environmentVariables {
 		variables[name] = value
 	}
@@ -246,6 +261,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		HorizontalScalingSummary: b.hpa,
 		CommitID:                 variables[defaults.RadixCommitHashEnvironmentVariable],
 		GitTags:                  variables[defaults.RadixGitTagsEnvironmentVariable],
+		Runtime:                  b.buildRuntimeModel(),
 	}
 	if b.resources != nil && (len(b.resources.Limits) > 0 || len(b.resources.Requests) > 0) {
 		component.Resources = pointers.Ptr(ConvertRadixResourceRequirements(*b.resources))
