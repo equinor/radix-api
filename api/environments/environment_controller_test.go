@@ -69,23 +69,23 @@ const (
 func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
+	radixClient := fake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
-	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
+	commonTestUtils := commontest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, secrets.NewSecretController(nil))
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, secrets.NewSecretController(nil))
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
-	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
+	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixClient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
 func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
@@ -1439,13 +1439,13 @@ func Test_GetJobs_Status(t *testing.T) {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Active.String()},
-		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
-		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusActive)},
+		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
+		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -1525,13 +1525,13 @@ func Test_GetJobs_Status_StopIsTrue(t *testing.T) {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
-		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
+		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -1739,7 +1739,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Created:          radixutils.FormatTime(&creationTime),
 		Started:          radixutils.FormatTime(&startTime),
 		Ended:            radixutils.FormatTime(&endTime),
-		Status:           jobSchedulerModels.Succeeded.String(),
+		Status:           jobSchedulerModels.StatusSuccess,
 		Message:          "anymessage",
 		BackoffLimit:     *defaultBackoffLimit,
 		TimeLimitSeconds: numbers.Int64Ptr(123),
@@ -1764,7 +1764,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
-		Status:           jobSchedulerModels.Waiting.String(),
+		Status:           jobSchedulerModels.StatusSuccess,
 		BackoffLimit:     5,
 		TimeLimitSeconds: numbers.Int64Ptr(999),
 		Resources: deploymentModels.ResourceRequirements{
@@ -1931,14 +1931,14 @@ func Test_GetBatch_JobList(t *testing.T) {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Waiting.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Active.String()},
-		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Running.String()},
-		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Failed.String()},
-		{Name: anyBatchName + "-no8", Status: jobSchedulerModels.Stopped.String()},
+		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusActive)},
+		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusRunning)},
+		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusFailed)},
+		{Name: anyBatchName + "-no8", Status: string(v1.RadixBatchJobApiStatusStopped)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -2009,13 +2009,13 @@ func Test_GetBatch_JobList_StopFlag(t *testing.T) {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no2", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no3", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no4", Status: jobSchedulerModels.Stopping.String()},
-		{Name: anyBatchName + "-no5", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: anyBatchName + "-no6", Status: jobSchedulerModels.Failed.String()},
-		{Name: anyBatchName + "-no7", Status: jobSchedulerModels.Stopped.String()},
+		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
+		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -2230,13 +2230,13 @@ func Test_GetBatches_Status(t *testing.T) {
 		return assertMapped{Name: b.Name, Status: b.Status}
 	})
 	expected := []assertMapped{
-		{Name: "batch-job1", Status: jobSchedulerModels.Waiting.String()},
-		{Name: "batch-job2", Status: jobSchedulerModels.Waiting.String()},
-		{Name: "batch-job3", Status: jobSchedulerModels.Active.String()},
-		{Name: "batch-job4", Status: jobSchedulerModels.Running.String()},
-		{Name: "batch-job5", Status: jobSchedulerModels.Succeeded.String()},
-		{Name: "batch-job6", Status: jobSchedulerModels.Failed.String()},
-		{Name: "batch-job7", Status: jobSchedulerModels.Succeeded.String()},
+		{Name: "batch-job1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: "batch-job2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
+		{Name: "batch-job3", Status: string(v1.RadixBatchJobApiStatusActive)},
+		{Name: "batch-job4", Status: string(v1.RadixBatchJobApiStatusRunning)},
+		{Name: "batch-job5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: "batch-job6", Status: string(v1.RadixBatchJobApiStatusFailed)},
+		{Name: "batch-job7", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }

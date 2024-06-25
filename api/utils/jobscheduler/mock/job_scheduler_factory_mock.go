@@ -10,6 +10,7 @@ import (
 	batchesv1 "github.com/equinor/radix-job-scheduler/api/v1/batches"
 	jobs "github.com/equinor/radix-job-scheduler/api/v1/jobs"
 	models "github.com/equinor/radix-job-scheduler/models"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -37,29 +38,29 @@ func (m *MockHandlerFactoryInterface) EXPECT() *MockHandlerFactoryInterfaceMockR
 }
 
 // CreateJobSchedulerBatchHandlerForEnv mocks base method.
-func (m *MockHandlerFactoryInterface) CreateJobSchedulerBatchHandlerForEnv(env *models.Env) batchesv1.BatchHandler {
+func (m *MockHandlerFactoryInterface) CreateJobSchedulerBatchHandlerForEnv(env *models.Env, radixDeployJobComponent *v1.RadixDeployJobComponent) batchesv1.BatchHandler {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", env)
+	ret := m.ctrl.Call(m, "CreateJobSchedulerBatchHandlerForEnv", env, radixDeployJobComponent)
 	ret0, _ := ret[0].(batchesv1.BatchHandler)
 	return ret0
 }
 
 // CreateJobSchedulerBatchHandlerForEnv indicates an expected call of CreateJobSchedulerBatchHandlerForEnv.
-func (mr *MockHandlerFactoryInterfaceMockRecorder) CreateJobSchedulerBatchHandlerForEnv(env interface{}) *gomock.Call {
+func (mr *MockHandlerFactoryInterfaceMockRecorder) CreateJobSchedulerBatchHandlerForEnv(env, radixDeployJobComponent interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerBatchHandlerForEnv", reflect.TypeOf((*MockHandlerFactoryInterface)(nil).CreateJobSchedulerBatchHandlerForEnv), env)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerBatchHandlerForEnv", reflect.TypeOf((*MockHandlerFactoryInterface)(nil).CreateJobSchedulerBatchHandlerForEnv), env, radixDeployJobComponent)
 }
 
 // CreateJobSchedulerJobHandlerForEnv mocks base method.
-func (m *MockHandlerFactoryInterface) CreateJobSchedulerJobHandlerForEnv(env *models.Env) jobs.JobHandler {
+func (m *MockHandlerFactoryInterface) CreateJobSchedulerJobHandlerForEnv(env *models.Env, radixDeployJobComponent *v1.RadixDeployJobComponent) jobs.JobHandler {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJobSchedulerJobHandlerForEnv", env)
+	ret := m.ctrl.Call(m, "CreateJobSchedulerJobHandlerForEnv", env, radixDeployJobComponent)
 	ret0, _ := ret[0].(jobs.JobHandler)
 	return ret0
 }
 
 // CreateJobSchedulerJobHandlerForEnv indicates an expected call of CreateJobSchedulerJobHandlerForEnv.
-func (mr *MockHandlerFactoryInterfaceMockRecorder) CreateJobSchedulerJobHandlerForEnv(env interface{}) *gomock.Call {
+func (mr *MockHandlerFactoryInterfaceMockRecorder) CreateJobSchedulerJobHandlerForEnv(env, radixDeployJobComponent interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerJobHandlerForEnv", reflect.TypeOf((*MockHandlerFactoryInterface)(nil).CreateJobSchedulerJobHandlerForEnv), env)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJobSchedulerJobHandlerForEnv", reflect.TypeOf((*MockHandlerFactoryInterface)(nil).CreateJobSchedulerJobHandlerForEnv), env, radixDeployJobComponent)
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 // BuildEnvironmentSummaryList builds a list of EnvironmentSummary models.
@@ -14,11 +13,10 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 	var envList []*environmentModels.EnvironmentSummary
 
 	getActiveDeploymentSummary := func(appName, envName string, rds []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
-		var activeDeployment *deploymentModels.DeploymentSummary
-		if activeRd, ok := slice.FindFirst(rds, isActiveDeploymentForAppAndEnv(appName, envName)); ok {
-			activeDeployment = BuildDeploymentSummary(&activeRd, rr, rjList)
+		if activeRd, ok := GetActiveDeploymentForAppEnv(appName, envName, rds); ok {
+			return BuildDeploymentSummary(&activeRd, rr, rjList)
 		}
-		return activeDeployment
+		return nil
 	}
 
 	for _, e := range ra.Spec.Environments {
@@ -46,11 +44,4 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 	}
 
 	return envList
-}
-
-func isActiveDeploymentForAppAndEnv(appName, envName string) func(rd radixv1.RadixDeployment) bool {
-	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	return func(rd radixv1.RadixDeployment) bool {
-		return predicate.IsActiveRadixDeployment(rd) && rd.Namespace == envNs
-	}
 }

@@ -7,7 +7,7 @@ toolchain go1.22.4
 require (
 	github.com/cert-manager/cert-manager v1.15.0
 	github.com/equinor/radix-common v1.9.2
-	github.com/equinor/radix-job-scheduler v1.9.3-0.20240624130928-a3a435b8e1a8
+	github.com/equinor/radix-job-scheduler v1.9.3-0.20240625135227-061e8204c9ab
 	github.com/equinor/radix-operator v1.56.3-0.20240624081721-73555d52ec37
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
@@ -108,7 +108,6 @@ require (
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/api v0.181.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240515191416-fc5f0ca64291 // indirect
