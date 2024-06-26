@@ -7486,7 +7486,11 @@
             "Waiting",
             "Running",
             "Succeeded",
-            "Failed"
+            "Stopping",
+            "Stopped",
+            "Failed",
+            "DeadlineExceeded",
+            "Completed"
           ],
           "x-go-name": "Status",
           "example": "Waiting"

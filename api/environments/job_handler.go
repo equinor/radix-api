@@ -67,7 +67,37 @@ func (eh EnvironmentHandler) getJobs(ctx context.Context, appName, envName, jobC
 
 // GetJob Gets job by name
 func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
-	return eh.getJob(ctx, appName, envName, jobComponentName, jobName)
+	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
+	if !ok {
+		return nil, jobNotFoundError(jobName)
+	}
+
+	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := slice.FindAll(batch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName })
+	if len(jobs) == 0 {
+		return nil, jobNotFoundError(jobName)
+	}
+
+	var jobComponent *radixv1.RadixDeployJobComponent
+	deploymentName := batch.Spec.RadixDeploymentJobRef.Name
+	jobComponent, err = eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, deploymentName)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+	jobStatus := getFirstJobStatus(batch)
+	jobSummary := eh.getScheduledJobSummary(batch, jobs[0], jobStatus, jobComponent)
+	return &jobSummary, nil
+}
+
+func getFirstJobStatus(batch *radixv1.RadixBatch) *radixv1.RadixBatchJobStatus {
+	if len(batch.Status.JobStatuses) > 0 {
+		return &batch.Status.JobStatuses[0]
+	}
+	return nil
 }
 
 // StopJob Stop job by name
@@ -132,32 +162,6 @@ func (eh EnvironmentHandler) DeleteJob(ctx context.Context, appName, envName, jo
 	}
 
 	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(batch.GetNamespace()).Delete(ctx, batch.GetName(), metav1.DeleteOptions{})
-}
-
-func (eh EnvironmentHandler) getJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
-	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
-	if !ok {
-		return nil, jobNotFoundError(jobName)
-	}
-
-	batch, err := eh.getRadixBatch(ctx, appName, envName, jobComponentName, batchName, "")
-	if err != nil {
-		return nil, err
-	}
-
-	jobs := slice.FindAll(batch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName })
-	if len(jobs) == 0 {
-		return nil, jobNotFoundError(jobName)
-	}
-
-	var jobComponent *radixv1.RadixDeployJobComponent
-	deploymentName := batch.Spec.RadixDeploymentJobRef.Name
-	jobComponent, err = eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, deploymentName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-	jobSummary := eh.getScheduledJobSummary(batch, jobs[0], nil, jobComponent)
-	return &jobSummary, nil
 }
 
 func (eh EnvironmentHandler) getRadixJobDeployComponent(ctx context.Context, appName, envName, jobComponentName, deploymentName string) (*radixv1.RadixDeployJobComponent, error) {

@@ -1369,7 +1369,7 @@ func (c *environmentController) GetJob(accounts models.Accounts, w http.Response
 		return
 	}
 
-	c.JSONResponse(w, r, jobSummary)
+	c.JSONResponse(w, r, *jobSummary)
 }
 
 // StopJob Stop a scheduled job

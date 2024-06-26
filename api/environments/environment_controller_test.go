@@ -1571,42 +1571,77 @@ func Test_GetBatch_JobsListStatus_StopIsTrue(t *testing.T) {
 func Test_GetSingleJobs_Status_StopIsTrue(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(anyAppName, anyEnvironment)
 	type scenario struct {
-		name           string
-		expectedStatus v1.RadixBatchJobApiStatus
+		name            string
+		batchStatusType v1.RadixBatchConditionType
+		jobStatus       *v1.RadixBatchJobStatus
+		expectedStatus  v1.RadixBatchJobApiStatus
 	}
 	scenarios := []scenario{
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusStopped},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusStopped},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusStopped},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusStopped},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusSucceeded},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusFailed},
-		{name: "", expectedStatus: v1.RadixBatchJobApiStatusStopped},
+		{name: "No status",
+			jobStatus:      nil,
+			expectedStatus: v1.RadixBatchJobApiStatusStopping,
+		},
+		{
+			name:            "No phase",
+			batchStatusType: v1.BatchConditionTypeWaiting,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1"},
+			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+		},
+		{
+			name:            "In waiting",
+			batchStatusType: v1.BatchConditionTypeWaiting,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseWaiting},
+			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+		},
+		{
+			name:            "Active",
+			batchStatusType: v1.BatchConditionTypeActive,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseActive},
+			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+		},
+		{
+			name:            "Succeeded",
+			batchStatusType: v1.BatchConditionTypeCompleted,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseSucceeded},
+			expectedStatus:  v1.RadixBatchJobApiStatusSucceeded,
+		},
+		{
+			name:            "Failed",
+			batchStatusType: v1.BatchConditionTypeCompleted,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseFailed},
+			expectedStatus:  v1.RadixBatchJobApiStatusFailed,
+		},
+		{
+			name:            "Stopped",
+			batchStatusType: v1.BatchConditionTypeCompleted,
+			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseStopped},
+			expectedStatus:  v1.RadixBatchJobApiStatusStopped,
+		},
 	}
 	for _, ts := range scenarios {
-		// Setup
-		commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, nil)
-		_, err := commonTestUtils.ApplyRegistration(operatorutils.
-			NewRegistrationBuilder().
-			WithName(anyAppName))
-		require.NoError(t, err)
-		_, err = commonTestUtils.ApplyApplication(operatorutils.
-			NewRadixApplicationBuilder().
-			WithAppName(anyAppName))
-		require.NoError(t, err)
-		_, err = commonTestUtils.ApplyDeployment(
-			context.Background(),
-			operatorutils.
-				NewDeploymentBuilder().
-				WithAppName(anyAppName).
-				WithEnvironment(anyEnvironment).
-				WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
-				WithActiveFrom(time.Now()))
-		require.NoError(t, err)
+		t.Run(ts.name, func(t *testing.T) {
+			// Setup
+			commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, nil)
+			_, err := commonTestUtils.ApplyRegistration(operatorutils.
+				NewRegistrationBuilder().
+				WithName(anyAppName))
+			require.NoError(t, err)
+			_, err = commonTestUtils.ApplyApplication(operatorutils.
+				NewRadixApplicationBuilder().
+				WithAppName(anyAppName))
+			require.NoError(t, err)
+			_, err = commonTestUtils.ApplyDeployment(
+				context.Background(),
+				operatorutils.
+					NewDeploymentBuilder().
+					WithAppName(anyAppName).
+					WithEnvironment(anyEnvironment).
+					WithJobComponents(operatorutils.NewDeployJobComponentBuilder().WithName(anyJobName)).
+					WithActiveFrom(time.Now()))
+			require.NoError(t, err)
 
-		// Insert test data
-		testData := []v1.RadixBatch{
-			{
+			// Insert test data
+			batch := v1.RadixBatch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   anyBatchName,
 					Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
@@ -1617,32 +1652,28 @@ func Test_GetSingleJobs_Status_StopIsTrue(t *testing.T) {
 					},
 				},
 				Status: v1.RadixBatchStatus{
-					JobStatuses: []v1.RadixBatchJobStatus{
-						{Name: "no2"},
-						{Name: "no3", Phase: v1.BatchJobPhaseWaiting},
-						{Name: "no4", Phase: v1.BatchJobPhaseActive},
-						{Name: "no5", Phase: v1.BatchJobPhaseSucceeded},
-						{Name: "no6", Phase: v1.BatchJobPhaseFailed},
-						{Name: "no7", Phase: v1.BatchJobPhaseStopped},
-						{Name: "not-defined"},
+					Condition: v1.RadixBatchCondition{
+						Type: v1.BatchConditionTypeActive,
 					},
 				},
-			},
-		}
-		for _, rb := range testData {
-			_, err := radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &rb, metav1.CreateOptions{})
+			}
+			if ts.jobStatus != nil {
+				batch.Status.JobStatuses = append(batch.Status.JobStatuses, *ts.jobStatus)
+			}
+			_, err = radixClient.RadixV1().RadixBatches(namespace).Create(context.Background(), &batch, metav1.CreateOptions{})
 			require.NoError(t, err)
-		}
 
-		// Test get jobs for jobComponent1Name
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-		var actual []deploymentModels.ScheduledJobSummary
-		err = controllertest.GetResponseBody(response, &actual)
-		require.NoError(t, err)
-		assert.Len(t, actual, 1)
-		assert.Equal(t, string(ts.expectedStatus), actual[0].Status)
+			// Test get jobs for jobComponent1Name
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
+			response := <-responseChannel
+			assert.Equal(t, http.StatusOK, response.Code)
+			var actual []deploymentModels.ScheduledJobSummary
+			err = controllertest.GetResponseBody(response, &actual)
+			require.NoError(t, err)
+			assert.Len(t, actual, 1)
+			assert.Equal(t, string(ts.expectedStatus), actual[0].Status)
+		})
+
 	}
 }
 
@@ -2343,10 +2374,10 @@ func Test_GetBatches_Status(t *testing.T) {
 		{Name: "batch-job1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
 		{Name: "batch-job2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
 		{Name: "batch-job3", Status: string(v1.RadixBatchJobApiStatusActive)},
-		{Name: "batch-job4", Status: string(v1.RadixBatchJobApiStatusRunning)},
-		{Name: "batch-job5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: "batch-job6", Status: string(v1.RadixBatchJobApiStatusFailed)},
-		{Name: "batch-job7", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: "batch-job4", Status: string(v1.RadixBatchJobApiStatusActive)},
+		{Name: "batch-job5", Status: string(v1.RadixBatchJobApiStatusCompleted)},
+		{Name: "batch-job6", Status: string(v1.RadixBatchJobApiStatusCompleted)},
+		{Name: "batch-job7", Status: string(v1.RadixBatchJobApiStatusCompleted)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
