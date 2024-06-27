@@ -411,12 +411,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
 	require.Equal(t, 2, len(app.ReplicaList))
-	assert.Equal(t, deploymentModels.Failing.String(), app.ReplicaList[0].Status.Status)
+	assert.Equal(t, string(v1.PodFailed), app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message1, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
 	require.Equal(t, 1, len(job.ReplicaList))
-	assert.Equal(t, deploymentModels.Failing.String(), job.ReplicaList[0].Status.Status)
+	assert.Equal(t, string(v1.PodFailed), job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message2, job.ReplicaList[0].StatusMessage)
 }
 

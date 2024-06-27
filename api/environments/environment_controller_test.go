@@ -27,7 +27,6 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -1542,25 +1541,25 @@ func Test_GetBatch_JobsListStatus_StopIsTrue(t *testing.T) {
 	}
 
 	// Test get jobs for jobComponent1Name
-	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs", anyAppName, anyEnvironment, anyJobName))
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches", anyAppName, anyEnvironment, anyJobName))
 	response := <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
-	var actual []deploymentModels.ScheduledJobSummary
+	var actual []deploymentModels.ScheduledBatchSummary
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
-	assert.Len(t, actual, 7)
+	require.Len(t, actual, 1)
 	type assertMapped struct {
 		Name   string
 		Status string
 	}
-	actualMapped := slice.Map(actual, func(job deploymentModels.ScheduledJobSummary) assertMapped {
+	actualMapped := slice.Map(actual[0].JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopped)},
-		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopped)},
-		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopped)},
-		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopping)},
 		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
 		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
 		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
@@ -1847,6 +1846,9 @@ func Test_GetJob_AllProps(t *testing.T) {
 				},
 			},
 			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{
+					Type: v1.BatchConditionTypeCompleted,
+				},
 				JobStatuses: []v1.RadixBatchJobStatus{
 					{
 						Name:         "job1",
@@ -1880,7 +1882,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Created:          radixutils.FormatTime(&creationTime),
 		Started:          radixutils.FormatTime(&startTime),
 		Ended:            radixutils.FormatTime(&endTime),
-		Status:           jobSchedulerModels.StatusSuccess,
+		Status:           v1.RadixBatchJobApiStatusSucceeded,
 		Message:          "anymessage",
 		BackoffLimit:     *defaultBackoffLimit,
 		TimeLimitSeconds: numbers.Int64Ptr(123),
@@ -1892,7 +1894,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		DeploymentName: anyDeployment,
 		ReplicaList: []deploymentModels.ReplicaSummary{{
 			Created: radixutils.FormatTimestamp(podCreationTime.Time),
-			Status:  deploymentModels.ReplicaStatus{Status: "Succeeded"},
+			Status:  deploymentModels.ReplicaStatus{Status: string(v1.PodSucceeded)},
 		}},
 	}, actual)
 
@@ -1905,7 +1907,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
-		Status:           jobSchedulerModels.StatusSuccess,
+		Status:           v1.RadixBatchJobApiStatusWaiting,
 		BackoffLimit:     5,
 		TimeLimitSeconds: numbers.Int64Ptr(999),
 		Resources: deploymentModels.ResourceRequirements{

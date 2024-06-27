@@ -8,6 +8,7 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -512,12 +513,12 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
 
 	// Set default Pending status
-	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
+	replicaSummary.Status = ReplicaStatus{Status: string(radixv1.PodPending)}
 
 	if len(pod.Status.ContainerStatuses) == 0 {
 		condition := getLastReadyCondition(pod.Status.Conditions)
 		if condition != nil {
-			replicaSummary.Status = ReplicaStatus{Status: getReplicaStatusByPodStatus(pod.Status.Phase)}
+			replicaSummary.Status = ReplicaStatus{Status: string(pod.Status.Phase)}
 			replicaSummary.StatusMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
 		}
 		return replicaSummary
@@ -529,7 +530,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	if containerState.Waiting != nil {
 		replicaSummary.StatusMessage = containerState.Waiting.Message
 		if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
-			replicaSummary.Status = ReplicaStatus{Status: Failing.String()}
+			replicaSummary.Status = ReplicaStatus{Status: string(radixv1.PodFailed)}
 		}
 	}
 	if containerState.Running != nil {
@@ -577,21 +578,6 @@ func getReplicaType(pod corev1.Pod) ReplicaType {
 		return OAuth2
 	default:
 		return Undefined
-	}
-}
-
-func getReplicaStatusByPodStatus(podPhase corev1.PodPhase) string {
-	switch podPhase {
-	case corev1.PodPending:
-		return Pending.String()
-	case corev1.PodRunning:
-		return Running.String()
-	case corev1.PodFailed:
-		return Failing.String()
-	case corev1.PodSucceeded:
-		return Terminated.String()
-	default:
-		return ""
 	}
 }
 
