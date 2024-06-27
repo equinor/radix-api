@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,23 +23,25 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		t.Parallel()
 
 		b := NewDeploymentBuilder().WithRadixDeployment(
-			&v1.RadixDeployment{
+			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   deploymentName,
 					Labels: map[string]string{kube.RadixJobNameLabel: jobName},
 				},
-				Spec: v1.RadixDeploymentSpec{
+				Spec: radixv1.RadixDeploymentSpec{
 					Environment: envName,
-					Components: []v1.RadixDeployComponent{
+					Components: []radixv1.RadixDeployComponent{
 						{Name: "comp1", Image: "comp_image1"},
-						{Name: "comp2", Image: "comp_image2"},
+						{Name: "comp2", Image: "comp_image2", Runtime: &radixv1.Runtime{Architecture: radixv1.RuntimeArchitectureArm64}},
+						{Name: "comp3", Image: "comp_image3", Node: radixv1.RadixNode{Gpu: "anygpu", GpuCount: "3"}},
 					},
-					Jobs: []v1.RadixDeployJobComponent{
+					Jobs: []radixv1.RadixDeployJobComponent{
 						{Name: "job1", Image: "job_image1"},
-						{Name: "job2", Image: "job_image2"},
+						{Name: "job2", Image: "job_image2", Runtime: &radixv1.Runtime{Architecture: radixv1.RuntimeArchitectureArm64}},
+						{Name: "job3", Image: "job_image3", Node: radixv1.RadixNode{Gpu: "anygpu", GpuCount: "3"}},
 					},
 				},
-				Status: v1.RadixDeployStatus{
+				Status: radixv1.RadixDeployStatus{
 					ActiveFrom: metav1.NewTime(activeFrom),
 					ActiveTo:   metav1.NewTime(activeTo),
 				},
@@ -56,10 +59,12 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				CreatedByJob: jobName,
 			},
 			Components: []*ComponentSummary{
-				{Name: "comp1", Image: "comp_image1", Type: string(v1.RadixComponentTypeComponent)},
-				{Name: "comp2", Image: "comp_image2", Type: string(v1.RadixComponentTypeComponent)},
-				{Name: "job1", Image: "job_image1", Type: string(v1.RadixComponentTypeJob)},
-				{Name: "job2", Image: "job_image2", Type: string(v1.RadixComponentTypeJob)},
+				{Name: "comp1", Image: "comp_image1", Type: string(radixv1.RadixComponentTypeComponent), Runtime: &Runtime{Architecture: defaults.DefaultNodeSelectorArchitecture}},
+				{Name: "comp2", Image: "comp_image2", Type: string(radixv1.RadixComponentTypeComponent), Runtime: &Runtime{Architecture: string(radixv1.RuntimeArchitectureArm64)}},
+				{Name: "comp3", Image: "comp_image3", Type: string(radixv1.RadixComponentTypeComponent), Runtime: &Runtime{Architecture: defaults.DefaultNodeSelectorArchitecture}},
+				{Name: "job1", Image: "job_image1", Type: string(radixv1.RadixComponentTypeJob), Runtime: &Runtime{Architecture: defaults.DefaultNodeSelectorArchitecture}},
+				{Name: "job2", Image: "job_image2", Type: string(radixv1.RadixComponentTypeJob), Runtime: &Runtime{Architecture: string(radixv1.RuntimeArchitectureArm64)}},
+				{Name: "job3", Image: "job_image3", Type: string(radixv1.RadixComponentTypeJob), Runtime: &Runtime{Architecture: defaults.DefaultNodeSelectorArchitecture}},
 			},
 		}
 		assert.Equal(t, expected, actual)
@@ -68,16 +73,16 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 	t.Run("build with pipeline job info", func(t *testing.T) {
 		t.Parallel()
 		b := NewDeploymentBuilder().WithPipelineJob(
-			&v1.RadixJob{
+			&radixv1.RadixJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: jobName,
 				},
-				Spec: v1.RadixJobSpec{
-					PipeLineType: v1.BuildDeploy,
-					Build: v1.RadixBuildSpec{
+				Spec: radixv1.RadixJobSpec{
+					PipeLineType: radixv1.BuildDeploy,
+					Build: radixv1.RadixBuildSpec{
 						CommitID: commitID,
 					},
-					Promote: v1.RadixPromoteSpec{
+					Promote: radixv1.RadixPromoteSpec{
 						FromEnvironment: promoteFromEnv,
 					},
 				},
@@ -89,7 +94,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob:            jobName,
 				CommitID:                commitID,
-				PipelineJobType:         string(v1.BuildDeploy),
+				PipelineJobType:         string(radixv1.BuildDeploy),
 				PromotedFromEnvironment: promoteFromEnv,
 			},
 		}
@@ -99,27 +104,27 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 	t.Run("deploy specific components", func(t *testing.T) {
 		t.Parallel()
 		b := NewDeploymentBuilder().WithPipelineJob(
-			&v1.RadixJob{
+			&radixv1.RadixJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: jobName,
 				},
-				Spec: v1.RadixJobSpec{
-					PipeLineType: v1.Deploy,
-					Deploy: v1.RadixDeploySpec{
+				Spec: radixv1.RadixJobSpec{
+					PipeLineType: radixv1.Deploy,
+					Deploy: radixv1.RadixDeploySpec{
 						ToEnvironment:      "dev",
 						CommitID:           commitID,
 						ComponentsToDeploy: []string{"comp1", "job1"},
 					},
 				},
 			},
-		).WithRadixDeployment(&v1.RadixDeployment{
+		).WithRadixDeployment(&radixv1.RadixDeployment{
 			ObjectMeta: metav1.ObjectMeta{Name: "rd1"},
-			Spec: v1.RadixDeploymentSpec{
-				Components: []v1.RadixDeployComponent{
+			Spec: radixv1.RadixDeploymentSpec{
+				Components: []radixv1.RadixDeployComponent{
 					{Name: "comp1"},
 					{Name: "comp2"},
 				},
-				Jobs: []v1.RadixDeployJobComponent{
+				Jobs: []radixv1.RadixDeployJobComponent{
 					{Name: "job1"},
 					{Name: "job2"},
 				},
@@ -157,16 +162,16 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		t.Parallel()
 
 		b := NewDeploymentBuilder().WithRadixDeployment(
-			&v1.RadixDeployment{
+			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      deploymentName,
 					Namespace: deploymentNamespace,
 					Labels:    map[string]string{kube.RadixJobNameLabel: jobName},
 				},
-				Spec: v1.RadixDeploymentSpec{
+				Spec: radixv1.RadixDeploymentSpec{
 					Environment: envName,
 				},
-				Status: v1.RadixDeployStatus{
+				Status: radixv1.RadixDeployStatus{
 					ActiveFrom: metav1.NewTime(activeFrom),
 					ActiveTo:   metav1.NewTime(activeTo),
 				},
@@ -193,13 +198,13 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		b := NewDeploymentBuilder().
 			WithRadixRegistration(rr).
 			WithPipelineJob(
-				&v1.RadixJob{
+				&radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: jobName,
 					},
-					Spec: v1.RadixJobSpec{
-						PipeLineType: v1.Deploy,
-						Deploy: v1.RadixDeploySpec{
+					Spec: radixv1.RadixJobSpec{
+						PipeLineType: radixv1.Deploy,
+						Deploy: radixv1.RadixDeploySpec{
 							ToEnvironment:      "dev",
 							ComponentsToDeploy: []string{"comp1", "job1"},
 						},
@@ -211,24 +216,24 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 			{Name: "job1"},
 			{Name: "job2"},
 		}).WithRadixDeployment(
-			&v1.RadixDeployment{
+			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      deploymentName,
 					Namespace: deploymentNamespace,
 					Labels:    map[string]string{kube.RadixJobNameLabel: jobName},
 				},
-				Spec: v1.RadixDeploymentSpec{
+				Spec: radixv1.RadixDeploymentSpec{
 					Environment: envName,
-					Components: []v1.RadixDeployComponent{
+					Components: []radixv1.RadixDeployComponent{
 						{Name: "comp1"},
 						{Name: "comp2"},
 					},
-					Jobs: []v1.RadixDeployJobComponent{
+					Jobs: []radixv1.RadixDeployJobComponent{
 						{Name: "job1"},
 						{Name: "job2"},
 					},
 				},
-				Status: v1.RadixDeployStatus{
+				Status: radixv1.RadixDeployStatus{
 					ActiveFrom: metav1.NewTime(activeFrom),
 					ActiveTo:   metav1.NewTime(activeTo),
 				},

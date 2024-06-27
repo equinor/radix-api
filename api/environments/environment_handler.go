@@ -25,13 +25,11 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes"
 )
 
 // EnvironmentHandlerOptions defines a configuration function
@@ -40,8 +38,6 @@ type EnvironmentHandlerOptions func(*EnvironmentHandler)
 // WithAccounts configures all EnvironmentHandler fields
 func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
-		eh.client = accounts.UserAccount.Client
-		eh.radixclient = accounts.UserAccount.RadixClient
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
@@ -89,8 +85,6 @@ func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) Environment
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	client                     kubernetes.Interface
-	radixclient                radixclient.Interface
 	deployHandler              deployments.DeployHandler
 	eventHandler               events.EventHandler
 	accounts                   models.Accounts
@@ -221,13 +215,13 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 // CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist
 func (eh EnvironmentHandler) CreateEnvironment(ctx context.Context, appName, envName string) (*v1.RadixEnvironment, error) {
 	// ensure application exists
-	rr, err := eh.radixclient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	rr, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// idempotent creation of RadixEnvironment
-	re, err := eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Create(ctx, k8sObjectUtils.
+	re, err := eh.accounts.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Create(ctx, k8sObjectUtils.
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(appName).
@@ -256,7 +250,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 	}
 
 	// idempotent removal of RadixEnvironment
-	err = eh.getServiceAccount().RadixClient.RadixV1().RadixEnvironments().Delete(ctx, re.Name, metav1.DeleteOptions{})
+	err = eh.accounts.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().Delete(ctx, re.Name, metav1.DeleteOptions{})
 	// if an error is anything other than not-found, return it
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -301,25 +295,21 @@ func (eh EnvironmentHandler) getNotOrphanedEnvNames(ctx context.Context, appName
 	), nil
 }
 
-func (eh EnvironmentHandler) getServiceAccount() models.Account {
-	return eh.accounts.ServiceAccount
-}
-
 // GetLogs handler for GetLogs
 func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
-	podHandler := pods.Init(eh.client)
+	podHandler := pods.Init(eh.accounts.UserAccount.Client)
 	return podHandler.HandleGetEnvironmentPodLog(ctx, appName, envName, podName, "", sinceTime, logLines, previousLog)
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
 func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName, replicaName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	handler := pods.Init(eh.client)
+	handler := pods.Init(eh.accounts.UserAccount.Client)
 	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, replicaName, "", sinceTime, logLines)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
 func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(ctx context.Context, appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	podHandler := pods.Init(eh.client)
+	podHandler := pods.Init(eh.accounts.UserAccount.Client)
 	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(ctx, appName, envName, componentName, auxType, podName, sinceTime, logLines)
 }
 
@@ -460,7 +450,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 
 	ra, _ := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
+	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.accounts.UserAccount.Client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}

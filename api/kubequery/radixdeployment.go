@@ -54,3 +54,9 @@ func GetRadixDeploymentsForEnvironment(ctx context.Context, client radixclient.I
 	}
 	return rds.Items, nil
 }
+
+// GetRadixDeploymentByName returns a RadixDeployment for an application and namespace
+func GetRadixDeploymentByName(ctx context.Context, radixClient radixclient.Interface, appName, envName, deploymentName string) (*radixv1.RadixDeployment, error) {
+	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	return radixClient.RadixV1().RadixDeployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
+}

@@ -27,7 +27,8 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
+	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
@@ -477,7 +478,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
 		component = findComponentInDeployment(updatedRd, startedComponent)
 		assert.True(t, *component.Replicas > zeroReplicas)
-		assert.NotEmpty(t, component.EnvironmentVariables[defaults.RadixRestartEnvironmentVariable])
+		assert.NotEmpty(t, component.EnvironmentVariables[operatordefaults.RadixRestartEnvironmentVariable])
 	})
 
 	t.Run("Component Restart Fails", func(t *testing.T) {
@@ -949,7 +950,7 @@ func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.Code)
 
 	// Update client secret when k8s secret exists should set Data
-	secretName := operatorutils.GetAuxiliaryComponentSecretName(anyComponentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
+	secretName := operatorutils.GetAuxiliaryComponentSecretName(anyComponentName, operatordefaults.OAuthProxyAuxiliaryComponentSuffix)
 	_, err = client.CoreV1().Secrets(envNs).Create(context.Background(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName}}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
@@ -961,7 +962,7 @@ func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 	actualSecret, _ := client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
-	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret")})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{operatordefaults.OAuthClientSecretKeyName: []byte("clientsecret")})
 
 	// Update client secret when k8s secret exists should set Data
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
@@ -972,7 +973,7 @@ func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 	actualSecret, _ = client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
-	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret"), defaults.OAuthCookieSecretKeyName: []byte("cookiesecret")})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{operatordefaults.OAuthClientSecretKeyName: []byte("clientsecret"), operatordefaults.OAuthCookieSecretKeyName: []byte("cookiesecret")})
 
 	// Update client secret when k8s secret exists should set Data
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters(
@@ -983,7 +984,7 @@ func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
 	actualSecret, _ = client.CoreV1().Secrets(envNs).Get(context.Background(), secretName, metav1.GetOptions{})
-	assert.Equal(t, actualSecret.Data, map[string][]byte{defaults.OAuthClientSecretKeyName: []byte("clientsecret"), defaults.OAuthCookieSecretKeyName: []byte("cookiesecret"), defaults.OAuthRedisPasswordKeyName: []byte("redispassword")})
+	assert.Equal(t, actualSecret.Data, map[string][]byte{operatordefaults.OAuthClientSecretKeyName: []byte("clientsecret"), operatordefaults.OAuthCookieSecretKeyName: []byte("cookiesecret"), operatordefaults.OAuthRedisPasswordKeyName: []byte("redispassword")})
 }
 
 func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
@@ -1763,7 +1764,7 @@ func Test_GetJob(t *testing.T) {
 
 	for _, scenario := range scenarions {
 		scenario := scenario
-		t.Run(scenario.JobName, func(t *testing.T) {
+		t.Run(scenario.Name, func(t *testing.T) {
 			responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName, scenario.JobName))
 			response := <-responseChannel
 			assert.Equal(t, scenario.Success, response.Code == http.StatusOK)
@@ -1896,6 +1897,9 @@ func Test_GetJob_AllProps(t *testing.T) {
 			Created: radixutils.FormatTimestamp(podCreationTime.Time),
 			Status:  deploymentModels.ReplicaStatus{Status: string(v1.PodSucceeded)},
 		}},
+		Runtime: &deploymentModels.Runtime{
+			Architecture: operatordefaults.DefaultNodeSelectorArchitecture,
+		},
 	}, actual)
 
 	// Test job2 props - override props from RD jobComponent
@@ -1916,6 +1920,9 @@ func Test_GetJob_AllProps(t *testing.T) {
 		},
 		Node:           &deploymentModels.Node{Gpu: "gpu2", GpuCount: "3"},
 		DeploymentName: anyDeployment,
+		Runtime: &deploymentModels.Runtime{
+			Architecture: operatordefaults.DefaultNodeSelectorArchitecture,
+		},
 	}, actual)
 }
 

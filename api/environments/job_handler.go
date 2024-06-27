@@ -12,6 +12,8 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/kubequery"
+	apimodels "github.com/equinor/radix-api/api/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -26,7 +28,7 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixLabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -370,7 +372,7 @@ func (eh EnvironmentHandler) getJobPayload(ctx context.Context, appName, envName
 	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	secret, err := eh.accounts.ServiceAccount.Client.CoreV1().Secrets(namespace).Get(ctx, job.PayloadSecretRef.Name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kubeerrors.IsNotFound(err) {
 			return nil, environmentModels.ScheduledJobPayloadNotFoundError(appName, jobName)
 		}
 		return nil, err
@@ -416,7 +418,7 @@ func (eh EnvironmentHandler) getRadixBatch(ctx context.Context, appName, envName
 
 	batch, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(namespace).Get(ctx, batchName, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kubeerrors.IsNotFound(err) {
 			return nil, batchNotFoundError(batchName)
 		}
 		return nil, err
@@ -669,4 +671,9 @@ func getJobSchedulerEnvFor(appName, envName, jobComponentName, deploymentName st
 		RadixDeploymentNamespace:                     operatorUtils.GetEnvironmentNamespace(appName, envName),
 		RadixJobSchedulersPerEnvironmentHistoryLimit: 10,
 	}
+}
+
+func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestamp string) {
+	batch.Spec.Jobs[jobIdx].Stop = nil
+	batch.Spec.Jobs[jobIdx].Restart = restartTimestamp
 }

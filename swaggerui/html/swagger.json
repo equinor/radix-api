@@ -5637,6 +5637,9 @@
         "resources": {
           "$ref": "#/definitions/ResourceRequirements"
         },
+        "runtime": {
+          "$ref": "#/definitions/Runtime"
+        },
         "scheduledJobPayloadPath": {
           "description": "ScheduledJobPayloadPath defines the payload path, where payload for Job Scheduler will be mapped as a file. From radixconfig.yaml",
           "type": "string",
@@ -5737,6 +5740,9 @@
         },
         "resources": {
           "$ref": "#/definitions/ResourceRequirements"
+        },
+        "runtime": {
+          "$ref": "#/definitions/Runtime"
         },
         "skipDeployment": {
           "description": "SkipDeployment The component should not be deployed, but used existing",
@@ -7411,6 +7417,19 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
+    "Runtime": {
+      "description": "Runtime requirements for the component or job",
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "description": "CPU architecture",
+          "type": "string",
+          "x-go-name": "Architecture",
+          "example": "amd64"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
     "ScheduledBatchRequest": {
       "description": "ScheduledBatchRequest holds information about a creating scheduled batch request",
       "type": "object",
@@ -7598,6 +7617,9 @@
         },
         "resources": {
           "$ref": "#/definitions/ResourceRequirements"
+        },
+        "runtime": {
+          "$ref": "#/definitions/Runtime"
         },
         "started": {
           "description": "Started timestamp",
