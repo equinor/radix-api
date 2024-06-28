@@ -12,8 +12,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/kubequery"
-	apimodels "github.com/equinor/radix-api/api/models"
-	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -62,7 +60,7 @@ func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobCo
 		return nil, jobNotFoundError(jobName)
 	}
 	jobComponent, err := eh.getRadixJobDeployComponent(ctx, appName, envName, jobComponentName, radixBatch.Spec.RadixDeploymentJobRef.Name)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !kubeerrors.IsNotFound(err) {
 		return nil, err
 	}
 	jobSchedulerJobHandler, err := eh.getJobSchedulerJobHandlerForActiveRadixDeployment(ctx, appName, envName, jobComponentName, err)
@@ -147,11 +145,6 @@ func (eh EnvironmentHandler) getJobSchedulerJobHandlerForActiveRadixDeployment(c
 		return nil, err
 	}
 	return jobSchedulerJobHandler, nil
-}
-
-func setRestartJobTimeout(batch *radixv1.RadixBatch, jobIdx int, restartTimestamp string) {
-	batch.Spec.Jobs[jobIdx].Stop = nil
-	batch.Spec.Jobs[jobIdx].Restart = restartTimestamp
 }
 
 // DeleteJob Delete job by name
