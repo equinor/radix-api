@@ -34,6 +34,7 @@ spec:
         LOG_PRETTY: "false"
       environmentConfig:
         - environment: qa
+          foo: bar
           runtime:
             architecture: arm64
           horizontalScaling:
