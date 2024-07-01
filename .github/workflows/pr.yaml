@@ -16,7 +16,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           version: v1.58.2
 
@@ -54,14 +54,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      # - name: Install dependencies
-      #   run: go mod download
       - name: Install Swagger
         run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
-      # - name: Generate Swagger
-      #   run: swagger generate spec -o ./swagger.json --scan-models --exclude-deps
-      # - name: Validate no changes
-      #   run: diff swagger.json ./swaggerui/html/swagger.json
       - name: Check breaking changes
         if: always()
         id: breaking
@@ -82,3 +76,15 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build docker image
       run: docker build .
+
+  validate-radixconfig:
+    name: Test RadixConfig
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Fake TOKEN FOR RADIX CLI'
+        run: echo "APP_SERVICE_ACCOUNT_TOKEN=dummy" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+      - name: 'Validate'
+        uses: equinor/radix-github-actions@v1
+        with:
+          args: validate radix-config --config-file radixconfig.yaml
