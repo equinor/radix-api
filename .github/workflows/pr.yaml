@@ -60,9 +60,9 @@ jobs:
         if: always()
         id: breaking
         continue-on-error: true
-        run: swagger diff --break <(git show master:swaggerui/html/swagger.json) swagger.json > /tmp/swagger_breaking_changes.txt
+        run: swagger diff --break <(git show master:swaggerui/html/swagger.json) swaggerui/html/swagger.json > /tmp/swagger_breaking_changes.txt
       - name: Add comment
-        if: failure() && steps.breaking.outcome == 'failure'
+        if: steps.breaking.outcome == 'failure'
         uses: mshick/add-pr-comment@v2
         with:
           message-id: breaking-comment
