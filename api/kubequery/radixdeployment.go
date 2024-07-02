@@ -3,6 +3,7 @@ package kubequery
 import (
 	"context"
 
+	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -46,13 +47,25 @@ func GetRadixDeploymentsForEnvironments(ctx context.Context, client radixclient.
 }
 
 // GetRadixDeploymentsForEnvironment returns all RadixDeployments for the specified application and environment.
-func GetRadixDeploymentsForEnvironment(ctx context.Context, client radixclient.Interface, appName, envName string) ([]radixv1.RadixDeployment, error) {
+func GetRadixDeploymentsForEnvironment(ctx context.Context, radixClient radixclient.Interface, appName, envName string) ([]radixv1.RadixDeployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
-	rds, err := client.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
+	rds, err := radixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return rds.Items, nil
+}
+
+// GetRadixDeploymentsMapForEnvironment returns all RadixDeployments for the specified application and environment as a map by names.
+func GetRadixDeploymentsMapForEnvironment(ctx context.Context, radixClient radixclient.Interface, appName, envName string) (map[string]radixv1.RadixDeployment, error) {
+	radixDeployments, err := GetRadixDeploymentsForEnvironment(ctx, radixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Reduce(radixDeployments, make(map[string]radixv1.RadixDeployment), func(acc map[string]radixv1.RadixDeployment, radixDeployment radixv1.RadixDeployment) map[string]radixv1.RadixDeployment {
+		acc[radixDeployment.Name] = radixDeployment
+		return acc
+	}), nil
 }
 
 // GetRadixDeploymentByName returns a RadixDeployment for an application and namespace
