@@ -17,8 +17,8 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerV2Models "github.com/equinor/radix-job-scheduler/models/v2"
-	"github.com/equinor/radix-job-scheduler/pkg/batch"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v2"
+	jobSchedulerBatch "github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -38,7 +38,7 @@ func (eh EnvironmentHandler) GetBatches(ctx context.Context, appName, envName, j
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatuses := batch.GetRadixBatchStatuses(radixBatches, jobComponent)
+	radixBatchStatuses := jobSchedulerBatch.GetRadixBatchStatuses(radixBatches, jobComponent)
 	batchSummaryList := eh.getScheduledBatchSummaryList(radixBatches, radixBatchStatuses)
 	sort.SliceStable(batchSummaryList, func(i, j int) bool {
 		return utils.IsBefore(&batchSummaryList[j], &batchSummaryList[i])
@@ -56,7 +56,7 @@ func (eh EnvironmentHandler) GetJobs(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatuses := batch.GetRadixBatchStatuses(singleJobBatches, jobComponent)
+	radixBatchStatuses := jobSchedulerBatch.GetRadixBatchStatuses(singleJobBatches, jobComponent)
 	jobSummaryList := eh.getScheduledSingleJobSummaryList(singleJobBatches, radixBatchStatuses)
 
 	sort.SliceStable(jobSummaryList, func(i, j int) bool {
@@ -75,7 +75,7 @@ func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, job
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus := batch.GetRadixBatchStatus(radixBatch, jobComponent)
+	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, jobComponent)
 	batchSummary := eh.getScheduledBatchSummary(radixBatch, &radixBatchStatus)
 	batchSummary.JobList = eh.getScheduledJobSummaries(radixBatch, &radixBatchStatus)
 	return &batchSummary, nil
@@ -100,7 +100,7 @@ func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobCo
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		return nil, err
 	}
-	radixBatchStatus := batch.GetRadixBatchStatus(radixBatch, jobComponent)
+	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, jobComponent)
 	jobSummary := eh.getScheduledJobSummary(radixBatch, *radixBatchJob, &radixBatchStatus, jobComponent)
 	return &jobSummary, nil
 }
@@ -116,7 +116,7 @@ func (eh EnvironmentHandler) RestartBatch(ctx context.Context, appName, envName,
 	if err != nil {
 		return err
 	}
-	return batch.RestartRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobSchedulerBatch.RestartRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // RestartJob Start running or stopped job by name
@@ -128,7 +128,7 @@ func (eh EnvironmentHandler) RestartJob(ctx context.Context, appName, envName, j
 	if _, err := findJobInRadixBatch(radixBatch, jobName); err != nil {
 		return err
 	}
-	return batch.RestartRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
+	return jobSchedulerBatch.RestartRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
 }
 
 // CopyBatch Copy batch by name
@@ -142,7 +142,7 @@ func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return nil, err
 	}
-	batchStatus, err := batch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, "", jobComponent, deploymentName)
+	batchStatus, err := jobSchedulerBatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, "", jobComponent, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return nil, err
 	}
-	batchStatus, err := batch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName, jobComponent, deploymentName)
+	batchStatus, err := jobSchedulerBatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName, jobComponent, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (eh EnvironmentHandler) StopBatch(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return err
 	}
-	return batch.StopRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobSchedulerBatch.StopRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // StopJob Stop job by name
@@ -185,7 +185,7 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 	if _, err := findJobInRadixBatch(radixBatch, jobName); err != nil {
 		return err
 	}
-	return batch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
+	return jobSchedulerBatch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
 }
 
 // DeleteBatch Delete batch by name
@@ -194,7 +194,7 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 	if err != nil {
 		return err
 	}
-	return batch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobSchedulerBatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // DeleteJob Delete a job by name
@@ -207,7 +207,7 @@ func (eh EnvironmentHandler) DeleteJob(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return err
 	}
-	return batch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobSchedulerBatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 func (eh EnvironmentHandler) getActiveRadixDeployment(ctx context.Context, appName string, envName string) (*radixv1.RadixDeployment, error) {
@@ -305,8 +305,8 @@ func (eh EnvironmentHandler) getRadixBatch(ctx context.Context, appName, envName
 	return radixBatch, nil
 }
 
-func (eh EnvironmentHandler) getScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerV2Models.RadixBatch) []deploymentModels.ScheduledBatchSummary {
-	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerV2Models.RadixBatch), func(acc map[string]*jobSchedulerV2Models.RadixBatch, batchStatus jobSchedulerV2Models.RadixBatch) map[string]*jobSchedulerV2Models.RadixBatch {
+func (eh EnvironmentHandler) getScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerModels.RadixBatch) []deploymentModels.ScheduledBatchSummary {
+	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerModels.RadixBatch), func(acc map[string]*jobSchedulerModels.RadixBatch, batchStatus jobSchedulerModels.RadixBatch) map[string]*jobSchedulerModels.RadixBatch {
 		acc[batchStatus.Name] = &batchStatus
 		return acc
 	})
@@ -318,7 +318,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummaryList(radixBatches []*radixv
 	return summaries
 }
 
-func (eh EnvironmentHandler) getScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerV2Models.RadixBatch) deploymentModels.ScheduledBatchSummary {
+func (eh EnvironmentHandler) getScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.RadixBatch) deploymentModels.ScheduledBatchSummary {
 	summary := deploymentModels.ScheduledBatchSummary{
 		Name:           radixBatch.Name,
 		TotalJobCount:  len(radixBatch.Spec.Jobs),
@@ -339,7 +339,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummary(radixBatch *radixv1.RadixB
 	return summary
 }
 
-func (eh EnvironmentHandler) getScheduledBatchSummary2(batchStatus *jobSchedulerV2Models.RadixBatch, deploymentName string) *deploymentModels.ScheduledBatchSummary {
+func (eh EnvironmentHandler) getScheduledBatchSummary2(batchStatus *jobSchedulerModels.RadixBatch, deploymentName string) *deploymentModels.ScheduledBatchSummary {
 	return &deploymentModels.ScheduledBatchSummary{
 		Name:           batchStatus.Name,
 		DeploymentName: deploymentName,
@@ -351,7 +351,7 @@ func (eh EnvironmentHandler) getScheduledBatchSummary2(batchStatus *jobScheduler
 	}
 }
 
-func getScheduledJobStatus(radixBatch *jobSchedulerV2Models.RadixBatch, jobName, deploymentName string) *deploymentModels.ScheduledJobSummary {
+func getScheduledJobStatus(radixBatch *jobSchedulerModels.RadixBatch, jobName, deploymentName string) *deploymentModels.ScheduledJobSummary {
 	jobSummary := deploymentModels.ScheduledJobSummary{
 		Name:           jobName,
 		DeploymentName: deploymentName,
@@ -364,8 +364,8 @@ func getScheduledJobStatus(radixBatch *jobSchedulerV2Models.RadixBatch, jobName,
 	return &jobSummary
 }
 
-func (eh EnvironmentHandler) getScheduledSingleJobSummaryList(singleJobBatches []*radixv1.RadixBatch, singleJobBatchStatuses []jobSchedulerV2Models.RadixBatch) []deploymentModels.ScheduledJobSummary {
-	jobBatchStatusesMap := slice.Reduce(singleJobBatchStatuses, make(map[string]*jobSchedulerV2Models.RadixBatch), func(acc map[string]*jobSchedulerV2Models.RadixBatch, radixBatchStatus jobSchedulerV2Models.RadixBatch) map[string]*jobSchedulerV2Models.RadixBatch {
+func (eh EnvironmentHandler) getScheduledSingleJobSummaryList(singleJobBatches []*radixv1.RadixBatch, singleJobBatchStatuses []jobSchedulerModels.RadixBatch) []deploymentModels.ScheduledJobSummary {
+	jobBatchStatusesMap := slice.Reduce(singleJobBatchStatuses, make(map[string]*jobSchedulerModels.RadixBatch), func(acc map[string]*jobSchedulerModels.RadixBatch, radixBatchStatus jobSchedulerModels.RadixBatch) map[string]*jobSchedulerModels.RadixBatch {
 		acc[radixBatchStatus.Name] = &radixBatchStatus
 		return acc
 	})
@@ -377,14 +377,14 @@ func (eh EnvironmentHandler) getScheduledSingleJobSummaryList(singleJobBatches [
 	return summaries
 }
 
-func (eh EnvironmentHandler) getScheduledJobSummaries(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerV2Models.RadixBatch) (summaries []deploymentModels.ScheduledJobSummary) {
+func (eh EnvironmentHandler) getScheduledJobSummaries(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.RadixBatch) (summaries []deploymentModels.ScheduledJobSummary) {
 	for _, job := range radixBatch.Spec.Jobs {
 		summaries = append(summaries, eh.getScheduledJobSummary(radixBatch, job, radixBatchStatus, nil))
 	}
 	return
 }
 
-func (eh EnvironmentHandler) getScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob radixv1.RadixBatchJob, radixBatchStatus *jobSchedulerV2Models.RadixBatch, jobComponent *radixv1.RadixDeployJobComponent) deploymentModels.ScheduledJobSummary {
+func (eh EnvironmentHandler) getScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob radixv1.RadixBatchJob, radixBatchStatus *jobSchedulerModels.RadixBatch, jobComponent *radixv1.RadixDeployJobComponent) deploymentModels.ScheduledJobSummary {
 	var batchName string
 	if radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeBatch) {
 		batchName = radixBatch.GetName()
@@ -426,7 +426,7 @@ func (eh EnvironmentHandler) getScheduledJobSummary(radixBatch *radixv1.RadixBat
 		}
 	}
 	if radixBatchStatus != nil {
-		if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerV2Models.RadixBatchJobStatus) bool {
+		if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerModels.RadixBatchJobStatus) bool {
 			return jobStatus.Name == radixBatchJob.Name
 		}); ok {
 			summary.Status = string(jobStatus.Status)
