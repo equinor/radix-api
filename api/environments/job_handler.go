@@ -91,7 +91,6 @@ func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, job
 	radixDeployJobComponent := getJobComponentFrom(jobComponentName, rdMap)
 	batchSummary := eh.getScheduledBatchSummary(radixBatch, &radixBatchStatus, radixDeployJobComponent)
 	return &batchSummary, nil
-
 }
 
 // GetJob Gets job by name
@@ -420,11 +419,13 @@ func getScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob radixv
 	}
 
 	if radixDeployJobComponent != nil {
+		summary.Runtime = &deploymentModels.Runtime{
+			Architecture: operatorUtils.GetArchitectureFromRuntime(radixDeployJobComponent.GetRuntime()),
+		}
 		summary.TimeLimitSeconds = radixDeployJobComponent.TimeLimitSeconds
 		if radixBatchJob.TimeLimitSeconds != nil {
 			summary.TimeLimitSeconds = radixBatchJob.TimeLimitSeconds
 		}
-
 		if radixDeployJobComponent.BackoffLimit != nil {
 			summary.BackoffLimit = *radixDeployJobComponent.BackoffLimit
 		}
@@ -445,20 +446,20 @@ func getScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob radixv
 			summary.Resources = deploymentModels.ConvertRadixResourceRequirements(radixDeployJobComponent.Resources)
 		}
 	}
-	if radixBatchStatus != nil {
-		if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerModels.RadixBatchJobStatus) bool {
-			return jobStatus.Name == radixBatchJob.Name
-		}); ok {
-			summary.Status = string(jobStatus.Status)
-			summary.Created = jobStatus.CreationTime
-			summary.Started = jobStatus.Started
-			summary.Ended = jobStatus.Ended
-			summary.Message = jobStatus.Message
-			summary.FailedCount = jobStatus.Failed
-			summary.Restart = jobStatus.Restart
-		} else {
-			summary.Status = radixv1.RadixBatchJobApiStatusWaiting
-		}
+	if radixBatchStatus == nil {
+		return summary
+	}
+	jobName := fmt.Sprintf("%s-%s", radixBatch.GetName(), radixBatchJob.Name)
+	if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerModels.RadixBatchJobStatus) bool {
+		return jobStatus.Name == jobName
+	}); ok {
+		summary.Status = string(jobStatus.Status)
+		summary.Created = jobStatus.CreationTime
+		summary.Started = jobStatus.Started
+		summary.Ended = jobStatus.Ended
+		summary.Message = jobStatus.Message
+		summary.FailedCount = jobStatus.Failed
+		summary.Restart = jobStatus.Restart
 	}
 	return summary
 }

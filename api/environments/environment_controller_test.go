@@ -1304,14 +1304,14 @@ func Test_GetJobs(t *testing.T) {
 				Name:   batch1Name,
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
 			},
-			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "no1"}, {Name: "no2"}}},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job1"}}},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   batch2Name,
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeJob)),
 			},
-			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job1"}}},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job2"}}},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1325,7 +1325,7 @@ func Test_GetJobs(t *testing.T) {
 				Name:   "anybatch",
 				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName), labels.ForBatchType(kube.RadixBatchTypeBatch)),
 			},
-			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job1"}}},
+			Spec: v1.RadixBatchSpec{Jobs: []v1.RadixBatchJob{{Name: "job3"}}},
 		},
 	}
 	for _, rb := range testData {
@@ -1341,11 +1341,11 @@ func Test_GetJobs(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	require.NoError(t, err)
-	assert.Len(t, actual, 3)
+	require.Len(t, actual, 2)
 	actualMapped := slice.Map(actual, func(job deploymentModels.ScheduledJobSummary) string {
 		return job.Name
 	})
-	expected := []string{batch1Name + "-no1", batch1Name + "-no2", batch2Name + "-job1"}
+	expected := []string{batch1Name + "-job1", batch2Name + "-job2"}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
 
@@ -1356,19 +1356,13 @@ func Test_GetJobs_Status(t *testing.T) {
 		jobStatus      *v1.RadixBatchJobStatus
 		expectedStatus v1.RadixBatchJobApiStatus
 	}
-	/*
-		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusActive)},
-		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
-		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
-	*/
 	scenarios := []scenario{
 		{
 			name:           "no job status",
 			expectedStatus: v1.RadixBatchJobApiStatusWaiting,
 		},
 		{
-			name: "pod is pending",
+			name: "pod is pending, no phase",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodPending}},
@@ -1376,7 +1370,7 @@ func Test_GetJobs_Status(t *testing.T) {
 			expectedStatus: v1.RadixBatchJobApiStatusWaiting,
 		},
 		{
-			name: "",
+			name: "pod is pending, phase is waiting",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				Phase:                    v1.BatchJobPhaseWaiting,
@@ -1385,16 +1379,16 @@ func Test_GetJobs_Status(t *testing.T) {
 			expectedStatus: v1.RadixBatchJobApiStatusWaiting,
 		},
 		{
-			name: "",
+			name: "pod is running, phase is active",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				Phase:                    v1.BatchJobPhaseActive,
-				RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodPending}},
+				RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{CreationTime: &metav1.Time{Time: time.Now()}, Phase: v1.PodRunning}},
 			},
 			expectedStatus: v1.RadixBatchJobApiStatusActive,
 		},
 		{
-			name: "",
+			name: "pod is suceeded, phase is succeeded",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				Phase:                    v1.BatchJobPhaseSucceeded,
@@ -1403,7 +1397,7 @@ func Test_GetJobs_Status(t *testing.T) {
 			expectedStatus: v1.RadixBatchJobApiStatusSucceeded,
 		},
 		{
-			name: "",
+			name: "pod is failed, phase is failed",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				Phase:                    v1.BatchJobPhaseFailed,
@@ -1412,7 +1406,7 @@ func Test_GetJobs_Status(t *testing.T) {
 			expectedStatus: v1.RadixBatchJobApiStatusFailed,
 		},
 		{
-			name: "",
+			name: "pod is succeeded, pphase is stopped",
 			jobStatus: &v1.RadixBatchJobStatus{
 				Name:                     "no1",
 				Phase:                    v1.BatchJobPhaseStopped,
@@ -1421,7 +1415,7 @@ func Test_GetJobs_Status(t *testing.T) {
 			expectedStatus: v1.RadixBatchJobApiStatusStopped,
 		},
 		{
-			name:           "",
+			name:           "no pod status, phase is not defined",
 			jobStatus:      &v1.RadixBatchJobStatus{Name: "not-defined"},
 			expectedStatus: v1.RadixBatchJobApiStatusWaiting,
 		},
@@ -1799,6 +1793,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 				WithTimeLimitSeconds(numbers.Int64Ptr(123)).
 				WithNodeGpu("gpu1").
 				WithNodeGpuCount("2").
+				WithRuntime(&v1.Runtime{Architecture: v1.RuntimeArchitectureArm64}).
 				WithResource(map[string]string{"cpu": "50Mi", "memory": "250M"}, map[string]string{"cpu": "100Mi", "memory": "500M"})).
 			WithActiveFrom(time.Now()))
 	require.NoError(t, err)
@@ -1893,7 +1888,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 			Status:  deploymentModels.ReplicaStatus{Status: string(v1.PodSucceeded)},
 		}},
 		Runtime: &deploymentModels.Runtime{
-			Architecture: operatordefaults.DefaultNodeSelectorArchitecture,
+			Architecture: string(v1.RuntimeArchitectureArm64),
 		},
 	}, actual)
 
@@ -1916,7 +1911,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Node:           &deploymentModels.Node{Gpu: "gpu2", GpuCount: "3"},
 		DeploymentName: anyDeployment,
 		Runtime: &deploymentModels.Runtime{
-			Architecture: operatordefaults.DefaultNodeSelectorArchitecture,
+			Architecture: string(v1.RuntimeArchitectureArm64),
 		},
 	}, actual)
 }

@@ -79,26 +79,22 @@ func buildScheduledJobSummary(rb *radixv1.RadixBatch, jobIndex int, rdRef *radix
 		summary.Runtime = &deploymentmodels.Runtime{
 			Architecture: operatorutils.GetArchitectureFromRuntime(jobComponent.GetRuntime()),
 		}
-
 		summary.TimeLimitSeconds = jobComponent.TimeLimitSeconds
 		if job.TimeLimitSeconds != nil {
 			summary.TimeLimitSeconds = job.TimeLimitSeconds
 		}
-
 		if jobComponent.BackoffLimit != nil {
 			summary.BackoffLimit = *jobComponent.BackoffLimit
 		}
 		if job.BackoffLimit != nil {
 			summary.BackoffLimit = *job.BackoffLimit
 		}
-
 		if jobComponent.Node != (radixv1.RadixNode{}) {
 			summary.Node = (*deploymentmodels.Node)(&jobComponent.Node)
 		}
 		if job.Node != nil {
 			summary.Node = (*deploymentmodels.Node)(job.Node)
 		}
-
 		if job.Resources != nil {
 			summary.Resources = deploymentmodels.ConvertRadixResourceRequirements(*job.Resources)
 		} else if len(jobComponent.Resources.Requests) > 0 || len(jobComponent.Resources.Limits) > 0 {
