@@ -193,7 +193,7 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return err
 	}
-	if _, err := findJobInRadixBatch(radixBatch, jobName); err != nil {
+	if _, err := findJobInRadixBatch(radixBatch, batchJobName); err != nil {
 		return err
 	}
 	return jobSchedulerBatch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
