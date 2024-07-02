@@ -20,14 +20,12 @@ import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/jobscheduler/mock"
 	"github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/common"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -1431,9 +1429,7 @@ func Test_GetJobs_Status(t *testing.T) {
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			// Setup
-			ctrl := gomock.NewController(t)
-			jobSchedulerFactoryMock := mock.NewMockHandlerFactoryInterface(ctrl)
-			commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, []EnvironmentHandlerOptions{WithJobSchedulerHandlerFactory(jobSchedulerFactoryMock)})
+			commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, []EnvironmentHandlerOptions{})
 			_, err := commonTestUtils.ApplyRegistration(operatorutils.
 				NewRegistrationBuilder().
 				WithName(anyAppName))
@@ -1768,7 +1764,6 @@ func Test_GetJob(t *testing.T) {
 			responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName, scenario.JobName))
 			response := <-responseChannel
 			assert.Equal(t, scenario.Success, response.Code == http.StatusOK)
-			// TODO: Check error response when legacy job handler is removed
 		})
 	}
 }
