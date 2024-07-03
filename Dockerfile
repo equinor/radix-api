@@ -1,31 +1,16 @@
-FROM golang:1.22-alpine3.19 as builder
-ENV GO111MODULE=on
-
-RUN apk update && \
-    apk add bash jq alpine-sdk sed gawk git ca-certificates curl && \
-    apk add --no-cache gcc musl-dev
-
-WORKDIR /go/src/github.com/equinor/radix-api/
-
-# get dependencies
+# Build stage
+FROM docker.io/golang:1.22-alpine3.20 as builder
+ENV CGO_ENABLED=0 \
+    GOOS=linux
+WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-
-# copy api code
 COPY . .
+RUN go build -ldflags="-s -w" -o /build/radix-api
 
-# Build radix api go project
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o /usr/local/bin/radix-api
-
-RUN addgroup -S -g 1000 api-user
-RUN adduser -S -u 1000 -G api-user api-user
-
-FROM scratch
-
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /usr/local/bin/radix-api /usr/local/bin/radix-api
-
-EXPOSE 3001
+# Final stage, ref https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md for distroless
+FROM gcr.io/distroless/static
+WORKDIR /app
+COPY --from=builder /build/radix-api .
 USER 1000
-ENTRYPOINT ["/usr/local/bin/radix-api"]
+ENTRYPOINT ["/app/radix-api"]

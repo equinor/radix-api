@@ -3,6 +3,8 @@ kind: RadixApplication
 metadata:
   name: radix-api
 spec:
+  build:
+    useBuildKit: true
   environments:
     - name: prod
       build:
@@ -32,16 +34,25 @@ spec:
         LOG_PRETTY: "false"
       environmentConfig:
         - environment: qa
+          runtime:
+            architecture: arm64
           horizontalScaling:
-            minReplicas: 1
-            maxReplicas: 2
+            maxReplicas: 1
+            minReplicas: 0
+            triggers:
+              - name: cron
+                cron:
+                  timezone: Europe/Oslo
+                  start: 0 7 * * 1-5 # 07:00 Monday - Friday
+                  end: 0 17 * * 1-5 # 17:00 Monday - Friday
+                  desiredReplicas: 1
           resources:
             requests:
-              memory: "400M"
-              cpu: "250m"
+              cpu: "50m"
+              memory: "100M"
             limits:
-              memory: "400M"
-              cpu: "2000m"
+              cpu: "200m"
+              memory: "200M"
           variables:
             PIPELINE_IMG_TAG: "master-latest"
             TEKTON_IMG_TAG: "main-latest"
@@ -50,11 +61,11 @@ spec:
           replicas: 2
           resources:
             requests:
-              memory: "700M"
-              cpu: "250m"
+              cpu: "200m"
+              memory: "300M"
             limits:
-              memory: "1Gi"
-              cpu: "2000m"
+              cpu: "500m"
+              memory: "500M"
           variables:
             PIPELINE_IMG_TAG: "release-latest"
             TEKTON_IMG_TAG: "release-latest"
