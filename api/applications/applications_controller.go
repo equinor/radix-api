@@ -2,6 +2,7 @@ package applications
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -416,15 +417,7 @@ func (ac *applicationController) IsDeployKeyValidHandler(accounts models.Account
 	//   "500":
 	//     description: "Internal server error"
 
-	appName := mux.Vars(r)["appName"]
-	isDeployKeyValid, err := IsDeployKeyValid(r.Context(), accounts.UserAccount, appName)
-
-	if isDeployKeyValid {
-		ac.JSONResponse(w, r, &isDeployKeyValid)
-		return
-	}
-
-	ac.ErrorResponse(w, r, err)
+	ac.ErrorResponse(w, r, errors.New("obsolete method"))
 }
 
 // RegenerateDeployKeyHandler Regenerates deploy key and secret and returns the new key
