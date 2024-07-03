@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -38,7 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubernetes "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
@@ -1852,36 +1851,6 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusBadRequest, response.Code)
-}
-
-func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) error {
-	timeout := time.After(1 * time.Second)
-	tick := time.Tick(200 * time.Millisecond)
-	var errs []error
-
-	for {
-		select {
-		case <-timeout:
-			return errors.Join(errs...)
-
-		case <-tick:
-			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.Background(), metav1.ListOptions{})
-			if len(jobs.Items) > 0 {
-				job := jobs.Items[0]
-
-				if succeededStatus {
-					job.Status.Succeeded = int32(1)
-				} else {
-					job.Status.Failed = int32(1)
-				}
-
-				_, le := kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
-				if le != nil {
-					errs = append(errs, le)
-				}
-			}
-		}
-	}
 }
 
 func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) error {
