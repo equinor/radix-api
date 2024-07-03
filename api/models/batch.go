@@ -22,7 +22,7 @@ func GetScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatu
 	var summaries []models.ScheduledBatchSummary
 	for _, radixBatch := range radixBatches {
 		batchStatus := batchStatusesMap[radixBatch.Name]
-		radixDeployJobComponent := GetBatchDeployJobComponent(radixBatch, jobComponentName, radixDeploymentMap)
+		radixDeployJobComponent := GetBatchDeployJobComponent(radixBatch.Spec.RadixDeploymentJobRef.Name, jobComponentName, radixDeploymentMap)
 		summaries = append(summaries, GetScheduledBatchSummary(radixBatch, batchStatus, radixDeployJobComponent))
 	}
 	return summaries
@@ -37,15 +37,15 @@ func GetScheduledSingleJobSummaryList(radixBatches []*radixv1.RadixBatch, batchS
 	var summaries []models.ScheduledJobSummary
 	for _, radixBatch := range radixBatches {
 		radixBatchStatus := batchStatusesMap[radixBatch.Name]
-		batchDeployJobComponent := GetBatchDeployJobComponent(radixBatch, jobComponentName, radixDeploymentMap)
+		batchDeployJobComponent := GetBatchDeployJobComponent(radixBatch.Spec.RadixDeploymentJobRef.Name, jobComponentName, radixDeploymentMap)
 		summaries = append(summaries, GetScheduledJobSummary(radixBatch, &radixBatch.Spec.Jobs[0], radixBatchStatus, batchDeployJobComponent))
 	}
 	return summaries
 }
 
 // GetBatchDeployJobComponent Get batch deploy job component
-func GetBatchDeployJobComponent(radixBatch *radixv1.RadixBatch, jobComponentName string, radixDeploymentsMap map[string]radixv1.RadixDeployment) *radixv1.RadixDeployJobComponent {
-	if radixDeployment, ok := radixDeploymentsMap[radixBatch.Spec.RadixDeploymentJobRef.Name]; ok {
+func GetBatchDeployJobComponent(radixDeploymentName string, jobComponentName string, radixDeploymentsMap map[string]radixv1.RadixDeployment) *radixv1.RadixDeployJobComponent {
+	if radixDeployment, ok := radixDeploymentsMap[radixDeploymentName]; ok {
 		if jobComponent, ok := slice.FindFirst(radixDeployment.Spec.Jobs, func(component radixv1.RadixDeployJobComponent) bool {
 			return component.Name == jobComponentName
 		}); ok {
