@@ -23,6 +23,8 @@ spec:
         - name: metrics
           port: 9090
       publicPort: http
+      runtime:
+        architecture: arm64      
       monitoring: true
       monitoringConfig:
         portName: metrics
@@ -34,8 +36,6 @@ spec:
         LOG_PRETTY: "false"
       environmentConfig:
         - environment: qa
-          runtime:
-            architecture: arm64
           horizontalScaling:
             maxReplicas: 1
             minReplicas: 0
