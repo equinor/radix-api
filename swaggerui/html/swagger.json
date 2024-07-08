@@ -7503,12 +7503,12 @@
           "type": "string",
           "enum": [
             "Waiting",
+            "Active",
             "Running",
             "Succeeded",
             "Stopping",
             "Stopped",
             "Failed",
-            "DeadlineExceeded",
             "Completed"
           ],
           "x-go-name": "Status",
