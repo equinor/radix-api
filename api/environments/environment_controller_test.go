@@ -1354,7 +1354,7 @@ func Test_GetJobs_Status(t *testing.T) {
 	type scenario struct {
 		name           string
 		jobStatus      *v1.RadixBatchJobStatus
-		expectedStatus v1.RadixBatchJobApiStatus
+		expectedStatus deploymentModels.ScheduledBatchJobStatus
 	}
 	scenarios := []scenario{
 		{
@@ -1466,7 +1466,7 @@ func Test_GetJobs_Status(t *testing.T) {
 			err = controllertest.GetResponseBody(response, &actual)
 			require.NoError(t, err)
 			assert.Len(t, actual, 1)
-			assert.Equal(t, string(ts.expectedStatus), actual[0].Status)
+			assert.Equal(t, ts.expectedStatus, actual[0].Status)
 		})
 	}
 
@@ -1541,19 +1541,19 @@ func Test_GetBatch_JobsListStatus_StopIsTrue(t *testing.T) {
 	require.Len(t, actual, 1)
 	type assertMapped struct {
 		Name   string
-		Status string
+		Status deploymentModels.ScheduledBatchJobStatus
 	}
 	actualMapped := slice.Map(actual[0].JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
-		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no1", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no2", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no3", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no4", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
+		{Name: anyBatchName + "-no5", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusSucceeded)},
+		{Name: anyBatchName + "-no6", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusFailed)},
+		{Name: anyBatchName + "-no7", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopped)},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -1564,7 +1564,7 @@ func Test_GetSingleJobs_Status_StopIsTrue(t *testing.T) {
 		name            string
 		batchStatusType v1.RadixBatchConditionType
 		jobStatus       *v1.RadixBatchJobStatus
-		expectedStatus  v1.RadixBatchJobApiStatus
+		expectedStatus  deploymentModels.ScheduledBatchJobStatus
 	}
 	scenarios := []scenario{
 		{name: "No status",
@@ -1575,37 +1575,37 @@ func Test_GetSingleJobs_Status_StopIsTrue(t *testing.T) {
 			name:            "No phase",
 			batchStatusType: v1.BatchConditionTypeWaiting,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1"},
-			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusStopping,
 		},
 		{
 			name:            "In waiting",
 			batchStatusType: v1.BatchConditionTypeWaiting,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseWaiting},
-			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusStopping,
 		},
 		{
 			name:            "Active",
 			batchStatusType: v1.BatchConditionTypeActive,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseActive},
-			expectedStatus:  v1.RadixBatchJobApiStatusStopping,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusStopping,
 		},
 		{
 			name:            "Succeeded",
 			batchStatusType: v1.BatchConditionTypeCompleted,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseSucceeded},
-			expectedStatus:  v1.RadixBatchJobApiStatusSucceeded,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusSucceeded,
 		},
 		{
 			name:            "Failed",
 			batchStatusType: v1.BatchConditionTypeCompleted,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseFailed},
-			expectedStatus:  v1.RadixBatchJobApiStatusFailed,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusFailed,
 		},
 		{
 			name:            "Stopped",
 			batchStatusType: v1.BatchConditionTypeCompleted,
 			jobStatus:       &v1.RadixBatchJobStatus{Name: "no1", Phase: v1.BatchJobPhaseStopped},
-			expectedStatus:  v1.RadixBatchJobApiStatusStopped,
+			expectedStatus:  deploymentModels.ScheduledBatchJobStatusStopped,
 		},
 	}
 	for _, ts := range scenarios {
@@ -1661,7 +1661,7 @@ func Test_GetSingleJobs_Status_StopIsTrue(t *testing.T) {
 			err = controllertest.GetResponseBody(response, &actual)
 			require.NoError(t, err)
 			assert.Len(t, actual, 1)
-			assert.Equal(t, string(ts.expectedStatus), actual[0].Status)
+			assert.Equal(t, ts.expectedStatus, actual[0].Status)
 		})
 
 	}
@@ -1873,7 +1873,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Created:          radixutils.FormatTime(&creationTime),
 		Started:          radixutils.FormatTime(&startTime),
 		Ended:            radixutils.FormatTime(&endTime),
-		Status:           v1.RadixBatchJobApiStatusSucceeded,
+		Status:           deploymentModels.ScheduledBatchJobStatusSucceeded,
 		Message:          "anymessage",
 		BackoffLimit:     *defaultBackoffLimit,
 		TimeLimitSeconds: numbers.Int64Ptr(123),
@@ -1885,7 +1885,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		DeploymentName: anyDeployment,
 		ReplicaList: []deploymentModels.ReplicaSummary{{
 			Created: radixutils.FormatTimestamp(podCreationTime.Time),
-			Status:  deploymentModels.ReplicaStatus{Status: string(v1.PodSucceeded)},
+			Status:  deploymentModels.ReplicaStatus{Status: deploymentModels.Succeeded},
 		}},
 		Runtime: &deploymentModels.Runtime{
 			Architecture: string(v1.RuntimeArchitectureArm64),
@@ -1901,7 +1901,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
-		Status:           v1.RadixBatchJobApiStatusWaiting,
+		Status:           deploymentModels.ScheduledBatchJobStatusWaiting,
 		BackoffLimit:     5,
 		TimeLimitSeconds: numbers.Int64Ptr(999),
 		Resources: deploymentModels.ResourceRequirements{
@@ -2065,20 +2065,20 @@ func Test_GetBatch_JobList(t *testing.T) {
 	require.Len(t, actual.JobList, 8)
 	type assertMapped struct {
 		Name   string
-		Status string
+		Status deploymentModels.ScheduledBatchJobStatus
 	}
 	actualMapped := slice.Map(actual.JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
-		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
-		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusWaiting)},
-		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusActive)},
-		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusRunning)},
-		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusFailed)},
-		{Name: anyBatchName + "-no8", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no1", Status: deploymentModels.ScheduledBatchJobStatusWaiting},
+		{Name: anyBatchName + "-no2", Status: deploymentModels.ScheduledBatchJobStatusWaiting},
+		{Name: anyBatchName + "-no3", Status: deploymentModels.ScheduledBatchJobStatusWaiting},
+		{Name: anyBatchName + "-no4", Status: deploymentModels.ScheduledBatchJobStatusActive},
+		{Name: anyBatchName + "-no5", Status: deploymentModels.ScheduledBatchJobStatusRunning},
+		{Name: anyBatchName + "-no6", Status: deploymentModels.ScheduledBatchJobStatusSucceeded},
+		{Name: anyBatchName + "-no7", Status: deploymentModels.ScheduledBatchJobStatusFailed},
+		{Name: anyBatchName + "-no8", Status: deploymentModels.ScheduledBatchJobStatusStopped},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -2143,19 +2143,19 @@ func Test_GetBatch_JobList_StopFlag(t *testing.T) {
 	require.Len(t, actual.JobList, 7)
 	type assertMapped struct {
 		Name   string
-		Status string
+		Status deploymentModels.ScheduledBatchJobStatus
 	}
 	actualMapped := slice.Map(actual.JobList, func(job deploymentModels.ScheduledJobSummary) assertMapped {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no2", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no3", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no4", Status: string(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no5", Status: string(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: anyBatchName + "-no6", Status: string(v1.RadixBatchJobApiStatusFailed)},
-		{Name: anyBatchName + "-no7", Status: string(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no1", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no2", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no3", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no4", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no5", Status: deploymentModels.ScheduledBatchJobStatusSucceeded},
+		{Name: anyBatchName + "-no6", Status: deploymentModels.ScheduledBatchJobStatusFailed},
+		{Name: anyBatchName + "-no7", Status: deploymentModels.ScheduledBatchJobStatusStopped},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -2364,19 +2364,19 @@ func Test_GetBatches_Status(t *testing.T) {
 	require.NoError(t, err)
 	type assertMapped struct {
 		Name   string
-		Status string
+		Status deploymentModels.ScheduledBatchJobStatus
 	}
 	actualMapped := slice.Map(actual, func(b deploymentModels.ScheduledBatchSummary) assertMapped {
 		return assertMapped{Name: b.Name, Status: b.Status}
 	})
 	expected := []assertMapped{
-		{Name: "batch-job1", Status: string(v1.RadixBatchJobApiStatusWaiting)},
-		{Name: "batch-job2", Status: string(v1.RadixBatchJobApiStatusWaiting)},
-		{Name: "batch-job3", Status: string(v1.RadixBatchJobApiStatusActive)},
-		{Name: "batch-job4", Status: string(v1.RadixBatchJobApiStatusActive)},
-		{Name: "batch-job5", Status: string(v1.RadixBatchJobApiStatusCompleted)},
-		{Name: "batch-job6", Status: string(v1.RadixBatchJobApiStatusCompleted)},
-		{Name: "batch-job7", Status: string(v1.RadixBatchJobApiStatusCompleted)},
+		{Name: "batch-job1", Status: deploymentModels.ScheduledBatchJobStatusWaiting},
+		{Name: "batch-job2", Status: deploymentModels.ScheduledBatchJobStatusWaiting},
+		{Name: "batch-job3", Status: deploymentModels.ScheduledBatchJobStatusActive},
+		{Name: "batch-job4", Status: deploymentModels.ScheduledBatchJobStatusActive},
+		{Name: "batch-job5", Status: deploymentModels.ScheduledBatchJobStatusCompleted},
+		{Name: "batch-job6", Status: deploymentModels.ScheduledBatchJobStatusCompleted},
+		{Name: "batch-job7", Status: deploymentModels.ScheduledBatchJobStatusCompleted},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }
@@ -2430,7 +2430,7 @@ func Test_GetBatches_JobListShouldHaveJobWithStatusWaiting(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
 	assert.Len(t, actual[0].JobList, 1)
-	assert.Equal(t, string(v1.BatchJobPhaseWaiting), actual[0].JobList[0].Status)
+	assert.Equal(t, deploymentModels.ScheduledBatchJobStatusWaiting, actual[0].JobList[0].Status)
 }
 
 func Test_StopJob(t *testing.T) {

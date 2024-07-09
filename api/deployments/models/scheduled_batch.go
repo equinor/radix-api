@@ -30,9 +30,8 @@ type ScheduledJobSummary struct {
 	// Status of the job
 	//
 	// required: true
-	// enum: Running,Active,Succeeded,Failed,Waiting,Stopping,Stopped
 	// example: Waiting
-	Status string `json:"status"`
+	Status ScheduledBatchJobStatus `json:"status"`
 
 	// Message of a status, if any, of the job
 	//
@@ -128,9 +127,8 @@ type ScheduledBatchSummary struct {
 	// Status of the job
 	//
 	// required: true
-	// enum: Waiting,Active,Running,Succeeded,Stopping,Stopped,Failed,Completed
 	// example: Waiting
-	Status string `json:"status"`
+	Status ScheduledBatchJobStatus `json:"status"`
 
 	// Deprecated: Message of a status, if any, of the job
 	//

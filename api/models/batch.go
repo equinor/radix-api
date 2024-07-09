@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/equinor/radix-api/api/deployments/models"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	utils2 "github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
@@ -64,12 +66,12 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 		JobList:        GetScheduledJobSummaryList(radixBatch, radixBatchStatus, radixDeployJobComponent),
 	}
 	if radixBatchStatus != nil {
-		summary.Status = string(radixBatchStatus.Status)
+		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(radixBatchStatus.Status)
 		summary.Created = radixBatchStatus.CreationTime
 		summary.Started = radixBatchStatus.Started
 		summary.Ended = radixBatchStatus.Ended
 	} else {
-		summary.Status = string(radixBatch.Status.Condition.Type)
+		summary.Status = utils2.GetBatchJobStatusByJobApiCondition(radixBatch.Status.Condition.Type)
 		summary.Created = utils.FormatTimestamp(radixBatch.GetCreationTimestamp().Time)
 		summary.Started = utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
 		summary.Ended = utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
@@ -137,7 +139,7 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 	if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerModels.RadixBatchJobStatus) bool {
 		return jobStatus.Name == jobName
 	}); ok {
-		summary.Status = string(jobStatus.Status)
+		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(jobStatus.Status)
 		summary.Created = jobStatus.CreationTime
 		summary.Started = jobStatus.Started
 		summary.Ended = jobStatus.Ended
@@ -160,7 +162,7 @@ func GetReplicaSummaryByJobPodStatus(radixBatchJob radixv1.RadixBatchJob, jobPod
 		Reason:        jobPodStatus.Reason,
 		StatusMessage: jobPodStatus.Message,
 		ExitCode:      jobPodStatus.ExitCode,
-		Status:        models.ReplicaStatus{Status: string(jobPodStatus.Phase)},
+		Status:        models.ReplicaStatus{Status: getReplicaStatusByPodStatus(jobPodStatus.Phase)},
 	}
 	if jobPodStatus.StartTime != nil {
 		summary.StartTime = utils.FormatTimestamp(jobPodStatus.StartTime.Time)
@@ -184,4 +186,21 @@ func getReplicaSummaryListForJob(radixBatch *radixv1.RadixBatch, radixBatchJob r
 			})
 	}
 	return nil
+}
+
+func getReplicaStatusByPodStatus(podPhase radixv1.RadixBatchJobPodPhase) deploymentModels.ContainerStatus {
+	switch podPhase {
+	case radixv1.PodPending:
+		return deploymentModels.Pending
+	case radixv1.PodRunning:
+		return deploymentModels.Running
+	case radixv1.PodFailed:
+		return deploymentModels.Failed
+	case radixv1.PodStopped:
+		return deploymentModels.Stopped
+	case radixv1.PodSucceeded:
+		return deploymentModels.Succeeded
+	default:
+		return ""
+	}
 }

@@ -411,12 +411,12 @@ func TestGetComponents_ReplicaStatus_Failing(t *testing.T) {
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
 	require.Equal(t, 2, len(app.ReplicaList))
-	assert.Equal(t, string(v1.PodFailed), app.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Failing, app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message1, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
 	require.Equal(t, 1, len(job.ReplicaList))
-	assert.Equal(t, string(v1.PodFailed), job.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Failing, job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message2, job.ReplicaList[0].StatusMessage)
 }
 
@@ -458,12 +458,12 @@ func TestGetComponents_ReplicaStatus_Running(t *testing.T) {
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
 	assert.Equal(t, 2, len(app.ReplicaList))
-	assert.Equal(t, deploymentModels.Running.String(), app.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Running, app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
 	assert.Equal(t, 1, len(job.ReplicaList))
-	assert.Equal(t, deploymentModels.Running.String(), job.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Running, job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, job.ReplicaList[0].StatusMessage)
 }
 
@@ -505,12 +505,12 @@ func TestGetComponents_ReplicaStatus_Starting(t *testing.T) {
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
 	assert.Equal(t, 2, len(app.ReplicaList))
-	assert.Equal(t, deploymentModels.Starting.String(), app.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Starting, app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
 	assert.Equal(t, 1, len(job.ReplicaList))
-	assert.Equal(t, deploymentModels.Starting.String(), job.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Starting, job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, job.ReplicaList[0].StatusMessage)
 }
 
@@ -552,12 +552,12 @@ func TestGetComponents_ReplicaStatus_Pending(t *testing.T) {
 	assert.Equal(t, 2, len(components))
 	app := getComponentByName("app", components)
 	assert.Equal(t, 2, len(app.ReplicaList))
-	assert.Equal(t, deploymentModels.Pending.String(), app.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Pending, app.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, app.ReplicaList[0].StatusMessage)
 
 	job := getComponentByName("job", components)
 	assert.Equal(t, 1, len(job.ReplicaList))
-	assert.Equal(t, deploymentModels.Pending.String(), job.ReplicaList[0].Status.Status)
+	assert.Equal(t, deploymentModels.Pending, job.ReplicaList[0].Status.Status)
 	assert.Equal(t, message, job.ReplicaList[0].StatusMessage)
 }
 

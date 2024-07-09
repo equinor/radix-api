@@ -1,30 +1,31 @@
 package models
 
 // ContainerStatus Enumeration of the statuses of container
-type ContainerStatus int
+// swagger:enum ContainerStatus
+type ContainerStatus string
 
 const (
 	// Pending container
-	Pending ContainerStatus = iota
+	Pending ContainerStatus = "Pending"
 
-	// Failing container
-	Failing
+	// Failed container permanently exists in a failed state
+	Failed ContainerStatus = "Failed"
+
+	// Failing container, which can attempt to restart
+	Failing ContainerStatus = "Failing"
 
 	// Running container
-	Running
+	Running ContainerStatus = "Running"
 
 	// Terminated container
-	Terminated
+	Terminated ContainerStatus = "Terminated"
 
 	// Starting container
-	Starting
+	Starting ContainerStatus = "Starting"
 
-	numStatuses
+	// Stopped container
+	Stopped ContainerStatus = "Stopped"
+
+	// Succeeded all containers in the pod have voluntarily terminated
+	Succeeded ContainerStatus = "Succeeded"
 )
-
-func (p ContainerStatus) String() string {
-	if p >= numStatuses {
-		return "Unsupported"
-	}
-	return [...]string{"Pending", "Failing", "Running", "Terminated", "Starting"}[p]
-}
