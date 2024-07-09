@@ -3,10 +3,12 @@ package models
 import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -43,4 +45,15 @@ func BuildDeployment(
 
 	return deployment
 
+}
+
+func GetActiveDeploymentForAppEnv(appName, envName string, rds []radixv1.RadixDeployment) (radixv1.RadixDeployment, bool) {
+	return slice.FindFirst(rds, isActiveDeploymentForAppAndEnv(appName, envName))
+}
+
+func isActiveDeploymentForAppAndEnv(appName, envName string) func(rd radixv1.RadixDeployment) bool {
+	envNs := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	return func(rd radixv1.RadixDeployment) bool {
+		return predicate.IsActiveRadixDeployment(rd) && rd.Namespace == envNs
+	}
 }

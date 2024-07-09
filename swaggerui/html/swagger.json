@@ -7271,17 +7271,19 @@
       ],
       "properties": {
         "status": {
-          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nTerminated = Container in Terminated state",
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nStarting = Container is starting\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nStopped = Replica was deleted du to job stopped\nTerminated = Container in Terminated state\nPending Pending  Pending container\nFailed Failed  Failed container permanently exists in a failed state\nFailing Failing  Failing container, which can attempt to restart\nRunning Running  Running container\nTerminated Terminated  Terminated container\nStarting Starting  Starting container\nStopped Stopped  Stopped container\nSucceeded Succeeded  Succeeded all containers in the pod have voluntarily terminated",
           "type": "string",
           "enum": [
             "Pending",
-            "Succeeded",
-            "Failing",
             "Failed",
+            "Failing",
             "Running",
             "Terminated",
-            "Starting"
+            "Starting",
+            "Stopped",
+            "Succeeded"
           ],
+          "x-go-enum-desc": "Pending Pending  Pending container\nFailed Failed  Failed container permanently exists in a failed state\nFailing Failing  Failing container, which can attempt to restart\nRunning Running  Running container\nTerminated Terminated  Terminated container\nStarting Starting  Starting container\nStopped Stopped  Stopped container\nSucceeded Succeeded  Succeeded all containers in the pod have voluntarily terminated",
           "x-go-name": "Status",
           "example": "Running"
         }
@@ -7498,14 +7500,19 @@
           "example": "2006-01-02T15:04:05Z"
         },
         "status": {
-          "description": "Status of the job",
+          "description": "Status of the job\nRunning ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
           "type": "string",
           "enum": [
-            "Waiting",
             "Running",
             "Succeeded",
-            "Failed"
+            "Failed",
+            "Waiting",
+            "Stopping",
+            "Stopped",
+            "Active",
+            "Completed"
           ],
+          "x-go-enum-desc": "Running ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
           "x-go-name": "Status",
           "example": "Waiting"
         },
@@ -7623,17 +7630,19 @@
           "example": "2006-01-02T15:04:05Z"
         },
         "status": {
-          "description": "Status of the job",
+          "description": "Status of the job\nRunning ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
           "type": "string",
           "enum": [
             "Running",
-            "Active",
             "Succeeded",
             "Failed",
             "Waiting",
             "Stopping",
-            "Stopped"
+            "Stopped",
+            "Active",
+            "Completed"
           ],
+          "x-go-enum-desc": "Running ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
           "x-go-name": "Status",
           "example": "Waiting"
         },

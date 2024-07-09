@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -38,7 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubernetes "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
@@ -1666,76 +1665,6 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 	assert.Equal(t, jobs[0].Spec.Promote.CommitID, commitId)
 }
 
-func TestIsDeployKeyValid(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
-	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("some-app").
-		WithPublicKey("some-public-key").
-		WithPrivateKey("some-private-key"))
-	require.NoError(t, err)
-
-	_, err = commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("some-app-missing-key").
-		WithPublicKey("").
-		WithPrivateKey(""))
-	require.NoError(t, err)
-
-	_, err = commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("some-app-missing-repository").
-		WithCloneURL(""))
-	require.NoError(t, err)
-
-	// Tests
-	t.Run("missing rr", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-nonexisting-app"))
-		response := <-responseChannel
-
-		assert.Equal(t, http.StatusNotFound, response.Code)
-	})
-
-	t.Run("missing repository", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app-missing-repository"))
-		response := <-responseChannel
-
-		assert.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(t, "Clone URL is missing", errorResponse.Message)
-	})
-
-	t.Run("missing key", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app-missing-key"))
-		response := <-responseChannel
-
-		assert.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(t, "Deploy key is missing", errorResponse.Message)
-	})
-
-	t.Run("valid key", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
-		err := setStatusOfCloneJob(kubeclient, "some-app-app", true)
-		require.NoError(t, err)
-
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-	})
-
-	t.Run("invalid key", func(t *testing.T) {
-		responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/deploykey-valid", "some-app"))
-		err := setStatusOfCloneJob(kubeclient, "some-app-app", false)
-		require.NoError(t, err)
-
-		response := <-responseChannel
-		assert.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(t, "Deploy key was invalid", errorResponse.Message)
-	})
-}
-
 func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
@@ -1922,36 +1851,6 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusBadRequest, response.Code)
-}
-
-func setStatusOfCloneJob(kubeclient kubernetes.Interface, appNamespace string, succeededStatus bool) error {
-	timeout := time.After(1 * time.Second)
-	tick := time.Tick(200 * time.Millisecond)
-	var errs []error
-
-	for {
-		select {
-		case <-timeout:
-			return errors.Join(errs...)
-
-		case <-tick:
-			jobs, _ := kubeclient.BatchV1().Jobs(appNamespace).List(context.Background(), metav1.ListOptions{})
-			if len(jobs.Items) > 0 {
-				job := jobs.Items[0]
-
-				if succeededStatus {
-					job.Status.Succeeded = int32(1)
-				} else {
-					job.Status.Failed = int32(1)
-				}
-
-				_, le := kubeclient.BatchV1().Jobs(appNamespace).Update(context.Background(), &job, metav1.UpdateOptions{})
-				if le != nil {
-					errs = append(errs, le)
-				}
-			}
-		}
-	}
 }
 
 func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) error {

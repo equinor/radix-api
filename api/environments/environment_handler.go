@@ -15,7 +15,6 @@ import (
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/jobscheduler"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/models"
@@ -41,8 +40,6 @@ func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 		eh.deployHandler = deployments.Init(accounts)
 		eh.eventHandler = events.Init(accounts.UserAccount.Client)
 		eh.accounts = accounts
-		kubeUtil, _ := kube.New(accounts.UserAccount.Client, accounts.UserAccount.RadixClient, accounts.UserAccount.KedaClient, accounts.UserAccount.SecretProviderClient)
-		eh.jobSchedulerHandlerFactory = jobscheduler.NewFactory(kubeUtil)
 	}
 }
 
@@ -57,13 +54,6 @@ func WithEventHandler(eventHandler events.EventHandler) EnvironmentHandlerOption
 func WithTLSValidator(validator tlsvalidation.Validator) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.tlsValidator = validator
-	}
-}
-
-// WithJobSchedulerHandlerFactory configures the jobSchedulerHandlerFactory used by EnvironmentHandler
-func WithJobSchedulerHandlerFactory(jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface) EnvironmentHandlerOptions {
-	return func(eh *EnvironmentHandler) {
-		eh.jobSchedulerHandlerFactory = jobSchedulerHandlerFactory
 	}
 }
 
@@ -85,11 +75,10 @@ func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) Environment
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	deployHandler              deployments.DeployHandler
-	eventHandler               events.EventHandler
-	accounts                   models.Accounts
-	tlsValidator               tlsvalidation.Validator
-	jobSchedulerHandlerFactory jobscheduler.HandlerFactoryInterface
+	deployHandler deployments.DeployHandler
+	eventHandler  events.EventHandler
+	accounts      models.Accounts
+	tlsValidator  tlsvalidation.Validator
 }
 
 var validaStatusesToScaleComponent []string
