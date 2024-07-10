@@ -399,16 +399,17 @@ type ReplicaSummary struct {
 type ReplicaStatus struct {
 	// Status of the container
 	// - Pending = Container in Waiting state and the reason is ContainerCreating
+	// - Starting = Container is starting
 	// - Failed = Container is failed
 	// - Failing = Container is failed
 	// - Running = Container in Running state
 	// - Succeeded = Container in Succeeded state
+	// - Stopped = Replica was deleted du to job stopped
 	// - Terminated = Container in Terminated state
 	//
 	// required: true
-	// enum: Pending,Succeeded,Failing,Failed,Running,Terminated,Starting
 	// example: Running
-	Status string `json:"status"`
+	Status ContainerStatus `json:"status"`
 }
 
 // HorizontalScalingSummary describe the summary of horizontal scaling of a component
@@ -525,7 +526,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
 
 	// Set default Pending status
-	replicaSummary.Status = ReplicaStatus{Status: Pending.String()}
+	replicaSummary.Status = ReplicaStatus{Status: Pending}
 
 	if len(pod.Status.ContainerStatuses) == 0 {
 		condition := getLastReadyCondition(pod.Status.Conditions)
@@ -542,19 +543,19 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	if containerState.Waiting != nil {
 		replicaSummary.StatusMessage = containerState.Waiting.Message
 		if !strings.EqualFold(containerState.Waiting.Reason, "ContainerCreating") {
-			replicaSummary.Status = ReplicaStatus{Status: Failing.String()}
+			replicaSummary.Status = ReplicaStatus{Status: Failing}
 		}
 	}
 	if containerState.Running != nil {
 		replicaSummary.ContainerStarted = radixutils.FormatTimestamp(containerState.Running.StartedAt.Time)
 		if containerStatus.Ready {
-			replicaSummary.Status = ReplicaStatus{Status: Running.String()}
+			replicaSummary.Status = ReplicaStatus{Status: Running}
 		} else {
-			replicaSummary.Status = ReplicaStatus{Status: Starting.String()}
+			replicaSummary.Status = ReplicaStatus{Status: Starting}
 		}
 	}
 	if containerState.Terminated != nil {
-		replicaSummary.Status = ReplicaStatus{Status: Terminated.String()}
+		replicaSummary.Status = ReplicaStatus{Status: Terminated}
 		replicaSummary.StatusMessage = containerState.Terminated.Message
 	}
 	terminated := containerStatus.LastTerminationState.Terminated
@@ -574,7 +575,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	if len(pod.Spec.Containers) > 0 {
 		replicaSummary.Resources = pointers.Ptr(ConvertResourceRequirements(pod.Spec.Containers[0].Resources))
 	}
-	if len(replicaSummary.StatusMessage) == 0 && (replicaSummary.Status.Status == Failing.String() || replicaSummary.Status.Status == Pending.String()) {
+	if len(replicaSummary.StatusMessage) == 0 && (replicaSummary.Status.Status == Failing || replicaSummary.Status.Status == Pending) {
 		replicaSummary.StatusMessage = lastEventWarning
 	}
 	return replicaSummary
@@ -590,21 +591,6 @@ func getReplicaType(pod corev1.Pod) ReplicaType {
 		return OAuth2
 	default:
 		return Undefined
-	}
-}
-
-func getReplicaStatusByPodStatus(podPhase corev1.PodPhase) string {
-	switch podPhase {
-	case corev1.PodPending:
-		return Pending.String()
-	case corev1.PodRunning:
-		return Running.String()
-	case corev1.PodFailed:
-		return Failing.String()
-	case corev1.PodSucceeded:
-		return Terminated.String()
-	default:
-		return ""
 	}
 }
 
@@ -647,7 +633,7 @@ func (job *ScheduledJobSummary) GetEnded() string {
 }
 
 func (job *ScheduledJobSummary) GetStatus() string {
-	return job.Status
+	return string(job.Status)
 }
 
 func (job *ScheduledBatchSummary) GetCreated() string {
@@ -663,5 +649,20 @@ func (job *ScheduledBatchSummary) GetEnded() string {
 }
 
 func (job *ScheduledBatchSummary) GetStatus() string {
-	return job.Status
+	return string(job.Status)
+}
+
+func getReplicaStatusByPodStatus(podPhase corev1.PodPhase) ContainerStatus {
+	switch podPhase {
+	case corev1.PodPending:
+		return Pending
+	case corev1.PodRunning:
+		return Running
+	case corev1.PodFailed:
+		return Failing
+	case corev1.PodSucceeded:
+		return Terminated
+	default:
+		return ContainerStatus("")
+	}
 }

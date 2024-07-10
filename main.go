@@ -106,6 +106,7 @@ func initializeMetricsServer(port string) *http.Server {
 
 func startServers(servers ...*http.Server) {
 	for _, srv := range servers {
+		srv := srv
 		go func() {
 			log.Info().Msgf("Starting server on address %s", srv.Addr)
 			if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -126,6 +127,7 @@ func shutdownServersGracefulOnSignal(servers ...*http.Server) {
 	var wg sync.WaitGroup
 
 	for _, srv := range servers {
+		srv := srv
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
