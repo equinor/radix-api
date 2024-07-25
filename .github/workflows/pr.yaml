@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
     - uses: actions/checkout@v4
     - name: Build docker image
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --no-tags --no-recurse-submodules --depth=1  origin master:master
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: arm64
+        arch: [arm64]
     steps:
       - name: 'Fake TOKEN FOR RADIX CLI'
         run: echo "APP_SERVICE_ACCOUNT_TOKEN=dummy" >> $GITHUB_ENV
