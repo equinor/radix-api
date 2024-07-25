@@ -4,10 +4,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build docker image
+      run: docker build .
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,11 +31,14 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.58.2
+          version: v1.59.1
 
   test:
     name: Unit Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -36,6 +52,9 @@ jobs:
   verify-code-generation:
     name: Verify Code Generation
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -48,6 +67,9 @@ jobs:
   report-swagger-changes:
     name: Report Changes In Swagger Spec
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
     steps:
       - uses: actions/checkout@v4
       - run: git fetch --no-tags --no-recurse-submodules --depth=1  origin master:master
@@ -60,26 +82,21 @@ jobs:
         if: always()
         id: breaking
         continue-on-error: true
-        run: swagger diff --break <(git show master:swaggerui/html/swagger.json) swaggerui/html/swagger.json > /tmp/swagger_breaking_changes.txt
+        run: |
+          main_swagger=$(git show main:swaggerui/html/swagger.json)
+          breaking_changes=$(swagger diff --break <$main_swagger swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
       - name: Add comment
-        if: steps.breaking.outcome == 'failure'
-        uses: mshick/add-pr-comment@v2
+        if: failure() && steps.breaking.outcome == 'failure'
+        uses: actions/github-script@v7
         with:
-          message-id: breaking-comment
-          preformatted: true
-          message-path: /tmp/swagger_breaking_changes.txt
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build docker image
-      run: docker build .
+          script: console.log('${{ steps.breaking.outputs.breaking_changes }}');
 
   validate-radixconfig:
     name: Test RadixConfig
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: arm64
     steps:
       - name: 'Fake TOKEN FOR RADIX CLI'
         run: echo "APP_SERVICE_ACCOUNT_TOKEN=dummy" >> $GITHUB_ENV
