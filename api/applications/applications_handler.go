@@ -441,13 +441,11 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, err
 	}
 
-	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, fromEnvironment, deploymentName)
+	radixDeployment, err := ah.getRadixDeployment(ctx, appName, fromEnvironment, deploymentName)
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("deployment %s not found in the app %s, environment %s", deploymentName, appName, fromEnvironment)
-		}
-		return nil, fmt.Errorf("failed to get deployment %s for the app %s, environment %s: %v", deploymentName, appName, fromEnvironment, err)
+		return nil, err
 	}
+	pipelineParameters.DeploymentName = radixDeployment.GetName()
 
 	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
@@ -456,6 +454,34 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	}
 
 	return jobSummary, nil
+}
+
+func (ah *ApplicationHandler) getRadixDeployment(ctx context.Context, appName string, envName string, deploymentName string) (*v1.RadixDeployment, error) {
+	if len(deploymentName) < 5 || len(deploymentName) > 200 {
+		return nil, errors.New("invalid deployment name")
+	}
+	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, envName, deploymentName)
+	if err == nil {
+		return radixDeployment, nil
+	}
+	if !k8serrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get deployment %s for the app %s, environment %s: %v", deploymentName, appName, envName, err)
+	}
+	envRadixDeployments, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, ah.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	radixDeployments := slice.Reduce(envRadixDeployments, []*v1.RadixDeployment{}, func(acc []*v1.RadixDeployment, rd v1.RadixDeployment) []*v1.RadixDeployment {
+		radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
+		if strings.HasSuffix(rd.Name, radixDeploymentSuffix) {
+			acc = append(acc, &rd)
+		}
+		return acc
+	})
+	if len(radixDeployments) != 1 {
+		return nil, errors.New("invalid or not existing deployment name")
+	}
+	return radixDeployments[0], nil
 }
 
 // TriggerPipelineDeploy Triggers deploy pipeline for an application
