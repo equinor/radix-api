@@ -1,7 +1,10 @@
 # Build stage
-FROM docker.io/golang:1.22-alpine3.20 as builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.22.5-alpine3.20 AS builder
+ARG TARGETARCH
 ENV CGO_ENABLED=0 \
-    GOOS=linux
+    GOOS=linux \
+    GOARCH=${TARGETARCH}
+
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
