@@ -471,17 +471,12 @@ func (ah *ApplicationHandler) getRadixDeployment(ctx context.Context, appName st
 	if err != nil {
 		return nil, err
 	}
-	radixDeployments := slice.Reduce(envRadixDeployments, []*v1.RadixDeployment{}, func(acc []*v1.RadixDeployment, rd v1.RadixDeployment) []*v1.RadixDeployment {
-		radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
-		if strings.HasSuffix(rd.Name, radixDeploymentSuffix) {
-			acc = append(acc, &rd)
-		}
-		return acc
-	})
+    radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
+	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool {return strings.HasSuffix(rd.Name, radixDeploymentSuffix)})
 	if len(radixDeployments) != 1 {
 		return nil, errors.New("invalid or not existing deployment name")
 	}
-	return radixDeployments[0], nil
+	return &radixDeployments[0], nil
 }
 
 // TriggerPipelineDeploy Triggers deploy pipeline for an application
