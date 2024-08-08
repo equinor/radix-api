@@ -1698,7 +1698,8 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 					Error   string `json:"error"`
 				}
 				body := RespondBody{}
-				json.Unmarshal(response.Body.Bytes(), &body)
+				err = json.Unmarshal(response.Body.Bytes(), &body)
+				require.NoError(t, err)
 				require.Equal(t, ts.expectedResponseBodyError, body.Error, "invalid respond error")
 
 			} else {
