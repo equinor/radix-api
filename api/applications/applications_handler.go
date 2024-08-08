@@ -439,7 +439,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, err
 	}
 
-	radixDeployment, err := ah.getRadixDeployment(ctx, appName, fromEnvironment, deploymentName)
+	radixDeployment, err := ah.getRadixDeploymentForPromotePipeline(ctx, appName, fromEnvironment, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -455,10 +455,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	return jobSummary, nil
 }
 
-func (ah *ApplicationHandler) getRadixDeployment(ctx context.Context, appName string, envName string, deploymentName string) (*v1.RadixDeployment, error) {
-	if len(deploymentName) < 5 || len(deploymentName) > 200 {
-		return nil, errors.New("invalid deployment name")
-	}
+func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
 	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, envName, deploymentName)
 	if err == nil {
 		return radixDeployment, nil
@@ -470,8 +467,7 @@ func (ah *ApplicationHandler) getRadixDeployment(ctx context.Context, appName st
 	if err != nil {
 		return nil, err
 	}
-	radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
-	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool { return strings.HasSuffix(rd.Name, radixDeploymentSuffix) })
+	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool { return strings.HasSuffix(rd.Name, deploymentName) })
 	if len(radixDeployments) != 1 {
 		return nil, errors.New("invalid or not existing deployment name")
 	}
