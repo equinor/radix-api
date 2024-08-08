@@ -1623,7 +1623,6 @@ func TestHandleTriggerPipeline_Deploy_JobHasCorrectParameters(t *testing.T) {
 }
 
 func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, radixclient, _, _, _, _ := setupTest(t, true, true)
 
 	const (
 		appName         = "an-app"
@@ -1633,36 +1632,87 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 		toEnvironment   = "target"
 	)
 
-	parameters := applicationModels.PipelineParametersPromote{
-		FromEnvironment: fromEnvironment,
-		ToEnvironment:   toEnvironment,
-		DeploymentName:  deploymentName,
+	type scenario struct {
+		name                      string
+		existingDeploymentName    string
+		requestedDeploymentName   string
+		expectedDeploymentName    string
+		expectedResponseBodyError string
+		expectedResponseCode      int
 	}
-	_, err := commonTestUtils.ApplyDeployment(
-		context.Background(),
-		builders.
-			ARadixDeployment().
-			WithAppName(appName).
-			WithDeploymentName(deploymentName).
-			WithEnvironment(fromEnvironment).
-			WithLabel(kube.RadixCommitLabel, commitId).
-			WithCondition(v1.DeploymentInactive))
-	require.NoError(t, err)
+	scenarios := []scenario{
+		{
+			name:                    "existing full deployment name",
+			existingDeploymentName:  "abc-deployment",
+			requestedDeploymentName: "abc-deployment",
+			expectedDeploymentName:  "abc-deployment",
+			expectedResponseCode:    200,
+		},
+		{
+			name:                    "existing short deployment name",
+			existingDeploymentName:  "abc-deployment",
+			requestedDeploymentName: "deployment",
+			expectedDeploymentName:  "abc-deployment",
+			expectedResponseCode:    200,
+		},
+		{
+			name:                      "non existing short deployment name",
+			existingDeploymentName:    "abc-deployment",
+			requestedDeploymentName:   "other-name",
+			expectedDeploymentName:    "",
+			expectedResponseBodyError: "invalid or not existing deployment name",
+			expectedResponseCode:      400,
+		},
+	}
 
-	registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
-	<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Promote), parameters)
-	<-responseChannel
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			commonTestUtils, controllerTestUtils, _, radixclient, _, _, _, _ := setupTest(t, true, true)
+			_, err := commonTestUtils.ApplyDeployment(
+				context.Background(),
+				builders.
+					ARadixDeployment().
+					WithAppName(appName).
+					WithDeploymentName(ts.existingDeploymentName).
+					WithEnvironment(fromEnvironment).
+					WithLabel(kube.RadixCommitLabel, commitId).
+					WithCondition(v1.DeploymentInactive))
+			require.NoError(t, err)
 
-	appNamespace := fmt.Sprintf("%s-app", appName)
-	jobs, err := getJobsInNamespace(radixclient, appNamespace)
-	require.NoError(t, err)
+			parameters := applicationModels.PipelineParametersPromote{
+				FromEnvironment: fromEnvironment,
+				ToEnvironment:   toEnvironment,
+				DeploymentName:  ts.requestedDeploymentName,
+			}
 
-	require.Len(t, jobs, 1)
-	assert.Equal(t, jobs[0].Spec.Promote.FromEnvironment, fromEnvironment)
-	assert.Equal(t, jobs[0].Spec.Promote.ToEnvironment, toEnvironment)
-	assert.Equal(t, jobs[0].Spec.Promote.DeploymentName, deploymentName)
-	assert.Equal(t, jobs[0].Spec.Promote.CommitID, commitId)
+			registerAppParam := buildApplicationRegistrationRequest(anApplicationRegistration().WithName(appName).Build(), false)
+			<-controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
+			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/pipelines/%s", appName, v1.Promote), parameters)
+			response := <-responseChannel
+			assert.Equal(t, ts.expectedResponseCode, response.Code)
+			if ts.expectedResponseCode != 200 {
+				assert.NotNil(t, response.Body, "Empty respond body")
+				type RespondBody struct {
+					Type    string `json:"type"`
+					Message string `json:"message"`
+					Error   string `json:"error"`
+				}
+				body := RespondBody{}
+				json.Unmarshal(response.Body.Bytes(), &body)
+				require.Equal(t, ts.expectedResponseBodyError, body.Error, "invalid respond error")
+
+			} else {
+				appNamespace := fmt.Sprintf("%s-app", appName)
+				jobs, err := getJobsInNamespace(radixclient, appNamespace)
+				require.NoError(t, err)
+				require.Len(t, jobs, 1)
+				assert.Equal(t, jobs[0].Spec.Promote.FromEnvironment, fromEnvironment)
+				assert.Equal(t, jobs[0].Spec.Promote.ToEnvironment, toEnvironment)
+				assert.Equal(t, ts.expectedDeploymentName, jobs[0].Spec.Promote.DeploymentName)
+				assert.Equal(t, jobs[0].Spec.Promote.CommitID, commitId)
+			}
+		})
+	}
 }
 
 func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {

@@ -434,8 +434,6 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 	log.Ctx(ctx).Info().Msgf("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
 
-	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
-
 	pipeline, err := jobPipeline.GetPipelineFromName("promote")
 	if err != nil {
 		return nil, err
@@ -447,6 +445,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	}
 	pipelineParameters.DeploymentName = radixDeployment.GetName()
 
+	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
@@ -471,8 +470,8 @@ func (ah *ApplicationHandler) getRadixDeployment(ctx context.Context, appName st
 	if err != nil {
 		return nil, err
 	}
-    radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
-	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool {return strings.HasSuffix(rd.Name, radixDeploymentSuffix)})
+	radixDeploymentSuffix := fmt.Sprintf("-%s", deploymentName)
+	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool { return strings.HasSuffix(rd.Name, radixDeploymentSuffix) })
 	if len(radixDeployments) != 1 {
 		return nil, errors.New("invalid or not existing deployment name")
 	}
