@@ -434,21 +434,18 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 	log.Ctx(ctx).Info().Msgf("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
 
-	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
-
 	pipeline, err := jobPipeline.GetPipelineFromName("promote")
 	if err != nil {
 		return nil, err
 	}
 
-	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, fromEnvironment, deploymentName)
+	radixDeployment, err := ah.getRadixDeploymentForPromotePipeline(ctx, appName, fromEnvironment, deploymentName)
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("deployment %s not found in the app %s, environment %s", deploymentName, appName, fromEnvironment)
-		}
-		return nil, fmt.Errorf("failed to get deployment %s for the app %s, environment %s: %v", deploymentName, appName, fromEnvironment, err)
+		return nil, err
 	}
+	pipelineParameters.DeploymentName = radixDeployment.GetName()
 
+	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
 	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
@@ -456,6 +453,25 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	}
 
 	return jobSummary, nil
+}
+
+func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
+	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, envName, deploymentName)
+	if err == nil {
+		return radixDeployment, nil
+	}
+	if !k8serrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get deployment %s for the app %s, environment %s: %v", deploymentName, appName, envName, err)
+	}
+	envRadixDeployments, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, ah.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	radixDeployments := slice.FindAll(envRadixDeployments, func(rd v1.RadixDeployment) bool { return strings.HasSuffix(rd.Name, deploymentName) })
+	if len(radixDeployments) != 1 {
+		return nil, errors.New("invalid or not existing deployment name")
+	}
+	return &radixDeployments[0], nil
 }
 
 // TriggerPipelineDeploy Triggers deploy pipeline for an application
