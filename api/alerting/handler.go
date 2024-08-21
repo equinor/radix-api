@@ -138,11 +138,11 @@ func (h *handler) updateRadixAlertFromAlertingConfig(ctx context.Context, radixA
 	}
 
 	if len(config.ReceiverSecrets) > 0 {
-		configSecret, err := h.getConfigSecret(ctx, radixAlert.Name)
+		current, err := h.getConfigSecret(ctx, radixAlert.Name)
 		if err != nil {
 			return nil, err
 		}
-		if err := h.updateConfigSecret(ctx, *configSecret, &config); err != nil {
+		if err := h.updateConfigSecret(ctx, *current, &config); err != nil {
 			return nil, err
 		}
 	}
@@ -153,18 +153,19 @@ func (h *handler) updateRadixAlertFromAlertingConfig(ctx context.Context, radixA
 }
 
 func (h *handler) updateConfigSecret(ctx context.Context, secret corev1.Secret, config *alertModels.UpdateAlertingConfig) error {
-	if secret.Data == nil {
-		secret.Data = make(map[string][]byte)
+	desired := secret.DeepCopy()
+	if desired.Data == nil {
+		desired.Data = make(map[string][]byte)
 	}
 
 	for receiverName, receiverSecret := range config.ReceiverSecrets {
 		if receiverSecret.SlackConfig != nil {
-			h.setSlackConfigSecret(*receiverSecret.SlackConfig, receiverName, &secret)
+			h.setSlackConfigSecret(*receiverSecret.SlackConfig, receiverName, desired)
 		}
 	}
 
 	kubeUtil, _ := kube.New(h.accounts.UserAccount.Client, h.accounts.UserAccount.RadixClient, h.accounts.UserAccount.KedaClient, h.accounts.UserAccount.SecretProviderClient)
-	_, err := kubeUtil.ApplySecret(ctx, h.namespace, &secret)
+	_, err := kubeUtil.UpdateSecret(ctx, &secret, desired)
 	return err
 }
 

@@ -8,7 +8,7 @@ require (
 	github.com/cert-manager/cert-manager v1.15.0
 	github.com/equinor/radix-common v1.9.3
 	github.com/equinor/radix-job-scheduler v1.10.2
-	github.com/equinor/radix-operator v1.57.8
+	github.com/equinor/radix-operator v1.57.16
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
