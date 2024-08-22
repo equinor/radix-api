@@ -16,13 +16,13 @@ func Test_GetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Get existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		kubeClient, radixClient, _, promClient, commonTestUtils, kubeUtil, _, certClient := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		err := setupDeployment(&commonTestUtils, kubeClient, radixClient, promClient, certClient, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap).
 				WithSecrets([]string{"SECRET1", "SECRET2"})
 		})
@@ -55,14 +55,14 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, environmentName)
 	t.Run("Change existing env var", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		kubeClient, radixClient, _, promClient, commonTestUtils, kubeUtil, _, certClient := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
 			"VAR2": "val2",
 			"VAR3": "val3",
 		}
-		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		err := setupDeployment(&commonTestUtils, kubeClient, radixClient, promClient, certClient, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
 		require.NoError(t, err)
@@ -105,13 +105,13 @@ func Test_ChangeGetEnvVars(t *testing.T) {
 	})
 	t.Run("Skipped changing not-existing env vars", func(t *testing.T) {
 		t.Parallel()
-		_, _, _, _, commonTestUtils, kubeUtil, _, _ := setupTest(t)
+		kubeClient, radixClient, _, promClient, commonTestUtils, kubeUtil, _, certClient := setupTest(t)
 
 		envVarsMap := map[string]string{
 			"VAR1": "val1",
 			"VAR2": "val2",
 		}
-		_, err := setupDeployment(&commonTestUtils, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
+		err := setupDeployment(&commonTestUtils, kubeClient, radixClient, promClient, certClient, appName, environmentName, componentName, func(builder operatorutils.DeployComponentBuilder) {
 			builder.WithEnvironmentVariables(envVarsMap)
 		})
 		require.NoError(t, err)
