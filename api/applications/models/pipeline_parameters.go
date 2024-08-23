@@ -80,18 +80,24 @@ type PipelineParametersBuild struct {
 	//
 	// example: master-latest
 	ImageTag string `json:"imageTag,omitempty"`
+
+	// OverrideUseBuildCache override default or configured build cache option
+	//
+	// required: false
+	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		Branch:          buildParam.Branch,
-		CommitID:        buildParam.CommitID,
-		PushImage:       buildParam.PushImageToContainerRegistry(),
-		TriggeredBy:     buildParam.TriggeredBy,
-		ImageRepository: buildParam.ImageRepository,
-		ImageName:       buildParam.ImageName,
-		ImageTag:        buildParam.ImageTag,
+		Branch:                buildParam.Branch,
+		CommitID:              buildParam.CommitID,
+		PushImage:             buildParam.PushImageToContainerRegistry(),
+		TriggeredBy:           buildParam.TriggeredBy,
+		ImageRepository:       buildParam.ImageRepository,
+		ImageName:             buildParam.ImageName,
+		ImageTag:              buildParam.ImageTag,
+		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 	}
 }
 
