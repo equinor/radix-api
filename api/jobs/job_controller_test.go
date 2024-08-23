@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/equinor/radix-common/utils/pointers"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
@@ -70,10 +71,11 @@ func TestGetApplicationJob(t *testing.T) {
 	require.NoError(t, err)
 
 	jobParameters := &jobmodels.JobParameters{
-		Branch:      anyBranch,
-		CommitID:    anyPushCommitID,
-		PushImage:   true,
-		TriggeredBy: anyUser,
+		Branch:                anyBranch,
+		CommitID:              anyPushCommitID,
+		PushImage:             true,
+		TriggeredBy:           anyUser,
+		OverrideUseBuildCache: pointers.Ptr(true),
 	}
 
 	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
@@ -119,7 +121,8 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyPushCommitID, job.CommitID)
 	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
-
+	assert.NotNil(t, jobSummary.OverrideUseBuildCache)
+	assert.True(t, *jobSummary.OverrideUseBuildCache)
 }
 
 func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
