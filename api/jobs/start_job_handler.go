@@ -81,10 +81,11 @@ func (jh JobHandler) buildPipelineJob(ctx context.Context, appName, cloneURL, ra
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
 		buildSpec = v1.RadixBuildSpec{
-			ImageTag:  imageTag,
-			Branch:    jobSpec.Branch,
-			CommitID:  jobSpec.CommitID,
-			PushImage: jobSpec.PushImage,
+			ImageTag:              imageTag,
+			Branch:                jobSpec.Branch,
+			CommitID:              jobSpec.CommitID,
+			PushImage:             jobSpec.PushImage,
+			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
