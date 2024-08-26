@@ -6671,7 +6671,8 @@
         "overrideUseBuildCache": {
           "description": "OverrideUseBuildCache override default or configured build cache option",
           "type": "boolean",
-          "x-go-name": "OverrideUseBuildCache"
+          "x-go-name": "OverrideUseBuildCache",
+          "x-nullable": true
         },
         "pipeline": {
           "description": "Name of the pipeline",
