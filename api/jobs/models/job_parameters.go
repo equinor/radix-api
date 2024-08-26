@@ -43,6 +43,13 @@ type JobParameters struct {
 	//
 	// required: false
 	ComponentsToDeploy []string `json:"componentsToDeploy"`
+
+	// OverrideUseBuildCache override default or configured build cache option
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

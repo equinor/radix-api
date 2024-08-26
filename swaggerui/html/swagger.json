@@ -6668,6 +6668,12 @@
           "x-go-name": "Name",
           "example": "radix-pipeline-20181029135644-algpv-6hznh"
         },
+        "overrideUseBuildCache": {
+          "description": "OverrideUseBuildCache override default or configured build cache option",
+          "type": "boolean",
+          "x-go-name": "OverrideUseBuildCache",
+          "x-nullable": true
+        },
         "pipeline": {
           "description": "Name of the pipeline",
           "type": "string",
@@ -6823,6 +6829,12 @@
           "type": "string",
           "x-go-name": "ImageTag",
           "example": "master-latest"
+        },
+        "overrideUseBuildCache": {
+          "description": "OverrideUseBuildCache override default or configured build cache option",
+          "type": "boolean",
+          "x-go-name": "OverrideUseBuildCache",
+          "x-nullable": true
         },
         "pushImage": {
           "description": "PushImage should image be pushed to container registry. Defaults pushing",

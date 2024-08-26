@@ -96,6 +96,13 @@ type JobSummary struct {
 	//
 	// required: false
 	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
+
+	// OverrideUseBuildCache override default or configured build cache option
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
@@ -124,6 +131,7 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	case radixv1.Build, radixv1.BuildDeploy:
 		pipelineJob.Branch = job.Spec.Build.Branch
 		pipelineJob.CommitID = job.Spec.Build.CommitID
+		pipelineJob.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 	case radixv1.Deploy:
 		pipelineJob.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		pipelineJob.CommitID = job.Spec.Deploy.CommitID
