@@ -6833,7 +6833,8 @@
         "overrideUseBuildCache": {
           "description": "OverrideUseBuildCache override default or configured build cache option",
           "type": "boolean",
-          "x-go-name": "OverrideUseBuildCache"
+          "x-go-name": "OverrideUseBuildCache",
+          "x-nullable": true
         },
         "pushImage": {
           "description": "PushImage should image be pushed to container registry. Defaults pushing",
