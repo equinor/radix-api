@@ -247,7 +247,7 @@ func getComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1
 		replicas = pointers.Val(kd.Spec.Replicas)
 	}
 
-	if replicas == 0 && component.GetType() == radixv1.RadixComponentTypeJob {
+	if component.GetType() == radixv1.RadixComponentTypeJob && replicas == 0 {
 		return deploymentModels.StoppedComponent
 	}
 
