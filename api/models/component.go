@@ -273,11 +273,8 @@ func getComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1
 
 func isComponentManuallyStopped(component radixv1.RadixCommonDeployComponent) bool {
 	override := component.GetReplicasOverride()
-	if override == nil {
-		return false
-	}
 
-	return *override == 0
+	return override != nil && *override == 0
 }
 
 func isCopmonentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {
