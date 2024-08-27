@@ -85,6 +85,12 @@ type Component struct {
 	// required: false
 	ReplicaList []ReplicaSummary `json:"replicaList"`
 
+	// Set if manuall control of replicas is in place. null means automatic controll, 0 means stopped and >= 1 is manually scaled.
+	//
+	// required: false
+	// example: nil
+	ReplicasOverride *int `json:"replicasOverride,omitempty"`
+
 	// HorizontalScaling defines horizontal scaling summary for this component
 	//
 	// required: false

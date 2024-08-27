@@ -238,11 +238,13 @@ func certificateRequestConditionReady(condition cmv1.CertificateRequestCondition
 func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
 	environmentConfig := utils.GetComponentEnvironmentConfig(ra, rd.Spec.Environment, component.GetName())
 	if component.GetType() == radixv1.RadixComponentTypeComponent {
-		if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
+		// Manually stopped or KEDA scaled down to 0
+		if runningReplicaDiffersFromConfig(component, environmentConfig, pods) &&
 			!runningReplicaDiffersFromSpec(component, pods) &&
 			len(pods) == 0 {
 			return deploymentModels.StoppedComponent
 		}
+
 		if runningReplicaDiffersFromSpec(component, pods) {
 			return deploymentModels.ComponentReconciling
 		}
@@ -272,8 +274,13 @@ func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv
 	return deploymentModels.ConsistentComponent
 }
 
-func runningReplicaDiffersFromConfig(environmentConfig radixv1.RadixCommonEnvironmentConfig, actualPods []corev1.Pod) bool {
+func runningReplicaDiffersFromConfig(component radixv1.RadixCommonDeployComponent, environmentConfig radixv1.RadixCommonEnvironmentConfig, actualPods []corev1.Pod) bool {
 	actualPodsLength := len(actualPods)
+
+	if component.GetReplicasOverride() != nil {
+		return actualPodsLength != *component.GetReplicasOverride()
+	}
+
 	if commonutils.IsNil(environmentConfig) {
 		return actualPodsLength != operatordeployment.DefaultReplicas
 	}
