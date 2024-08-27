@@ -26,6 +26,13 @@ func IsPodForComponent(appName, componentName string) func(corev1.Pod) bool {
 	}
 }
 
+func IsDeploymentForComponent(appName, componentName string) func(appsv1.Deployment) bool {
+	selector := labelselector.ForComponent(appName, componentName).AsSelector()
+	return func(deployment appsv1.Deployment) bool {
+		return selector.Matches(labels.Set(deployment.Labels))
+	}
+}
+
 func IsPodForAuxComponent(appName, componentName, auxType string) func(corev1.Pod) bool {
 	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).AsSelector()
 	return func(pod corev1.Pod) bool {

@@ -6,7 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/cert-manager/cert-manager v1.15.0
-	github.com/equinor/radix-common v1.9.3
+	github.com/equinor/radix-common v1.9.4
 	github.com/equinor/radix-job-scheduler v1.10.2
 	github.com/equinor/radix-operator v1.57.19-0.20240826111516-e94c0a610d2f
 	github.com/evanphx/json-patch/v5 v5.9.0
