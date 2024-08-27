@@ -240,12 +240,12 @@ func certificateRequestConditionReady(condition cmv1.CertificateRequestCondition
 }
 
 func getComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
-	var replicasUnavailable, replicasReady, replicas int32
-	if kd != nil {
-		replicasUnavailable = kd.Status.UnavailableReplicas
-		replicasReady = kd.Status.ReadyReplicas
-		replicas = pointers.Val(kd.Spec.Replicas)
+	if kd == nil {
+		return deploymentModels.ComponentReconciling
 	}
+	replicasUnavailable := kd.Status.UnavailableReplicas
+	replicasReady := kd.Status.ReadyReplicas
+	replicas := pointers.Val(kd.Spec.Replicas)
 
 	if component.GetType() == radixv1.RadixComponentTypeJob && replicas == 0 {
 		return deploymentModels.StoppedComponent
