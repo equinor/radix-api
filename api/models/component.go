@@ -16,6 +16,7 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -73,7 +74,7 @@ func buildComponent(
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))
 		builder.WithRadixEnvironmentVariables(getRadixEnvironmentVariables(componentPods))
 		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods, lastEventWarnings))
-		builder.WithStatus(getComponentStatus(radixComponent, kd, rd, podList))
+		builder.WithStatus(getComponentStatus(radixComponent, kd, rd, componentPods))
 		builder.WithAuxiliaryResource(getAuxiliaryResources(ra.Name, radixComponent, deploymentList, podList, lastEventWarnings))
 	}
 
@@ -264,7 +265,7 @@ func getComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1
 		return deploymentModels.ComponentReconciling
 	}
 
-	if runningReplicaIsOutdated(component, pods) {
+	if runningReplicaIsOutdated(component, pods, rd, kd) {
 		return deploymentModels.ComponentOutdated
 	}
 
@@ -294,10 +295,10 @@ func isCopmonentRestarting(component radixv1.RadixCommonDeployComponent, rd *rad
 	return false
 }
 
-func runningReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
+func runningReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod, rd *radixv1.RadixDeployment, kd *appsv1.Deployment) bool {
 	switch component.GetType() {
 	case radixv1.RadixComponentTypeComponent:
-		return runningComponentReplicaIsOutdated(component, actualPods)
+		return runningComponentReplicaIsOutdated(component, actualPods, rd, kd)
 	case radixv1.RadixComponentTypeJob:
 		return false
 	default:
@@ -305,9 +306,8 @@ func runningReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actu
 	}
 }
 
-func runningComponentReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
+func runningComponentReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod, rd *radixv1.RadixDeployment, kd *appsv1.Deployment) bool {
 	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
-	componentIsInconsistent := false
 	for _, pod := range actualPods {
 		if pod.DeletionTimestamp != nil {
 			// Pod is in termination phase
@@ -316,12 +316,28 @@ func runningComponentReplicaIsOutdated(component radixv1.RadixCommonDeployCompon
 		for _, container := range pod.Spec.Containers {
 			if container.Image != component.GetImage() {
 				// Container is running an outdated image
-				componentIsInconsistent = true
+				return true
 			}
 		}
 	}
 
-	return componentIsInconsistent
+	kdOwner, ok := slice.FindFirst(kd.ObjectMeta.OwnerReferences, func(o metav1.OwnerReference) bool {
+		return o.Controller != nil && *o.Controller
+	})
+	if !ok || kdOwner.Kind != radixv1.KindRadixDeployment || kdOwner.Name != rd.Name {
+		// Deployments owner is not correct
+		return true
+	}
+
+	observedGeneration, ok := kd.Annotations[kube.RadixDeploymentObservedGeneration]
+	if !ok || observedGeneration != strconv.Itoa(int(rd.ObjectMeta.Generation)) {
+		// k8s Deployment version doesn't match Radix Deployments generation
+		return true
+	}
+
+	// TODO: Annotate and check configmap and secrets
+
+	return false
 }
 
 func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {
