@@ -26,6 +26,45 @@ const (
 	maxScaleReplicas      = 20
 )
 
+// ScaleComponent Scale a component replicas
+func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envName, componentName string, replicas int) error {
+	if replicas < 0 {
+		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
+	}
+	if replicas > maxScaleReplicas {
+		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
+	}
+	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
+	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	componentStatus := updater.getComponentStatus()
+	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
+		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
+	}
+	return eh.patchRadixDeploymentWithReplicas(ctx, updater, &replicas)
+}
+
+// ResetScaledComponent Starts a component
+func (eh EnvironmentHandler) ResetScaledComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
+	log.Ctx(ctx).Info().Msgf("Resetting manuall scaled component %s, %s", componentName, appName)
+	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
+	}
+	if updater.getComponentToPatch().GetReplicasOverride() == nil {
+		if ignoreComponentStatusError {
+			return nil
+		}
+		return environmentModels.CannotResetScaledComponent(appName, componentName)
+	}
+	return eh.patchRadixDeploymentWithReplicas(ctx, updater, nil)
+}
+
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
 
@@ -47,26 +86,6 @@ func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName
 	return eh.patchRadixDeploymentWithReplicas(ctx, updater, pointers.Ptr(0))
 }
 
-// StartComponent Starts a component
-func (eh EnvironmentHandler) StartComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Ctx(ctx).Info().Msgf("Starting component %s, %s", componentName, appName)
-	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
-	if err != nil {
-		return err
-	}
-	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
-		return environmentModels.JobComponentCanOnlyBeRestarted()
-	}
-	componentStatus := updater.getComponentStatus()
-	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		if ignoreComponentStatusError {
-			return nil
-		}
-		return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
-	}
-	return eh.patchRadixDeploymentWithReplicas(ctx, updater, nil)
-}
-
 // RestartComponent Restarts a component
 func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
 	log.Ctx(ctx).Info().Msgf("Restarting component %s, %s", componentName, appName)
@@ -82,26 +101,6 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 		return environmentModels.CannotRestartComponent(appName, componentName, componentStatus)
 	}
 	return eh.patchRadixDeploymentWithTimestampInEnvVar(ctx, updater, defaults.RadixRestartEnvironmentVariable)
-}
-
-// ScaleComponent Scale a component replicas
-func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envName, componentName string, replicas int) error {
-	if replicas < 0 {
-		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
-	}
-	if replicas > maxScaleReplicas {
-		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
-	}
-	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
-	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
-	if err != nil {
-		return err
-	}
-	componentStatus := updater.getComponentStatus()
-	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
-		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
-	}
-	return eh.patchRadixDeploymentWithReplicas(ctx, updater, &replicas)
 }
 
 // RestartComponentAuxiliaryResource Restarts a component's auxiliary resource

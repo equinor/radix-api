@@ -546,7 +546,7 @@ func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testi
 		assert.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
-		expectedError := environmentModels.CannotStartComponent(anyAppName, stoppedComponent2, deploymentModels.ComponentReconciling.String())
+		expectedError := environmentModels.CannotResetScaledComponent(anyAppName, stoppedComponent2)
 		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
 
 		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})

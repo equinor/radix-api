@@ -2070,6 +2070,61 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/components/{componentName}/reset-scale": {
+      "post": {
+        "tags": [
+          "component"
+        ],
+        "summary": "Reset manually scaled component and resumes normal operation",
+        "operationId": "resetScaledComponent",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of environment",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of component",
+            "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Component started ok"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/environments/{envName}/components/{componentName}/restart": {
       "post": {
         "tags": [
@@ -2367,8 +2422,9 @@
         "tags": [
           "component"
         ],
-        "summary": "Start component",
+        "summary": "Deprecated Start component. Use Reset scaled component instead. This does the same thing, but naming is wrong. This endpoint will be removed after 1. september 2025.",
         "operationId": "startComponent",
+        "deprecated": true,
         "parameters": [
           {
             "type": "string",
@@ -3599,6 +3655,54 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/reset-scale": {
+      "post": {
+        "tags": [
+          "environment"
+        ],
+        "summary": "Reset all manually scaled component and resumes normal operation in environment",
+        "operationId": "resetManuallyScaledComponentsInEnvironment",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of environment",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment started ok"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/environments/{envName}/restart": {
       "post": {
         "tags": [
@@ -3655,8 +3759,9 @@
         "tags": [
           "environment"
         ],
-        "summary": "Start all components in the environment",
+        "summary": "Deprecated. Use ResetManuallyStoppedComponentsInEnvironment that does the same thing, but with better naming. This method will be removed after 1. september 2025.",
         "operationId": "startEnvironment",
+        "deprecated": true,
         "parameters": [
           {
             "type": "string",
@@ -5633,6 +5738,14 @@
             "server-78fc8857c4-hm76l",
             "server-78fc8857c4-asfa2"
           ]
+        },
+        "replicasOverride": {
+          "description": "Set if manuall control of replicas is in place. null means automatic controll, 0 means stopped and \u003e= 1 is manually scaled.",
+          "type": "integer",
+          "format": "int64",
+          "x-go-name": "ReplicasOverride",
+          "x-nullable": true,
+          "example": 5
         },
         "resources": {
           "$ref": "#/definitions/ResourceRequirements"

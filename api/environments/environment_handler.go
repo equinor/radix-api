@@ -319,8 +319,8 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 	return nil
 }
 
-// StartEnvironment Starts all components in the environment
-func (eh EnvironmentHandler) StartEnvironment(ctx context.Context, appName, envName string) error {
+// ResetManuallyStoppedComponentsInEnvironment Starts all components in the environment
+func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx context.Context, appName, envName string) error {
 	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
 	if err != nil {
 		return err
@@ -328,9 +328,11 @@ func (eh EnvironmentHandler) StartEnvironment(ctx context.Context, appName, envN
 
 	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		err := eh.StartComponent(ctx, appName, envName, deployComponent.GetName(), true)
-		if err != nil {
-			return err
+		if overide := deployComponent.GetReplicasOverride(); overide != nil && *overide == 0 {
+			err := eh.ResetScaledComponent(ctx, appName, envName, deployComponent.GetName(), true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -377,7 +379,7 @@ func (eh EnvironmentHandler) StartApplication(ctx context.Context, appName strin
 	}
 	log.Ctx(ctx).Info().Msgf("Starting components in the application %s", appName)
 	for _, environmentName := range environmentNames {
-		err := eh.StartEnvironment(ctx, appName, environmentName)
+		err := eh.ResetManuallyStoppedComponentsInEnvironment(ctx, appName, environmentName)
 		if err != nil {
 			return err
 		}
