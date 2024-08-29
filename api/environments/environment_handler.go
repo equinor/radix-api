@@ -304,7 +304,7 @@ func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(ctx context.Context, app
 
 // StopEnvironment Stops all components in the environment
 func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 
 // ResetManuallyStoppedComponentsInEnvironment Starts all components in the environment
 func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx con
 
 // RestartEnvironment Restarts all components in the environment
 func (eh EnvironmentHandler) RestartEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
@@ -404,7 +404,7 @@ func (eh EnvironmentHandler) RestartApplication(ctx context.Context, appName str
 }
 
 func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context, appName, envName, componentName string) (radixDeployCommonComponentUpdater, error) {
-	deploymentSummary, rd, err := eh.getRadixDeployment(ctx, appName, envName)
+	rd, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
@@ -439,9 +439,12 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 	baseUpdater.componentIndex = componentIndex
 	baseUpdater.componentToPatch = componentToPatch
 
-	ra, _ := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	ra, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.accounts.UserAccount.Client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
+	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.accounts.UserAccount.Client, rd, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}

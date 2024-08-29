@@ -11,6 +11,7 @@ import (
 	time "time"
 
 	models "github.com/equinor/radix-api/api/deployments/models"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -140,6 +141,21 @@ func (m *MockDeployHandler) GetLatestDeploymentForApplicationEnvironment(ctx con
 func (mr *MockDeployHandlerMockRecorder) GetLatestDeploymentForApplicationEnvironment(ctx, appName, environment interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestDeploymentForApplicationEnvironment", reflect.TypeOf((*MockDeployHandler)(nil).GetLatestDeploymentForApplicationEnvironment), ctx, appName, environment)
+}
+
+// GetLatestRadixDeployment mocks base method.
+func (m *MockDeployHandler) GetLatestRadixDeployment(ctx context.Context, appName, environment string) (*v1.RadixDeployment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestRadixDeployment", ctx, appName, environment)
+	ret0, _ := ret[0].(*v1.RadixDeployment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestRadixDeployment indicates an expected call of GetLatestRadixDeployment.
+func (mr *MockDeployHandlerMockRecorder) GetLatestRadixDeployment(ctx, appName, environment interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestRadixDeployment", reflect.TypeOf((*MockDeployHandler)(nil).GetLatestRadixDeployment), ctx, appName, environment)
 }
 
 // GetLogs mocks base method.

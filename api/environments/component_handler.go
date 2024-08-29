@@ -7,6 +7,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/labelselector"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -107,12 +108,12 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Context, appName, envName, componentName, auxType string) error {
 	log.Ctx(ctx).Info().Msgf("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
 
-	deploySummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
 
-	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, deploySummary.Name, envName)
+	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, radixDeployment.Name, envName)
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,7 @@ func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 		return false
 	}
 
-	return deploymentModels.ComponentStatusFromDeployment(deployment) == deploymentModels.ConsistentComponent
+	return deployment.Spec.Replicas == nil || *deployment.Spec.Replicas != 0
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(ctx context.Context, deployment *appsv1.Deployment) error {
