@@ -109,7 +109,7 @@ type ScheduledBatchSummary struct {
 	// Defines a user defined ID of the batch.
 	//
 	// required: false
-	BatchId string
+	BatchId string `json:"batchId,omitempty"`
 
 	// Created timestamp
 	//

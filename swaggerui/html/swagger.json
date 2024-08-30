@@ -7465,9 +7465,10 @@
         "deploymentName"
       ],
       "properties": {
-        "BatchId": {
+        "batchId": {
           "description": "Defines a user defined ID of the batch.",
-          "type": "string"
+          "type": "string",
+          "x-go-name": "BatchId"
         },
         "created": {
           "description": "Created timestamp",
