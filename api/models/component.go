@@ -69,8 +69,8 @@ func buildComponent(
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))
 		builder.WithRadixEnvironmentVariables(getRadixEnvironmentVariables(componentPods))
 		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods, lastEventWarnings))
-		builder.WithStatus(deploymentModels.GetComponentStatus(radixComponent, kd, rd))
-		builder.WithAuxiliaryResource(getAuxiliaryResources(ra.Name, radixComponent, deploymentList, podList, lastEventWarnings))
+		builder.WithStatus(deploymentModels.ComponentStatusFromDeployment(radixComponent, kd, rd))
+		builder.WithAuxiliaryResource(getAuxiliaryResources(rd, radixComponent, deploymentList, podList, lastEventWarnings))
 	}
 
 	// TODO: Use radixComponent.GetType() instead?

@@ -42,20 +42,7 @@ func (p ComponentStatus) String() string {
 	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting", "Outdated"}[p]
 }
 
-func ComponentStatusFromDeployment(deployment *appsv1.Deployment) ComponentStatus {
-	status := ConsistentComponent
-
-	switch {
-	case deployment.Status.Replicas == 0:
-		status = StoppedComponent
-	case deployment.Status.UnavailableReplicas > 0:
-		status = ComponentReconciling
-	}
-
-	return status
-}
-
-func GetComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus {
+func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus {
 	if kd == nil {
 		return ComponentReconciling
 	}
@@ -63,11 +50,7 @@ func GetComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1
 	replicasReady := kd.Status.ReadyReplicas
 	replicas := pointers.Val(kd.Spec.Replicas)
 
-	if component.GetType() == radixv1.RadixComponentTypeJob && replicas == 0 {
-		return StoppedComponent
-	}
-
-	if isComponentManuallyStopped(component) && replicas == 0 {
+	if replicas == 0 {
 		return StoppedComponent
 	}
 
@@ -85,12 +68,6 @@ func GetComponentStatus(component radixv1.RadixCommonDeployComponent, kd *appsv1
 	}
 
 	return ConsistentComponent
-}
-
-func isComponentManuallyStopped(component radixv1.RadixCommonDeployComponent) bool {
-	override := component.GetReplicasOverride()
-
-	return override != nil && *override == 0
 }
 
 func isCopmonentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {

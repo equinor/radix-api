@@ -7,16 +7,16 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils/event"
-	"github.com/equinor/radix-api/api/utils/labelselector"
+	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
@@ -30,20 +30,23 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 	var replicaSummaryList []deploymentModels.ReplicaSummary
 	var auxResource deploymentModels.AuxiliaryResource
 	var horizontalScalingSummary *deploymentModels.HorizontalScalingSummary
+	deployments, err := kubequery.GetDeploymentsForEnvironment(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
+	if err != nil {
+		return nil, err
+	}
+	pods, err := kubequery.GetPodsForEnvironmentComponents(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
 
 	status := deploymentModels.ConsistentComponent
 
 	if rd.Status.ActiveTo.IsZero() {
 		// current active deployment - we get existing pods
-		componentPods, err := getComponentPodsByNamespace(ctx, kubeClient, rd.GetNamespace(), component.GetName())
+		componentPods, err := getComponentPodsByNamespace(pods, component.GetName())
 		if err != nil {
 			return nil, err
 		}
 
-		kd, err := kubequery.GetDeploymentsForComponent(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment, component.GetName())
-		if err != nil {
-			return nil, err
-		}
+		// TODO: Make sure we select the cdeployment, not the aux deplyment with same labels!!!
+		kd, _ := slice.FindFirst(deployments, predicate.IsDeploymentForComponent(rd.Spec.AppName, component.GetName()))
 
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
@@ -53,12 +56,13 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 		}
 		lastEventWarnings := event.ConvertToEventWarnings(eventList)
 		replicaSummaryList = getReplicaSummaryList(componentPods, lastEventWarnings)
-		auxResource, err = getAuxiliaryResources(ctx, kubeClient, rd.Spec.AppName, component, rd.GetNamespace())
+		auxResource, err = getAuxiliaryResources(pods, deployments, rd, component)
 		if err != nil {
 			return nil, err
 		}
 
-		status = deploymentModels.GetComponentStatus(component, kd, rd)
+		kd, _ = slice.FindFirst(deployments, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), defaults.OAuthProxyAuxiliaryComponentType))
+		status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
 	}
 
 	componentBuilder := deploymentModels.NewComponentBuilder()
@@ -93,16 +97,15 @@ func getPodNames(pods []corev1.Pod) []string {
 	return names
 }
 
-func getComponentPodsByNamespace(ctx context.Context, client kubernetes.Interface, envNs, componentName string) ([]corev1.Pod, error) {
+func getComponentPodsByNamespace(allPods []corev1.Pod, componentName string) ([]corev1.Pod, error) {
 	var componentPods []corev1.Pod
-	pods, err := client.CoreV1().Pods(envNs).List(ctx, metav1.ListOptions{
-		LabelSelector: getLabelSelectorForComponentPods(componentName).String(),
-	})
-	if err != nil {
-		return nil, err
-	}
 
-	for _, pod := range pods.Items {
+	selector := getLabelSelectorForComponentPods(componentName)
+	pods := slice.FindAll(allPods, func(pod corev1.Pod) bool {
+		return selector.Matches(labels.Set(pod.Labels))
+	})
+
+	for _, pod := range pods {
 		pod := pod
 
 		// A previous version of the job-scheduler added the "radix-job-type" label to job pods.
@@ -150,9 +153,9 @@ func getReplicaSummaryList(pods []corev1.Pod, lastEventWarnings event.LastEventW
 	})
 }
 
-func getAuxiliaryResources(ctx context.Context, kubeClient kubernetes.Interface, appName string, component v1.RadixCommonDeployComponent, envNamespace string) (auxResource deploymentModels.AuxiliaryResource, err error) {
+func getAuxiliaryResources(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (auxResource deploymentModels.AuxiliaryResource, err error) {
 	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
-		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(ctx, kubeClient, appName, component.GetName(), envNamespace)
+		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(podList, deploymentList, deployment, component)
 		if err != nil {
 			return
 		}
@@ -161,9 +164,9 @@ func getAuxiliaryResources(ctx context.Context, kubeClient kubernetes.Interface,
 	return
 }
 
-func getOAuth2AuxiliaryResource(ctx context.Context, kubeClient kubernetes.Interface, appName, componentName, envNamespace string) (*deploymentModels.OAuth2AuxiliaryResource, error) {
+func getOAuth2AuxiliaryResource(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (*deploymentModels.OAuth2AuxiliaryResource, error) {
 	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
-	oauthDeployment, err := getAuxiliaryResourceDeployment(ctx, kubeClient, appName, componentName, envNamespace, defaults.OAuthProxyAuxiliaryComponentType)
+	oauthDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, defaults.OAuthProxyAuxiliaryComponentType)
 	if err != nil {
 		return nil, err
 	}
@@ -174,25 +177,18 @@ func getOAuth2AuxiliaryResource(ctx context.Context, kubeClient kubernetes.Inter
 	return &oauth2Resource, nil
 }
 
-func getAuxiliaryResourceDeployment(ctx context.Context, kubeClient kubernetes.Interface, appName, componentName, envNamespace, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
+func getAuxiliaryResourceDeployment(podList []corev1.Pod, deploymentList []appsv1.Deployment, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
 	var auxResourceDeployment deploymentModels.AuxiliaryResourceDeployment
 
-	selector := labelselector.ForAuxiliaryResource(appName, componentName, auxType).String()
-	deployments, err := kubeClient.AppsV1().Deployments(envNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		return nil, err
-	}
-	if len(deployments.Items) == 0 {
+	kd, ok := slice.FindFirst(deploymentList, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), auxType))
+	if !ok {
 		auxResourceDeployment.Status = deploymentModels.ComponentReconciling.String()
 		return &auxResourceDeployment, nil
 	}
-	deployment := deployments.Items[0]
 
-	pods, err := kubeClient.CoreV1().Pods(envNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		return nil, err
-	}
-	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods.Items, nil)
-	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(&deployment).String()
+	pods := slice.FindAll(podList, predicate.IsPodForAuxComponent(rd.Spec.AppName, rd.Spec.Environment, auxType))
+
+	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods, nil)
+	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd).String()
 	return &auxResourceDeployment, nil
 }
