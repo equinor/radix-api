@@ -89,10 +89,9 @@ type Component struct {
 	//
 	// required: false
 	// example: 5
-	// required: false
 	// Extensions:
 	// x-nullable: true
-	ReplicasOverride *int `json:"replicasOverride,omitempty"`
+	ReplicasOverride *int `json:"replicasOverride"`
 
 	// HorizontalScaling defines horizontal scaling summary for this component
 	//

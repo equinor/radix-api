@@ -43,7 +43,7 @@ func (p ComponentStatus) String() string {
 }
 
 func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus {
-	if kd == nil {
+	if kd == nil || kd.GetName() == "" {
 		return ComponentReconciling
 	}
 	replicasUnavailable := kd.Status.UnavailableReplicas
@@ -63,7 +63,7 @@ func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent,
 		return ComponentReconciling
 	}
 
-	if owner.VerifyCorrectObjectGeneration(rd, kd, kube.RadixDeploymentObservedGeneration) {
+	if !owner.VerifyCorrectObjectGeneration(rd, kd, kube.RadixDeploymentObservedGeneration) {
 		return ComponentOutdated
 	}
 

@@ -18,6 +18,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -407,6 +408,8 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 	rd, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, err
+	} else if rd == nil {
+		return nil, http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 	baseUpdater := &baseComponentUpdater{
 		appName:         appName,

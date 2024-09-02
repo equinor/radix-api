@@ -61,8 +61,11 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 			return nil, err
 		}
 
-		kd, _ = slice.FindFirst(deployments, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), defaults.OAuthProxyAuxiliaryComponentType))
-		status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
+		if kd, ok := slice.FindFirst(deployments, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), defaults.OAuthProxyAuxiliaryComponentType)); ok {
+			status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
+		} else {
+			status = deploymentModels.ComponentReconciling
+		}
 	}
 
 	componentBuilder := deploymentModels.NewComponentBuilder()
