@@ -45,9 +45,6 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 			return nil, err
 		}
 
-		// TODO: Make sure we select the cdeployment, not the aux deplyment with same labels!!!
-		kd, _ := slice.FindFirst(deployments, predicate.IsDeploymentForComponent(rd.Spec.AppName, component.GetName()))
-
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		eventList, err := kubequery.GetEventsForEnvironment(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
@@ -61,11 +58,8 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 			return nil, err
 		}
 
-		if kd, ok := slice.FindFirst(deployments, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), defaults.OAuthProxyAuxiliaryComponentType)); ok {
-			status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
-		} else {
-			status = deploymentModels.ComponentReconciling
-		}
+		kd, _ := slice.FindFirst(deployments, predicate.IsDeploymentForComponent(rd.Spec.AppName, component.GetName()))
+		status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
 	}
 
 	componentBuilder := deploymentModels.NewComponentBuilder()
