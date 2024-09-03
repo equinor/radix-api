@@ -1,8 +1,6 @@
 package models
 
 import (
-	"strings"
-
 	"github.com/equinor/radix-api/api/utils/owner"
 	commonutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"

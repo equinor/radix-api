@@ -37,6 +37,6 @@ func Test_GetRadixJob(t *testing.T) {
 	assert.Equal(t, &matched, actual)
 
 	// Get non-existing RJ
-	actual, err = GetRadixJob(context.Background(), client, "app2", "unmatched")
+	_, err = GetRadixJob(context.Background(), client, "app2", "unmatched")
 	assert.True(t, errors.IsNotFound(err))
 }
