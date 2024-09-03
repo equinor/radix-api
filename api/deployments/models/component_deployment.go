@@ -85,7 +85,7 @@ type Component struct {
 	// required: false
 	ReplicaList []ReplicaSummary `json:"replicaList"`
 
-	// Set if manuall control of replicas is in place. null means automatic controll, 0 means stopped and >= 1 is manually scaled.
+	// Set if manual control of replicas is in place. Not set means automatic control, 0 means stopped and >= 1 is manually scaled.
 	//
 	// required: false
 	// example: 5
