@@ -49,7 +49,7 @@ func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envNam
 
 // ResetScaledComponent Starts a component
 func (eh EnvironmentHandler) ResetScaledComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Ctx(ctx).Info().Msgf("Resetting manuall scaled component %s, %s", componentName, appName)
+	log.Ctx(ctx).Info().Msgf("Resetting manually scaled component %s, %s", componentName, appName)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
