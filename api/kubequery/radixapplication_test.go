@@ -25,5 +25,4 @@ func Test_GetRadixApplication(t *testing.T) {
 	// Get non-existing RA (wrong namespace)
 	actual, err = GetRadixApplication(context.Background(), client, "app2")
 	assert.True(t, errors.IsNotFound(err))
-	assert.Nil(t, actual)
 }

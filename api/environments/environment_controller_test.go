@@ -25,6 +25,7 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -499,7 +500,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 		response = <-responseChannel
 		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
 		// a reconciling state and cannot be restarted
-		assert.Equal(t, http.StatusBadRequest, response.Code)
+		require.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		expectedError := environmentModels.CannotRestartComponent(anyAppName, stoppedComponent, deploymentModels.ComponentReconciling.String())
@@ -520,20 +521,20 @@ func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testi
 
 	t.Run("Component Start Succeeds", func(t *testing.T) {
 		component := findComponentInDeployment(rd, stoppedComponent1)
-		assert.True(t, *component.Replicas == zeroReplicas)
+		assert.True(t, *component.ReplicasOverride == zeroReplicas)
 
 		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent1))
 		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
+		require.Equal(t, http.StatusOK, response.Code)
 
 		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
 		component = findComponentInDeployment(updatedRd, stoppedComponent1)
-		assert.True(t, *component.Replicas > zeroReplicas)
+		assert.Nil(t, component.ReplicasOverride)
 	})
 
 	t.Run("Component Start Fails", func(t *testing.T) {
 		component := findComponentInDeployment(rd, stoppedComponent2)
-		assert.True(t, *component.Replicas == zeroReplicas)
+		assert.True(t, *component.ReplicasOverride == zeroReplicas)
 
 		// Create pod
 		_, err := createComponentPod(client, rd.GetNamespace(), stoppedComponent2)
@@ -543,7 +544,7 @@ func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testi
 		response := <-responseChannel
 		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
 		// a reconciling state and cannot be started
-		assert.Equal(t, http.StatusBadRequest, response.Code)
+		require.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		expectedError := environmentModels.CannotResetScaledComponent(anyAppName, stoppedComponent2)
@@ -579,17 +580,17 @@ func TestStopComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testin
 
 		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
 		component = findComponentInDeployment(updatedRd, runningComponent)
-		assert.True(t, *component.Replicas == zeroReplicas)
+		assert.True(t, *component.GetReplicasOverride() == zeroReplicas)
 	})
 
 	t.Run("Stop Component Fails", func(t *testing.T) {
 		component := findComponentInDeployment(rd, stoppedComponent)
-		assert.True(t, *component.Replicas == zeroReplicas)
+		assert.True(t, *component.ReplicasOverride == zeroReplicas)
 
 		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, stoppedComponent))
 		response := <-responseChannel
 		// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
-		assert.Equal(t, http.StatusBadRequest, response.Code)
+		require.Equal(t, http.StatusBadRequest, response.Code)
 
 		errorResponse, _ := controllertest.GetErrorResponse(response)
 		expectedError := environmentModels.CannotStopComponent(anyAppName, stoppedComponent, deploymentModels.StoppedComponent.String())
@@ -2908,7 +2909,8 @@ func createRadixDeploymentWithReplicas(tu *commontest.Utils, appName, envName st
 			operatorutils.
 				NewDeployComponentBuilder().
 				WithName(component.name).
-				WithReplicas(numbers.IntPtr(component.number)),
+				WithReplicas(pointers.Ptr(component.number)).
+				WithReplicasOverride(pointers.Ptr(component.number)),
 		)
 	}
 

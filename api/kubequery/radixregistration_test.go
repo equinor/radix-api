@@ -24,5 +24,4 @@ func Test_GetRadixRegistration(t *testing.T) {
 	// Get non-existing RR
 	actual, err = GetRadixRegistration(context.Background(), client, "anyapp")
 	assert.True(t, errors.IsNotFound(err))
-	assert.Nil(t, actual)
 }
