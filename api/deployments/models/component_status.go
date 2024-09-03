@@ -81,8 +81,5 @@ func isComponentRestarting(component radixv1.RadixCommonDeployComponent, rd *rad
 		return false
 	}
 	reconciledTime := rd.Status.Reconciled
-	if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
-		return true
-	}
-	return false
+	return reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time)
 }
