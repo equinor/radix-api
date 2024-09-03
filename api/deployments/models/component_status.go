@@ -70,7 +70,7 @@ func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent,
 	return ConsistentComponent
 }
 
-func isCopmonentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {
+func isComponentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {
 	restarted := component.GetEnvironmentVariables()[operatordefaults.RadixRestartEnvironmentVariable]
 	if strings.EqualFold(restarted, "") {
 		return false
