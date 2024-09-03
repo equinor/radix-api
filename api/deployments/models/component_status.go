@@ -50,7 +50,7 @@ func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent,
 	replicasReady := kd.Status.ReadyReplicas
 	replicas := pointers.Val(kd.Spec.Replicas)
 
-	if isCopmonentRestarting(component, rd) {
+	if isComponentRestarting(component, rd) {
 		return ComponentRestarting
 	}
 
