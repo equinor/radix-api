@@ -50,21 +50,21 @@ func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent,
 	replicasReady := kd.Status.ReadyReplicas
 	replicas := pointers.Val(kd.Spec.Replicas)
 
-	if replicas == 0 {
-		return StoppedComponent
-	}
-
 	if isCopmonentRestarting(component, rd) {
 		return ComponentRestarting
+	}
+
+	if !owner.VerifyCorrectObjectGeneration(rd, kd, kube.RadixDeploymentObservedGeneration) {
+		return ComponentOutdated
+	}
+
+	if replicas == 0 {
+		return StoppedComponent
 	}
 
 	// Check if component is scaling up or down
 	if replicasUnavailable > 0 || replicas < replicasReady {
 		return ComponentReconciling
-	}
-
-	if !owner.VerifyCorrectObjectGeneration(rd, kd, kube.RadixDeploymentObservedGeneration) {
-		return ComponentOutdated
 	}
 
 	return ConsistentComponent
