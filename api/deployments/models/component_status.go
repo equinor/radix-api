@@ -72,7 +72,7 @@ func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent,
 
 func isComponentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {
 	restarted := component.GetEnvironmentVariables()[operatordefaults.RadixRestartEnvironmentVariable]
-	if strings.EqualFold(restarted, "") {
+	if restarted == "" {
 		return false
 	}
 	restartedTime, err := commonutils.ParseTimestamp(restarted)
