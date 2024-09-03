@@ -35,6 +35,9 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 		return nil, err
 	}
 	pods, err := kubequery.GetPodsForEnvironmentComponents(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
+	if err != nil {
+		return nil, err
+	}
 
 	status := deploymentModels.ConsistentComponent
 

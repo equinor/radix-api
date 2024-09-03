@@ -61,6 +61,7 @@ func GetBatchDeployJobComponent(radixDeploymentName string, jobComponentName str
 func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) models.ScheduledBatchSummary {
 	summary := models.ScheduledBatchSummary{
 		Name:           radixBatch.Name,
+		BatchId:        radixBatch.Spec.BatchId,
 		TotalJobCount:  len(radixBatch.Spec.Jobs),
 		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
 		JobList:        GetScheduledJobSummaryList(radixBatch, radixBatchStatus, radixDeployJobComponent),

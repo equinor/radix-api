@@ -106,6 +106,11 @@ type ScheduledBatchSummary struct {
 	// example: batch-20181029135644-algpv-6hznh
 	Name string `json:"name"`
 
+	// Defines a user defined ID of the batch.
+	//
+	// required: false
+	BatchId string `json:"batchId,omitempty"`
+
 	// Created timestamp
 	//
 	// required: false
