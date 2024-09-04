@@ -74,6 +74,8 @@ func GetRadixDeploymentByName(ctx context.Context, radixClient radixclient.Inter
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	return radixClient.RadixV1().RadixDeployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
 }
+
+// GetLatestRadixDeployment returns the last active Radix Deployment found in environment, will be nil if not found
 func GetLatestRadixDeployment(ctx context.Context, radixClient radixclient.Interface, appName, envName string) (*radixv1.RadixDeployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	rdList, err := radixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
