@@ -5782,7 +5782,7 @@
           ]
         },
         "replicasOverride": {
-          "description": "Set if manuall control of replicas is in place. null means automatic controll, 0 means stopped and \u003e= 1 is manually scaled.",
+          "description": "Set if manual control of replicas is in place. Not set means automatic control, 0 means stopped and \u003e= 1 is manually scaled.",
           "type": "integer",
           "format": "int64",
           "x-go-name": "ReplicasOverride",
