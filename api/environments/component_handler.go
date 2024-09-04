@@ -9,6 +9,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/labelselector"
+	"github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -111,6 +112,9 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Conte
 	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, radixDeployment.Name, envName)

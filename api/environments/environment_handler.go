@@ -309,6 +309,9 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 	if err != nil {
 		return err
 	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+	}
 
 	log.Ctx(ctx).Info().Msgf("Stopping components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
@@ -325,6 +328,9 @@ func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx con
 	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
@@ -343,6 +349,9 @@ func (eh EnvironmentHandler) RestartEnvironment(ctx context.Context, appName, en
 	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Restarting components in environment %s, %s", envName, appName)
