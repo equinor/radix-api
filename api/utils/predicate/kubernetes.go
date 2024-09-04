@@ -20,9 +20,7 @@ func IsAppAliasIngress(ingress networkingv1.Ingress) bool {
 }
 
 func IsPodForComponent(appName, componentName string) func(corev1.Pod) bool {
-	selector := labels.SelectorFromSet(radixlabels.Merge(
-		radixlabels.ForApplicationName(appName),
-		radixlabels.ForComponentName(componentName)))
+	selector := labelselector.ForComponent(appName, componentName).AsSelector()
 	return func(pod corev1.Pod) bool {
 		return selector.Matches(labels.Set(pod.Labels))
 	}
