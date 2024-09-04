@@ -329,9 +329,8 @@ func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx con
 
 	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		if overide := deployComponent.GetReplicasOverride(); overide != nil && *overide == 0 {
-			err := eh.ResetScaledComponent(ctx, appName, envName, deployComponent.GetName(), true)
-			if err != nil {
+		if override := deployComponent.GetReplicasOverride(); override != nil && *override == 0 {
+			if err := eh.ResetScaledComponent(ctx, appName, envName, deployComponent.GetName(), true); err != nil {
 				return err
 			}
 		}
