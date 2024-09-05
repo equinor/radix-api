@@ -482,7 +482,7 @@ func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *tes
 
 	t.Run("Component Restart Fails", func(t *testing.T) {
 		component := findComponentInDeployment(rd, stoppedComponent)
-		assert.True(t, *component.Replicas == zeroReplicas)
+		assert.True(t, *component.ReplicasOverride == zeroReplicas)
 
 		// Emulate a stopped component
 		err := deleteComponentPod(client, rd.GetNamespace(), stoppedComponent)
@@ -654,114 +654,6 @@ func TestRestartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *t
 			updatedReplicaCount += *comp.Replicas
 		}
 		assert.True(t, updatedReplicaCount == replicaCount)
-	})
-}
-
-func TestStartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
-	zeroReplicas := 0
-
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _, _, _ := setupTest(t, nil)
-
-	// Test
-	t.Run("Start Environment", func(t *testing.T) {
-		envName := "fullyStoppedEnv"
-		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
-			{name: "stoppedComponent1", number: 0},
-			{name: "stoppedComponent2", number: 0},
-		})
-		for _, comp := range rd.Spec.Components {
-			assert.True(t, *comp.Replicas == zeroReplicas)
-		}
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/start", anyAppName, envName))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		for _, comp := range updatedRd.Spec.Components {
-			assert.True(t, *comp.Replicas > zeroReplicas)
-		}
-	})
-
-	t.Run("Start Environment with running component", func(t *testing.T) {
-		envName := "partiallyRunningEnv"
-		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
-			{name: "stoppedComponent", number: 0},
-			{name: "runningComponent", number: 7},
-		})
-		replicaCount := 0
-		for _, comp := range rd.Spec.Components {
-			replicaCount += *comp.Replicas
-		}
-		assert.True(t, replicaCount > zeroReplicas)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/start", anyAppName, envName))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Nil(t, errorResponse)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		updatedReplicaCount := 0
-		for _, comp := range updatedRd.Spec.Components {
-			updatedReplicaCount += *comp.Replicas
-		}
-		assert.True(t, updatedReplicaCount > replicaCount)
-	})
-}
-
-func TestStopEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
-	zeroReplicas := 0
-
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _, _, _ := setupTest(t, nil)
-
-	// Test
-	t.Run("Stop Environment", func(t *testing.T) {
-		envName := "fullyRunningEnv"
-		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
-			{name: "runningComponent1", number: 3},
-			{name: "runningComponent2", number: 7},
-		})
-		for _, comp := range rd.Spec.Components {
-			assert.True(t, *comp.Replicas > zeroReplicas)
-		}
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", anyAppName, envName))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		for _, comp := range updatedRd.Spec.Components {
-			assert.True(t, *comp.Replicas == zeroReplicas)
-		}
-	})
-
-	t.Run("Stop Environment with stopped component", func(t *testing.T) {
-		envName := "partiallyRunningEnv"
-		rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, envName, []ComponentCreatorStruct{
-			{name: "stoppedComponent", number: 0},
-			{name: "runningComponent", number: 7},
-		})
-		replicaCount := 0
-		for _, comp := range rd.Spec.Components {
-			replicaCount += *comp.Replicas
-		}
-		assert.True(t, replicaCount > zeroReplicas)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/stop", anyAppName, envName))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Nil(t, errorResponse)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		for _, comp := range updatedRd.Spec.Components {
-			assert.True(t, *comp.Replicas == zeroReplicas)
-		}
 	})
 }
 

@@ -19,22 +19,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes"
 )
 
 // getComponentStateFromSpec Returns a component with the current state
-func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interface, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, hpas []autoscalingv2.HorizontalPodAutoscaler, scaledObjects []v1alpha1.ScaledObject) (*deploymentModels.Component, error) {
+func (eh EnvironmentHandler) getComponentStateFromSpec(ctx context.Context, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, hpas []autoscalingv2.HorizontalPodAutoscaler, scaledObjects []v1alpha1.ScaledObject) (*deploymentModels.Component, error) {
 
 	var componentPodNames []string
 	var environmentVariables map[string]string
 	var replicaSummaryList []deploymentModels.ReplicaSummary
 	var auxResource deploymentModels.AuxiliaryResource
 	var horizontalScalingSummary *deploymentModels.HorizontalScalingSummary
-	deployments, err := kubequery.GetDeploymentsForEnvironment(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
+	deployments, err := kubequery.GetDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.Client, rd.Spec.AppName, rd.Spec.Environment)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := kubequery.GetPodsForEnvironmentComponents(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
+	pods, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.accounts.UserAccount.Client, rd.Spec.AppName, rd.Spec.Environment)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
-		eventList, err := kubequery.GetEventsForEnvironment(ctx, kubeClient, rd.Spec.AppName, rd.Spec.Environment)
+		eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.UserAccount.Client, rd.Spec.AppName, rd.Spec.Environment)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +61,7 @@ func getComponentStateFromSpec(ctx context.Context, kubeClient kubernetes.Interf
 		}
 
 		kd, _ := slice.FindFirst(deployments, predicate.IsDeploymentForComponent(rd.Spec.AppName, component.GetName()))
-		status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd)
+		status = eh.ComponentStatuser(component, &kd, rd)
 	}
 
 	componentBuilder := deploymentModels.NewComponentBuilder()

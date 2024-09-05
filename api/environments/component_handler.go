@@ -96,7 +96,7 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 		return err
 	}
 	componentStatus := updater.getComponentStatus()
-	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
+	if strings.EqualFold(componentStatus, deploymentModels.ComponentRestarting.String()) {
 		if ignoreComponentStatusError {
 			return nil
 		}

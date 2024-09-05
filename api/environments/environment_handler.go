@@ -58,6 +58,12 @@ func WithTLSValidator(validator tlsvalidation.Validator) EnvironmentHandlerOptio
 	}
 }
 
+func WithComponentStatuserFunc(statuser deploymentModels.ComponentStatuserFunc) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.ComponentStatuser = statuser
+	}
+}
+
 // EnvironmentHandlerFactory defines a factory function for EnvironmentHandler
 type EnvironmentHandlerFactory func(accounts models.Accounts) EnvironmentHandler
 
@@ -76,10 +82,11 @@ func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) Environment
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	deployHandler deployments.DeployHandler
-	eventHandler  events.EventHandler
-	accounts      models.Accounts
-	tlsValidator  tlsvalidation.Validator
+	deployHandler     deployments.DeployHandler
+	eventHandler      events.EventHandler
+	accounts          models.Accounts
+	tlsValidator      tlsvalidation.Validator
+	ComponentStatuser deploymentModels.ComponentStatuserFunc
 }
 
 var validaStatusesToScaleComponent []string
@@ -90,7 +97,9 @@ var validaStatusesToScaleComponent []string
 func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 	validaStatusesToScaleComponent = []string{deploymentModels.ConsistentComponent.String(), deploymentModels.StoppedComponent.String()}
 
-	eh := EnvironmentHandler{}
+	eh := EnvironmentHandler{
+		ComponentStatuser: deploymentModels.ComponentStatusFromDeployment,
+	}
 
 	for _, opt := range opts {
 		opt(&eh)
@@ -456,7 +465,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 		return nil, err
 	}
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.accounts.UserAccount.Client, rd, componentToPatch, hpas, scalers)
+	baseUpdater.componentState, err = eh.getComponentStateFromSpec(ctx, rd, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}

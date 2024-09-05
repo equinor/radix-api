@@ -40,6 +40,8 @@ func (p ComponentStatus) String() string {
 	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting", "Outdated"}[p]
 }
 
+type ComponentStatuserFunc func(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus
+
 func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus {
 	if kd == nil || kd.GetName() == "" {
 		return ComponentReconciling
