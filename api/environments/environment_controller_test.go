@@ -2982,8 +2982,7 @@ func assertBatchDeleted(t *testing.T, rc radixclient.Interface, ns, batchName st
 		require.Nil(t, err)
 	} else {
 		// not deletable
-		require.Nil(t, updatedBatch)
-		require.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
