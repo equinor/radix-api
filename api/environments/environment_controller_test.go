@@ -451,155 +451,40 @@ func setupGetDeploymentsTest(t *testing.T, commonTestUtils *commontest.Utils, ap
 	require.NoError(t, err)
 }
 
-func TestRestartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
-	zeroReplicas := 0
-	stoppedComponent, startedComponent := "stoppedComponent", "startedComponent"
+func TestComponentStatusActions(t *testing.T) {
+
+	scenarios := []ComponentCreatorStruct{
+		{scenarioName: "Stop unstopped component", number: 1, name: "comp1", action: "stop", status: deploymentModels.ConsistentComponent, expectedStatus: http.StatusOK},
+		{scenarioName: "Stop stopped component", number: 1, name: "comp2", action: "stop", status: deploymentModels.StoppedComponent, expectedStatus: http.StatusBadRequest},
+		{scenarioName: "Start stopped component", number: 1, name: "comp3", action: "start", status: deploymentModels.StoppedComponent, expectedStatus: http.StatusOK},
+		{scenarioName: "Start started component", number: 1, name: "comp4", action: "start", status: deploymentModels.ConsistentComponent, expectedStatus: http.StatusOK},
+		{scenarioName: "Restart started component", number: 1, name: "comp5", action: "restart", status: deploymentModels.ConsistentComponent, expectedStatus: http.StatusOK},
+		{scenarioName: "Restart stopped component", number: 1, name: "comp6", action: "restart", status: deploymentModels.StoppedComponent, expectedStatus: http.StatusBadRequest},
+		{scenarioName: "Reset manually scaled component", number: 1, name: "comp7", action: "reset-scale", status: deploymentModels.StoppedComponent, expectedStatus: http.StatusOK},
+	}
+
+	// Mock Status
+	statuser := func(component v1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *v1.RadixDeployment) deploymentModels.ComponentStatus {
+		for _, scenario := range scenarios {
+			if scenario.name == component.GetName() {
+				return scenario.status
+			}
+		}
+
+		panic("unknown component! ")
+	}
 
 	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _, _, _ := setupTest(t, nil)
-	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
-		{name: stoppedComponent, number: 0},
-		{name: startedComponent, number: 1},
-	})
+	commonTestUtils, environmentControllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, []EnvironmentHandlerOptions{WithComponentStatuserFunc(statuser)})
+	_, _ = createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, scenarios)
 
-	t.Run("Component Restart Succeeds", func(t *testing.T) {
-		component := findComponentInDeployment(rd, startedComponent)
-		assert.True(t, *component.Replicas > zeroReplicas)
-
-		// Emulate a started component
-		_, err := createComponentPod(client, rd.GetNamespace(), startedComponent)
-		require.NoError(t, err)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, startedComponent))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, startedComponent)
-		assert.True(t, *component.Replicas > zeroReplicas)
-		assert.NotEmpty(t, component.EnvironmentVariables[operatordefaults.RadixRestartEnvironmentVariable])
-	})
-
-	t.Run("Component Restart Fails", func(t *testing.T) {
-		component := findComponentInDeployment(rd, stoppedComponent)
-		assert.True(t, *component.ReplicasOverride == zeroReplicas)
-
-		// Emulate a stopped component
-		err := deleteComponentPod(client, rd.GetNamespace(), stoppedComponent)
-		require.NoError(t, err)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent))
-		response := <-responseChannel
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, stoppedComponent)
-		assert.True(t, *component.Replicas > zeroReplicas)
-
-		responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/restart", anyAppName, anyEnvironment, stoppedComponent))
-		response = <-responseChannel
-		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-		// a reconciling state and cannot be restarted
-		require.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		expectedError := environmentModels.CannotRestartComponent(anyAppName, stoppedComponent, deploymentModels.ComponentReconciling.String())
-		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-	})
-}
-
-func TestStartComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
-	zeroReplicas := 0
-	stoppedComponent1, stoppedComponent2 := "stoppedComponent1", "stoppedComponent2"
-
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, client, radixclient, _, _, _, _ := setupTest(t, nil)
-	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
-		{name: stoppedComponent1, number: 0},
-		{name: stoppedComponent2, number: 0},
-	})
-
-	t.Run("Component Start Succeeds", func(t *testing.T) {
-		component := findComponentInDeployment(rd, stoppedComponent1)
-		assert.True(t, *component.ReplicasOverride == zeroReplicas)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent1))
-		response := <-responseChannel
-		require.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, stoppedComponent1)
-		assert.Nil(t, component.ReplicasOverride)
-	})
-
-	t.Run("Component Start Fails", func(t *testing.T) {
-		component := findComponentInDeployment(rd, stoppedComponent2)
-		assert.True(t, *component.ReplicasOverride == zeroReplicas)
-
-		// Create pod
-		_, err := createComponentPod(client, rd.GetNamespace(), stoppedComponent2)
-		require.NoError(t, err)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/start", anyAppName, anyEnvironment, stoppedComponent2))
-		response := <-responseChannel
-		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-		// a reconciling state and cannot be started
-		require.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		expectedError := environmentModels.CannotResetScaledComponent(anyAppName, stoppedComponent2)
-		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, stoppedComponent2)
-		assert.True(t, *component.Replicas == zeroReplicas)
-	})
-}
-
-func TestStopComponent_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
-	zeroReplicas := 0
-	runningComponent, stoppedComponent := "runningComp", "stoppedComponent"
-
-	// Setup
-	commonTestUtils, environmentControllerTestUtils, _, _, radixclient, _, _, _, _ := setupTest(t, nil)
-	rd, _ := createRadixDeploymentWithReplicas(commonTestUtils, anyAppName, anyEnvironment, []ComponentCreatorStruct{
-		{name: runningComponent, number: 3},
-		{name: stoppedComponent, number: 0},
-	})
-
-	// Test
-	t.Run("Stop Component Succeeds", func(t *testing.T) {
-		component := findComponentInDeployment(rd, runningComponent)
-		assert.True(t, *component.Replicas > zeroReplicas)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, runningComponent))
-		response := <-responseChannel
-		// Since pods are not appearing out of nowhere with kubernetes-fake, the component will be in
-		// a reconciling state because number of replicas in spec > 0. Therefore it can be stopped
-		assert.Equal(t, http.StatusOK, response.Code)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, runningComponent)
-		assert.True(t, *component.GetReplicasOverride() == zeroReplicas)
-	})
-
-	t.Run("Stop Component Fails", func(t *testing.T) {
-		component := findComponentInDeployment(rd, stoppedComponent)
-		assert.True(t, *component.ReplicasOverride == zeroReplicas)
-
-		responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/stop", anyAppName, anyEnvironment, stoppedComponent))
-		response := <-responseChannel
-		// The component is in a stopped state since replicas in spec = 0, and therefore cannot be stopped again
-		require.Equal(t, http.StatusBadRequest, response.Code)
-
-		errorResponse, _ := controllertest.GetErrorResponse(response)
-		expectedError := environmentModels.CannotStopComponent(anyAppName, stoppedComponent, deploymentModels.StoppedComponent.String())
-		assert.Equal(t, (expectedError.(*radixhttp.Error)).Message, errorResponse.Message)
-
-		updatedRd, _ := radixclient.RadixV1().RadixDeployments(rd.GetNamespace()).Get(context.Background(), rd.GetName(), metav1.GetOptions{})
-		component = findComponentInDeployment(updatedRd, stoppedComponent)
-		assert.True(t, *component.Replicas == zeroReplicas)
-	})
+	for _, scenario := range scenarios {
+		t.Run(scenario.scenarioName, func(t *testing.T) {
+			responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/%s", anyAppName, anyEnvironment, scenario.name, scenario.action))
+			response := <-responseChannel
+			assert.Equal(t, scenario.expectedStatus, response.Code)
+		})
+	}
 }
 
 func TestRestartEnvrionment_ApplicationWithDeployment_EnvironmentConsistent(t *testing.T) {
@@ -2789,8 +2674,12 @@ func initHandler(client kubernetes.Interface,
 }
 
 type ComponentCreatorStruct struct {
-	name   string
-	number int
+	name           string
+	number         int
+	action         string
+	status         deploymentModels.ComponentStatus
+	expectedStatus int
+	scenarioName   string
 }
 
 func createRadixDeploymentWithReplicas(tu *commontest.Utils, appName, envName string, components []ComponentCreatorStruct) (*v1.RadixDeployment, error) {
