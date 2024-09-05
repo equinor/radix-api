@@ -113,7 +113,7 @@ func (eh EnvironmentHandler) RestartJob(ctx context.Context, appName, envName, j
 	if err != nil {
 		return err
 	}
-	if _, err = findJobInRadixBatch(radixBatch, jobName); err != nil {
+	if _, err = findJobInRadixBatch(radixBatch, batchJobName); err != nil {
 		return err
 	}
 	return jobSchedulerBatch.RestartRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
@@ -282,11 +282,11 @@ func getActiveRadixDeployment(appName string, envName string, radixDeploymentMap
 	return nil, fmt.Errorf("no active deployment found for the app %s, environment %s", appName, envName)
 }
 
-func findJobInRadixBatch(radixBatch *radixv1.RadixBatch, jobName string) (*radixv1.RadixBatchJob, error) {
-	if job, ok := slice.FindFirst(radixBatch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == jobName }); ok {
+func findJobInRadixBatch(radixBatch *radixv1.RadixBatch, batchJobName string) (*radixv1.RadixBatchJob, error) {
+	if job, ok := slice.FindFirst(radixBatch.Spec.Jobs, func(job radixv1.RadixBatchJob) bool { return job.Name == batchJobName }); ok {
 		return &job, nil
 	}
-	return nil, jobNotFoundError(jobName)
+	return nil, jobNotFoundError(batchJobName)
 }
 
 func (eh EnvironmentHandler) getDeploymentMapAndDeployJobComponents(ctx context.Context, appName string, envName string, jobComponentName string, radixBatch *radixv1.RadixBatch) (map[string]radixv1.RadixDeployment, *radixv1.RadixDeployJobComponent, *radixv1.RadixDeployJobComponent, error) {
