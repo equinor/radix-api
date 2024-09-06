@@ -44,7 +44,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -2706,44 +2705,6 @@ func createRadixDeploymentWithReplicas(tu *commontest.Utils, appName, envName st
 	)
 
 	return rd, err
-}
-
-func createComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) (*corev1.Pod, error) {
-	podSpec := getPodSpec(componentName)
-	return kubeclient.CoreV1().Pods(namespace).Create(context.Background(), podSpec, metav1.CreateOptions{})
-}
-
-func deleteComponentPod(kubeclient kubernetes.Interface, namespace, componentName string) error {
-	err := kubeclient.CoreV1().Pods(namespace).Delete(context.Background(), getComponentPodName(componentName), metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	return nil
-}
-
-func findComponentInDeployment(rd *v1.RadixDeployment, componentName string) *v1.RadixDeployComponent {
-	for _, comp := range rd.Spec.Components {
-		if comp.Name == componentName {
-			return &comp
-		}
-	}
-
-	return nil
-}
-
-func getPodSpec(componentName string) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getComponentPodName(componentName),
-			Labels: map[string]string{
-				kube.RadixComponentLabel: componentName,
-			},
-		},
-	}
-}
-
-func getComponentPodName(componentName string) string {
-	return fmt.Sprintf("%s-pod", componentName)
 }
 
 func contains(secrets []secretModels.Secret, name string) bool {
