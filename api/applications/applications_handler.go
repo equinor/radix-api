@@ -455,6 +455,25 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	return jobSummary, nil
 }
 
+// GetUsedResources Returns the used resources for an application
+func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName string, r *http.Request) (*applicationModels.UsedResources, error) {
+	now := time.Now()
+	return &applicationModels.UsedResources{
+		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)),
+		To:   radixutils.FormatTimestamp(now),
+		CPU: &applicationModels.UsedResource{
+			Min:     "10m",
+			Max:     "500m",
+			Average: "223m",
+		},
+		Memory: &applicationModels.UsedResource{
+			Min:     "10Mi",
+			Max:     "500Mi",
+			Average: "223Mi",
+		},
+	}, nil
+}
+
 func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
 	radixDeployment, err := kubequery.GetRadixDeploymentByName(ctx, ah.accounts.UserAccount.RadixClient, appName, envName, deploymentName)
 	if err == nil {

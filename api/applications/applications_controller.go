@@ -133,6 +133,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "POST",
 			HandlerFunc: ac.RegenerateDeployKeyHandler,
 		},
+		models.Route{
+			Path:        appPath + "/resources",
+			Method:      "GET",
+			HandlerFunc: ac.GetUsedResources,
+		},
 	}
 
 	return routes
@@ -984,6 +989,47 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 
 	handler := ac.applicationHandlerFactory.Create(accounts)
 	jobSummary, err := handler.TriggerPipelinePromote(r.Context(), appName, r)
+
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	ac.JSONResponse(w, r, &jobSummary)
+}
+
+// GetUsedResources Gets used resources for the application
+func (ac *applicationController) GetUsedResources(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/resources application resources
+	// ---
+	// summary: Gets used resources for the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/UsedResources"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	handler := ac.applicationHandlerFactory.Create(accounts)
+	jobSummary, err := handler.GetUsedResources(r.Context(), appName, r)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)

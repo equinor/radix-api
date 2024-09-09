@@ -6,7 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/cert-manager/cert-manager v1.15.0
-	github.com/equinor/radix-common v1.9.3
+	github.com/equinor/radix-common v1.9.4
 	github.com/equinor/radix-job-scheduler v1.11.0
 	github.com/equinor/radix-operator v1.58.1
 	github.com/evanphx/json-patch/v5 v5.9.0
@@ -18,7 +18,7 @@ require (
 	github.com/marstr/guid v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.75.2
-	github.com/prometheus/client_golang v1.19.1
+	github.com/prometheus/client_golang v1.20.3
 	github.com/rs/cors v1.11.0
 	github.com/rs/xid v1.5.0
 	github.com/rs/zerolog v1.33.0
@@ -72,6 +72,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -85,8 +86,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.75.2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.53.0 // indirect
-	github.com/prometheus/procfs v0.15.0 // indirect
+	github.com/prometheus/common v0.55.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect

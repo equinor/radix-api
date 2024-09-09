@@ -4875,6 +4875,47 @@
         }
       }
     },
+    "/applications/{appName}/resources": {
+      "get": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Gets used resources for the application",
+        "operationId": "resources",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/UsedResources"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/restart": {
       "post": {
         "tags": [
@@ -7999,6 +8040,60 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UsedResource": {
+      "description": "UsedResource holds information about used resource",
+      "type": "object",
+      "properties": {
+        "average": {
+          "description": "Average resource used",
+          "type": "string",
+          "x-go-name": "Average",
+          "example": "120m"
+        },
+        "max": {
+          "description": "Max resource used",
+          "type": "string",
+          "x-go-name": "Max",
+          "example": "120m"
+        },
+        "min": {
+          "description": "Min resource used",
+          "type": "string",
+          "x-go-name": "Min",
+          "example": "120m"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "UsedResources": {
+      "description": "UsedResources holds information about used resources",
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/UsedResource"
+        },
+        "from": {
+          "description": "From timestamp",
+          "type": "string",
+          "x-go-name": "From",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "memory": {
+          "$ref": "#/definitions/UsedResource"
+        },
+        "to": {
+          "description": "To timestamp",
+          "type": "string",
+          "x-go-name": "To",
+          "example": "2006-01-02T15:04:05Z"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "X509Certificate": {
       "description": "X509Certificate holds information about a X509 certificate",
