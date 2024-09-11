@@ -89,14 +89,10 @@ type EnvironmentHandler struct {
 	ComponentStatuser deploymentModels.ComponentStatuserFunc
 }
 
-var validaStatusesToScaleComponent []string
-
 // Init Constructor.
 // Use the WithAccounts configuration function to configure a 'ready to use' EnvironmentHandler.
 // EnvironmentHandlerOptions are processed in the sequence they are passed to this function.
 func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
-	validaStatusesToScaleComponent = []string{deploymentModels.ConsistentComponent.String(), deploymentModels.StoppedComponent.String()}
-
 	eh := EnvironmentHandler{
 		ComponentStatuser: deploymentModels.ComponentStatusFromDeployment,
 	}
