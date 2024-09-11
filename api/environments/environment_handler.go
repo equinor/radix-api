@@ -18,6 +18,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
@@ -57,6 +58,12 @@ func WithTLSValidator(validator tlsvalidation.Validator) EnvironmentHandlerOptio
 	}
 }
 
+func WithComponentStatuserFunc(statuser deploymentModels.ComponentStatuserFunc) EnvironmentHandlerOptions {
+	return func(eh *EnvironmentHandler) {
+		eh.ComponentStatuser = statuser
+	}
+}
+
 // EnvironmentHandlerFactory defines a factory function for EnvironmentHandler
 type EnvironmentHandlerFactory func(accounts models.Accounts) EnvironmentHandler
 
@@ -75,10 +82,11 @@ func NewEnvironmentHandlerFactory(opts ...EnvironmentHandlerOptions) Environment
 
 // EnvironmentHandler Instance variables
 type EnvironmentHandler struct {
-	deployHandler deployments.DeployHandler
-	eventHandler  events.EventHandler
-	accounts      models.Accounts
-	tlsValidator  tlsvalidation.Validator
+	deployHandler     deployments.DeployHandler
+	eventHandler      events.EventHandler
+	accounts          models.Accounts
+	tlsValidator      tlsvalidation.Validator
+	ComponentStatuser deploymentModels.ComponentStatuserFunc
 }
 
 var validaStatusesToScaleComponent []string
@@ -89,7 +97,9 @@ var validaStatusesToScaleComponent []string
 func Init(opts ...EnvironmentHandlerOptions) EnvironmentHandler {
 	validaStatusesToScaleComponent = []string{deploymentModels.ConsistentComponent.String(), deploymentModels.StoppedComponent.String()}
 
-	eh := EnvironmentHandler{}
+	eh := EnvironmentHandler{
+		ComponentStatuser: deploymentModels.ComponentStatusFromDeployment,
+	}
 
 	for _, opt := range opts {
 		opt(&eh)
@@ -304,9 +314,12 @@ func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(ctx context.Context, app
 
 // StopEnvironment Stops all components in the environment
 func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Stopping components in environment %s, %s", envName, appName)
@@ -319,18 +332,22 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 	return nil
 }
 
-// StartEnvironment Starts all components in the environment
-func (eh EnvironmentHandler) StartEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+// ResetManuallyStoppedComponentsInEnvironment Starts all components in the environment
+func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx context.Context, appName, envName string) error {
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
 	for _, deployComponent := range radixDeployment.Spec.Components {
-		err := eh.StartComponent(ctx, appName, envName, deployComponent.GetName(), true)
-		if err != nil {
-			return err
+		if override := deployComponent.GetReplicasOverride(); override != nil && *override == 0 {
+			if err := eh.ResetScaledComponent(ctx, appName, envName, deployComponent.GetName(), true); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -338,9 +355,12 @@ func (eh EnvironmentHandler) StartEnvironment(ctx context.Context, appName, envN
 
 // RestartEnvironment Restarts all components in the environment
 func (eh EnvironmentHandler) RestartEnvironment(ctx context.Context, appName, envName string) error {
-	_, radixDeployment, err := eh.getRadixDeployment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
+	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Restarting components in environment %s, %s", envName, appName)
@@ -377,7 +397,7 @@ func (eh EnvironmentHandler) StartApplication(ctx context.Context, appName strin
 	}
 	log.Ctx(ctx).Info().Msgf("Starting components in the application %s", appName)
 	for _, environmentName := range environmentNames {
-		err := eh.StartEnvironment(ctx, appName, environmentName)
+		err := eh.ResetManuallyStoppedComponentsInEnvironment(ctx, appName, environmentName)
 		if err != nil {
 			return err
 		}
@@ -402,9 +422,12 @@ func (eh EnvironmentHandler) RestartApplication(ctx context.Context, appName str
 }
 
 func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context, appName, envName, componentName string) (radixDeployCommonComponentUpdater, error) {
-	deploymentSummary, rd, err := eh.getRadixDeployment(ctx, appName, envName)
+	rd, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, err
+	}
+	if rd == nil {
+		return nil, http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
 	}
 	baseUpdater := &baseComponentUpdater{
 		appName:         appName,
@@ -437,9 +460,12 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 	baseUpdater.componentIndex = componentIndex
 	baseUpdater.componentToPatch = componentToPatch
 
-	ra, _ := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	ra, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
 	baseUpdater.environmentConfig = utils.GetComponentEnvironmentConfig(ra, envName, componentName)
-	baseUpdater.componentState, err = getComponentStateFromSpec(ctx, eh.accounts.UserAccount.Client, appName, deploymentSummary, rd.Status, baseUpdater.environmentConfig, componentToPatch, hpas, scalers)
+	baseUpdater.componentState, err = eh.getComponentStateFromSpec(ctx, rd, componentToPatch, hpas, scalers)
 	if err != nil {
 		return nil, err
 	}

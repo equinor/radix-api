@@ -2,6 +2,7 @@ package kubequery
 
 import (
 	"context"
+	"sort"
 
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -72,4 +73,33 @@ func GetRadixDeploymentsMapForEnvironment(ctx context.Context, radixClient radix
 func GetRadixDeploymentByName(ctx context.Context, radixClient radixclient.Interface, appName, envName, deploymentName string) (*radixv1.RadixDeployment, error) {
 	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
 	return radixClient.RadixV1().RadixDeployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
+}
+
+// GetLatestRadixDeployment returns the last active Radix Deployment found in environment, will be nil if not found
+func GetLatestRadixDeployment(ctx context.Context, radixClient radixclient.Interface, appName, envName string) (*radixv1.RadixDeployment, error) {
+	ns := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	rdList, err := radixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if len(rdList.Items) == 0 {
+		return nil, nil
+	}
+
+	rds := sortRdsByActiveFromDesc(rdList.Items)
+	return &rds[0], nil
+}
+
+func sortRdsByActiveFromDesc(rds []radixv1.RadixDeployment) []radixv1.RadixDeployment {
+	sort.Slice(rds, func(i, j int) bool {
+		if rds[j].Status.ActiveFrom.IsZero() {
+			return true
+		}
+
+		if rds[i].Status.ActiveFrom.IsZero() {
+			return false
+		}
+		return rds[j].Status.ActiveFrom.Before(&rds[i].Status.ActiveFrom)
+	})
+	return rds
 }

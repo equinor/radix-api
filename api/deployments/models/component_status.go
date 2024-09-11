@@ -1,6 +1,15 @@
 package models
 
-import appsv1 "k8s.io/api/apps/v1"
+import (
+	"github.com/equinor/radix-api/api/utils/owner"
+	commonutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
+	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/rs/zerolog/log"
+	appsv1 "k8s.io/api/apps/v1"
+)
 
 // ComponentStatus Enumeration of the statuses of component
 type ComponentStatus int
@@ -31,15 +40,46 @@ func (p ComponentStatus) String() string {
 	return [...]string{"Stopped", "Consistent", "Reconciling", "Restarting", "Outdated"}[p]
 }
 
-func ComponentStatusFromDeployment(deployment *appsv1.Deployment) ComponentStatus {
-	status := ConsistentComponent
+type ComponentStatuserFunc func(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus
 
-	switch {
-	case deployment.Status.Replicas == 0:
-		status = StoppedComponent
-	case deployment.Status.UnavailableReplicas > 0:
-		status = ComponentReconciling
+func ComponentStatusFromDeployment(component radixv1.RadixCommonDeployComponent, kd *appsv1.Deployment, rd *radixv1.RadixDeployment) ComponentStatus {
+	if kd == nil || kd.GetName() == "" {
+		return ComponentReconciling
+	}
+	replicasUnavailable := kd.Status.UnavailableReplicas
+	replicasReady := kd.Status.ReadyReplicas
+	replicas := pointers.Val(kd.Spec.Replicas)
+
+	if isComponentRestarting(component, rd) {
+		return ComponentRestarting
 	}
 
-	return status
+	if !owner.VerifyCorrectObjectGeneration(rd, kd, kube.RadixDeploymentObservedGeneration) {
+		return ComponentOutdated
+	}
+
+	if replicas == 0 {
+		return StoppedComponent
+	}
+
+	// Check if component is scaling up or down
+	if replicasUnavailable > 0 || replicas < replicasReady {
+		return ComponentReconciling
+	}
+
+	return ConsistentComponent
+}
+
+func isComponentRestarting(component radixv1.RadixCommonDeployComponent, rd *radixv1.RadixDeployment) bool {
+	restarted := component.GetEnvironmentVariables()[operatordefaults.RadixRestartEnvironmentVariable]
+	if restarted == "" {
+		return false
+	}
+	restartedTime, err := commonutils.ParseTimestamp(restarted)
+	if err != nil {
+		log.Logger.Warn().Err(err).Msgf("unable to parse restarted time %v, component: %s", restarted, component.GetName())
+		return false
+	}
+	reconciledTime := rd.Status.Reconciled
+	return reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time)
 }
