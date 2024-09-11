@@ -26,7 +26,9 @@ const (
 	memoryAvg queryName = "memoryAvg"
 )
 
+// GetUsedResources Get used resources for the application
 func GetUsedResources(ctx context.Context, appName, period, prometheusUrl string, _, _ []string) (*applicationModels.UsedResources, error) {
+	log.Ctx(ctx).Debug().Msgf("Getting used resources for application %s", appName)
 	client, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the Prometheus client: %w", err)
@@ -62,6 +64,7 @@ func GetUsedResources(ctx context.Context, appName, period, prometheusUrl string
 			Average: getMemoryMetricValue(ctx, results, memoryAvg),
 		},
 	}
+	log.Ctx(ctx).Debug().Msgf("Got used resources for application %s", appName)
 	return &resources, nil
 }
 
