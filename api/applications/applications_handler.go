@@ -31,6 +31,7 @@ import (
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -459,6 +460,11 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 // GetUsedResources Returns the used resources for an application
 func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName string, r *http.Request) (*applicationModels.UsedResources, error) {
+	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	address := "http://localhost:9090"
 	client, err := prometheusApi.NewClient(prometheusApi.Config{
 		Address: address,
@@ -475,24 +481,35 @@ func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName stri
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Query the Prometheus API over a time range
-	period := prometheusV1.Range{
-		// Start: time.Now().Add(time.Hour * -24 * 30),
-		Start: time.Now().Add(time.Hour * -24),
-		End:   time.Now(),
-		Step:  time.Minute * 5,
+	period := "30d"
+	cpuUsageQuery := fmt.Sprintf(`(sum(rate(container_cpu_usage_seconds_total{namespace=~"%[1]s-.*",namespace!="%[1]s-app",}[5m])) by (namespace,container)[%s:])`, appName, period)
+	memoryUsageQuery := fmt.Sprintf(`(sum(rate(container_memory_usage_bytes{namespace=~"%[1]s-.*",namespace!="%[1]s-app",}[5m])) by (namespace,container)[%s:])`, appName, period)
+	results := make(map[string]model.Value)
+	queries := map[string]string{
+		"CPU Max":    fmt.Sprintf("max_over_time%s", cpuUsageQuery),    // Max CPU usage
+		"CPU Min":    fmt.Sprintf("min_over_time%s", cpuUsageQuery),    // Min CPU usage
+		"CPU Avg":    fmt.Sprintf("avg_over_time%s", cpuUsageQuery),    // Average CPU usage
+		"Memory Max": fmt.Sprintf("max_over_time%s", memoryUsageQuery), // Max Memory usage
+		"Memory Min": fmt.Sprintf("min_over_time%s", memoryUsageQuery), // Min Memory usage
+		"Memory Avg": fmt.Sprintf("avg_over_time%s", memoryUsageQuery), // Average Memory usage
 	}
-	result, warnings, err := v1api.QueryRange(ctx, "max(irate(container_cpu_usage_seconds_total{namespace=~\"radix-web-console-qa\", container!=\"\"}[60m]))",
-		period)
-	if err != nil {
-		return nil, err
-	}
-	if len(warnings) > 0 {
-		log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", warnings)
-	}
-	log.Ctx(ctx).Info().Msgf("Result: %v\n", result)
 
 	now := time.Now()
+	for metricName, query := range queries {
+		result, warnings, err := v1api.Query(ctx, query, now)
+		if err != nil {
+			return nil, err
+		}
+		if len(warnings) > 0 {
+			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", warnings)
+		}
+		// Print results
+		for metricName, result := range results {
+			fmt.Printf("%s: %v\n", metricName, result)
+		}
+		results[metricName] = result
+	}
+
 	return &applicationModels.UsedResources{
 		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)),
 		To:   radixutils.FormatTimestamp(now),
