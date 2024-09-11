@@ -593,7 +593,7 @@ func getReplicaType(pod corev1.Pod) ReplicaType {
 	switch {
 	case pod.GetLabels()[kube.RadixPodIsJobSchedulerLabel] == "true":
 		return JobManager
-	case pod.GetLabels()[kube.RadixPodIsJobAuxObjectLabel] == "true":
+	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == kube.RadixJobTypeManagerAux:
 		return JobManagerAux
 	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == "oauth":
 		return OAuth2
