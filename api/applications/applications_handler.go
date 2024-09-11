@@ -17,6 +17,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
+	prometheusUtils "github.com/equinor/radix-api/api/utils/prometheus"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -29,9 +30,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	prometheusApi "github.com/prometheus/client_golang/api"
-	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -464,66 +462,11 @@ func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName stri
 	if err != nil {
 		return nil, err
 	}
-
-	address := "http://localhost:9090"
-	client, err := prometheusApi.NewClient(prometheusApi.Config{
-		Address: address,
-		// Address: "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new API v1 client
-	v1api := prometheusV1.NewAPI(client)
-
-	// Create a context
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	period := "30d"
-	cpuUsageQuery := fmt.Sprintf(`(sum(rate(container_cpu_usage_seconds_total{namespace=~"%[1]s-.*",namespace!="%[1]s-app",}[5m])) by (namespace,container)[%s:])`, appName, period)
-	memoryUsageQuery := fmt.Sprintf(`(sum(rate(container_memory_usage_bytes{namespace=~"%[1]s-.*",namespace!="%[1]s-app",}[5m])) by (namespace,container)[%s:])`, appName, period)
-	results := make(map[string]model.Value)
-	queries := map[string]string{
-		"CPU Max":    fmt.Sprintf("max_over_time%s", cpuUsageQuery),    // Max CPU usage
-		"CPU Min":    fmt.Sprintf("min_over_time%s", cpuUsageQuery),    // Min CPU usage
-		"CPU Avg":    fmt.Sprintf("avg_over_time%s", cpuUsageQuery),    // Average CPU usage
-		"Memory Max": fmt.Sprintf("max_over_time%s", memoryUsageQuery), // Max Memory usage
-		"Memory Min": fmt.Sprintf("min_over_time%s", memoryUsageQuery), // Min Memory usage
-		"Memory Avg": fmt.Sprintf("avg_over_time%s", memoryUsageQuery), // Average Memory usage
-	}
-
-	now := time.Now()
-	for metricName, query := range queries {
-		result, warnings, err := v1api.Query(ctx, query, now)
-		if err != nil {
-			return nil, err
-		}
-		if len(warnings) > 0 {
-			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", warnings)
-		}
-		// Print results
-		for metricName, result := range results {
-			fmt.Printf("%s: %v\n", metricName, result)
-		}
-		results[metricName] = result
-	}
-
-	return &applicationModels.UsedResources{
-		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)),
-		To:   radixutils.FormatTimestamp(now),
-		CPU: &applicationModels.UsedResource{
-			Min:     "10m",
-			Max:     "500m",
-			Average: "223m",
-		},
-		Memory: &applicationModels.UsedResource{
-			Min:     "10Mi",
-			Max:     "500Mi",
-			Average: "223Mi",
-		},
-	}, nil
+	prometheusUrl := "http://localhost:9090"
+	// prometheusUrl := "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090"
+	envs := []string{"qa", "prod"}
+	components := []string{"api", "web"}
+	return prometheusUtils.GetUsedResources(ctx, appName, "30d", prometheusUrl, envs, components)
 }
 
 func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
