@@ -7,6 +7,7 @@ import (
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/slice"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -31,7 +32,7 @@ func GetUsedResources(ctx context.Context, appName, period, prometheusUrl string
 		return nil, fmt.Errorf("failed to create the Prometheus client: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute) // replace with 10*time.Seconds
 	defer cancel()
 
 	api := prometheusV1.NewAPI(client)
@@ -47,7 +48,7 @@ func GetUsedResources(ctx context.Context, appName, period, prometheusUrl string
 		}
 		results[metricName] = result
 	}
-	return &applicationModels.UsedResources{
+	resources := applicationModels.UsedResources{
 		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)),
 		To:   radixutils.FormatTimestamp(now),
 		CPU: &applicationModels.UsedResource{
@@ -60,42 +61,66 @@ func GetUsedResources(ctx context.Context, appName, period, prometheusUrl string
 			Max:     getMemoryMetricValue(ctx, results, memoryMax),
 			Average: getMemoryMetricValue(ctx, results, memoryAvg),
 		},
-	}, nil
+	}
+	return &resources, nil
 }
 
 func getCpuMetricValue(ctx context.Context, queryResults map[queryName]model.Value, queryName queryName) string {
-	metricsExist, value := getSummedMetricsValue(ctx, queryResults, queryName)
-	if metricsExist {
-		return resource.NewMilliQuantity(int64(value), resource.BinarySI).String()
+	if value, ok := getSummedMetricsValue(ctx, queryResults, queryName); ok {
+		quantity := resource.NewMilliQuantity(int64(value*1000.0), resource.BinarySI)
+		return quantity.String()
 	}
 	return ""
 }
 
 func getMemoryMetricValue(ctx context.Context, queryResults map[queryName]model.Value, queryName queryName) string {
-	metricsExist, value := getSummedMetricsValue(ctx, queryResults, queryName)
-	if metricsExist {
-		return resource.NewQuantity(int64(value), resource.BinarySI).String()
+	if value, ok := getSummedMetricsValue(ctx, queryResults, queryName); ok {
+		quantity := resource.NewScaledQuantity(int64(value/1000.0), resource.Mega)
+		return quantity.String()
 	}
 	return ""
 }
 
-func getSummedMetricsValue(ctx context.Context, queryResults map[queryName]model.Value, queryName queryName) (bool, float64) {
+func getSummedMetricsValue(ctx context.Context, queryResults map[queryName]model.Value, queryName queryName) (float64, bool) {
 	queryResult, ok := queryResults[queryName]
 	if !ok {
-		return false, 0
+		return 0, false
 	}
 	groupedMetrics, ok := queryResult.(model.Vector)
 	if !ok {
 		log.Ctx(ctx).Error().Msgf("Failed to convert metrics query %s result to Vector", queryName)
-		return false, 0
+		return 0, false
 	}
-	metricsExist := false
-	var memoryUsageBytes float64
-	for _, sample := range groupedMetrics {
-		memoryUsageBytes += float64(sample.Value)
-		metricsExist = true
+	values := slice.Reduce(groupedMetrics, make([]float64, 0), func(acc []float64, sample *model.Sample) []float64 {
+		return append(acc, float64(sample.Value))
+	})
+	if len(values) == 0 {
+		return 0, false
 	}
-	return metricsExist, memoryUsageBytes
+	switch queryName {
+	case cpuMax, memoryMax:
+		max := slice.Reduce(values, values[0], func(maxValue, sample float64) float64 {
+			if maxValue < sample {
+				return sample
+			}
+			return maxValue
+		})
+		return max, true
+	case cpuMin, memoryMin:
+		min := slice.Reduce(values, values[0], func(minValue, sample float64) float64 {
+			if minValue > sample {
+				return sample
+			}
+			return minValue
+		})
+		return min, true
+	case cpuAvg, memoryAvg:
+		avg := slice.Reduce(values, 0, func(sum, sample float64) float64 {
+			return sum + sample
+		}) / float64(len(values))
+		return avg, true
+	}
+	return 0, false
 }
 
 func getPrometheusQueries(appName string, period string) map[queryName]string {

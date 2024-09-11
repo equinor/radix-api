@@ -462,7 +462,7 @@ func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName stri
 	if err != nil {
 		return nil, err
 	}
-	prometheusUrl := "http://localhost:9090"
+	prometheusUrl := "http://localhost:9091"
 	// prometheusUrl := "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090"
 	envs := []string{"qa", "prod"}
 	components := []string{"api", "web"}
