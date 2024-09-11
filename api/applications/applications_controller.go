@@ -1027,9 +1027,12 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
+	envName := r.FormValue("env")
+	componentName := r.FormValue("component")
+	period := r.FormValue("period")
 
 	handler := ac.applicationHandlerFactory.Create(accounts)
-	jobSummary, err := handler.GetUsedResources(r.Context(), appName, r)
+	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, period)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
