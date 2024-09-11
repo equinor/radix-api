@@ -29,6 +29,8 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	prometheusApi "github.com/prometheus/client_golang/api"
+	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -457,6 +459,39 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 // GetUsedResources Returns the used resources for an application
 func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName string, r *http.Request) (*applicationModels.UsedResources, error) {
+	address := "http://localhost:9090"
+	client, err := prometheusApi.NewClient(prometheusApi.Config{
+		Address: address,
+		// Address: "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new API v1 client
+	v1api := prometheusV1.NewAPI(client)
+
+	// Create a context
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Query the Prometheus API over a time range
+	period := prometheusV1.Range{
+		// Start: time.Now().Add(time.Hour * -24 * 30),
+		Start: time.Now().Add(time.Hour * -24),
+		End:   time.Now(),
+		Step:  time.Minute * 5,
+	}
+	result, warnings, err := v1api.QueryRange(ctx, "max(irate(container_cpu_usage_seconds_total{namespace=~\"radix-web-console-qa\", container!=\"\"}[60m]))",
+		period)
+	if err != nil {
+		return nil, err
+	}
+	if len(warnings) > 0 {
+		log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", warnings)
+	}
+	log.Ctx(ctx).Info().Msgf("Result: %v\n", result)
+
 	now := time.Now()
 	return &applicationModels.UsedResources{
 		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)),
