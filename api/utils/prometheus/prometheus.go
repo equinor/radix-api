@@ -2,7 +2,6 @@ package prometheus
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -14,6 +13,7 @@ import (
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	prometheusModel "github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -21,18 +21,19 @@ import (
 type queryName string
 
 const (
-	cpuMax           queryName = "cpuMax"
-	cpuMin           queryName = "cpuMin"
-	cpuAvg           queryName = "cpuAvg"
-	memoryMax        queryName = "memoryMax"
-	memoryMin        queryName = "memoryMin"
-	memoryAvg        queryName = "memoryAvg"
-	periodExpression           = `^[0-9]{1,5}[mhdw]$`
+	cpuMax             queryName = "cpuMax"
+	cpuMin             queryName = "cpuMin"
+	cpuAvg             queryName = "cpuAvg"
+	memoryMax          queryName = "memoryMax"
+	memoryMin          queryName = "memoryMin"
+	memoryAvg          queryName = "memoryAvg"
+	durationExpression           = `^[0-9]{1,5}[mhdw]$`
+	defaultDuration              = "30d"
 )
 
 // GetUsedResources Get used resources for the application
-func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, period string) (*applicationModels.UsedResources, error) {
-	err := validatePeriod(period)
+func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, durationString string) (*applicationModels.UsedResources, error) {
+	durationValue, err := getMinimumPeriodTime(durationString)
 	if err != nil {
 		return nil, err
 	}
@@ -40,19 +41,19 @@ func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, comp
 	defer cancel()
 
 	log.Ctx(ctx).Debug().Msgf("Getting used resources for application %s", appName)
-	results, err := getPrometheusMetrics(ctx, prometheusUrl, appName, envName, componentName, period)
+	results, err := getPrometheusMetrics(ctx, prometheusUrl, appName, envName, componentName, durationString)
 	if err != nil {
 		return nil, err
 	}
-	resources := getUsedResourcesByMetrics(ctx, results)
+	resources := getUsedResourcesByMetrics(ctx, results, durationValue)
 	log.Ctx(ctx).Debug().Msgf("Got used resources for application %s", appName)
 	return resources, nil
 }
 
-func getUsedResourcesByMetrics(ctx context.Context, results map[queryName]model.Value) *applicationModels.UsedResources {
+func getUsedResourcesByMetrics(ctx context.Context, results map[queryName]prometheusModel.Value, queryDuration time.Duration) *applicationModels.UsedResources {
 	now := time.Now()
 	resources := applicationModels.UsedResources{
-		From: radixutils.FormatTimestamp(now.Add(-time.Hour * 24 * 30)), // TODO change this corresponding the requested period
+		From: radixutils.FormatTimestamp(now.Add(-queryDuration)),
 		To:   radixutils.FormatTimestamp(now),
 		CPU: &applicationModels.UsedResource{
 			Min:     getCpuMetricValue(ctx, results, cpuMin),
@@ -89,11 +90,12 @@ func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, 
 	return results, nil
 }
 
-func validatePeriod(period string) error {
-	if len(period) > 0 && !regexp.MustCompile(periodExpression).MatchString(period) {
-		return errors.New("invalid period format")
+func getMinimumPeriodTime(duration string) (time.Duration, error) {
+	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
+		duration = defaultDuration
 	}
-	return nil
+	parsedDuration, err := prometheusModel.ParseDuration(duration)
+	return time.Duration(parsedDuration), err
 }
 
 func getCpuMetricValue(ctx context.Context, queryResults map[queryName]model.Value, queryName queryName) string {

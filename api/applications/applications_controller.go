@@ -1029,10 +1029,10 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	appName := mux.Vars(r)["appName"]
 	envName := r.FormValue("env")
 	componentName := r.FormValue("component")
-	period := r.FormValue("period")
+	duration := r.FormValue("duration")
 
 	handler := ac.applicationHandlerFactory.Create(accounts)
-	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, period)
+	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, duration)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
