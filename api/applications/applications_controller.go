@@ -1021,16 +1021,14 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	//   required: false
 	// - name: duration
 	//   in: query
-	//   description: Duration of the period, default is 30d (30 days). E.g. 10m, 2h, 1w: m-minutes, h-hours, d-days, w-weeks
+	//   description: Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
 	//   type: string
 	//   required: false
-	//   example: "10h"
 	// - name: since
 	//   in: query
-	//   description: End time-point of the period in the past, default is now. E.g. 10m, 2h, 1w: m-minutes, h-hours, d-days, w-weeks
+	//   description: End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
 	//   type: string
 	//   required: false
-	//   example: "10h"
 	// - name: ignorezero
 	//   in: query
 	//   description: Ignore metrics with zero value if true, default is false

@@ -4881,14 +4881,45 @@
           "application"
         ],
         "summary": "Gets used resources for the application",
-        "operationId": "resources",
+        "operationId": "getResources",
         "parameters": [
           {
             "type": "string",
-            "description": "Name of application",
+            "description": "Name of the application",
             "name": "appName",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of the application environment",
+            "name": "environment",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Name of the application component in an environment",
+            "name": "component",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
+            "name": "duration",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "boolean",
+            "description": "Ignore metrics with zero value if true, default is false",
+            "name": "ignorezero",
+            "in": "query"
           },
           {
             "type": "string",
