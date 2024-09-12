@@ -36,15 +36,15 @@ func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envNam
 	if replicas > maxScaleReplicas {
 		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
 	}
-	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
 	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
 	if err != nil {
 		return err
 	}
-	componentStatus := updater.getComponentStatus()
-	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
-		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
 	}
+
+	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
 	return eh.patchRadixDeploymentWithReplicas(ctx, updater, &replicas)
 }
 
