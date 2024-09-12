@@ -35,17 +35,35 @@ type UsedResource struct {
 	//
 	// required: false
 	// example: 120m
-	Min string `json:"min"`
+	Min string `json:"min,omitempty"`
 
 	// Max resource used
 	//
 	// required: false
 	// example: 120m
-	Max string `json:"max"`
+	Max string `json:"max,omitempty"`
 
 	// Average resource used
 	//
 	// required: false
 	// example: 120m
-	Average string `json:"average"`
+	Average string `json:"average,omitempty"`
+
+	// MinActual actual precise resource used
+	//
+	// required: false
+	// example: 0.00012
+	MinActual *float64 `json:"minActual,omitempty"`
+
+	// MaxActual actual precise resource used
+	//
+	// required: false
+	// example: 0.00037
+	MaxActual *float64 `json:"maxActual,omitempty"`
+
+	// AvgActual actual precise resource used
+	//
+	// required: false
+	// example: 0.00012
+	AvgActual *float64 `json:"avgActual,omitempty"`
 }

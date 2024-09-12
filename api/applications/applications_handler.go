@@ -457,14 +457,14 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 }
 
 // GetUsedResources Returns the used resources for an application
-func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName, envName, componentName, duration string) (*applicationModels.UsedResources, error) {
+func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
 	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 	prometheusUrl := "http://localhost:9091"
 	// prometheusUrl := "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090"
-	return prometheusUtils.GetUsedResources(ctx, prometheusUrl, appName, envName, componentName, duration)
+	return prometheusUtils.GetUsedResources(ctx, prometheusUrl, appName, envName, componentName, duration, since, ignoreZero)
 }
 
 func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {

@@ -1000,15 +1000,43 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 
 // GetUsedResources Gets used resources for the application
 func (ac *applicationController) GetUsedResources(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/resources application resources
+	// swagger:operation GET /applications/{appName}/resources application getResources
 	// ---
 	// summary: Gets used resources for the application
 	// parameters:
 	// - name: appName
 	//   in: path
-	//   description: Name of application
+	//   description: Name of the application
 	//   type: string
 	//   required: true
+	// - name: environment
+	//   in: query
+	//   description: Name of the application environment
+	//   type: string
+	//   required: false
+	// - name: component
+	//   in: query
+	//   description: Name of the application component in an environment
+	//   type: string
+	//   required: false
+	// - name: duration
+	//   in: query
+	//   description: Duration of the period, default is 30d (30 days). E.g. 10m, 2h, 1w: m-minutes, h-hours, d-days, w-weeks
+	//   type: string
+	//   required: false
+	//   example: "10h"
+	// - name: since
+	//   in: query
+	//   description: End time-point of the period in the past, default is now. E.g. 10m, 2h, 1w: m-minutes, h-hours, d-days, w-weeks
+	//   type: string
+	//   required: false
+	//   example: "10h"
+	// - name: ignorezero
+	//   in: query
+	//   description: Ignore metrics with zero value if true, default is false
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -1027,12 +1055,18 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	envName := r.FormValue("env")
+	envName := r.FormValue("environment")
 	componentName := r.FormValue("component")
 	duration := r.FormValue("duration")
+	since := r.FormValue("since")
+	ignoreZeroArg := r.FormValue("ignorezero")
+	var ignoreZero = false
+	if strings.TrimSpace(ignoreZeroArg) != "" {
+		ignoreZero, _ = strconv.ParseBool(ignoreZeroArg)
+	}
 
 	handler := ac.applicationHandlerFactory.Create(accounts)
-	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, duration)
+	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, duration, since, ignoreZero)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)

@@ -8051,17 +8051,38 @@
           "x-go-name": "Average",
           "example": "120m"
         },
+        "avgActual": {
+          "description": "AvgActual actual precise resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "AvgActual",
+          "example": 0.00012
+        },
         "max": {
           "description": "Max resource used",
           "type": "string",
           "x-go-name": "Max",
           "example": "120m"
         },
+        "maxActual": {
+          "description": "MaxActual actual precise resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MaxActual",
+          "example": 0.00037
+        },
         "min": {
           "description": "Min resource used",
           "type": "string",
           "x-go-name": "Min",
           "example": "120m"
+        },
+        "minActual": {
+          "description": "MinActual actual precise resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MinActual",
+          "example": 0.00012
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
