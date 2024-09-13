@@ -35,11 +35,11 @@ const (
 
 // GetUsedResources Get used resources for the application
 func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
-	durationValue, err := parseQueryDuration(duration, defaultDuration)
+	durationValue, duration, err := parseQueryDuration(duration, defaultDuration)
 	if err != nil {
 		return nil, err
 	}
-	sinceValue, err := parseQueryDuration(since, "")
+	sinceValue, since, err := parseQueryDuration(since, "")
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +95,15 @@ func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, 
 	return results, nil
 }
 
-func parseQueryDuration(duration string, defaultValue string) (time.Duration, error) {
+func parseQueryDuration(duration string, defaultValue string) (time.Duration, string, error) {
 	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
 		duration = defaultValue
 	}
+	if len(duration) == 0 {
+		return 0, duration, nil
+	}
 	parsedDuration, err := prometheusModel.ParseDuration(duration)
-	return time.Duration(parsedDuration), err
+	return time.Duration(parsedDuration), duration, err
 }
 
 func roundActualValue(num float64) float64 {
@@ -171,21 +174,20 @@ func getMetricsValue(ctx context.Context, queryResults map[queryName]prometheusM
 }
 
 func getPrometheusQueries(appName, envName, componentName, duration, since string) map[queryName]string {
-	if duration == "" {
-		duration = "30d"
-	}
 	environmentFilter := radixutils.TernaryString(envName == "",
 		fmt.Sprintf(`,namespace=~"%s-.*"`, appName),
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
 	componentFilter := radixutils.TernaryString(envName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
-	cpuUsageRateQuery := fmt.Sprintf(`rate(container_cpu_usage_seconds_total{namespace!="%s-app"%s%s}[5m])) by (namespace,container)[%s:%s]`, appName, environmentFilter, componentFilter, duration, since)
-	memoryUsageRateQuery := fmt.Sprintf(`rate(container_memory_usage_bytes{namespace!="%s-app"%s%s}[5m])) by (namespace,container)[%s:%s]`, appName, environmentFilter, componentFilter, duration, since)
-	return map[queryName]string{
-		cpuMax:    fmt.Sprintf("max_over_time(sum(%s)", cpuUsageRateQuery),
-		cpuMin:    fmt.Sprintf("min_over_time(sum(%s)", cpuUsageRateQuery),
-		cpuAvg:    fmt.Sprintf("avg_over_time(sum(%s)", cpuUsageRateQuery),
-		memoryMax: fmt.Sprintf("max_over_time(sum(%s)", memoryUsageRateQuery),
-		memoryMin: fmt.Sprintf("min_over_time(sum(%s)", memoryUsageRateQuery),
-		memoryAvg: fmt.Sprintf("avg_over_time(sum(%s)", memoryUsageRateQuery),
+	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
+	cpuUsageQuery := fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
+	memoryUsageQuery := fmt.Sprintf(`sum(rate(container_memory_usage_bytes{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
+	queries := map[queryName]string{
+		cpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
+		cpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
+		cpuAvg:    fmt.Sprintf("avg_over_time(%s)", cpuUsageQuery),
+		memoryMax: fmt.Sprintf("max_over_time(%s)", memoryUsageQuery),
+		memoryMin: fmt.Sprintf("min_over_time(%s)", memoryUsageQuery),
+		memoryAvg: fmt.Sprintf("avg_over_time(%s)", memoryUsageQuery),
 	}
+	return queries
 }
