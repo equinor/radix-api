@@ -8143,6 +8143,14 @@
           "type": "string",
           "x-go-name": "To",
           "example": "2006-01-02T15:04:05Z"
+        },
+        "warnings": {
+          "description": "Warning messages",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Warnings"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"

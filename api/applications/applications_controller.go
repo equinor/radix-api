@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
 )
@@ -19,10 +20,11 @@ type applicationController struct {
 	*models.DefaultController
 	hasAccessToRR
 	applicationHandlerFactory ApplicationHandlerFactory
+	prometheusHandler         metrics.PrometheusHandler
 }
 
 // NewApplicationController Constructor
-func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory) models.Controller {
+func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, prometheusHandler metrics.PrometheusHandler) models.Controller {
 	if hasAccessTo == nil {
 		hasAccessTo = hasAccess
 	}
@@ -30,6 +32,7 @@ func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFacto
 	return &applicationController{
 		hasAccessToRR:             hasAccessTo,
 		applicationHandlerFactory: applicationHandlerFactory,
+		prometheusHandler:         prometheusHandler,
 	}
 }
 
@@ -1063,13 +1066,11 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 		ignoreZero, _ = strconv.ParseBool(ignoreZeroArg)
 	}
 
-	handler := ac.applicationHandlerFactory.Create(accounts)
-	jobSummary, err := handler.GetUsedResources(r.Context(), appName, envName, componentName, duration, since, ignoreZero)
-
+	usedResources, err := ac.prometheusHandler.GetUsedResources(r.Context(), accounts.UserAccount.RadixClient, appName, envName, componentName, duration, since, ignoreZero)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	ac.JSONResponse(w, r, &jobSummary)
+	ac.JSONResponse(w, r, &usedResources)
 }

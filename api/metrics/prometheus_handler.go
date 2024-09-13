@@ -1,4 +1,4 @@
-package prometheus
+package metrics
 
 import (
 	"context"
@@ -12,43 +12,64 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/pkg/errors"
-	prometheusApi "github.com/prometheus/client_golang/api"
-	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/common/model"
 	prometheusModel "github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type queryName string
+// QueryName Prometheus query name
+type QueryName string
 
 const (
-	cpuMax             queryName = "cpuMax"
-	cpuMin             queryName = "cpuMin"
-	cpuAvg             queryName = "cpuAvg"
-	memoryMax          queryName = "memoryMax"
-	memoryMin          queryName = "memoryMin"
-	memoryAvg          queryName = "memoryAvg"
+	cpuMax             QueryName = "cpuMax"
+	cpuMin             QueryName = "cpuMin"
+	cpuAvg             QueryName = "cpuAvg"
+	memoryMax          QueryName = "memoryMax"
+	memoryMin          QueryName = "memoryMin"
+	memoryAvg          QueryName = "memoryAvg"
 	durationExpression           = `^[0-9]{1,5}[mhdw]$`
 	defaultDuration              = "30d"
+	defaultOffset                = "0s"
 )
 
+// PrometheusHandler Interface for Prometheus handler
+type PrometheusHandler interface {
+	GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error)
+}
+
+type handler struct {
+	client PrometheusClient
+}
+
+// NewPrometheusHandler Constructor for Prometheus handler
+func NewPrometheusHandler(client PrometheusClient) PrometheusHandler {
+	return &handler{
+		client: client,
+	}
+}
+
 // GetUsedResources Get used resources for the application
-func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
+func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
+	_, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 	durationValue, duration, err := parseQueryDuration(duration, defaultDuration)
 	if err != nil {
 		return nil, err
 	}
-	sinceValue, since, err := parseQueryDuration(since, "")
+	sinceValue, since, err := parseQueryDuration(since, defaultOffset)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Minute) // replace with 10*time.Seconds
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	log.Ctx(ctx).Debug().Msgf("Getting used resources for application %s", appName)
-	results, warnings, err := getPrometheusMetrics(ctx, prometheusUrl, appName, envName, componentName, duration, since)
+	results, warnings, err := pc.client.GetMetrics(ctx, appName, envName, componentName, duration, since)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +79,7 @@ func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, comp
 	return resources, nil
 }
 
-func getUsedResourcesByMetrics(ctx context.Context, results map[queryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration, ignoreZero bool) *applicationModels.UsedResources {
+func getUsedResourcesByMetrics(ctx context.Context, results map[QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration, ignoreZero bool) *applicationModels.UsedResources {
 	usedCpuResource := applicationModels.UsedResource{}
 	usedCpuResource.Min, usedCpuResource.MinActual = getCpuMetricValue(ctx, results, cpuMin, ignoreZero)
 	usedCpuResource.Max, usedCpuResource.MaxActual = getCpuMetricValue(ctx, results, cpuMax, ignoreZero)
@@ -76,31 +97,6 @@ func getUsedResourcesByMetrics(ctx context.Context, results map[queryName]promet
 	}
 }
 
-func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string) (map[queryName]prometheusModel.Value, []string, error) {
-	client, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl})
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("failed to create the Prometheus client: %v", err)
-		return nil, nil, errors.New("Failed to create the Prometheus client")
-	}
-	api := prometheusV1.NewAPI(client)
-	results := make(map[queryName]model.Value)
-	now := time.Now()
-	var warnings []string
-	for metricName, query := range getPrometheusQueries(appName, envName, componentName, duration, since) {
-		result, resultWarnings, err := api.Query(ctx, query, now)
-		if err != nil {
-			log.Ctx(ctx).Error().Msgf("Failed to get Prometheus metrics: %v", err)
-			return nil, nil, errors.New("failed to get Prometheus metrics")
-		}
-		if len(resultWarnings) > 0 {
-			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", resultWarnings)
-			warnings = append(warnings, resultWarnings...)
-		}
-		results[metricName] = result
-	}
-	return results, warnings, nil
-}
-
 func parseQueryDuration(duration string, defaultValue string) (time.Duration, string, error) {
 	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
 		duration = defaultValue
@@ -116,7 +112,7 @@ func roundActualValue(num float64) float64 {
 	return math.Round(num*1e6) / 1e6
 }
 
-func getCpuMetricValue(ctx context.Context, queryResults map[queryName]prometheusModel.Value, queryName queryName, ignoreZero bool) (string, *float64) {
+func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (string, *float64) {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
 		valueInMillicores := value * 1000.0
 		quantity := resource.NewMilliQuantity(int64(valueInMillicores), resource.BinarySI)
@@ -125,7 +121,7 @@ func getCpuMetricValue(ctx context.Context, queryResults map[queryName]prometheu
 	return "", nil
 }
 
-func getMemoryMetricValue(ctx context.Context, queryResults map[queryName]prometheusModel.Value, queryName queryName, ignoreZero bool) (string, *float64) {
+func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (string, *float64) {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
 		valueInMegabytes := value / 1000.0
 		quantity := resource.NewScaledQuantity(int64(valueInMegabytes), resource.Mega)
@@ -134,7 +130,7 @@ func getMemoryMetricValue(ctx context.Context, queryResults map[queryName]promet
 	return "", nil
 }
 
-func getMetricsValue(ctx context.Context, queryResults map[queryName]prometheusModel.Value, queryName queryName, ignoreZero bool) (float64, bool) {
+func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (float64, bool) {
 	queryResult, ok := queryResults[queryName]
 	if !ok {
 		return 0, false
@@ -179,7 +175,7 @@ func getMetricsValue(ctx context.Context, queryResults map[queryName]prometheusM
 	return 0, false
 }
 
-func getPrometheusQueries(appName, envName, componentName, duration, since string) map[queryName]string {
+func getPrometheusQueries(appName, envName, componentName, duration, since string) map[QueryName]string {
 	environmentFilter := radixutils.TernaryString(envName == "",
 		fmt.Sprintf(`,namespace=~"%s-.*"`, appName),
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
@@ -187,7 +183,7 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
 	cpuUsageQuery := fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
 	memoryUsageQuery := fmt.Sprintf(`sum(rate(container_memory_usage_bytes{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
-	queries := map[queryName]string{
+	queries := map[QueryName]string{
 		cpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
 		cpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
 		cpuAvg:    fmt.Sprintf("avg_over_time(%s)", cpuUsageQuery),

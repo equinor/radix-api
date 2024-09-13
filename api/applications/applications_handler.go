@@ -17,7 +17,6 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
-	prometheusUtils "github.com/equinor/radix-api/api/utils/prometheus"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -454,15 +453,6 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 	}
 
 	return jobSummary, nil
-}
-
-// GetUsedResources Returns the used resources for an application
-func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
-	_, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return prometheusUtils.GetUsedResources(ctx, ah.config.PrometheusUrl, appName, envName, componentName, duration, since, ignoreZero)
 }
 
 func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
