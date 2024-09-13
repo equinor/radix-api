@@ -35,11 +35,11 @@ const (
 
 // GetUsedResources Get used resources for the application
 func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
-	durationValue, duration, err := parseQueryDuration(duration, defaultDuration)
+	durationValue, err := parseQueryDuration(&duration, defaultDuration)
 	if err != nil {
 		return nil, err
 	}
-	sinceValue, since, err := parseQueryDuration(since, "")
+	sinceValue, err := parseQueryDuration(&since, "")
 	if err != nil {
 		return nil, err
 	}
@@ -95,15 +95,15 @@ func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, 
 	return results, nil
 }
 
-func parseQueryDuration(duration string, defaultValue string) (time.Duration, string, error) {
-	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
-		duration = defaultValue
+func parseQueryDuration(duration *string, defaultValue string) (time.Duration, error) {
+	if duration == nil || len(*duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(*duration) {
+		duration = pointers.Ptr(defaultValue)
 	}
-	if len(duration) == 0 {
-		return 0, duration, nil
+	if duration == nil || len(*duration) == 0 {
+		return 0, nil
 	}
-	parsedDuration, err := prometheusModel.ParseDuration(duration)
-	return time.Duration(parsedDuration), duration, err
+	parsedDuration, err := prometheusModel.ParseDuration(*duration)
+	return time.Duration(parsedDuration), err
 }
 
 func roundActualValue(num float64) float64 {
