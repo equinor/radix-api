@@ -32,6 +32,7 @@ type ApplicationHandlerConfig struct {
 	AppName                     string `cfg:"radix_app" flag:"radix-app"`
 	EnvironmentName             string `cfg:"radix_environment" flag:"radix-environment"`
 	DNSZone                     string `cfg:"radix_dns_zone" flag:"radix-dns-zone"`
+	PrometheusUrl               string `cfg:"radix_prometheus_url" flag:"radix-prometheus-url"`
 }
 
 func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
@@ -42,5 +43,6 @@ func ApplicationHandlerConfigFlagSet() *pflag.FlagSet {
 	flagset.String("radix-app", "", "Application name")
 	flagset.String("radix-environment", "", "Environment name")
 	flagset.String("radix-dns-zone", "", "Radix DNS zone")
+	flagset.String("radix-prometheus-url", "", "Prometheus URL")
 	return flagset
 }

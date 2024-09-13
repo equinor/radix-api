@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/pkg/errors"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -35,11 +36,11 @@ const (
 
 // GetUsedResources Get used resources for the application
 func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
-	durationValue, err := parseQueryDuration(&duration, defaultDuration)
+	durationValue, duration, err := parseQueryDuration(duration, defaultDuration)
 	if err != nil {
 		return nil, err
 	}
-	sinceValue, err := parseQueryDuration(&since, "")
+	sinceValue, since, err := parseQueryDuration(since, "")
 	if err != nil {
 		return nil, err
 	}
@@ -47,11 +48,12 @@ func GetUsedResources(ctx context.Context, prometheusUrl, appName, envName, comp
 	defer cancel()
 
 	log.Ctx(ctx).Debug().Msgf("Getting used resources for application %s", appName)
-	results, err := getPrometheusMetrics(ctx, prometheusUrl, appName, envName, componentName, duration, since)
+	results, warnings, err := getPrometheusMetrics(ctx, prometheusUrl, appName, envName, componentName, duration, since)
 	if err != nil {
 		return nil, err
 	}
 	resources := getUsedResourcesByMetrics(ctx, results, durationValue, sinceValue, ignoreZero)
+	resources.Warnings = warnings
 	log.Ctx(ctx).Debug().Msgf("Got used resources for application %s", appName)
 	return resources, nil
 }
@@ -74,36 +76,40 @@ func getUsedResourcesByMetrics(ctx context.Context, results map[queryName]promet
 	}
 }
 
-func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string) (map[queryName]prometheusModel.Value, error) {
+func getPrometheusMetrics(ctx context.Context, prometheusUrl, appName, envName, componentName, duration, since string) (map[queryName]prometheusModel.Value, []string, error) {
 	client, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the Prometheus client: %w", err)
+		log.Ctx(ctx).Error().Msgf("failed to create the Prometheus client: %v", err)
+		return nil, nil, errors.New("Failed to create the Prometheus client")
 	}
 	api := prometheusV1.NewAPI(client)
 	results := make(map[queryName]model.Value)
 	now := time.Now()
+	var warnings []string
 	for metricName, query := range getPrometheusQueries(appName, envName, componentName, duration, since) {
-		result, warnings, err := api.Query(ctx, query, now)
+		result, resultWarnings, err := api.Query(ctx, query, now)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get Prometheus metrics: %w", err)
+			log.Ctx(ctx).Error().Msgf("Failed to get Prometheus metrics: %v", err)
+			return nil, nil, errors.New("failed to get Prometheus metrics")
 		}
-		if len(warnings) > 0 {
-			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", warnings)
+		if len(resultWarnings) > 0 {
+			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", resultWarnings)
+			warnings = append(warnings, resultWarnings...)
 		}
 		results[metricName] = result
 	}
-	return results, nil
+	return results, warnings, nil
 }
 
-func parseQueryDuration(duration *string, defaultValue string) (time.Duration, error) {
-	if duration == nil || len(*duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(*duration) {
-		duration = pointers.Ptr(defaultValue)
+func parseQueryDuration(duration string, defaultValue string) (time.Duration, string, error) {
+	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
+		duration = defaultValue
 	}
-	if duration == nil || len(*duration) == 0 {
-		return 0, nil
+	if len(duration) == 0 {
+		return 0, duration, nil
 	}
-	parsedDuration, err := prometheusModel.ParseDuration(*duration)
-	return time.Duration(parsedDuration), err
+	parsedDuration, err := prometheusModel.ParseDuration(duration)
+	return time.Duration(parsedDuration), duration, err
 }
 
 func roundActualValue(num float64) float64 {

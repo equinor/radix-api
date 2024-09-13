@@ -26,6 +26,11 @@ type UsedResources struct {
 	// required: false
 	// example: 120m
 	Memory *UsedResource `json:"memory,omitempty"`
+
+	// Warning messages
+	//
+	// required: false
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // UsedResource holds information about used resource

@@ -462,9 +462,7 @@ func (ah *ApplicationHandler) GetUsedResources(ctx context.Context, appName, env
 	if err != nil {
 		return nil, err
 	}
-	prometheusUrl := "http://localhost:9091"
-	// prometheusUrl := "http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090"
-	return prometheusUtils.GetUsedResources(ctx, prometheusUrl, appName, envName, componentName, duration, since, ignoreZero)
+	return prometheusUtils.GetUsedResources(ctx, ah.config.PrometheusUrl, appName, envName, componentName, duration, since, ignoreZero)
 }
 
 func (ah *ApplicationHandler) getRadixDeploymentForPromotePipeline(ctx context.Context, appName string, envName, deploymentName string) (*v1.RadixDeployment, error) {
