@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -1921,38 +1922,78 @@ func Test_GetUsedResources(t *testing.T) {
 		componentName1 = "component1"
 	)
 
+	type expectedArgs struct {
+		environment string
+		component   string
+		duration    string
+		since       string
+		ignoreZero  bool
+	}
+
 	type scenario struct {
-		name                  string
-		expectedUsedResources *applicationModels.UsedResources
-		expectedError         error
+		name                       string
+		expectedUsedResources      *applicationModels.UsedResources
+		expectedError              error
+		queryString                string
+		expectedArgs               expectedArgs
+		expectedUsedResourcesError error
 	}
 
 	scenarios := []scenario{
 		{
-			name:                  "Get used resources for an application with no components",
-			expectedUsedResources: &applicationModels.UsedResources{},
+			name:                  "Get used resources",
+			expectedUsedResources: getTestUsedResources(),
+			expectedArgs:          expectedArgs{},
 		},
 		{
-			name:                  "Get used resources for an application with one component",
-			expectedUsedResources: &applicationModels.UsedResources{},
+			name:                  "Get used resources with arguments",
+			queryString:           "?environment=prod&component=component1&duration=10d&since=2w&ignorezero=true",
+			expectedUsedResources: getTestUsedResources(),
+			expectedArgs: expectedArgs{
+				environment: envName1,
+				component:   componentName1,
+				duration:    "10d",
+				since:       "2w",
+				ignoreZero:  true,
+			},
+		},
+		{
+			name:                  "Invalid boolean query parameter falls back to false",
+			expectedUsedResources: getTestUsedResources(),
+			queryString:           "?ignorezero=abc",
+			expectedArgs: expectedArgs{
+				ignoreZero: false,
+			},
+		},
+		{
+			name:                       "UsedResources returns an error",
+			expectedUsedResources:      getTestUsedResources(),
+			expectedUsedResourcesError: errors.New("error-123"),
+			expectedError:              errors.New("Error: error-123"),
 		},
 	}
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			commonTestUtils, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, true, true)
+			commonTestUtils, _, kubeClient, radixClient, kedaClient, _, secretProviderClient, certClient := setupTest(t, true, true)
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 
-			prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
-			controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+			mockHandlerModifier := func(handler *mock.MockPrometheusHandler) {
+				args := ts.expectedArgs
+				handler.EXPECT().GetUsedResources(gomock.Any(), radixClient, appName1, args.environment, args.component, args.duration, args.since, args.ignoreZero).
+					Times(1).
+					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
+			}
+			prometheusHandlerMock := createPrometheusHandlerMock(t, radixClient, &mockHandlerModifier)
+			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, NewApplicationController(func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
 			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
 
-			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/resources", appName1))
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/resources%s", appName1, ts.queryString))
 			response := <-responseChannel
 			if ts.expectedError != nil {
 				assert.Equal(t, http.StatusBadRequest, response.Code)
@@ -1966,6 +2007,30 @@ func Test_GetUsedResources(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, ts.expectedUsedResources, actualUsedResources)
 		})
+	}
+}
+
+func getTestUsedResources() *applicationModels.UsedResources {
+	return &applicationModels.UsedResources{
+		From: radixutils.FormatTimestamp(time.Now().Add(time.Minute * -10)),
+		To:   radixutils.FormatTimestamp(time.Now()),
+		CPU: &applicationModels.UsedResource{
+			Min:       "1m",
+			Max:       "10m",
+			Average:   "5m",
+			MinActual: pointers.Ptr(1.1),
+			MaxActual: pointers.Ptr(10.12),
+			AvgActual: pointers.Ptr(5.56),
+		},
+		Memory: &applicationModels.UsedResource{
+			Min:       "100M",
+			Max:       "1000M",
+			Average:   "500M",
+			MinActual: pointers.Ptr(100.1),
+			MaxActual: pointers.Ptr(1000.12),
+			AvgActual: pointers.Ptr(500.56),
+		},
+		Warnings: []string{"warning1", "warning2"},
 	}
 }
 
