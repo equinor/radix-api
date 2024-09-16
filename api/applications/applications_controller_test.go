@@ -33,7 +33,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
@@ -52,7 +52,7 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
+func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
 		ApplicationHandlerConfig{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
@@ -61,10 +61,10 @@ func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups boo
 	))
 }
 
-func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *fake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
+func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
-	radixclient := fake.NewSimpleClientset()
+	radixclient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
@@ -92,7 +92,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
-func createPrometheusHandlerMock(t *testing.T, radixclient *fake.Clientset, mockHandler *func(handler *mock.MockPrometheusHandler)) *mock.MockPrometheusHandler {
+func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *mock.MockPrometheusHandler)) *mock.MockPrometheusHandler {
 	ctrl := gomock.NewController(t)
 	mockPrometheusHandler := mock.NewMockPrometheusHandler(ctrl)
 	if mockHandler != nil {
@@ -2054,7 +2054,7 @@ func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, 
 	return err
 }
 
-func getJobsInNamespace(radixclient *fake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
+func getJobsInNamespace(radixclient *radixfake.Clientset, appNamespace string) ([]v1.RadixJob, error) {
 	jobs, err := radixclient.RadixV1().RadixJobs(appNamespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
