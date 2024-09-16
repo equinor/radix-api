@@ -32,9 +32,9 @@ func CannotStopComponent(appName, componentName, state string) error {
 	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be stopped when in %s state", componentName, appName, strings.ToLower(state)))
 }
 
-// CannotStartComponent Component cannot be started
-func CannotStartComponent(appName, componentName, state string) error {
-	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be started when in %s state", componentName, appName, strings.ToLower(state)))
+// CannotResetScaledComponent Component cannot be started
+func CannotResetScaledComponent(appName, componentName string) error {
+	return radixhttp.ValidationError("Radix Application Component", fmt.Sprintf("Component %s for app %s cannot be reset when not manually scaled", componentName, appName))
 }
 
 // CannotRestartComponent Component cannot be restarted

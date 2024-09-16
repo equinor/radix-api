@@ -127,21 +127,6 @@ func (mr *MockDeployHandlerMockRecorder) GetJobComponentDeployments(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobComponentDeployments", reflect.TypeOf((*MockDeployHandler)(nil).GetJobComponentDeployments), arg0, arg1, arg2, arg3)
 }
 
-// GetLatestDeploymentForApplicationEnvironment mocks base method.
-func (m *MockDeployHandler) GetLatestDeploymentForApplicationEnvironment(ctx context.Context, appName, environment string) (*models.DeploymentSummary, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestDeploymentForApplicationEnvironment", ctx, appName, environment)
-	ret0, _ := ret[0].(*models.DeploymentSummary)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLatestDeploymentForApplicationEnvironment indicates an expected call of GetLatestDeploymentForApplicationEnvironment.
-func (mr *MockDeployHandlerMockRecorder) GetLatestDeploymentForApplicationEnvironment(ctx, appName, environment interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestDeploymentForApplicationEnvironment", reflect.TypeOf((*MockDeployHandler)(nil).GetLatestDeploymentForApplicationEnvironment), ctx, appName, environment)
-}
-
 // GetLogs mocks base method.
 func (m *MockDeployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()

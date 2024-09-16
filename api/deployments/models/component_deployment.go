@@ -85,6 +85,14 @@ type Component struct {
 	// required: false
 	ReplicaList []ReplicaSummary `json:"replicaList"`
 
+	// Set if manual control of replicas is in place. Not set means automatic control, 0 means stopped and >= 1 is manually scaled.
+	//
+	// required: false
+	// example: 5
+	// Extensions:
+	// x-nullable: true
+	ReplicasOverride *int `json:"replicasOverride"`
+
 	// HorizontalScaling defines horizontal scaling summary for this component
 	//
 	// required: false
@@ -585,7 +593,7 @@ func getReplicaType(pod corev1.Pod) ReplicaType {
 	switch {
 	case pod.GetLabels()[kube.RadixPodIsJobSchedulerLabel] == "true":
 		return JobManager
-	case pod.GetLabels()[kube.RadixPodIsJobAuxObjectLabel] == "true":
+	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == kube.RadixJobTypeManagerAux:
 		return JobManagerAux
 	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == "oauth":
 		return OAuth2

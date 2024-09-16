@@ -13,7 +13,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,7 +28,6 @@ type DeployHandler interface {
 	GetDeploymentsForApplicationEnvironment(ctx context.Context, appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(ctx context.Context, appName, deploymentID string) ([]*deploymentModels.Component, error)
 	GetComponentsForDeployment(ctx context.Context, appName, deploymentName, envName string) ([]*deploymentModels.Component, error)
-	GetLatestDeploymentForApplicationEnvironment(ctx context.Context, appName, environment string) (*deploymentModels.DeploymentSummary, error)
 	GetDeploymentsForPipelineJob(context.Context, string, string) ([]*deploymentModels.DeploymentSummary, error)
 	GetJobComponentDeployments(context.Context, string, string, string) ([]*deploymentModels.DeploymentItem, error)
 }
@@ -64,6 +63,7 @@ func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName strin
 
 		return log, nil
 	}
+
 	return nil, deploymentModels.NonExistingPod(appName, podName)
 }
 
@@ -198,7 +198,7 @@ func (deploy *deployHandler) GetDeploymentWithName(ctx context.Context, appName,
 	return dep, nil
 }
 
-func (deploy *deployHandler) getRadixDeploymentRadixJob(ctx context.Context, appName string, rd *v1.RadixDeployment) (*v1.RadixJob, error) {
+func (deploy *deployHandler) getRadixDeploymentRadixJob(ctx context.Context, appName string, rd *radixv1.RadixDeployment) (*radixv1.RadixJob, error) {
 	jobName := rd.GetLabels()[kube.RadixJobNameLabel]
 	radixJob, err := kubequery.GetRadixJob(ctx, deploy.accounts.UserAccount.RadixClient, appName, jobName)
 	if err != nil {
@@ -211,7 +211,6 @@ func (deploy *deployHandler) getRadixDeploymentRadixJob(ctx context.Context, app
 }
 
 func (deploy *deployHandler) getEnvironmentNames(ctx context.Context, appName string) ([]string, error) {
-	radixlabels.ForApplicationName(appName).AsSelector()
 	labelSelector := radixlabels.ForApplicationName(appName).AsSelector()
 
 	reList, err := deploy.accounts.ServiceAccount.RadixClient.RadixV1().RadixEnvironments().List(ctx, metav1.ListOptions{LabelSelector: labelSelector.String()})
@@ -219,7 +218,7 @@ func (deploy *deployHandler) getEnvironmentNames(ctx context.Context, appName st
 		return nil, err
 	}
 
-	return slice.Map(reList.Items, func(re v1.RadixEnvironment) string {
+	return slice.Map(reList.Items, func(re radixv1.RadixEnvironment) string {
 		return re.Spec.EnvName
 	}), nil
 }
@@ -239,7 +238,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 		rdLabelSelector = rdLabelSelector.Add(*jobNameLabel)
 	}
 
-	var radixDeploymentList []v1.RadixDeployment
+	var radixDeploymentList []radixv1.RadixDeployment
 	namespaces := slice.Map(environments, func(env string) string { return operatorUtils.GetEnvironmentNamespace(appName, env) })
 	for _, ns := range namespaces {
 		rdList, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixDeployments(ns).List(ctx, metav1.ListOptions{LabelSelector: rdLabelSelector.String()})
@@ -250,7 +249,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	}
 
 	appNamespace := operatorUtils.GetAppNamespace(appName)
-	radixJobMap := make(map[string]*v1.RadixJob)
+	radixJobMap := make(map[string]*radixv1.RadixJob)
 
 	if jobName != "" {
 		radixJob, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Get(ctx, jobName, metav1.GetOptions{})
@@ -278,7 +277,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	rds := sortRdsByActiveFromDesc(radixDeploymentList)
 	var deploymentSummaries []*deploymentModels.DeploymentSummary
 	for _, rd := range rds {
-		if latest && rd.Status.Condition == v1.DeploymentInactive {
+		if latest && rd.Status.Condition == radixv1.DeploymentInactive {
 			continue
 		}
 
@@ -298,7 +297,7 @@ func (deploy *deployHandler) getDeployments(ctx context.Context, appName string,
 	return deploymentSummaries, nil
 }
 
-func sortRdsByActiveFromDesc(rds []v1.RadixDeployment) []v1.RadixDeployment {
+func sortRdsByActiveFromDesc(rds []radixv1.RadixDeployment) []radixv1.RadixDeployment {
 	sort.Slice(rds, func(i, j int) bool {
 		if rds[j].Status.ActiveFrom.IsZero() {
 			return true

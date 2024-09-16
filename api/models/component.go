@@ -9,19 +9,14 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/event"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
-	commonutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
-	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
-	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/rs/zerolog/log"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -65,12 +60,17 @@ func buildComponent(
 		WithExternalDNS(getComponentExternalDNS(ra.Name, radixComponent, secretList, certs, certRequests, tlsValidator))
 
 	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
+	var kd *appsv1.Deployment
+	if depl, ok := slice.FindFirst(deploymentList, predicate.IsDeploymentForComponent(ra.Name, radixComponent.GetName())); ok {
+		kd = &depl
+	}
+
 	if rd.Status.ActiveTo.IsZero() {
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))
 		builder.WithRadixEnvironmentVariables(getRadixEnvironmentVariables(componentPods))
 		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods, lastEventWarnings))
-		builder.WithStatus(getComponentStatus(radixComponent, ra, rd, componentPods))
-		builder.WithAuxiliaryResource(getAuxiliaryResources(ra.Name, radixComponent, deploymentList, podList, lastEventWarnings))
+		builder.WithStatus(deploymentModels.ComponentStatusFromDeployment(radixComponent, kd, rd))
+		builder.WithAuxiliaryResource(getAuxiliaryResources(rd, radixComponent, deploymentList, podList, lastEventWarnings))
 	}
 
 	// TODO: Use radixComponent.GetType() instead?
@@ -233,118 +233,6 @@ func certificateConditionReady(condition cmv1.CertificateCondition) bool {
 
 func certificateRequestConditionReady(condition cmv1.CertificateRequestCondition) bool {
 	return condition.Type == cmv1.CertificateRequestConditionReady
-}
-
-func getComponentStatus(component radixv1.RadixCommonDeployComponent, ra *radixv1.RadixApplication, rd *radixv1.RadixDeployment, pods []corev1.Pod) deploymentModels.ComponentStatus {
-	environmentConfig := utils.GetComponentEnvironmentConfig(ra, rd.Spec.Environment, component.GetName())
-	if component.GetType() == radixv1.RadixComponentTypeComponent {
-		if runningReplicaDiffersFromConfig(environmentConfig, pods) &&
-			!runningReplicaDiffersFromSpec(component, pods) &&
-			len(pods) == 0 {
-			return deploymentModels.StoppedComponent
-		}
-		if runningReplicaDiffersFromSpec(component, pods) {
-			return deploymentModels.ComponentReconciling
-		}
-	} else if component.GetType() == radixv1.RadixComponentTypeJob {
-		if len(pods) == 0 {
-			return deploymentModels.StoppedComponent
-		}
-	}
-	if runningReplicaIsOutdated(component, pods) {
-		return deploymentModels.ComponentOutdated
-	}
-	restarted := component.GetEnvironmentVariables()[operatordefaults.RadixRestartEnvironmentVariable]
-	if strings.EqualFold(restarted, "") {
-		return deploymentModels.ConsistentComponent
-	}
-	restartedTime, err := commonutils.ParseTimestamp(restarted)
-	if err != nil {
-		// TODO: How should we handle invalid value for restarted time?
-
-		log.Logger.Warn().Err(err).Msgf("unable to parse restarted time %v", restarted)
-		return deploymentModels.ConsistentComponent
-	}
-	reconciledTime := rd.Status.Reconciled
-	if reconciledTime.IsZero() || restartedTime.After(reconciledTime.Time) {
-		return deploymentModels.ComponentRestarting
-	}
-	return deploymentModels.ConsistentComponent
-}
-
-func runningReplicaDiffersFromConfig(environmentConfig radixv1.RadixCommonEnvironmentConfig, actualPods []corev1.Pod) bool {
-	actualPodsLength := len(actualPods)
-	if commonutils.IsNil(environmentConfig) {
-		return actualPodsLength != operatordeployment.DefaultReplicas
-	}
-	// No HPA config
-	if environmentConfig.GetHorizontalScaling() == nil {
-		if environmentConfig.GetReplicas() != nil {
-			return actualPodsLength != *environmentConfig.GetReplicas()
-		}
-		return actualPodsLength != operatordeployment.DefaultReplicas
-	}
-	// With HPA config
-	if environmentConfig.GetReplicas() != nil && *environmentConfig.GetReplicas() == 0 {
-		return actualPodsLength != *environmentConfig.GetReplicas()
-	}
-	if environmentConfig.GetHorizontalScaling().MinReplicas != nil {
-		return actualPodsLength < int(*environmentConfig.GetHorizontalScaling().MinReplicas) ||
-			actualPodsLength > int(environmentConfig.GetHorizontalScaling().MaxReplicas)
-	}
-	return actualPodsLength < operatordeployment.DefaultReplicas ||
-		actualPodsLength > int(environmentConfig.GetHorizontalScaling().MaxReplicas)
-}
-
-func runningReplicaDiffersFromSpec(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
-	actualPodsLength := len(actualPods)
-	// No HPA config
-	if component.GetHorizontalScaling() == nil {
-		if component.GetReplicas() != nil {
-			return actualPodsLength != *component.GetReplicas()
-		}
-		return actualPodsLength != operatordeployment.DefaultReplicas
-	}
-	// With HPA config
-	if component.GetReplicas() != nil && *component.GetReplicas() == 0 {
-		return actualPodsLength != *component.GetReplicas()
-	}
-	if component.GetHorizontalScaling().MinReplicas != nil {
-		return actualPodsLength < int(*component.GetHorizontalScaling().MinReplicas) ||
-			actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
-	}
-	return actualPodsLength < operatordeployment.DefaultReplicas ||
-		actualPodsLength > int(component.GetHorizontalScaling().MaxReplicas)
-}
-
-func runningReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
-	switch component.GetType() {
-	case radixv1.RadixComponentTypeComponent:
-		return runningComponentReplicaIsOutdated(component, actualPods)
-	case radixv1.RadixComponentTypeJob:
-		return false
-	default:
-		return false
-	}
-}
-
-func runningComponentReplicaIsOutdated(component radixv1.RadixCommonDeployComponent, actualPods []corev1.Pod) bool {
-	// Check if running component's image is not the same as active deployment image tag and that active rd image is equal to 'starting' component image tag
-	componentIsInconsistent := false
-	for _, pod := range actualPods {
-		if pod.DeletionTimestamp != nil {
-			// Pod is in termination phase
-			continue
-		}
-		for _, container := range pod.Spec.Containers {
-			if container.Image != component.GetImage() {
-				// Container is running an outdated image
-				componentIsInconsistent = true
-			}
-		}
-	}
-
-	return componentIsInconsistent
 }
 
 func getRadixEnvironmentVariables(pods []corev1.Pod) map[string]string {

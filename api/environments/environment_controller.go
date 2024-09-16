@@ -71,7 +71,12 @@ func (c *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/start",
 			Method:      "POST",
-			HandlerFunc: c.StartComponent,
+			HandlerFunc: c.ResetScaledComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/reset-scale",
+			Method:      "POST",
+			HandlerFunc: c.ResetScaledComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
@@ -91,7 +96,12 @@ func (c *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/start",
 			Method:      "POST",
-			HandlerFunc: c.StartEnvironment,
+			HandlerFunc: c.ResetManuallyStoppedComponentsInEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/reset-scale",
+			Method:      "POST",
+			HandlerFunc: c.ResetManuallyStoppedComponentsInEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/restart",
@@ -106,7 +116,12 @@ func (c *environmentController) GetRoutes() models.Routes {
 		models.Route{
 			Path:        rootPath + "/start",
 			Method:      "POST",
-			HandlerFunc: c.StartApplication,
+			HandlerFunc: c.ResetManuallyScaledComponentsInApplication,
+		},
+		models.Route{
+			Path:        rootPath + "/reset-scale",
+			Method:      "POST",
+			HandlerFunc: c.ResetManuallyScaledComponentsInApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/restart",
@@ -571,11 +586,11 @@ func (c *environmentController) StopComponent(accounts models.Accounts, w http.R
 	c.JSONResponse(w, r, "Success")
 }
 
-// StartComponent Starts job
-func (c *environmentController) StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
+// ResetScaledComponent reset manually scaled component and resumes normal operation
+func (c *environmentController) ResetScaledComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/reset-scale component resetScaledComponent
 	// ---
-	// summary: Start component
+	// summary: Reset manually scaled component and resumes normal operation
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -614,7 +629,61 @@ func (c *environmentController) StartComponent(accounts models.Accounts, w http.
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StartComponent(r.Context(), appName, envName, componentName, false)
+	err := environmentHandler.ResetScaledComponent(r.Context(), appName, envName, componentName, false)
+
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	c.JSONResponse(w, r, "Success")
+}
+
+// StartComponent Starts job
+func (c *environmentController) StartComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/start component startComponent
+	// ---
+	// summary: Deprecated Start component. Use reset-scale instead. This does the same thing, but naming is wrong. This endpoint will be removed after 1. september 2025.
+	// deprecated: true
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Component started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := c.environmentHandlerFactory(accounts)
+	err := environmentHandler.ResetScaledComponent(r.Context(), appName, envName, componentName, false)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -728,11 +797,11 @@ func (c *environmentController) StopEnvironment(accounts models.Accounts, w http
 	c.JSONResponse(w, r, "Success")
 }
 
-// StartEnvironment Starts all components in the environment
-func (c *environmentController) StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/environments/{envName}/start environment startEnvironment
+// ResetManuallyStoppedComponentsInEnvironment Reset all manually scaled component and resumes normal operation in environment
+func (c *environmentController) ResetManuallyStoppedComponentsInEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/reset-scale environment resetManuallyScaledComponentsInEnvironment
 	// ---
-	// summary: Start all components in the environment
+	// summary: Reset all manually scaled component and resumes normal operation in environment
 	// parameters:
 	// - name: appName
 	//   in: path
@@ -765,7 +834,55 @@ func (c *environmentController) StartEnvironment(accounts models.Accounts, w htt
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.StartEnvironment(r.Context(), appName, envName)
+	err := environmentHandler.ResetManuallyStoppedComponentsInEnvironment(r.Context(), appName, envName)
+
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	c.JSONResponse(w, r, "Success")
+}
+
+// StartEnvironment Starts all components in the environment
+func (c *environmentController) StartEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/start environment startEnvironment
+	// ---
+	// summary: Deprecated. Use reset-scale instead that does the same thing, but with better naming. This method will be removed after 1. september 2025.
+	// deprecated: true
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Environment started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	environmentHandler := c.environmentHandlerFactory(accounts)
+	err := environmentHandler.ResetManuallyStoppedComponentsInEnvironment(r.Context(), appName, envName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -869,11 +986,53 @@ func (c *environmentController) StopApplication(accounts models.Accounts, w http
 	c.JSONResponse(w, r, "Success")
 }
 
+// ResetManuallyScaledComponentsInApplication Resets and resumes normal opperation for all manually stopped components in all environments of the application
+func (c *environmentController) ResetManuallyScaledComponentsInApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/reset-scale application resetManuallyScaledComponentsInApplication
+	// ---
+	// summary: Resets and resumes normal opperation for all manually stopped components in all environments of the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Application started ok"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+
+	environmentHandler := c.environmentHandlerFactory(accounts)
+	err := environmentHandler.StartApplication(r.Context(), appName)
+
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	c.JSONResponse(w, r, "Success")
+}
+
 // StartApplication Starts all components in all environments of the application
 func (c *environmentController) StartApplication(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/start application startApplication
 	// ---
-	// summary: Start all components in all environments of the application
+	// summary: Deprecated. Use reset scale that does the same thing instead. This will be removed after 1. september 2025.
+	// deprecated: true
 	// parameters:
 	// - name: appName
 	//   in: path

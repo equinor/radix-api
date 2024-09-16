@@ -54,6 +54,7 @@ type componentBuilder struct {
 	gitTags                   string
 	resources                 *radixv1.ResourceRequirements
 	runtime                   *radixv1.Runtime
+	replicasOverride          *int
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -99,6 +100,7 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	b.commitID = component.GetEnvironmentVariables()[defaults.RadixCommitHashEnvironmentVariable]
 	b.gitTags = component.GetEnvironmentVariables()[defaults.RadixGitTagsEnvironmentVariable]
 	b.runtime = component.GetRuntime()
+	b.replicasOverride = component.GetReplicasOverride()
 
 	ports := []Port{}
 	if component.GetPorts() != nil {
@@ -252,6 +254,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		Variables:                variables,
 		Replicas:                 b.podNames,
 		ReplicaList:              b.replicaSummaryList,
+		ReplicasOverride:         b.replicasOverride,
 		SchedulerPort:            b.schedulerPort,
 		ScheduledJobPayloadPath:  b.scheduledJobPayloadPath,
 		AuxiliaryResource:        b.auxResource,

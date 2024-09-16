@@ -24,7 +24,7 @@ spec:
           port: 9090
       publicPort: http
       runtime:
-        architecture: amd64
+        architecture: arm64
       monitoring: true
       monitoringConfig:
         portName: metrics

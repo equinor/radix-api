@@ -7,8 +7,11 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/labelselector"
+	"github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -24,6 +27,45 @@ const (
 	restartedAtAnnotation = "radixapi/restartedAt"
 	maxScaleReplicas      = 20
 )
+
+// ScaleComponent Scale a component replicas
+func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envName, componentName string, replicas int) error {
+	if replicas < 0 {
+		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
+	}
+	if replicas > maxScaleReplicas {
+		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
+	}
+	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
+	}
+
+	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
+	return eh.patchRadixDeploymentWithReplicas(ctx, updater, &replicas)
+}
+
+// ResetScaledComponent Starts a component
+func (eh EnvironmentHandler) ResetScaledComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
+	log.Ctx(ctx).Info().Msgf("Resetting manually scaled component %s, %s", componentName, appName)
+	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
+	if err != nil {
+		return err
+	}
+	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
+		return environmentModels.JobComponentCanOnlyBeRestarted()
+	}
+	if updater.getComponentToPatch().GetReplicasOverride() == nil {
+		if ignoreComponentStatusError {
+			return nil
+		}
+		return environmentModels.CannotResetScaledComponent(appName, componentName)
+	}
+	return eh.patchRadixDeploymentWithReplicas(ctx, updater, nil)
+}
 
 // StopComponent Stops a component
 func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
@@ -43,27 +85,7 @@ func (eh EnvironmentHandler) StopComponent(ctx context.Context, appName, envName
 		}
 		return environmentModels.CannotStopComponent(appName, componentName, componentStatus)
 	}
-	return eh.patchRadixDeploymentWithZeroReplicas(ctx, updater)
-}
-
-// StartComponent Starts a component
-func (eh EnvironmentHandler) StartComponent(ctx context.Context, appName, envName, componentName string, ignoreComponentStatusError bool) error {
-	log.Ctx(ctx).Info().Msgf("Starting component %s, %s", componentName, appName)
-	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
-	if err != nil {
-		return err
-	}
-	if updater.getComponentToPatch().GetType() == v1.RadixComponentTypeJob {
-		return environmentModels.JobComponentCanOnlyBeRestarted()
-	}
-	componentStatus := updater.getComponentStatus()
-	if !strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
-		if ignoreComponentStatusError {
-			return nil
-		}
-		return environmentModels.CannotStartComponent(appName, componentName, componentStatus)
-	}
-	return eh.patchRadixDeploymentWithReplicasFromConfig(ctx, updater)
+	return eh.patchRadixDeploymentWithReplicas(ctx, updater, pointers.Ptr(0))
 }
 
 // RestartComponent Restarts a component
@@ -74,7 +96,7 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 		return err
 	}
 	componentStatus := updater.getComponentStatus()
-	if !strings.EqualFold(componentStatus, deploymentModels.ConsistentComponent.String()) {
+	if strings.EqualFold(componentStatus, deploymentModels.StoppedComponent.String()) {
 		if ignoreComponentStatusError {
 			return nil
 		}
@@ -87,12 +109,15 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Context, appName, envName, componentName, auxType string) error {
 	log.Ctx(ctx).Info().Msgf("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
 
-	deploySummary, err := eh.deployHandler.GetLatestDeploymentForApplicationEnvironment(ctx, appName, envName)
+	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return err
 	}
+	if radixDeployment == nil {
+		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+	}
 
-	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, deploySummary.Name, envName)
+	componentsDto, err := eh.deployHandler.GetComponentsForDeployment(ctx, appName, radixDeployment.Name, envName)
 	if err != nil {
 		return err
 	}
@@ -129,32 +154,12 @@ func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Conte
 	return eh.patchDeploymentForRestart(ctx, &deploymentList.Items[0])
 }
 
-// ScaleComponent Scale a component replicas
-func (eh EnvironmentHandler) ScaleComponent(ctx context.Context, appName, envName, componentName string, replicas int) error {
-	if replicas < 0 {
-		return environmentModels.CannotScaleComponentToNegativeReplicas(appName, envName, componentName)
-	}
-	if replicas > maxScaleReplicas {
-		return environmentModels.CannotScaleComponentToMoreThanMaxReplicas(appName, envName, componentName, maxScaleReplicas)
-	}
-	log.Ctx(ctx).Info().Msgf("Scaling component %s, %s to %d replicas", componentName, appName, replicas)
-	updater, err := eh.getRadixCommonComponentUpdater(ctx, appName, envName, componentName)
-	if err != nil {
-		return err
-	}
-	componentStatus := updater.getComponentStatus()
-	if !radixutils.ContainsString(validaStatusesToScaleComponent, componentStatus) {
-		return environmentModels.CannotScaleComponent(appName, envName, componentName, componentStatus)
-	}
-	return eh.patchRadixDeploymentWithReplicas(ctx, updater, replicas)
-}
-
 func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 	if deployment == nil {
 		return false
 	}
 
-	return deploymentModels.ComponentStatusFromDeployment(deployment) == deploymentModels.ConsistentComponent
+	return deployment.Spec.Replicas == nil || *deployment.Spec.Replicas != 0
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(ctx context.Context, deployment *appsv1.Deployment) error {
@@ -175,14 +180,6 @@ func (eh EnvironmentHandler) patchDeploymentForRestart(ctx context.Context, depl
 	})
 }
 
-func getReplicasForComponentInEnvironment(environmentConfig v1.RadixCommonEnvironmentConfig) (*int, error) {
-	if environmentConfig != nil {
-		return environmentConfig.GetReplicas(), nil
-	}
-
-	return nil, nil
-}
-
 func (eh EnvironmentHandler) patch(ctx context.Context, namespace, name string, oldJSON, newJSON []byte) error {
 	patchBytes, err := jsonPatch.CreateMergePatch(oldJSON, newJSON)
 	if err != nil {
@@ -199,25 +196,9 @@ func (eh EnvironmentHandler) patch(ctx context.Context, namespace, name string, 
 	return nil
 }
 
-func (eh EnvironmentHandler) patchRadixDeploymentWithReplicasFromConfig(ctx context.Context, updater radixDeployCommonComponentUpdater) error {
+func (eh EnvironmentHandler) patchRadixDeploymentWithReplicas(ctx context.Context, updater radixDeployCommonComponentUpdater, replicas *int) error {
 	return eh.commit(ctx, updater, func(updater radixDeployCommonComponentUpdater) error {
-		newReplica := 1
-		replicas, err := getReplicasForComponentInEnvironment(updater.getEnvironmentConfig())
-		if err != nil {
-			return err
-		}
-		if replicas != nil {
-			newReplica = *replicas
-		}
-		updater.setReplicasToComponent(&newReplica)
-		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
-		return nil
-	})
-}
-
-func (eh EnvironmentHandler) patchRadixDeploymentWithReplicas(ctx context.Context, updater radixDeployCommonComponentUpdater, replicas int) error {
-	return eh.commit(ctx, updater, func(updater radixDeployCommonComponentUpdater) error {
-		updater.setReplicasToComponent(&replicas)
+		updater.setReplicasOverrideToComponent(replicas)
 		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 		return nil
 	})
@@ -231,15 +212,6 @@ func (eh EnvironmentHandler) patchRadixDeploymentWithTimestampInEnvVar(ctx conte
 		}
 		environmentVariables[envVarName] = radixutils.FormatTimestamp(time.Now())
 		updater.setEnvironmentVariablesToComponent(environmentVariables)
-		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
-		return nil
-	})
-}
-
-func (eh EnvironmentHandler) patchRadixDeploymentWithZeroReplicas(ctx context.Context, updater radixDeployCommonComponentUpdater) error {
-	return eh.commit(ctx, updater, func(updater radixDeployCommonComponentUpdater) error {
-		newReplica := 0
-		updater.setReplicasToComponent(&newReplica)
 		updater.setUserMutationTimestampAnnotation(radixutils.FormatTimestamp(time.Now()))
 		return nil
 	})
