@@ -97,7 +97,7 @@ func createPrometheusHandlerMock(t *testing.T, radixclient *fake.Clientset, mock
 	if mockHandler != nil {
 		(*mockHandler)(mockPrometheusHandler)
 	} else {
-		mockPrometheusHandler.EXPECT().GetUsedResources(context.Background(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
+		mockPrometheusHandler.EXPECT().GetUsedResources(gomock.Any(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
 	}
 	return mockPrometheusHandler
 }
@@ -1912,6 +1912,61 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusBadRequest, response.Code)
+}
+
+func Test_GetUsedResources(t *testing.T) {
+	const (
+		appName1       = "app-1"
+		envName1       = "prod"
+		componentName1 = "component1"
+	)
+
+	type scenario struct {
+		name                  string
+		expectedUsedResources *applicationModels.UsedResources
+		expectedError         error
+	}
+
+	scenarios := []scenario{
+		{
+			name:                  "Get used resources for an application with no components",
+			expectedUsedResources: &applicationModels.UsedResources{},
+		},
+		{
+			name:                  "Get used resources for an application with one component",
+			expectedUsedResources: &applicationModels.UsedResources{},
+		},
+	}
+
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			commonTestUtils, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, true, true)
+			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
+			require.NoError(t, err)
+
+			prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+			controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewApplicationController(func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+				return true, nil
+			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				}), prometheusHandlerMock))
+
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/resources", appName1))
+			response := <-responseChannel
+			if ts.expectedError != nil {
+				assert.Equal(t, http.StatusBadRequest, response.Code)
+				errorResponse, _ := controllertest.GetErrorResponse(response)
+				assert.Equal(t, ts.expectedError.Error(), errorResponse.Message)
+				return
+			}
+			assert.Equal(t, http.StatusOK, response.Code)
+			actualUsedResources := &applicationModels.UsedResources{}
+			err = controllertest.GetResponseBody(response, &actualUsedResources)
+			require.NoError(t, err)
+			assert.Equal(t, ts.expectedUsedResources, actualUsedResources)
+		})
+	}
 }
 
 func createRadixJob(commonTestUtils *commontest.Utils, appName, jobName string, started time.Time) error {
