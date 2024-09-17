@@ -13,7 +13,7 @@ type radixDeployCommonComponentUpdater interface {
 	getComponentStatus() string
 	getRadixDeployment() *v1.RadixDeployment
 	getEnvironmentConfig() v1.RadixCommonEnvironmentConfig
-	setReplicasToComponent(replicas *int)
+	setReplicasOverrideToComponent(replicas *int)
 	setUserMutationTimestampAnnotation(timestamp string)
 }
 
@@ -44,8 +44,8 @@ func (updater *radixDeployComponentUpdater) setEnvironmentVariablesToComponent(e
 	updater.base.radixDeployment.Spec.Components[updater.base.componentIndex].SetEnvironmentVariables(envVars)
 }
 
-func (updater *radixDeployComponentUpdater) setReplicasToComponent(replicas *int) {
-	updater.base.radixDeployment.Spec.Components[updater.base.componentIndex].Replicas = replicas
+func (updater *radixDeployComponentUpdater) setReplicasOverrideToComponent(replicas *int) {
+	updater.base.radixDeployment.Spec.Components[updater.base.componentIndex].ReplicasOverride = replicas
 }
 
 func (updater *radixDeployComponentUpdater) setUserMutationTimestampAnnotation(timestamp string) {
@@ -76,8 +76,8 @@ func (updater *radixDeployJobComponentUpdater) setUserMutationTimestampAnnotatio
 	updater.base.radixDeployment.Annotations[lastUserMutationAnnotation] = timestamp
 }
 
-func (updater *radixDeployJobComponentUpdater) setReplicasToComponent(replicas *int) {
-	//job component has always 1 replica
+func (updater *radixDeployJobComponentUpdater) setReplicasOverrideToComponent(replicas *int) {
+	// job component has always 1 replica
 }
 
 func (updater *radixDeployJobComponentUpdater) getComponentStatus() string {
