@@ -1030,7 +1030,7 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 		}
 
 		assert.Equal(t, review.Spec.ResourceAttributes.Name, anyAppName)
-		assert.Equal(t, review.Spec.ResourceAttributes.Resource, v1.KindRadixRegistration)
+		assert.Equal(t, review.Spec.ResourceAttributes.Resource, v1.ResourceRadixRegistrations)
 		assert.Equal(t, review.Spec.ResourceAttributes.Verb, "patch")
 
 		review.Status.Allowed = true
