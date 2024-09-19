@@ -21,6 +21,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 	)
 
 	type args struct {
+		appName       string
 		envName       string
 		componentName string
 		duration      string
@@ -31,15 +32,22 @@ func Test_handler_GetUsedResources(t *testing.T) {
 	type scenario struct {
 		name                  string
 		args                  args
+		clientReturnsMetrics  map[QueryName]model.Value
 		expectedUsedResources *applicationModels.UsedResources
-		expectedMetrics       map[QueryName]model.Value
 		expectedWarnings      []string
 		expectedError         error
 	}
 
 	scenarios := []scenario{
 		{
-			name: "Test GetUsedResources", args: args{}},
+			name: "Got used resources",
+			args: args{
+				appName: appName1,
+			},
+			clientReturnsMetrics: map[QueryName]model.Value{
+				cpuMax: model.Vector{&model.Sample{Metric: map[model.LabelName]model.LabelValue{}, Value: 1}},
+			},
+		},
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
@@ -50,7 +58,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockPrometheusClient := mock.NewMockPrometheusClient(ctrl)
 			mockPrometheusClient.EXPECT().GetMetrics(gomock.Any(), appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since).
-				Return(ts.expectedMetrics, ts.expectedWarnings, ts.expectedError)
+				Return(ts.clientReturnsMetrics, ts.expectedWarnings, ts.expectedError)
 
 			ph := &handler{
 				client: mockPrometheusClient,

@@ -32,7 +32,7 @@ const (
 	memoryAvg          QueryName = "memoryAvg"
 	durationExpression           = `^[0-9]{1,5}[mhdw]$`
 	defaultDuration              = "30d"
-	defaultOffset                = "0s"
+	defaultOffset                = ""
 )
 
 // PrometheusHandler Interface for Prometheus handler
@@ -65,7 +65,7 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	log.Ctx(ctx).Debug().Msgf("Getting used resources for application %s", appName)
