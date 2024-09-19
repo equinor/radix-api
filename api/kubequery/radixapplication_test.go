@@ -48,8 +48,8 @@ func Test_IsRadixApplicationAdmin(t *testing.T) {
 		called++
 		assert.Equal(t, review.Spec.ResourceAttributes, &authorizationapiv1.ResourceAttributes{
 			Verb:     "patch",
-			Group:    "",
-			Resource: radixv1.KindRadixRegistration,
+			Group:    radixv1.GroupName,
+			Resource: radixv1.ResourceRadixRegistrations,
 			Version:  "*",
 			Name:     "any-app-name",
 		})

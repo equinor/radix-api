@@ -21,8 +21,8 @@ func GetRadixApplication(ctx context.Context, client radixclient.Interface, appN
 func IsRadixApplicationAdmin(ctx context.Context, kubeClient kubernetes.Interface, appName string) (bool, error) {
 	return access.HasAccess(ctx, kubeClient, &authorizationapi.ResourceAttributes{
 		Verb:     "patch",
-		Group:    "",
-		Resource: radixv1.KindRadixRegistration,
+		Group:    radixv1.GroupName,
+		Resource: radixv1.ResourceRadixRegistrations,
 		Version:  "*",
 		Name:     appName,
 	})
