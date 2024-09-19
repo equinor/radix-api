@@ -8,7 +8,7 @@ require (
 	github.com/cert-manager/cert-manager v1.15.0
 	github.com/equinor/radix-common v1.9.5
 	github.com/equinor/radix-job-scheduler v1.11.0
-	github.com/equinor/radix-operator v1.58.3
+	github.com/equinor/radix-operator v1.59.1
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -96,7 +96,6 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
