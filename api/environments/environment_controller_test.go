@@ -34,7 +34,7 @@ import (
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
@@ -43,10 +43,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	authorizationapiv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	testing2 "k8s.io/client-go/testing"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
@@ -64,10 +67,10 @@ const (
 	subscriptionId   = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
+func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, *kubefake.Clientset, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
-	radixClient := fake.NewSimpleClientset()
+	kubeclient := kubefake.NewClientset()
+	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
@@ -1005,12 +1008,41 @@ func Test_GetEnvironmentEvents_Handler(t *testing.T) {
 
 func TestRestartAuxiliaryResource(t *testing.T) {
 	auxType := "oauth"
+	called := 0
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _, _, _ := setupTest(t, nil)
+	kubeClient.Fake.PrependReactor("create", "*", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+		createAction, ok := action.DeepCopy().(testing2.CreateAction)
+		if !ok {
+			return false, nil, nil
+		}
+
+		review, ok := createAction.GetObject().(*authorizationapiv1.SelfSubjectAccessReview)
+		if !ok {
+			return false, nil, nil
+		}
+
+		called++
+
+		if review.Spec.ResourceAttributes.Name != anyAppName {
+			return true, review, nil
+		}
+
+		assert.Equal(t, review.Spec.ResourceAttributes.Name, anyAppName)
+		assert.Equal(t, review.Spec.ResourceAttributes.Resource, v1.ResourceRadixRegistrations)
+		assert.Equal(t, review.Spec.ResourceAttributes.Verb, "patch")
+
+		review.Status.Allowed = true
+		return true, review, nil
+	})
 	_, err := commonTestUtils.ApplyRegistration(operatorutils.
 		NewRegistrationBuilder().
 		WithName(anyAppName))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyRegistration(operatorutils.
+		NewRegistrationBuilder().
+		WithName("forbidden"))
 	require.NoError(t, err)
 	_, err = commonTestUtils.ApplyApplication(operatorutils.
 		NewRadixApplicationBuilder().
@@ -1045,9 +1077,17 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/aux/%s/restart", anyAppName, anyEnvironment, anyComponentName, auxType))
 	response := <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, 1, called)
 
 	kubeDeploy, _ := kubeClient.AppsV1().Deployments(envNs).Get(context.Background(), "comp1-aux-resource", metav1.GetOptions{})
 	assert.NotEmpty(t, kubeDeploy.Spec.Template.Annotations[restartedAtAnnotation])
+
+	// Test Forbidden for other app names
+
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/aux/%s/restart", "forbidden", anyEnvironment, anyComponentName, auxType))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusForbidden, response.Code)
+	assert.Equal(t, 2, called)
 }
 
 func Test_GetJobs(t *testing.T) {

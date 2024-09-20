@@ -108,6 +108,11 @@ func (eh EnvironmentHandler) RestartComponent(ctx context.Context, appName, envN
 // RestartComponentAuxiliaryResource Restarts a component's auxiliary resource
 func (eh EnvironmentHandler) RestartComponentAuxiliaryResource(ctx context.Context, appName, envName, componentName, auxType string) error {
 	log.Ctx(ctx).Info().Msgf("Restarting auxiliary resource %s for component %s, %s", auxType, componentName, appName)
+	if isAdmin, err := kubequery.IsRadixApplicationAdmin(ctx, eh.accounts.UserAccount.Client, appName); err != nil {
+		return err
+	} else if !isAdmin {
+		return http.ForbiddenError("you must be administrator to restart the Oauth2 Proxy service")
+	}
 
 	radixDeployment, err := kubequery.GetLatestRadixDeployment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
@@ -163,7 +168,7 @@ func canDeploymentBeRestarted(deployment *appsv1.Deployment) bool {
 }
 
 func (eh EnvironmentHandler) patchDeploymentForRestart(ctx context.Context, deployment *appsv1.Deployment) error {
-	deployClient := eh.accounts.UserAccount.Client.AppsV1().Deployments(deployment.GetNamespace())
+	deployClient := eh.accounts.ServiceAccount.Client.AppsV1().Deployments(deployment.GetNamespace())
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		deployToPatch, err := deployClient.Get(ctx, deployment.GetName(), metav1.GetOptions{})
