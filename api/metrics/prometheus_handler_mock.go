@@ -2,7 +2,7 @@
 // Source: ./api/metrics/prometheus_handler.go
 
 // Package mock is a generated GoMock package.
-package mock
+package metrics
 
 import (
 	context "context"

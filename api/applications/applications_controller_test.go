@@ -17,7 +17,7 @@ import (
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	"github.com/equinor/radix-api/api/metrics/mock"
+	"github.com/equinor/radix-api/api/metrics"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -92,9 +92,9 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
-func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *mock.MockPrometheusHandler)) *mock.MockPrometheusHandler {
+func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *metrics.MockPrometheusHandler)) *metrics.MockPrometheusHandler {
 	ctrl := gomock.NewController(t)
-	mockPrometheusHandler := mock.NewMockPrometheusHandler(ctrl)
+	mockPrometheusHandler := metrics.NewMockPrometheusHandler(ctrl)
 	if mockHandler != nil {
 		(*mockHandler)(mockPrometheusHandler)
 	} else {
@@ -1979,7 +1979,7 @@ func Test_GetUsedResources(t *testing.T) {
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 
-			mockHandlerModifier := func(handler *mock.MockPrometheusHandler) {
+			mockHandlerModifier := func(handler *metrics.MockPrometheusHandler) {
 				args := ts.expectedArgs
 				handler.EXPECT().GetUsedResources(gomock.Any(), radixClient, appName1, args.environment, args.component, args.duration, args.since, args.ignoreZero).
 					Times(1).
