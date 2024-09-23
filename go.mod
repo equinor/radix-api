@@ -6,13 +6,14 @@ toolchain go1.22.5
 
 require (
 	github.com/cert-manager/cert-manager v1.15.0
-	github.com/equinor/radix-common v1.9.4
+	github.com/equinor/radix-common v1.9.5
 	github.com/equinor/radix-job-scheduler v1.11.0
-	github.com/equinor/radix-operator v1.58.3
+	github.com/equinor/radix-operator v1.59.4-0.20240923140616-9914eda0f4d4
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kedacore/keda/v2 v2.15.1
 	github.com/marstr/guid v1.1.0
@@ -64,7 +65,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-containerregistry v0.16.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
