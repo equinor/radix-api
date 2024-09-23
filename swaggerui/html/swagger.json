@@ -5307,6 +5307,7 @@
         "repository",
         "sharedSecret",
         "adGroups",
+        "adUsers",
         "owner",
         "creator",
         "configBranch"
@@ -5319,6 +5320,14 @@
             "type": "string"
           },
           "x-go-name": "AdGroups"
+        },
+        "adUsers": {
+          "description": "AdUsers the users/service-principals that should be able to access the application",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "AdUsers"
         },
         "configBranch": {
           "description": "ConfigBranch information",
@@ -5359,6 +5368,14 @@
           },
           "x-go-name": "ReaderAdGroups"
         },
+        "readerAdUsers": {
+          "description": "ReaderAdUsers the users/service-principals that should be able to read the application",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ReaderAdUsers"
+        },
         "repository": {
           "description": "Repository the github repository",
           "type": "string",
@@ -5390,6 +5407,14 @@
           },
           "x-go-name": "AdGroups"
         },
+        "adUsers": {
+          "description": "AdUsers the users/service-principals that should be able to access the application",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "AdUsers"
+        },
         "configBranch": {
           "description": "ConfigBranch information",
           "type": "string",
@@ -5417,6 +5442,14 @@
             "type": "string"
           },
           "x-go-name": "ReaderAdGroups"
+        },
+        "readerAdUsers": {
+          "description": "ReaderAdUsers the users/service-principals that should be able to read the application",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ReaderAdUsers"
         },
         "repository": {
           "description": "Repository the github repository",
