@@ -23,7 +23,7 @@ import (
 	"github.com/equinor/radix-common/utils/slice"
 	deployUtils "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -126,7 +126,7 @@ func (eh EnvironmentHandler) GetEnvironmentSummary(ctx context.Context, appName 
 	if err != nil {
 		return nil, err
 	}
-	envNames := slice.Map(reList, func(re v1.RadixEnvironment) string { return re.Spec.EnvName })
+	envNames := slice.Map(reList, func(re radixv1.RadixEnvironment) string { return re.Spec.EnvName })
 	rdList, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.accounts.UserAccount.RadixClient, appName, envNames, 10)
 	if err != nil {
 		return nil, err
@@ -208,7 +208,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 }
 
 // CreateEnvironment Handler for CreateEnvironment. Creates an environment if it does not exist
-func (eh EnvironmentHandler) CreateEnvironment(ctx context.Context, appName, envName string) (*v1.RadixEnvironment, error) {
+func (eh EnvironmentHandler) CreateEnvironment(ctx context.Context, appName, envName string) (*radixv1.RadixEnvironment, error) {
 	// ensure application exists
 	rr, err := eh.accounts.UserAccount.RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
@@ -286,7 +286,7 @@ func (eh EnvironmentHandler) getNotOrphanedEnvNames(ctx context.Context, appName
 	}
 	return slice.Map(
 		slice.FindAll(reList, predicate.IsNotOrphanEnvironment),
-		func(re v1.RadixEnvironment) string { return re.Spec.EnvName },
+		func(re radixv1.RadixEnvironment) string { return re.Spec.EnvName },
 	), nil
 }
 
@@ -315,7 +315,7 @@ func (eh EnvironmentHandler) StopEnvironment(ctx context.Context, appName, envNa
 		return err
 	}
 	if radixDeployment == nil {
-		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+		return http.ValidationError(radixv1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Stopping components in environment %s, %s", envName, appName)
@@ -335,7 +335,7 @@ func (eh EnvironmentHandler) ResetManuallyStoppedComponentsInEnvironment(ctx con
 		return err
 	}
 	if radixDeployment == nil {
-		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+		return http.ValidationError(radixv1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Starting components in environment %s, %s", envName, appName)
@@ -356,7 +356,7 @@ func (eh EnvironmentHandler) RestartEnvironment(ctx context.Context, appName, en
 		return err
 	}
 	if radixDeployment == nil {
-		return http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+		return http.ValidationError(radixv1.KindRadixDeployment, "no radix deployments found")
 	}
 
 	log.Ctx(ctx).Info().Msgf("Restarting components in environment %s, %s", envName, appName)
@@ -423,7 +423,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 		return nil, err
 	}
 	if rd == nil {
-		return nil, http.ValidationError(v1.KindRadixDeployment, "no radix deployments found")
+		return nil, http.ValidationError(radixv1.KindRadixDeployment, "no radix deployments found")
 	}
 	baseUpdater := &baseComponentUpdater{
 		appName:         appName,
@@ -432,7 +432,7 @@ func (eh EnvironmentHandler) getRadixCommonComponentUpdater(ctx context.Context,
 		radixDeployment: rd,
 	}
 	var updater radixDeployCommonComponentUpdater
-	var componentToPatch v1.RadixCommonDeployComponent
+	var componentToPatch radixv1.RadixCommonDeployComponent
 	componentIndex, componentToPatch := deployUtils.GetDeploymentComponent(rd, componentName)
 	if !radixutils.IsNil(componentToPatch) {
 		updater = &radixDeployComponentUpdater{base: baseUpdater}
