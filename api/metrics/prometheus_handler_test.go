@@ -111,7 +111,7 @@ func assertExpected(t *testing.T, ts scenario, got *applicationModels.UsedResour
 	assert.ElementsMatch(t, ts.expectedWarnings, got.Warnings, "Warnings")
 	assert.Equal(t, ts.expectedUsedResources.CPU.Min, got.CPU.Min, "CPU.Min")
 	assert.Equal(t, ts.expectedUsedResources.CPU.Max, got.CPU.Max, "CPU.Max")
-	assert.Equal(t, ts.expectedUsedResources.CPU.Average, got.CPU.Average, "CPU.Average")
+	assert.Equal(t, ts.expectedUsedResources.CPU.Avg, got.CPU.Avg, "CPU.Avg")
 	assert.NotNil(t, got.CPU.Min, "nil CPU.Min")
 	assert.NotNil(t, got.CPU.Max, "nil CPU.Max")
 	assert.NotNil(t, *got.CPU.Avg, "nil CPU.Avg")
@@ -120,7 +120,7 @@ func assertExpected(t *testing.T, ts scenario, got *applicationModels.UsedResour
 	assert.Equal(t, *ts.expectedUsedResources.CPU.Avg, *got.CPU.Avg, "CPU.Avg")
 	assert.Equal(t, ts.expectedUsedResources.Memory.Min, got.Memory.Min, "Memory.Min")
 	assert.Equal(t, ts.expectedUsedResources.Memory.Max, got.Memory.Max, "Memory.Max")
-	assert.Equal(t, ts.expectedUsedResources.Memory.Average, got.Memory.Average, "Memory.Average")
+	assert.Equal(t, ts.expectedUsedResources.Memory.Avg, got.Memory.Avg, "Memory.Avg")
 	assert.NotNil(t, got.Memory.Min, "nil Memory.Min")
 	assert.NotNil(t, got.Memory.Max, "nil Memory.Max")
 	assert.NotNil(t, got.Memory.Avg, "nil Memory.Avg")
@@ -164,20 +164,14 @@ func getExpectedUsedResources(warnings ...string) *applicationModels.UsedResourc
 	return &applicationModels.UsedResources{
 		Warnings: warnings,
 		CPU: &applicationModels.UsedResource{
-			Min:     "1m",
-			Max:     "126m",
-			Average: "24m",
-			Min:     pointers.Ptr(1.9874),
-			Max:     pointers.Ptr(126.576764),
-			Avg:     pointers.Ptr(24.933966),
+			Min: pointers.Ptr(1.9874),
+			Max: pointers.Ptr(126.576764),
+			Avg: pointers.Ptr(24.933966),
 		},
 		Memory: &applicationModels.UsedResource{
-			Min:     "56M",
-			Max:     "234M",
-			Average: "120M",
-			Min:     pointers.Ptr(56.731232),
-			Max:     pointers.Ptr(234.567346),
-			Avg:     pointers.Ptr(120.654467),
+			Min: pointers.Ptr(56.731232),
+			Max: pointers.Ptr(234.567346),
+			Avg: pointers.Ptr(120.654467),
 		},
 	}
 }

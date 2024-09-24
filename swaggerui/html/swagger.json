@@ -8225,21 +8225,21 @@
       "type": "object",
       "properties": {
         "avg": {
-          "description": "Avg actual precise resource used",
+          "description": "Avg Average resource used",
           "type": "number",
           "format": "double",
           "x-go-name": "Avg",
-          "example": 0.00012
+          "example": 0.00023
         },
         "max": {
-          "description": "Max actual precise resource used",
+          "description": "Max resource used",
           "type": "number",
           "format": "double",
           "x-go-name": "Max",
           "example": 0.00037
         },
         "min": {
-          "description": "Min actual precise resource used",
+          "description": "Min resource used",
           "type": "number",
           "format": "double",
           "x-go-name": "Min",
@@ -8272,7 +8272,7 @@
           "description": "To timestamp",
           "type": "string",
           "x-go-name": "To",
-          "example": "2006-01-02T15:04:05Z"
+          "example": "2006-01-03T15:04:05Z"
         },
         "warnings": {
           "description": "Warning messages",

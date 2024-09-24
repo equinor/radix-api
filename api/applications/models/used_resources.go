@@ -12,7 +12,7 @@ type UsedResources struct {
 	// To timestamp
 	//
 	// required: true
-	// example: 2006-01-02T15:04:05Z
+	// example: 2006-01-03T15:04:05Z
 	To string `json:"to"`
 
 	// CPU used, in cores
@@ -34,21 +34,21 @@ type UsedResources struct {
 // UsedResource holds information about used resource
 // swagger:model UsedResource
 type UsedResource struct {
-	// Min actual precise resource used
+	// Min resource used
 	//
 	// required: false
 	// example: 0.00012
 	Min *float64 `json:"min,omitempty"`
 
-	// Max actual precise resource used
+	// Avg Average resource used
+	//
+	// required: false
+	// example: 0.00023
+	Avg *float64 `json:"avg,omitempty"`
+
+	// Max resource used
 	//
 	// required: false
 	// example: 0.00037
 	Max *float64 `json:"max,omitempty"`
-
-	// Avg actual precise resource used
-	//
-	// required: false
-	// example: 0.00012
-	Avg *float64 `json:"avg,omitempty"`
 }
