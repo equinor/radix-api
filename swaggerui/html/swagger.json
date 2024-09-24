@@ -5062,13 +5062,6 @@
           },
           {
             "type": "string",
-            "format": "boolean",
-            "description": "Ignore metrics with zero value if true, default is false",
-            "name": "ignorezero",
-            "in": "query"
-          },
-          {
-            "type": "string",
             "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
             "name": "Impersonate-User",
             "in": "header"

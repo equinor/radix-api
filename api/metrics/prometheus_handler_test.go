@@ -22,7 +22,6 @@ type args struct {
 	componentName string
 	duration      string
 	since         string
-	ignoreZero    bool
 }
 
 type scenario struct {
@@ -69,7 +68,6 @@ func Test_handler_GetUsedResources(t *testing.T) {
 				componentName: "component1",
 				duration:      defaultDuration,
 				since:         "2d",
-				ignoreZero:    true,
 			},
 			clientReturnsMetrics:  getClientReturnsMetrics(),
 			expectedUsedResources: getExpectedUsedResources(),
@@ -97,7 +95,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			prometheusHandler := &handler{
 				client: mockPrometheusClient,
 			}
-			got, err := prometheusHandler.GetUsedResources(context.Background(), radixClient, appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since, ts.args.ignoreZero)
+			got, err := prometheusHandler.GetUsedResources(context.Background(), radixClient, appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since)
 			if ts.expectedError != nil {
 				assert.ErrorIs(t, err, ts.expectedError, "Missing or not matching GetUsedResources() error")
 				return

@@ -1032,12 +1032,6 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	//   description: End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
 	//   type: string
 	//   required: false
-	// - name: ignorezero
-	//   in: query
-	//   description: Ignore metrics with zero value if true, default is false
-	//   type: string
-	//   format: boolean
-	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -1060,13 +1054,8 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	componentName := r.FormValue("component")
 	duration := r.FormValue("duration")
 	since := r.FormValue("since")
-	ignoreZeroArg := r.FormValue("ignorezero")
-	var ignoreZero = false
-	if strings.TrimSpace(ignoreZeroArg) != "" {
-		ignoreZero, _ = strconv.ParseBool(ignoreZeroArg)
-	}
 
-	usedResources, err := ac.prometheusHandler.GetUsedResources(r.Context(), accounts.UserAccount.RadixClient, appName, envName, componentName, duration, since, ignoreZero)
+	usedResources, err := ac.prometheusHandler.GetUsedResources(r.Context(), accounts.UserAccount.RadixClient, appName, envName, componentName, duration, since)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return

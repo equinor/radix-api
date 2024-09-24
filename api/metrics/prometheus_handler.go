@@ -35,7 +35,7 @@ const (
 
 // PrometheusHandler Interface for Prometheus handler
 type PrometheusHandler interface {
-	GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error)
+	GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string) (*applicationModels.UsedResources, error)
 }
 
 type handler struct {
@@ -50,7 +50,7 @@ func NewPrometheusHandler(client PrometheusClient) PrometheusHandler {
 }
 
 // GetUsedResources Get used resources for the application
-func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string, ignoreZero bool) (*applicationModels.UsedResources, error) {
+func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string) (*applicationModels.UsedResources, error) {
 	_, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -71,21 +71,21 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 	if err != nil {
 		return nil, err
 	}
-	resources := getUsedResourcesByMetrics(ctx, results, durationValue, sinceValue, ignoreZero)
+	resources := getUsedResourcesByMetrics(ctx, results, durationValue, sinceValue)
 	resources.Warnings = warnings
 	log.Ctx(ctx).Debug().Msgf("Got used resources for application %s", appName)
 	return resources, nil
 }
 
-func getUsedResourcesByMetrics(ctx context.Context, results map[QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration, ignoreZero bool) *applicationModels.UsedResources {
+func getUsedResourcesByMetrics(ctx context.Context, results map[QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration) *applicationModels.UsedResources {
 	usedCpuResource := applicationModels.UsedResource{}
-	usedCpuResource.Min = getCpuMetricValue(ctx, results, cpuMin, ignoreZero)
-	usedCpuResource.Max = getCpuMetricValue(ctx, results, cpuMax, ignoreZero)
-	usedCpuResource.Avg = getCpuMetricValue(ctx, results, cpuAvg, ignoreZero)
+	usedCpuResource.Min = getCpuMetricValue(ctx, results, cpuMin)
+	usedCpuResource.Max = getCpuMetricValue(ctx, results, cpuMax)
+	usedCpuResource.Avg = getCpuMetricValue(ctx, results, cpuAvg)
 	usedMemoryResource := applicationModels.UsedResource{}
-	usedMemoryResource.Min = getMemoryMetricValue(ctx, results, memoryMin, ignoreZero)
-	usedMemoryResource.Max = getMemoryMetricValue(ctx, results, memoryMax, ignoreZero)
-	usedMemoryResource.Avg = getMemoryMetricValue(ctx, results, memoryAvg, ignoreZero)
+	usedMemoryResource.Min = getMemoryMetricValue(ctx, results, memoryMin)
+	usedMemoryResource.Max = getMemoryMetricValue(ctx, results, memoryMax)
+	usedMemoryResource.Avg = getMemoryMetricValue(ctx, results, memoryAvg)
 	now := time.Now()
 	return &applicationModels.UsedResources{
 		From:   radixutils.FormatTimestamp(now.Add(-queryDuration)),
@@ -106,21 +106,21 @@ func parseQueryDuration(duration string, defaultValue string) (time.Duration, st
 	return time.Duration(parsedDuration), duration, err
 }
 
-func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) *float64 {
-	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
+func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) *float64 {
+	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
 		return pointers.Ptr(value)
 	}
 	return nil
 }
 
-func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) *float64 {
-	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
+func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) *float64 {
+	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
 		return pointers.Ptr(value)
 	}
 	return nil
 }
 
-func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (float64, bool) {
+func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) (float64, bool) {
 	queryResult, ok := queryResults[queryName]
 	if !ok {
 		return 0, false
@@ -131,7 +131,7 @@ func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusM
 		return 0, false
 	}
 	values := slice.Reduce(groupedMetrics, make([]float64, 0), func(acc []float64, sample *model.Sample) []float64 {
-		if ignoreZero && sample.Value <= 0 {
+		if sample.Value <= 0 {
 			return acc
 		}
 		return append(acc, float64(sample.Value))
