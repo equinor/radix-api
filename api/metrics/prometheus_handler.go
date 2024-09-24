@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"math"
 	"regexp"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/prometheus/common/model"
 	prometheusModel "github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -81,13 +79,13 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 
 func getUsedResourcesByMetrics(ctx context.Context, results map[QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration, ignoreZero bool) *applicationModels.UsedResources {
 	usedCpuResource := applicationModels.UsedResource{}
-	usedCpuResource.Min, usedCpuResource.MinActual = getCpuMetricValue(ctx, results, cpuMin, ignoreZero)
-	usedCpuResource.Max, usedCpuResource.MaxActual = getCpuMetricValue(ctx, results, cpuMax, ignoreZero)
-	usedCpuResource.Average, usedCpuResource.AvgActual = getCpuMetricValue(ctx, results, cpuAvg, ignoreZero)
+	usedCpuResource.Min = getCpuMetricValue(ctx, results, cpuMin, ignoreZero)
+	usedCpuResource.Max = getCpuMetricValue(ctx, results, cpuMax, ignoreZero)
+	usedCpuResource.Avg = getCpuMetricValue(ctx, results, cpuAvg, ignoreZero)
 	usedMemoryResource := applicationModels.UsedResource{}
-	usedMemoryResource.Min, usedMemoryResource.MinActual = getMemoryMetricValue(ctx, results, memoryMin, ignoreZero)
-	usedMemoryResource.Max, usedMemoryResource.MaxActual = getMemoryMetricValue(ctx, results, memoryMax, ignoreZero)
-	usedMemoryResource.Average, usedMemoryResource.AvgActual = getMemoryMetricValue(ctx, results, memoryAvg, ignoreZero)
+	usedMemoryResource.Min = getMemoryMetricValue(ctx, results, memoryMin, ignoreZero)
+	usedMemoryResource.Max = getMemoryMetricValue(ctx, results, memoryMax, ignoreZero)
+	usedMemoryResource.Avg = getMemoryMetricValue(ctx, results, memoryAvg, ignoreZero)
 	now := time.Now()
 	return &applicationModels.UsedResources{
 		From:   radixutils.FormatTimestamp(now.Add(-queryDuration)),
@@ -108,26 +106,18 @@ func parseQueryDuration(duration string, defaultValue string) (time.Duration, st
 	return time.Duration(parsedDuration), duration, err
 }
 
-func roundActualValue(num float64) float64 {
-	return math.Round(num*1e6) / 1e6
+func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) *float64 {
+	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
+		return pointers.Ptr(value)
+	}
+	return nil
 }
 
-func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (string, *float64) {
+func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) *float64 {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
-		valueInMillicores := value * 1000.0
-		quantity := resource.NewMilliQuantity(int64(valueInMillicores), resource.BinarySI)
-		return quantity.String(), pointers.Ptr(roundActualValue(valueInMillicores))
+		return pointers.Ptr(value)
 	}
-	return "", nil
-}
-
-func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (string, *float64) {
-	if value, ok := getMetricsValue(ctx, queryResults, queryName, ignoreZero); ok {
-		valueInMegabytes := value / 1000.0
-		quantity := resource.NewScaledQuantity(int64(valueInMegabytes), resource.Mega)
-		return quantity.String(), pointers.Ptr(roundActualValue(valueInMegabytes))
-	}
-	return "", nil
+	return nil
 }
 
 func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName, ignoreZero bool) (float64, bool) {

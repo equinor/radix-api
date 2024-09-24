@@ -8231,43 +8231,25 @@
       "description": "UsedResource holds information about used resource",
       "type": "object",
       "properties": {
-        "average": {
-          "description": "Average resource used",
-          "type": "string",
-          "x-go-name": "Average",
-          "example": "120m"
-        },
-        "avgActual": {
-          "description": "AvgActual actual precise resource used",
+        "avg": {
+          "description": "Avg actual precise resource used",
           "type": "number",
           "format": "double",
-          "x-go-name": "AvgActual",
+          "x-go-name": "Avg",
           "example": 0.00012
         },
         "max": {
-          "description": "Max resource used",
-          "type": "string",
-          "x-go-name": "Max",
-          "example": "120m"
-        },
-        "maxActual": {
-          "description": "MaxActual actual precise resource used",
+          "description": "Max actual precise resource used",
           "type": "number",
           "format": "double",
-          "x-go-name": "MaxActual",
+          "x-go-name": "Max",
           "example": 0.00037
         },
         "min": {
-          "description": "Min resource used",
-          "type": "string",
-          "x-go-name": "Min",
-          "example": "120m"
-        },
-        "minActual": {
-          "description": "MinActual actual precise resource used",
+          "description": "Min actual precise resource used",
           "type": "number",
           "format": "double",
-          "x-go-name": "MinActual",
+          "x-go-name": "Min",
           "example": 0.00012
         }
       },

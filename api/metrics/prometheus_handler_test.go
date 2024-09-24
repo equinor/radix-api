@@ -114,21 +114,21 @@ func assertExpected(t *testing.T, ts scenario, got *applicationModels.UsedResour
 	assert.Equal(t, ts.expectedUsedResources.CPU.Min, got.CPU.Min, "CPU.Min")
 	assert.Equal(t, ts.expectedUsedResources.CPU.Max, got.CPU.Max, "CPU.Max")
 	assert.Equal(t, ts.expectedUsedResources.CPU.Average, got.CPU.Average, "CPU.Average")
-	assert.NotNil(t, got.CPU.MinActual, "nil CPU.MinActual")
-	assert.NotNil(t, got.CPU.MaxActual, "nil CPU.MaxActual")
-	assert.NotNil(t, *got.CPU.AvgActual, "nil CPU.AvgActual")
-	assert.Equal(t, *ts.expectedUsedResources.CPU.MinActual, *got.CPU.MinActual, "CPU.MinActual")
-	assert.Equal(t, *ts.expectedUsedResources.CPU.MaxActual, *got.CPU.MaxActual, "CPU.MaxActual")
-	assert.Equal(t, *ts.expectedUsedResources.CPU.AvgActual, *got.CPU.AvgActual, "CPU.AvgActual")
+	assert.NotNil(t, got.CPU.Min, "nil CPU.Min")
+	assert.NotNil(t, got.CPU.Max, "nil CPU.Max")
+	assert.NotNil(t, *got.CPU.Avg, "nil CPU.Avg")
+	assert.Equal(t, *ts.expectedUsedResources.CPU.Min, *got.CPU.Min, "CPU.Min")
+	assert.Equal(t, *ts.expectedUsedResources.CPU.Max, *got.CPU.Max, "CPU.Max")
+	assert.Equal(t, *ts.expectedUsedResources.CPU.Avg, *got.CPU.Avg, "CPU.Avg")
 	assert.Equal(t, ts.expectedUsedResources.Memory.Min, got.Memory.Min, "Memory.Min")
 	assert.Equal(t, ts.expectedUsedResources.Memory.Max, got.Memory.Max, "Memory.Max")
 	assert.Equal(t, ts.expectedUsedResources.Memory.Average, got.Memory.Average, "Memory.Average")
-	assert.NotNil(t, got.Memory.MinActual, "nil Memory.MinActual")
-	assert.NotNil(t, got.Memory.MaxActual, "nil Memory.MaxActual")
-	assert.NotNil(t, got.Memory.AvgActual, "nil Memory.AvgActual")
-	assert.Equal(t, *ts.expectedUsedResources.Memory.MinActual, *got.Memory.MinActual, "Memory.MinActual")
-	assert.Equal(t, *ts.expectedUsedResources.Memory.MaxActual, *got.Memory.MaxActual, "Memory.MaxActual")
-	assert.Equal(t, *ts.expectedUsedResources.Memory.AvgActual, *got.Memory.AvgActual, "Memory.AvgActual")
+	assert.NotNil(t, got.Memory.Min, "nil Memory.Min")
+	assert.NotNil(t, got.Memory.Max, "nil Memory.Max")
+	assert.NotNil(t, got.Memory.Avg, "nil Memory.Avg")
+	assert.Equal(t, *ts.expectedUsedResources.Memory.Min, *got.Memory.Min, "Memory.Min")
+	assert.Equal(t, *ts.expectedUsedResources.Memory.Max, *got.Memory.Max, "Memory.Max")
+	assert.Equal(t, *ts.expectedUsedResources.Memory.Avg, *got.Memory.Avg, "Memory.Avg")
 	assert.NotEmpty(t, got.From, "From")
 	assert.NotEmpty(t, got.To, "To")
 }
@@ -166,20 +166,20 @@ func getExpectedUsedResources(warnings ...string) *applicationModels.UsedResourc
 	return &applicationModels.UsedResources{
 		Warnings: warnings,
 		CPU: &applicationModels.UsedResource{
-			Min:       "1m",
-			Max:       "126m",
-			Average:   "24m",
-			MinActual: pointers.Ptr(1.9874),
-			MaxActual: pointers.Ptr(126.576764),
-			AvgActual: pointers.Ptr(24.933966),
+			Min:     "1m",
+			Max:     "126m",
+			Average: "24m",
+			Min:     pointers.Ptr(1.9874),
+			Max:     pointers.Ptr(126.576764),
+			Avg:     pointers.Ptr(24.933966),
 		},
 		Memory: &applicationModels.UsedResource{
-			Min:       "56M",
-			Max:       "234M",
-			Average:   "120M",
-			MinActual: pointers.Ptr(56.731232),
-			MaxActual: pointers.Ptr(234.567346),
-			AvgActual: pointers.Ptr(120.654467),
+			Min:     "56M",
+			Max:     "234M",
+			Average: "120M",
+			Min:     pointers.Ptr(56.731232),
+			Max:     pointers.Ptr(234.567346),
+			Avg:     pointers.Ptr(120.654467),
 		},
 	}
 }
