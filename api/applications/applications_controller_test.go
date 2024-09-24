@@ -810,12 +810,17 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
+	adGroups, adUsers := []string{uuid.New().String()}, []string{uuid.New().String()}
+	readerAdGroups, readerAdUsers := []string{uuid.New().String()}, []string{uuid.New().String()}
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
 			WithName("any-name").
 			WithRepository("https://github.com/Equinor/any-repo").
 			WithSharedSecret("Any secret").
-			WithAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+			WithAdGroups(adGroups).
+			WithAdUsers(adUsers).
+			WithReaderAdGroups(readerAdGroups).
+			WithReaderAdUsers(readerAdUsers).
 			WithConfigBranch("abranch").
 			WithRadixConfigFullName("a/custom-radixconfig.yaml").
 			WithConfigurationItem("ci").
@@ -836,7 +841,10 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Registration.Repository)
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
-	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
+	assert.Equal(t, adGroups, application.Registration.AdGroups)
+	assert.Equal(t, adUsers, application.Registration.AdUsers)
+	assert.Equal(t, readerAdGroups, application.Registration.ReaderAdGroups)
+	assert.Equal(t, readerAdUsers, application.Registration.ReaderAdUsers)
 	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 	assert.Equal(t, "a/custom-radixconfig.yaml", application.Registration.RadixConfigFullName)
