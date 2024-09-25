@@ -7374,9 +7374,17 @@
       "description": "Port describe a port of a component",
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "port",
+        "isPublic"
       ],
       "properties": {
+        "isPublic": {
+          "description": "IsPublic indicates that the port is accessible from the Internet by proxying traffic from 443",
+          "type": "boolean",
+          "x-go-name": "IsPublic",
+          "example": true
+        },
         "name": {
           "description": "Component port name. From radixconfig.yaml",
           "type": "string",

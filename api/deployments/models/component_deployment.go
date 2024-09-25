@@ -268,9 +268,15 @@ type Port struct {
 
 	// Component port number. From radixconfig.yaml
 	//
-	// required: false
+	// required: true
 	// example: 8080
 	Port int32 `json:"port"`
+
+	// IsPublic indicates that the port is accessible from the Internet by proxying traffic from 443
+	//
+	// required: true
+	// example: true
+	IsPublic bool `json:"isPublic"`
 }
 
 // ComponentSummary describe a component part of a deployment

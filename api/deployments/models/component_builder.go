@@ -6,6 +6,7 @@ import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
@@ -107,8 +108,9 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	if component.GetPorts() != nil {
 		for _, port := range component.GetPorts() {
 			ports = append(ports, Port{
-				Name: port.Name,
-				Port: port.Port,
+				Name:     port.Name,
+				Port:     port.Port,
+				IsPublic: port.Name == component.GetPublicPort(),
 			})
 		}
 	}
@@ -177,6 +179,23 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	}
 
 	b.environmentVariables = component.GetEnvironmentVariables()
+
+	if network := component.GetNetwork(); network != nil {
+		b.network = &Network{}
+
+		if ingress := network.Ingress; ingress != nil {
+			b.network.Ingress = &Ingress{}
+
+			if publicIngress := ingress.Public; publicIngress != nil {
+				b.network.Ingress.Public = &IngressPublic{}
+
+				if allow := publicIngress.Allow; allow != nil {
+					b.network.Ingress.Public.Allow = slice.Map(*allow, func(v radixv1.IPOrCIDR) string { return string(v) })
+				}
+			}
+		}
+	}
+
 	return b
 }
 
