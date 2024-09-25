@@ -171,8 +171,8 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
 	componentFilter := radixutils.TernaryString(envName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
 	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
-	cpuUsageQuery := fmt.Sprintf(`sum(rate(container_cpu_usage_seconds_total{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
-	memoryUsageQuery := fmt.Sprintf(`sum(rate(container_memory_usage_bytes{namespace!="%s-app" %s %s}[5m] %s )) by (namespace,container)[%s:]`, appName, environmentFilter, componentFilter, offsetFilter, duration)
+	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
+	memoryUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_memory_usage_bytes{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
 	queries := map[QueryName]string{
 		cpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
 		cpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
