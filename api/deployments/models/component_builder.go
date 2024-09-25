@@ -55,6 +55,7 @@ type componentBuilder struct {
 	resources                 *radixv1.ResourceRequirements
 	runtime                   *radixv1.Runtime
 	replicasOverride          *int
+	network                   *Network
 }
 
 func (b *componentBuilder) WithStatus(status ComponentStatus) ComponentBuilder {
@@ -265,6 +266,7 @@ func (b *componentBuilder) BuildComponent() (*Component, error) {
 		CommitID:                 variables[defaults.RadixCommitHashEnvironmentVariable],
 		GitTags:                  variables[defaults.RadixGitTagsEnvironmentVariable],
 		Runtime:                  b.buildRuntimeModel(),
+		Network:                  b.network,
 	}
 	if b.resources != nil && (len(b.resources.Limits) > 0 || len(b.resources.Requests) > 0) {
 		component.Resources = pointers.Ptr(ConvertRadixResourceRequirements(*b.resources))
