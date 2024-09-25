@@ -5308,6 +5308,8 @@
         "sharedSecret",
         "adGroups",
         "adUsers",
+        "readerAdGroups",
+        "readerAdUsers",
         "owner",
         "creator",
         "configBranch"

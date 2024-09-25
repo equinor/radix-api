@@ -32,12 +32,12 @@ type ApplicationRegistration struct {
 
 	// ReaderAdGroups the groups that should be able to read the application
 	//
-	// required: false
+	// required: true
 	ReaderAdGroups []string `json:"readerAdGroups"`
 
 	// ReaderAdUsers the users/service-principals that should be able to read the application
 	//
-	// required: false
+	// required: true
 	ReaderAdUsers []string `json:"readerAdUsers"`
 
 	// Owner of the application (email). Can be a single person or a shared group email
