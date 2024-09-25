@@ -9,7 +9,6 @@ import (
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/common/model"
@@ -123,46 +122,18 @@ func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]promet
 func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) (float64, bool) {
 	queryResult, ok := queryResults[queryName]
 	if !ok {
-		return 0, false
+		return 0.0, false
 	}
 	groupedMetrics, ok := queryResult.(model.Vector)
 	if !ok {
 		log.Ctx(ctx).Error().Msgf("Failed to convert metrics query %s result to Vector", queryName)
 		return 0, false
 	}
-	values := slice.Reduce(groupedMetrics, make([]float64, 0), func(acc []float64, sample *model.Sample) []float64 {
-		if sample.Value <= 0 {
-			return acc
-		}
-		return append(acc, float64(sample.Value))
-	})
-	if len(values) == 0 {
-		return 0, false
+	sum := 0.0
+	for _, sample := range groupedMetrics {
+		sum += float64(sample.Value)
 	}
-	switch queryName {
-	case cpuMax, memoryMax:
-		maxVal := slice.Reduce(values, values[0], func(maxValue, sample float64) float64 {
-			if maxValue < sample {
-				return sample
-			}
-			return maxValue
-		})
-		return maxVal, true
-	case cpuMin, memoryMin:
-		minVal := slice.Reduce(values, values[0], func(minValue, sample float64) float64 {
-			if minValue > sample {
-				return sample
-			}
-			return minValue
-		})
-		return minVal, true
-	case cpuAvg, memoryAvg:
-		avgVal := slice.Reduce(values, 0, func(sum, sample float64) float64 {
-			return sum + sample
-		}) / float64(len(values))
-		return avgVal, true
-	}
-	return 0, false
+	return sum, true
 }
 
 func getPrometheusQueries(appName, envName, componentName, duration, since string) map[QueryName]string {
@@ -171,7 +142,7 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
 	componentFilter := radixutils.TernaryString(envName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
 	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
-	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
+	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (rate(container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} [1h])) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
 	memoryUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_memory_usage_bytes{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
 	queries := map[QueryName]string{
 		cpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
