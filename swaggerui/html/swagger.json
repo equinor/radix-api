@@ -5782,6 +5782,9 @@
           "x-go-name": "Name",
           "example": "server"
         },
+        "network": {
+          "$ref": "#/definitions/Network"
+        },
         "notifications": {
           "$ref": "#/definitions/Notifications"
         },
@@ -6664,6 +6667,34 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/privateimagehubs/models"
     },
+    "Ingress": {
+      "description": "Ingress describes ingress configuration for a component",
+      "type": "object",
+      "properties": {
+        "public": {
+          "$ref": "#/definitions/IngressPublic"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "IngressPublic": {
+      "description": "IngressPublic describes public ingress configuration for a component",
+      "type": "object",
+      "required": [
+        "allow"
+      ],
+      "properties": {
+        "allow": {
+          "description": "List of allowed IP addresses or CIDRs. All traffic is allowed if list is empty.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Allow"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
     "Job": {
       "description": "Job holds general information about job",
       "type": "object",
@@ -6921,6 +6952,16 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
+    },
+    "Network": {
+      "description": "Network describes network configuration for a component",
+      "type": "object",
+      "properties": {
+        "ingress": {
+          "$ref": "#/definitions/Ingress"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
     "Node": {
       "description": "Node Defines node attributes, where pod should be scheduled",
@@ -7368,9 +7409,17 @@
       "description": "Port describe a port of a component",
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "port",
+        "isPublic"
       ],
       "properties": {
+        "isPublic": {
+          "description": "IsPublic indicates that the port is accessible from the Internet by proxying traffic from 443",
+          "type": "boolean",
+          "x-go-name": "IsPublic",
+          "example": true
+        },
         "name": {
           "description": "Component port name. From radixconfig.yaml",
           "type": "string",
