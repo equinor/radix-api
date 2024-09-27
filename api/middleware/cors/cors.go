@@ -2,15 +2,13 @@ package cors
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/equinor/radix-api/api/defaults"
 	"github.com/rs/cors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func CreateMiddleware(clusterName string, debugMode bool) *cors.Cors {
-	radixDNSZone := os.Getenv(defaults.RadixDNSZoneEnvironmentVariable)
+func CreateMiddleware(clusterName, radixDNSZone string) *cors.Cors {
 
 	corsOptions := cors.Options{
 		AllowedOrigins: []string{
@@ -37,7 +35,7 @@ func CreateMiddleware(clusterName string, debugMode bool) *cors.Cors {
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE", "PATCH"},
 	}
 
-	if debugMode {
+	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
 		// debugging mode
 		corsOptions.Debug = true
 		corsLogger := log.Logger.With().Str("pkg", "cors-middleware").Logger()

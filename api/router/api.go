@@ -19,9 +19,7 @@ const (
 )
 
 // NewAPIHandler Constructor function
-func NewAPIHandler(clusterName, oidcIssuer, oidcAudience string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
-	useOutClusterClient := kubeUtil.IsUseOutClusterClient()
-
+func NewAPIHandler(clusterName, oidcIssuer, oidcAudience, radixDNSZone string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/health/", createHealthHandler())
 	serveMux.Handle("/swaggerui/", createSwaggerHandler())
@@ -29,7 +27,7 @@ func NewAPIHandler(clusterName, oidcIssuer, oidcAudience string, kubeUtil utils.
 
 	n := negroni.New(
 		recovery.CreateMiddleware(),
-		cors.CreateMiddleware(clusterName, !useOutClusterClient),
+		cors.CreateMiddleware(clusterName, radixDNSZone),
 		logger.CreateZerologRequestIdMiddleware(),
 		logger.CreateZerologRequestDetailsMiddleware(),
 		auth.CreateAuthenticationMiddleware(oidcIssuer, oidcAudience),

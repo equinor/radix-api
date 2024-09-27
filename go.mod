@@ -12,12 +12,12 @@ require (
 	github.com/equinor/radix-operator v1.61.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
-	github.com/go-jose/go-jose/v4 v4.0.2
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kedacore/keda/v2 v2.15.1
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/marstr/guid v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.0
@@ -31,7 +31,6 @@ require (
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/urfave/negroni/v3 v3.1.0
 	golang.org/x/sync v0.8.0
-	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	k8s.io/api v0.31.0
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0
@@ -119,6 +118,7 @@ require (
 	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
+	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -117,8 +116,8 @@ func (jh JobHandler) buildPipelineJob(ctx context.Context, appName, cloneURL, ra
 			AppName:             appName,
 			CloneURL:            cloneURL,
 			PipeLineType:        pipeline.Type,
-			PipelineImage:       getPipelineTag(ctx),
-			TektonImage:         getTektonTag(ctx),
+			PipelineImage:       getPipelineTag(ctx, jh.pipelineImageTag),
+			TektonImage:         getTektonTag(ctx, jh.tektonImageTag),
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
@@ -141,26 +140,24 @@ func (jh JobHandler) getTriggeredBy(triggeredBy string) (string, error) {
 	return triggeredBy, nil
 }
 
-func getPipelineTag(ctx context.Context) string {
-	pipelineTag := os.Getenv(pipelineTagEnvironmentVariable)
-	if pipelineTag == "" {
+func getPipelineTag(ctx context.Context, pipelineImageTag string) string {
+	if pipelineImageTag == "" {
 		log.Ctx(ctx).Warn().Msg("No pipeline image tag defined. Using latest")
-		pipelineTag = "latest"
+		pipelineImageTag = "latest"
 	} else {
-		log.Ctx(ctx).Info().Msgf("Using %s pipeline image tag", pipelineTag)
+		log.Ctx(ctx).Info().Msgf("Using %s pipeline image tag", pipelineImageTag)
 	}
-	return pipelineTag
+	return pipelineImageTag
 }
 
-func getTektonTag(ctx context.Context) string {
-	tektonTag := os.Getenv(tektonTagEnvironmentVariable)
-	if tektonTag == "" {
+func getTektonTag(ctx context.Context, tektonImageTag string) string {
+	if tektonImageTag == "" {
 		log.Ctx(ctx).Warn().Msg("No tekton image tag defined. Using release-latest")
-		tektonTag = "release-latest"
+		tektonImageTag = "release-latest"
 	} else {
-		log.Ctx(ctx).Info().Msgf("Using %s as tekton image tag", tektonTag)
+		log.Ctx(ctx).Info().Msgf("Using %s as tekton image tag", tektonImageTag)
 	}
-	return tektonTag
+	return tektonImageTag
 }
 
 func getUniqueJobName(image string) (string, string) {

@@ -17,6 +17,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -54,16 +55,16 @@ type ApplicationHandler struct {
 	jobHandler              job.JobHandler
 	environmentHandler      environments.EnvironmentHandler
 	accounts                models.Accounts
-	config                  ApplicationHandlerConfig
+	config                  config.Config
 	namespace               string
 	hasAccessToGetConfigMap func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
 		accounts:                accounts,
-		jobHandler:              job.Init(accounts, deployments.Init(accounts)),
+		jobHandler:              job.Init(accounts, deployments.Init(accounts), config.PipelineImageTag, config.TektonImageTag),
 		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
 		config:                  config,
 		namespace:               getApiNamespace(config),
@@ -71,7 +72,7 @@ func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerCo
 	}
 }
 
-func getApiNamespace(config ApplicationHandlerConfig) string {
+func getApiNamespace(config config.Config) string {
 	if namespace := operatorUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
 		return namespace
 	}

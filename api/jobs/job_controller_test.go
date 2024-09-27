@@ -79,7 +79,7 @@ func TestGetApplicationJob(t *testing.T) {
 	}
 
 	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
-	handler := Init(accounts, deployments.Init(accounts))
+	handler := Init(accounts, deployments.Init(accounts), "", "")
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
 	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters)

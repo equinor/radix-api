@@ -45,6 +45,7 @@ type KubeUtil interface {
 }
 
 type kubeUtil struct {
+	kubeApiServer       string
 	useOutClusterClient bool
 }
 
@@ -61,10 +62,8 @@ var (
 )
 
 // NewKubeUtil Constructor
-func NewKubeUtil(useOutClusterClient bool) KubeUtil {
-	return &kubeUtil{
-		useOutClusterClient,
-	}
+func NewKubeUtil(useOutClusterClient bool, kubeApiServer string) KubeUtil {
+	return &kubeUtil{kubeApiServer, useOutClusterClient}
 }
 
 // GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
@@ -75,7 +74,7 @@ func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestC
 // GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
 	if ku.useOutClusterClient {
-		config := getOutClusterClientConfig(token, impersonation, options)
+		config := getOutClusterClientConfig(token, impersonation, ku.kubeApiServer, options)
 		return getKubernetesClientFromConfig(config)
 	}
 
@@ -88,14 +87,9 @@ func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOpti
 	return getKubernetesClientFromConfig(config)
 }
 
-func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation, options []RestClientConfigOption) *restclient.Config {
-	host := os.Getenv("K8S_API_HOST")
-	if host == "" {
-		host = "https://kubernetes.default.svc"
-	}
-
+func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation, kubeApiServer string, options []RestClientConfigOption) *restclient.Config {
 	kubeConfig := &restclient.Config{
-		Host:        host,
+		Host:        kubeApiServer,
 		BearerToken: token,
 		TLSClientConfig: restclient.TLSClientConfig{
 			Insecure: true,

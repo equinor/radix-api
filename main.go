@@ -9,22 +9,19 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 
 	"github.com/equinor/radix-api/api/buildstatus"
-
-	"github.com/spf13/pflag"
 
 	// Controllers
 	"github.com/equinor/radix-api/api/alerting"
@@ -41,66 +38,62 @@ import (
 	"github.com/equinor/radix-api/models"
 )
 
-const (
-	logLevelEnvironmentVariable    = "LOG_LEVEL"
-	logPrettyEnvironmentVariable   = "LOG_PRETTY"
-	useProfilerEnvironmentVariable = "USE_PROFILER"
-	defaultPort                    = "3002"
-	defaultMetricsPort             = "9090"
-	defaultProfilePort             = "7070"
-)
+// K8S_API_HOST=https://weekly-39-clusters-dev-16ede4-ttgs23zb.hcp.northeurope.azmk8s.io:443;
+// LOG_LEVEL=trace;
+// LOG_PRETTY=true;
+// PIPELINE_IMG_TAG=master-latest;
+// PROMETHEUS_URL=http://localhost:9092;
+// RADIX_ACTIVE_CLUSTER_EGRESS_IPS=104.45.84.1;
+// RADIX_APP=radix-api;
+// RADIX_CLUSTER_TYPE=development;
+// RADIX_CLUSTERNAME=weekly-38;
+// RADIX_CONTAINER_REGISTRY=radixdev.azurecr.io;
+// RADIX_DNS_ZONE=dev.radix.equinor.com;
+// RADIX_ENVIRONMENT=qa;
+// REQUIRE_APP_AD_GROUPS=true;
+// REQUIRE_APP_CONFIGURATION_ITEM=true;
+// TEKTON_IMG_TAG=main-latest
+
+// K8S_API_HOST=https://weekly-39-clusters-dev-16ede4-ttgs23zb.hcp.northeurope.azmk8s.io:443;LOG_LEVEL=trace;LOG_PRETTY=true;PIPELINE_IMG_TAG=master-latest;PROMETHEUS_URL=http://localhost:9092;RADIX_ACTIVE_CLUSTER_EGRESS_IPS=104.45.84.1;RADIX_APP=radix-api;RADIX_CLUSTER_TYPE=development;RADIX_CLUSTERNAME=weekly-38;RADIX_CONTAINER_REGISTRY=radixdev.azurecr.io;RADIX_DNS_ZONE=dev.radix.equinor.com;RADIX_ENVIRONMENT=qa;REQUIRE_APP_AD_GROUPS=true;REQUIRE_APP_CONFIGURATION_ITEM=true;TEKTON_IMG_TAG=main-latest
 
 //go:generate swagger generate spec
 func main() {
-	setupLogger()
-	fs := initializeFlagSet()
+	c := config.MustParse()
+	setupLogger(c.LogLevel, c.LogPrettyPrint)
 
-	var (
-		port                = fs.StringP("port", "p", defaultPort, "Port where API will be served")
-		metricsPort         = fs.String("metrics-port", defaultMetricsPort, "The metrics API server port")
-		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
-		clusterName         = os.Getenv(defaults.ClusternameEnvironmentVariable)
-	)
-
-	parseFlagsFromArgs(fs)
-
-	var servers []*http.Server
-
-	srv, err := initializeServer(*port, clusterName, "https://sts.windows.net/3aa4a235-b6e2-48d5-9195-7fcf05b459b0/", "6dae42f8-4368-4678-94ff-3960e28e3630", *useOutClusterClient)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize API server")
+	servers := []*http.Server{
+		initializeServer(c),
+		initializeMetricsServer(c),
 	}
 
-	servers = append(servers, srv, initializeMetricsServer(*metricsPort))
-
-	if useProfiler, _ := strconv.ParseBool(os.Getenv(useProfilerEnvironmentVariable)); useProfiler {
-		log.Info().Msgf("Initializing profile server on port %s", defaultProfilePort)
-		servers = append(servers, &http.Server{Addr: fmt.Sprintf("localhost:%s", defaultProfilePort)})
+	if c.UseProfiler {
+		log.Info().Msgf("Initializing profile server on port %d", c.ProfilePort)
+		servers = append(servers, &http.Server{Addr: fmt.Sprintf("localhost:%d", c.ProfilePort)})
 	}
 
 	startServers(servers...)
 	shutdownServersGracefulOnSignal(servers...)
 }
 
-func initializeServer(port, clusterName, oidcIssuer, oidcAudience string, useOutClusterClient bool) (*http.Server, error) {
-	controllers, err := getControllers()
+func initializeServer(c config.Config) *http.Server {
+	controllers, err := getControllers(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize controllers: %w", err)
+		log.Fatal().Err(err).Msgf("failed to initialize controllers: %v", err)
 	}
 
-	handler := router.NewAPIHandler(clusterName, oidcIssuer, oidcAudience, utils.NewKubeUtil(useOutClusterClient), controllers...)
+	handler := router.NewAPIHandler(c.ClusterName, c.OidcIssuer, c.OidcAudience, c.DNSZone, utils.NewKubeUtil(c.UseOutClusterClient, c.KubernetesApiServer), controllers...)
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%d", c.Port),
 		Handler: handler,
 	}
 
-	return srv, nil
+	return srv
 }
 
-func initializeMetricsServer(port string) *http.Server {
-	log.Info().Msgf("Initializing metrics server on port %s", port)
+func initializeMetricsServer(c config.Config) *http.Server {
+	log.Info().Msgf("Initializing metrics server on port %d", c.Port)
 	return &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%d", c.Port),
 		Handler: router.NewMetricsHandler(),
 	}
 }
@@ -142,8 +135,7 @@ func shutdownServersGracefulOnSignal(servers ...*http.Server) {
 	wg.Wait()
 }
 
-func setupLogger() {
-	logLevelStr := os.Getenv(logLevelEnvironmentVariable)
+func setupLogger(logLevelStr string, prettyPrint bool) {
 	if len(logLevelStr) == 0 {
 		logLevelStr = zerolog.LevelInfoValue
 	}
@@ -154,10 +146,8 @@ func setupLogger() {
 		log.Warn().Msgf("Invalid log level '%s', fallback to '%s'", logLevelStr, logLevel.String())
 	}
 
-	logPretty, _ := strconv.ParseBool(os.Getenv(logPrettyEnvironmentVariable))
-
 	var logWriter io.Writer = os.Stderr
-	if logPretty {
+	if prettyPrint {
 		logWriter = &zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly}
 	}
 
@@ -167,15 +157,12 @@ func setupLogger() {
 	zerolog.DefaultContextLogger = &logger
 }
 
-func getControllers() ([]models.Controller, error) {
+func getControllers(config config.Config) ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
-	applicationHandlerFactory, err := getApplicationHandlerFactory()
-	if err != nil {
-		return nil, err
-	}
+	applicatinoFactory := applications.NewApplicationHandlerFactory(config)
 
 	return []models.Controller{
-		applications.NewApplicationController(nil, applicationHandlerFactory),
+		applications.NewApplicationController(nil, applicatinoFactory),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
@@ -186,37 +173,4 @@ func getControllers() ([]models.Controller, error) {
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(tlsvalidation.DefaultValidator()),
 	}, nil
-}
-
-func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, error) {
-	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
-	if err != nil {
-		return nil, err
-	}
-	return applications.NewApplicationHandlerFactory(cfg), nil
-}
-
-func initializeFlagSet() *pflag.FlagSet {
-	// Flag domain.
-	fs := pflag.NewFlagSet("default", pflag.ContinueOnError)
-	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "DESCRIPTION\n")
-		fmt.Fprintf(os.Stderr, "  radix api-server.\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "FLAGS\n")
-		fs.PrintDefaults()
-	}
-	return fs
-}
-
-func parseFlagsFromArgs(fs *pflag.FlagSet) {
-	err := fs.Parse(os.Args[1:])
-	switch {
-	case err == pflag.ErrHelp:
-		os.Exit(0)
-	case err != nil:
-		fmt.Fprintf(os.Stderr, "Error: %s\n\n", err.Error())
-		fs.Usage()
-		os.Exit(2)
-	}
 }

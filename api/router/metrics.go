@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-api/api/middleware/logger"
+	"github.com/equinor/radix-api/api/middleware/recovery"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/negroni/v3"
 )
