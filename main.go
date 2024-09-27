@@ -40,24 +40,6 @@ import (
 	"github.com/equinor/radix-api/models"
 )
 
-// K8S_API_HOST=https://weekly-39-clusters-dev-16ede4-ttgs23zb.hcp.northeurope.azmk8s.io:443;
-// LOG_LEVEL=trace;
-// LOG_PRETTY=true;
-// PIPELINE_IMG_TAG=master-latest;
-// PROMETHEUS_URL=http://localhost:9092;
-// RADIX_ACTIVE_CLUSTER_EGRESS_IPS=104.45.84.1;
-// RADIX_APP=radix-api;
-// RADIX_CLUSTER_TYPE=development;
-// RADIX_CLUSTERNAME=weekly-38;
-// RADIX_CONTAINER_REGISTRY=radixdev.azurecr.io;
-// RADIX_DNS_ZONE=dev.radix.equinor.com;
-// RADIX_ENVIRONMENT=qa;
-// REQUIRE_APP_AD_GROUPS=true;
-// REQUIRE_APP_CONFIGURATION_ITEM=true;
-// TEKTON_IMG_TAG=main-latest
-
-// K8S_API_HOST=https://weekly-39-clusters-dev-16ede4-ttgs23zb.hcp.northeurope.azmk8s.io:443;LOG_LEVEL=trace;LOG_PRETTY=true;PIPELINE_IMG_TAG=master-latest;PROMETHEUS_URL=http://localhost:9092;RADIX_ACTIVE_CLUSTER_EGRESS_IPS=104.45.84.1;RADIX_APP=radix-api;RADIX_CLUSTER_TYPE=development;RADIX_CLUSTERNAME=weekly-38;RADIX_CONTAINER_REGISTRY=radixdev.azurecr.io;RADIX_DNS_ZONE=dev.radix.equinor.com;RADIX_ENVIRONMENT=qa;REQUIRE_APP_AD_GROUPS=true;REQUIRE_APP_CONFIGURATION_ITEM=true;TEKTON_IMG_TAG=main-latest
-
 //go:generate swagger generate spec
 func main() {
 	c := config.MustParse()
