@@ -24,19 +24,19 @@ func (c *azureClaims) Validate(_ context.Context) error {
 	return nil
 }
 
-type azurePrincipal struct {
+type AzurePrincipal struct {
 	token       string
 	claims      *validator.ValidatedClaims
 	azureClaims *azureClaims
 }
 
-func (p *azurePrincipal) Token() string {
+func (p *AzurePrincipal) Token() string {
 	return p.token
 }
-func (p *azurePrincipal) IsAuthenticated() bool {
+func (p *AzurePrincipal) IsAuthenticated() bool {
 	return true
 }
-func (p *azurePrincipal) Subject() string {
+func (p *AzurePrincipal) Subject() string {
 	if p.azureClaims.Upn != "" {
 		return p.azureClaims.Upn
 	}

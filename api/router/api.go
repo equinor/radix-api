@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/middleware/logger"
 	"github.com/equinor/radix-api/api/middleware/recovery"
 	"github.com/equinor/radix-api/api/utils"
+	token "github.com/equinor/radix-api/api/utils/authn"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-api/swaggerui"
 	"github.com/gorilla/mux"
@@ -19,7 +20,7 @@ const (
 )
 
 // NewAPIHandler Constructor function
-func NewAPIHandler(clusterName, oidcIssuer, oidcAudience, radixDNSZone string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
+func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radixDNSZone string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/health/", createHealthHandler())
 	serveMux.Handle("/swaggerui/", createSwaggerHandler())
@@ -30,7 +31,7 @@ func NewAPIHandler(clusterName, oidcIssuer, oidcAudience, radixDNSZone string, k
 		cors.CreateMiddleware(clusterName, radixDNSZone),
 		logger.CreateZerologRequestIdMiddleware(),
 		logger.CreateZerologRequestDetailsMiddleware(),
-		auth.CreateAuthenticationMiddleware(oidcIssuer, oidcAudience),
+		auth.CreateAuthenticationMiddleware(validator),
 		logger.CreateZerologRequestLoggerMiddleware(),
 	)
 	n.UseHandler(serveMux)

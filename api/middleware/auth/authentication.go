@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"net/http"
-	"net/url"
 
 	token "github.com/equinor/radix-api/api/utils/authn"
 	"github.com/equinor/radix-common/models"
@@ -15,18 +14,7 @@ import (
 type ctxUserKey struct{}
 type ctxImpersonationKey struct{}
 
-func CreateAuthenticationMiddleware(issuer, audience string) negroni.HandlerFunc {
-	issuerUrl, err := url.Parse(issuer)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error parsing issuer url")
-	}
-
-	// Set up the validator.
-	jwtValidator, err := token.NewValidator(issuerUrl, audience)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating JWT validator")
-	}
-
+func CreateAuthenticationMiddleware(validator token.ValidatorInterface) negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		ctx := r.Context()
 		logger := log.Ctx(ctx)
@@ -43,7 +31,7 @@ func CreateAuthenticationMiddleware(issuer, audience string) negroni.HandlerFunc
 			}
 			return
 		}
-		principal, err := jwtValidator.ValidateToken(ctx, token)
+		principal, err := validator.ValidateToken(ctx, token)
 		if err != nil {
 			logger.Warn().Err(err).Msg("authentication error")
 			if err = radixhttp.ErrorResponse(w, r, err); err != nil {

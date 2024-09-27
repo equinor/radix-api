@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/secrets"
+	token "github.com/equinor/radix-api/api/utils/authn"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/rs/zerolog"
@@ -76,18 +78,33 @@ func main() {
 }
 
 func initializeServer(c config.Config) *http.Server {
+	jwtValidator := initializeTokenValidator(c)
 	controllers, err := getControllers(c)
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed to initialize controllers: %v", err)
 	}
 
-	handler := router.NewAPIHandler(c.ClusterName, c.OidcIssuer, c.OidcAudience, c.DNSZone, utils.NewKubeUtil(c.UseOutClusterClient, c.KubernetesApiServer), controllers...)
+	handler := router.NewAPIHandler(c.ClusterName, jwtValidator, c.DNSZone, utils.NewKubeUtil(c.UseOutClusterClient, c.KubernetesApiServer), controllers...)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.Port),
 		Handler: handler,
 	}
 
 	return srv
+}
+
+func initializeTokenValidator(c config.Config) *token.Validator {
+	issuerUrl, err := url.Parse(c.OidcIssuer)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error parsing issuer url")
+	}
+
+	// Set up the validator.
+	jwtValidator, err := token.NewValidator(issuerUrl, c.OidcAudience)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error creating JWT validator")
+	}
+	return jwtValidator
 }
 
 func initializeMetricsServer(c config.Config) *http.Server {

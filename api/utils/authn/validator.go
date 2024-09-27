@@ -17,12 +17,14 @@ type TokenPrincipal interface {
 }
 
 type ValidatorInterface interface {
-	ValidateToken(ctx context.Context, token string) (*validator.RegisteredClaims, error)
+	ValidateToken(context.Context, string) (TokenPrincipal, error)
 }
 
 type Validator struct {
 	validator *validator.Validator
 }
+
+var _ ValidatorInterface = &Validator{}
 
 func NewValidator(issuerUrl *url.URL, audience string) (*Validator, error) {
 	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Minute)
@@ -59,6 +61,6 @@ func (v *Validator) ValidateToken(ctx context.Context, token string) (TokenPrinc
 		return nil, errors.New("invalid azure token")
 	}
 
-	principal := &azurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
+	principal := &AzurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
 	return principal, nil
 }
