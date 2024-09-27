@@ -283,9 +283,19 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
 	}
+	if patchRequest.AdUsers != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdUsers, *patchRequest.AdUsers) {
+		updatedRegistration.Spec.AdUsers = *patchRequest.AdUsers
+		payload = append(payload, patch{Op: "replace", Path: "/spec/adUsers", Value: *patchRequest.AdUsers})
+		runUpdate = true
+	}
 	if patchRequest.ReaderAdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdGroups, *patchRequest.ReaderAdGroups) {
 		updatedRegistration.Spec.ReaderAdGroups = *patchRequest.ReaderAdGroups
 		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdGroups", Value: *patchRequest.ReaderAdGroups})
+		runUpdate = true
+	}
+	if patchRequest.ReaderAdUsers != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdUsers, *patchRequest.ReaderAdUsers) {
+		updatedRegistration.Spec.ReaderAdUsers = *patchRequest.ReaderAdUsers
+		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdUsers", Value: *patchRequest.ReaderAdUsers})
 		runUpdate = true
 	}
 

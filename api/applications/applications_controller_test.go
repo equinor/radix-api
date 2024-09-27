@@ -821,12 +821,17 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
 
+	adGroups, adUsers := []string{uuid.New().String()}, []string{uuid.New().String()}
+	readerAdGroups, readerAdUsers := []string{uuid.New().String()}, []string{uuid.New().String()}
 	parameters := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
 			WithName("any-name").
 			WithRepository("https://github.com/Equinor/any-repo").
 			WithSharedSecret("Any secret").
-			WithAdGroups([]string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}).
+			WithAdGroups(adGroups).
+			WithAdUsers(adUsers).
+			WithReaderAdGroups(readerAdGroups).
+			WithReaderAdUsers(readerAdUsers).
 			WithConfigBranch("abranch").
 			WithRadixConfigFullName("a/custom-radixconfig.yaml").
 			WithConfigurationItem("ci").
@@ -847,7 +852,10 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 
 	assert.Equal(t, "https://github.com/Equinor/any-repo", application.Registration.Repository)
 	assert.Equal(t, "Any secret", application.Registration.SharedSecret)
-	assert.Equal(t, []string{"a6a3b81b-34gd-sfsf-saf2-7986371ea35f"}, application.Registration.AdGroups)
+	assert.Equal(t, adGroups, application.Registration.AdGroups)
+	assert.Equal(t, adUsers, application.Registration.AdUsers)
+	assert.Equal(t, readerAdGroups, application.Registration.ReaderAdGroups)
+	assert.Equal(t, readerAdUsers, application.Registration.ReaderAdUsers)
 	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 	assert.Equal(t, "a/custom-radixconfig.yaml", application.Registration.RadixConfigFullName)
@@ -1169,8 +1177,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		WithName("any-name").
 		WithRepository("https://github.com/Equinor/a-repo").
 		WithSharedSecret("").
-		WithAdGroups([]string{"a5dfa635-dc00-4a28-9ad9-9e7f1e56919d"}).
-		WithReaderAdGroups([]string{"d5df55c1-78b7-4330-9d2c-f1b1aa5584ca"}).
+		WithAdGroups([]string{uuid.New().String()}).
+		WithAdUsers([]string{uuid.New().String()}).
+		WithReaderAdGroups([]string{uuid.New().String()}).
+		WithReaderAdUsers([]string{uuid.New().String()}).
 		WithOwner("AN_OWNER@equinor.com").
 		WithWBS("T.O123A.AZ.45678").
 		WithConfigBranch("main1").
@@ -1179,10 +1189,12 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	<-responseChannel
 
 	// Test
-	anyNewAdGroup := []string{"98765432-dc00-4a28-9ad9-9e7f1e56919d"}
+	anyNewAdGroup := []string{uuid.New().String()}
+	anyNewAdUser := []string{uuid.New().String()}
 	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
 		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
 			AdGroups: &anyNewAdGroup,
+			AdUsers:  &anyNewAdUser,
 		},
 	}
 
@@ -1197,16 +1209,19 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	err := controllertest.GetResponseBody(response, &application)
 	require.NoError(t, err)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
+	assert.Equal(t, anyNewAdUser, application.Registration.AdUsers)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
 	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
 	assert.Equal(t, "main1", application.Registration.ConfigBranch)
 	assert.Equal(t, "ci-initial", application.Registration.ConfigurationItem)
 
 	// Test
-	anyNewReaderAdGroup := []string{"44643b96-0f6d-4bdc-af2c-a4f596d821eb"}
+	anyNewReaderAdGroup := []string{uuid.New().String()}
+	anyNewReaderAdUser := []string{uuid.New().String()}
 	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
 		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
 			ReaderAdGroups: &anyNewReaderAdGroup,
+			ReaderAdUsers:  &anyNewReaderAdUser,
 		},
 	}
 
@@ -1221,6 +1236,7 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &application)
 	require.NoError(t, err)
 	assert.Equal(t, anyNewReaderAdGroup, application.Registration.ReaderAdGroups)
+	assert.Equal(t, anyNewReaderAdUser, application.Registration.ReaderAdUsers)
 
 	// Test
 	anyNewOwner := "A_NEW_OWNER@equinor.com"
@@ -1639,6 +1655,7 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 	const (
 		appName         = "an-app"
 		commitId        = "475f241c-478b-49da-adfb-3c336aaab8d2"
+		deploymentName  = "a-deployment"
 		fromEnvironment = "origin"
 		toEnvironment   = "target"
 	)

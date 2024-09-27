@@ -13,7 +13,9 @@ type ApplicationRegistrationBuilder interface {
 	WithRepository(string) ApplicationRegistrationBuilder
 	WithSharedSecret(string) ApplicationRegistrationBuilder
 	WithAdGroups([]string) ApplicationRegistrationBuilder
+	WithAdUsers([]string) ApplicationRegistrationBuilder
 	WithReaderAdGroups([]string) ApplicationRegistrationBuilder
+	WithReaderAdUsers([]string) ApplicationRegistrationBuilder
 	WithCloneURL(string) ApplicationRegistrationBuilder
 	WithWBS(string) ApplicationRegistrationBuilder
 	WithConfigBranch(string) ApplicationRegistrationBuilder
@@ -38,6 +40,8 @@ type applicationBuilder struct {
 	configBranch        string
 	configurationItem   string
 	radixConfigFullName string
+	adUsers             []string
+	readerAdUsers       []string
 }
 
 func (rb *applicationBuilder) WithAppRegistration(appRegistration *ApplicationRegistration) ApplicationRegistrationBuilder {
@@ -45,7 +49,9 @@ func (rb *applicationBuilder) WithAppRegistration(appRegistration *ApplicationRe
 	rb.WithRepository(appRegistration.Repository)
 	rb.WithSharedSecret(appRegistration.SharedSecret)
 	rb.WithAdGroups(appRegistration.AdGroups)
+	rb.WithAdUsers(appRegistration.AdUsers)
 	rb.WithReaderAdGroups(appRegistration.ReaderAdGroups)
+	rb.WithReaderAdUsers(appRegistration.ReaderAdUsers)
 	rb.WithOwner(appRegistration.Owner)
 	rb.WithWBS(appRegistration.WBS)
 	rb.WithConfigBranch(appRegistration.ConfigBranch)
@@ -59,7 +65,9 @@ func (rb *applicationBuilder) WithRadixRegistration(radixRegistration *v1.RadixR
 	rb.WithCloneURL(radixRegistration.Spec.CloneURL)
 	rb.WithSharedSecret(radixRegistration.Spec.SharedSecret)
 	rb.WithAdGroups(radixRegistration.Spec.AdGroups)
+	rb.WithAdUsers(radixRegistration.Spec.AdUsers)
 	rb.WithReaderAdGroups(radixRegistration.Spec.ReaderAdGroups)
+	rb.WithReaderAdUsers(radixRegistration.Spec.ReaderAdUsers)
 	rb.WithOwner(radixRegistration.Spec.Owner)
 	rb.WithCreator(radixRegistration.Spec.Creator)
 	rb.WithWBS(radixRegistration.Spec.WBS)
@@ -106,8 +114,18 @@ func (rb *applicationBuilder) WithAdGroups(adGroups []string) ApplicationRegistr
 	return rb
 }
 
+func (rb *applicationBuilder) WithAdUsers(adUsers []string) ApplicationRegistrationBuilder {
+	rb.adUsers = adUsers
+	return rb
+}
+
 func (rb *applicationBuilder) WithReaderAdGroups(readerAdGroups []string) ApplicationRegistrationBuilder {
 	rb.readerAdGroups = readerAdGroups
+	return rb
+}
+
+func (rb *applicationBuilder) WithReaderAdUsers(readerAdUsers []string) ApplicationRegistrationBuilder {
+	rb.readerAdUsers = readerAdUsers
 	return rb
 }
 
@@ -142,7 +160,9 @@ func (rb *applicationBuilder) Build() ApplicationRegistration {
 		Repository:          repository,
 		SharedSecret:        rb.sharedSecret,
 		AdGroups:            rb.adGroups,
+		AdUsers:             rb.adUsers,
 		ReaderAdGroups:      rb.readerAdGroups,
+		ReaderAdUsers:       rb.readerAdUsers,
 		Owner:               rb.owner,
 		Creator:             rb.creator,
 		WBS:                 rb.wbs,
@@ -160,7 +180,9 @@ func (rb *applicationBuilder) BuildRR() (*v1.RadixRegistration, error) {
 		WithRepository(rb.repository).
 		WithSharedSecret(rb.sharedSecret).
 		WithAdGroups(rb.adGroups).
+		WithAdUsers(rb.adUsers).
 		WithReaderAdGroups(rb.readerAdGroups).
+		WithReaderAdUsers(rb.readerAdUsers).
 		WithOwner(rb.owner).
 		WithCreator(rb.creator).
 		WithWBS(rb.wbs).

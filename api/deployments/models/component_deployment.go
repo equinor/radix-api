@@ -138,6 +138,38 @@ type Component struct {
 
 	// Runtime requirements for the component or job
 	Runtime *Runtime `json:"runtime,omitempty"`
+
+	// Network configuration for the component
+	//
+	// required: false
+	Network *Network `json:"network,omitempty"`
+}
+
+// Network describes network configuration for a component
+// swagger:model Network
+type Network struct {
+	// Ingress configuration
+	//
+	// required: false
+	Ingress *Ingress `json:"ingress,omitempty"`
+}
+
+// Ingress describes ingress configuration for a component
+// swagger:model Ingress
+type Ingress struct {
+	// Public ingress configuration
+	//
+	// required: false
+	Public *IngressPublic `json:"public,omitempty"`
+}
+
+// IngressPublic describes public ingress configuration for a component
+// swagger:model IngressPublic
+type IngressPublic struct {
+	// List of allowed IP addresses or CIDRs. All traffic is allowed if list is empty.
+	//
+	// required: true
+	Allow []string `json:"allow"`
 }
 
 // ExternalDNS describes an external DNS entry for a component
@@ -236,9 +268,15 @@ type Port struct {
 
 	// Component port number. From radixconfig.yaml
 	//
-	// required: false
+	// required: true
 	// example: 8080
 	Port int32 `json:"port"`
+
+	// IsPublic indicates that the port is accessible from the Internet by proxying traffic from 443
+	//
+	// required: true
+	// example: true
+	IsPublic bool `json:"isPublic"`
 }
 
 // ComponentSummary describe a component part of a deployment
