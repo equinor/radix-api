@@ -5,12 +5,14 @@ go 1.22.0
 toolchain go1.22.5
 
 require (
+	github.com/auth0/go-jwt-middleware/v2 v2.2.2
 	github.com/cert-manager/cert-manager v1.15.0
 	github.com/equinor/radix-common v1.9.5
 	github.com/equinor/radix-job-scheduler v1.11.0
 	github.com/equinor/radix-operator v1.61.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
+	github.com/go-jose/go-jose/v4 v4.0.2
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
@@ -29,6 +31,7 @@ require (
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/urfave/negroni/v3 v3.1.0
 	golang.org/x/sync v0.8.0
+	gopkg.in/go-jose/go-jose.v2 v2.6.3
 	k8s.io/api v0.31.0
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0

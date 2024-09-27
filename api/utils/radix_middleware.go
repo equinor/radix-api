@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/metrics"
+	"github.com/equinor/radix-api/api/middleware/auth"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/gorilla/mux"
@@ -39,7 +40,7 @@ func NewRadixMiddleware(kubeUtil KubeUtil, path, method string, allowUnauthentic
 }
 
 // Handle Wraps radix handler methods
-func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
+func (handler *RadixMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	defer func() {
@@ -57,25 +58,8 @@ func (handler *RadixMiddleware) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
 	logger := log.Ctx(r.Context())
-	useOutClusterClient := handler.kubeUtil.IsUseOutClusterClient()
-	token, err := getBearerTokenFromHeader(r, useOutClusterClient)
-
-	if err != nil {
-		logger.Warn().Err(err).Msg("authorization error")
-		if err = radixhttp.ErrorResponse(w, r, err); err != nil {
-			logger.Err(err).Msg("failed to write response")
-		}
-		return
-	}
-
-	impersonation, err := radixhttp.GetImpersonationFromHeader(r)
-	if err != nil {
-		logger.Warn().Err(err).Msg("authorization error")
-		if err = radixhttp.ErrorResponse(w, r, radixhttp.UnexpectedError("Problems impersonating", err)); err != nil {
-			logger.Err(err).Msg("failed to write response")
-		}
-		return
-	}
+	token := auth.GetToken(r.Context()).Token()
+	impersonation := auth.GetImpersonation(r.Context())
 
 	restOptions := handler.getRestClientOptions()
 	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
@@ -111,6 +95,16 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	handler.next(accounts, w, r)
 }
 
+func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
+	restOptions := handler.getRestClientOptions()
+	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+
+	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient)
+	accounts := models.Accounts{ServiceAccount: sa}
+
+	handler.next(accounts, w, r)
+}
+
 func (handler *RadixMiddleware) getRestClientOptions() []RestClientConfigOption {
 	var options []RestClientConfigOption
 
@@ -123,22 +117,4 @@ func (handler *RadixMiddleware) getRestClientOptions() []RestClientConfigOption 
 	}
 
 	return options
-}
-
-func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
-	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
-
-	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient)
-	accounts := models.Accounts{ServiceAccount: sa}
-
-	handler.next(accounts, w, r)
-}
-
-func getBearerTokenFromHeader(r *http.Request, useOutClusterClient bool) (string, error) {
-	if useOutClusterClient {
-		return radixhttp.GetBearerTokenFromHeader(r)
-	}
-	// if we're in debug mode, arbitrary bearer token is injected
-	return "some_arbitrary_token", nil
 }

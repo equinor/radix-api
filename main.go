@@ -66,7 +66,7 @@ func main() {
 
 	var servers []*http.Server
 
-	srv, err := initializeServer(*port, clusterName, *useOutClusterClient)
+	srv, err := initializeServer(*port, clusterName, "https://sts.windows.net/3aa4a235-b6e2-48d5-9195-7fcf05b459b0/", "6dae42f8-4368-4678-94ff-3960e28e3630", *useOutClusterClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize API server")
 	}
@@ -82,12 +82,13 @@ func main() {
 	shutdownServersGracefulOnSignal(servers...)
 }
 
-func initializeServer(port, clusterName string, useOutClusterClient bool) (*http.Server, error) {
+func initializeServer(port, clusterName, oidcIssuer, oidcAudience string, useOutClusterClient bool) (*http.Server, error) {
 	controllers, err := getControllers()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize controllers: %w", err)
 	}
-	handler := router.NewAPIHandler(clusterName, utils.NewKubeUtil(useOutClusterClient), controllers...)
+
+	handler := router.NewAPIHandler(clusterName, oidcIssuer, oidcAudience, utils.NewKubeUtil(useOutClusterClient), controllers...)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
 		Handler: handler,
