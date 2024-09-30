@@ -17,7 +17,7 @@ import (
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	"github.com/equinor/radix-api/api/metrics"
+	metricsMock "github.com/equinor/radix-api/api/metrics/mock"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/models"
@@ -35,6 +35,7 @@ import (
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
@@ -92,13 +93,13 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
-func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *metrics.MockPrometheusHandler)) *metrics.MockPrometheusHandler {
+func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *metricsMock.MockPrometheusHandler)) *metricsMock.MockPrometheusHandler {
 	ctrl := gomock.NewController(t)
-	mockPrometheusHandler := metrics.NewMockPrometheusHandler(ctrl)
+	mockPrometheusHandler := metricsMock.NewMockPrometheusHandler(ctrl)
 	if mockHandler != nil {
 		(*mockHandler)(mockPrometheusHandler)
 	} else {
-		mockPrometheusHandler.EXPECT().GetUsedResources(gomock.Any(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
+		mockPrometheusHandler.EXPECT().GetUsedResources(gomock.Any(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
 	}
 	return mockPrometheusHandler
 }
@@ -1944,7 +1945,6 @@ func Test_GetUsedResources(t *testing.T) {
 		component   string
 		duration    string
 		since       string
-		ignoreZero  bool
 	}
 
 	type scenario struct {
@@ -1964,22 +1964,13 @@ func Test_GetUsedResources(t *testing.T) {
 		},
 		{
 			name:                  "Get used resources with arguments",
-			queryString:           "?environment=prod&component=component1&duration=10d&since=2w&ignorezero=true",
+			queryString:           "?environment=prod&component=component1&duration=10d&since=2w",
 			expectedUsedResources: getTestUsedResources(),
 			expectedArgs: expectedArgs{
 				environment: envName1,
 				component:   componentName1,
 				duration:    "10d",
 				since:       "2w",
-				ignoreZero:  true,
-			},
-		},
-		{
-			name:                  "Invalid boolean query parameter falls back to false",
-			expectedUsedResources: getTestUsedResources(),
-			queryString:           "?ignorezero=abc",
-			expectedArgs: expectedArgs{
-				ignoreZero: false,
 			},
 		},
 		{
@@ -1996,9 +1987,9 @@ func Test_GetUsedResources(t *testing.T) {
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 
-			mockHandlerModifier := func(handler *metrics.MockPrometheusHandler) {
+			mockHandlerModifier := func(handler *metricsMock.MockPrometheusHandler) {
 				args := ts.expectedArgs
-				handler.EXPECT().GetUsedResources(gomock.Any(), radixClient, appName1, args.environment, args.component, args.duration, args.since, args.ignoreZero).
+				handler.EXPECT().GetUsedResources(gomock.Any(), radixClient, appName1, args.environment, args.component, args.duration, args.since).
 					Times(1).
 					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
 			}
@@ -2032,20 +2023,14 @@ func getTestUsedResources() *applicationModels.UsedResources {
 		From: radixutils.FormatTimestamp(time.Now().Add(time.Minute * -10)),
 		To:   radixutils.FormatTimestamp(time.Now()),
 		CPU: &applicationModels.UsedResource{
-			Min:     "1m",
-			Max:     "10m",
-			Average: "5m",
-			Min:     pointers.Ptr(1.1),
-			Max:     pointers.Ptr(10.12),
-			Avg:     pointers.Ptr(5.56),
+			Min: pointers.Ptr(1.1),
+			Max: pointers.Ptr(10.12),
+			Avg: pointers.Ptr(5.56),
 		},
 		Memory: &applicationModels.UsedResource{
-			Min:     "100M",
-			Max:     "1000M",
-			Average: "500M",
-			Min:     pointers.Ptr(100.1),
-			Max:     pointers.Ptr(1000.12),
-			Avg:     pointers.Ptr(500.56),
+			Min: pointers.Ptr(100.1),
+			Max: pointers.Ptr(1000.12),
+			Avg: pointers.Ptr(500.56),
 		},
 		Warnings: []string{"warning1", "warning2"},
 	}

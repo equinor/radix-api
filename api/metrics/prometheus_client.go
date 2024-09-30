@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/equinor/radix-api/api/metrics/internal"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -15,7 +16,7 @@ import (
 // PrometheusClient Interface for Prometheus client
 type PrometheusClient interface {
 	// GetMetrics Get metrics for the application
-	GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[QueryName]prometheusModel.Value, []string, error)
+	GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error)
 }
 
 // NewPrometheusClient Constructor for Prometheus client
@@ -35,8 +36,8 @@ type client struct {
 }
 
 // GetMetrics Get metrics for the application
-func (c *client) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[QueryName]prometheusModel.Value, []string, error) {
-	results := make(map[QueryName]model.Value)
+func (c *client) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error) {
+	results := make(map[internal.QueryName]model.Value)
 	now := time.Now()
 	var warnings []string
 	for metricName, query := range getPrometheusQueries(appName, envName, componentName, duration, since) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/metrics/internal"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -17,19 +18,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// QueryName Prometheus query name
-type QueryName string
-
 const (
-	cpuMax             QueryName = "cpuMax"
-	cpuMin             QueryName = "cpuMin"
-	cpuAvg             QueryName = "cpuAvg"
-	memoryMax          QueryName = "memoryMax"
-	memoryMin          QueryName = "memoryMin"
-	memoryAvg          QueryName = "memoryAvg"
-	durationExpression           = `^[0-9]{1,5}[mhdw]$`
-	defaultDuration              = "30d"
-	defaultOffset                = ""
+	durationExpression = `^[0-9]{1,5}[mhdw]$`
+	defaultDuration    = "30d"
+	defaultOffset      = ""
 )
 
 // PrometheusHandler Interface for Prometheus handler
@@ -76,15 +68,15 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 	return resources, nil
 }
 
-func getUsedResourcesByMetrics(ctx context.Context, results map[QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration) *applicationModels.UsedResources {
+func getUsedResourcesByMetrics(ctx context.Context, results map[internal.QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration) *applicationModels.UsedResources {
 	usedCpuResource := applicationModels.UsedResource{}
-	usedCpuResource.Min = getCpuMetricValue(ctx, results, cpuMin)
-	usedCpuResource.Max = getCpuMetricValue(ctx, results, cpuMax)
-	usedCpuResource.Avg = getCpuMetricValue(ctx, results, cpuAvg)
+	usedCpuResource.Min = getCpuMetricValue(ctx, results, internal.CpuMin)
+	usedCpuResource.Max = getCpuMetricValue(ctx, results, internal.CpuMax)
+	usedCpuResource.Avg = getCpuMetricValue(ctx, results, internal.CpuAvg)
 	usedMemoryResource := applicationModels.UsedResource{}
-	usedMemoryResource.Min = getMemoryMetricValue(ctx, results, memoryMin)
-	usedMemoryResource.Max = getMemoryMetricValue(ctx, results, memoryMax)
-	usedMemoryResource.Avg = getMemoryMetricValue(ctx, results, memoryAvg)
+	usedMemoryResource.Min = getMemoryMetricValue(ctx, results, internal.MemoryMin)
+	usedMemoryResource.Max = getMemoryMetricValue(ctx, results, internal.MemoryMax)
+	usedMemoryResource.Avg = getMemoryMetricValue(ctx, results, internal.MemoryAvg)
 	now := time.Now()
 	return &applicationModels.UsedResources{
 		From:   radixutils.FormatTimestamp(now.Add(-queryDuration)),
@@ -105,21 +97,21 @@ func parseQueryDuration(duration string, defaultValue string) (time.Duration, st
 	return time.Duration(parsedDuration), duration, err
 }
 
-func getCpuMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) *float64 {
+func getCpuMetricValue(ctx context.Context, queryResults map[internal.QueryName]prometheusModel.Value, queryName internal.QueryName) *float64 {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
 		return pointers.Ptr(value)
 	}
 	return nil
 }
 
-func getMemoryMetricValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) *float64 {
+func getMemoryMetricValue(ctx context.Context, queryResults map[internal.QueryName]prometheusModel.Value, queryName internal.QueryName) *float64 {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
 		return pointers.Ptr(value)
 	}
 	return nil
 }
 
-func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusModel.Value, queryName QueryName) (float64, bool) {
+func getMetricsValue(ctx context.Context, queryResults map[internal.QueryName]prometheusModel.Value, queryName internal.QueryName) (float64, bool) {
 	queryResult, ok := queryResults[queryName]
 	if !ok {
 		return 0.0, false
@@ -136,7 +128,7 @@ func getMetricsValue(ctx context.Context, queryResults map[QueryName]prometheusM
 	return sum, true
 }
 
-func getPrometheusQueries(appName, envName, componentName, duration, since string) map[QueryName]string {
+func getPrometheusQueries(appName, envName, componentName, duration, since string) map[internal.QueryName]string {
 	environmentFilter := radixutils.TernaryString(envName == "",
 		fmt.Sprintf(`,namespace=~"%s-.*"`, appName),
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
@@ -144,13 +136,13 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
 	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (rate(container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} [1h])) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
 	memoryUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_memory_usage_bytes{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
-	queries := map[QueryName]string{
-		cpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
-		cpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
-		cpuAvg:    fmt.Sprintf("avg_over_time(%s)", cpuUsageQuery),
-		memoryMax: fmt.Sprintf("max_over_time(%s)", memoryUsageQuery),
-		memoryMin: fmt.Sprintf("min_over_time(%s)", memoryUsageQuery),
-		memoryAvg: fmt.Sprintf("avg_over_time(%s)", memoryUsageQuery),
+	queries := map[internal.QueryName]string{
+		internal.CpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
+		internal.CpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
+		internal.CpuAvg:    fmt.Sprintf("avg_over_time(%s)", cpuUsageQuery),
+		internal.MemoryMax: fmt.Sprintf("max_over_time(%s)", memoryUsageQuery),
+		internal.MemoryMin: fmt.Sprintf("min_over_time(%s)", memoryUsageQuery),
+		internal.MemoryAvg: fmt.Sprintf("avg_over_time(%s)", memoryUsageQuery),
 	}
 	return queries
 }

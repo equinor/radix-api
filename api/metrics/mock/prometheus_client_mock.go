@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	metrics "github.com/equinor/radix-api/api/metrics"
+	internal "github.com/equinor/radix-api/api/metrics/internal"
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/prometheus/common/model"
 )
@@ -37,10 +37,10 @@ func (m *MockPrometheusClient) EXPECT() *MockPrometheusClientMockRecorder {
 }
 
 // GetMetrics mocks base method.
-func (m *MockPrometheusClient) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[metrics.QueryName]model.Value, []string, error) {
+func (m *MockPrometheusClient) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]model.Value, []string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetrics", ctx, appName, envName, componentName, duration, since)
-	ret0, _ := ret[0].(map[metrics.QueryName]model.Value)
+	ret0, _ := ret[0].(map[internal.QueryName]model.Value)
 	ret1, _ := ret[1].([]string)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2

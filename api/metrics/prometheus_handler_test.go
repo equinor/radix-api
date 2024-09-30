@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/metrics/internal"
+	"github.com/equinor/radix-api/api/metrics/mock"
 	"github.com/equinor/radix-common/utils/pointers"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -27,7 +29,7 @@ type args struct {
 type scenario struct {
 	name                  string
 	args                  args
-	clientReturnsMetrics  map[QueryName]model.Value
+	clientReturnsMetrics  map[internal.QueryName]model.Value
 	expectedUsedResources *applicationModels.UsedResources
 	expectedWarnings      []string
 	expectedError         error
@@ -88,7 +90,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 			ctrl := gomock.NewController(t)
-			mockPrometheusClient := NewMockPrometheusClient(ctrl)
+			mockPrometheusClient := mock.NewMockPrometheusClient(ctrl)
 			mockPrometheusClient.EXPECT().GetMetrics(gomock.Any(), appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since).
 				Return(ts.clientReturnsMetrics, ts.expectedWarnings, ts.expectedError)
 
@@ -125,29 +127,29 @@ func assertExpected(t *testing.T, ts scenario, got *applicationModels.UsedResour
 	assert.NotEmpty(t, got.To, "To")
 }
 
-func getClientReturnsMetrics() map[QueryName]model.Value {
-	return map[QueryName]model.Value{
-		cpuMax: model.Vector{
+func getClientReturnsMetrics() map[internal.QueryName]model.Value {
+	return map[internal.QueryName]model.Value{
+		internal.CpuMax: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 0.008123134},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 0.126576764},
 		},
-		cpuAvg: model.Vector{
+		internal.CpuAvg: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 0.0023213546},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 0.047546577},
 		},
-		cpuMin: model.Vector{
+		internal.CpuMin: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 0.0019874},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 0.02321456},
 		},
-		memoryMax: model.Vector{
+		internal.MemoryMax: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 123456.3475613},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 234567.34575412},
 		},
-		memoryAvg: model.Vector{
+		internal.MemoryAvg: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 90654.81},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 150654.12398771},
 		},
-		memoryMin: model.Vector{
+		internal.MemoryMin: model.Vector{
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-dev"}, Value: 56731.2324654},
 			&model.Sample{Metric: map[model.LabelName]model.LabelValue{metricsKeyContainer: "server", metricsKeyNamespace: "app-prod"}, Value: 112234.456789},
 		},
