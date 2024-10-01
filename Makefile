@@ -22,6 +22,8 @@ build: $(BINS)
 mocks: bootstrap
 	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
 	mockgen -source ./api/deployments/deployment_handler.go -destination ./api/deployments/mock/deployment_handler_mock.go -package mock
+	mockgen -source ./api/metrics/prometheus_handler.go -destination ./api/metrics/mock/prometheus_handler_mock.go -package mock
+	mockgen -source ./api/metrics/prometheus_client.go -destination ./api/metrics/mock/prometheus_client_mock.go -package mock
 	mockgen -source ./api/environments/job_handler.go -destination ./api/environments/mock/job_handler_mock.go -package mock
 	mockgen -source ./api/environments/environment_handler.go -destination ./api/environments/mock/environment_handler_mock.go -package mock
 	mockgen -source ./api/utils/tlsvalidation/interface.go -destination ./api/utils/tlsvalidation/mock/tls_secret_validator_mock.go -package mock
