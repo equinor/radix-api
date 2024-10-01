@@ -62,7 +62,7 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	environmentFilter := radixutils.TernaryString(envName == "",
 		fmt.Sprintf(`,namespace=~"%s-.*"`, appName),
 		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
-	componentFilter := radixutils.TernaryString(envName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
+	componentFilter := radixutils.TernaryString(componentName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
 	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
 	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (rate(container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} [1h])) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
 	memoryUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_memory_usage_bytes{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
