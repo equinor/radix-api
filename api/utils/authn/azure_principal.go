@@ -7,8 +7,7 @@ import (
 )
 
 type azureClaims struct {
-	AppId string `json:"appid,omitempty"`
-	Upn   string `json:"upn,omitempty"`
+	ObjectId string `json:"oid,omitempty"`
 }
 
 func (c *azureClaims) Validate(_ context.Context) error {
@@ -27,14 +26,4 @@ func (p *AzurePrincipal) Token() string {
 func (p *AzurePrincipal) IsAuthenticated() bool {
 	return true
 }
-func (p *AzurePrincipal) Name() string {
-	if p.azureClaims.Upn != "" {
-		return p.azureClaims.Upn
-	}
-
-	if p.azureClaims.AppId != "" {
-		return p.azureClaims.AppId
-	}
-
-	return p.claims.RegisteredClaims.Subject
-}
+func (p *AzurePrincipal) Id() string { return p.azureClaims.ObjectId }

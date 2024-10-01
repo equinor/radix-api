@@ -39,7 +39,7 @@ func CreateAuthenticationMiddleware(validator token.ValidatorInterface) negroni.
 			}
 			return
 		}
-		logContext := log.Ctx(ctx).With().Str("user", principal.Name())
+		logContext := log.Ctx(ctx).With().Str("azure_oid", principal.Id())
 
 		impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 		if err != nil {

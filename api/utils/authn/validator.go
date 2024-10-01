@@ -2,18 +2,18 @@ package token
 
 import (
 	"context"
-	"errors"
 	"net/url"
 	"time"
 
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/equinor/radix-common/net/http"
 )
 
 type TokenPrincipal interface {
 	IsAuthenticated() bool
 	Token() string
-	Name() string
+	Id() string
 }
 
 type ValidatorInterface interface {
@@ -27,7 +27,7 @@ type Validator struct {
 var _ ValidatorInterface = &Validator{}
 
 func NewValidator(issuerUrl *url.URL, audience string) (*Validator, error) {
-	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Minute)
+	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Hour)
 
 	validator, err := validator.New(
 		provider.KeyFunc,
@@ -53,12 +53,12 @@ func (v *Validator) ValidateToken(ctx context.Context, token string) (TokenPrinc
 
 	claims, ok := validateToken.(*validator.ValidatedClaims)
 	if !ok {
-		return nil, errors.New("invalid token")
+		return nil, http.ForbiddenError("invalid token")
 	}
 
 	azureClaims, ok := claims.CustomClaims.(*azureClaims)
 	if !ok {
-		return nil, errors.New("invalid azure token")
+		return nil, http.ForbiddenError("invalid azure token")
 	}
 
 	principal := &AzurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
