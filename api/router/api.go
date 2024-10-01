@@ -28,8 +28,8 @@ func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radix
 
 	n := negroni.New(
 		recovery.CreateMiddleware(),
-		cors.CreateMiddleware(clusterName, radixDNSZone),
 		logger.CreateZerologRequestIdMiddleware(),
+		cors.CreateMiddleware(clusterName, radixDNSZone),
 		logger.CreateZerologRequestDetailsMiddleware(),
 		auth.CreateAuthenticationMiddleware(validator),
 		logger.CreateZerologRequestLoggerMiddleware(),

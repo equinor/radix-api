@@ -35,13 +35,11 @@ func CreateMiddleware(clusterName, radixDNSZone string) *cors.Cors {
 		AllowedMethods:   []string{"GET", "PUT", "POST", "OPTIONS", "DELETE", "PATCH"},
 	}
 
-	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+	if zerolog.GlobalLevel() <= zerolog.TraceLevel {
 		// debugging mode
 		corsOptions.Debug = true
 		corsLogger := log.Logger.With().Str("pkg", "cors-middleware").Logger()
 		corsOptions.Logger = &corsLogger
-		// necessary header to allow ajax requests directly from radix-web-console app in browser
-		corsOptions.AllowedHeaders = append(corsOptions.AllowedHeaders, "X-Requested-With")
 	}
 
 	c := cors.New(corsOptions)

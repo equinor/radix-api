@@ -58,12 +58,12 @@ func (handler *RadixMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *http.Request) {
 	logger := log.Ctx(r.Context())
-	token := auth.GetToken(r.Context()).Token()
-	impersonation := auth.GetImpersonation(r.Context())
+	token := auth.CtxTokenPrincipal(r.Context()).Token()
+	impersonation := auth.CtxImpersonation(r.Context())
 
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
-	outClusterClient, outClusterRadixClient, outClusterKedaClient, outClusterSecretProviderClient, outClusterTektonClient, outClusterCertManagerClient := handler.kubeUtil.GetOutClusterKubernetesClientWithImpersonation(token, impersonation, restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetServerKubernetesClient(restOptions...)
+	outClusterClient, outClusterRadixClient, outClusterKedaClient, outClusterSecretProviderClient, outClusterTektonClient, outClusterCertManagerClient := handler.kubeUtil.GetUserKubernetesClient(token, impersonation, restOptions...)
 
 	accounts := models.NewAccounts(
 		inClusterClient,
@@ -97,7 +97,7 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 
 func (handler *RadixMiddleware) handleAnonymous(w http.ResponseWriter, r *http.Request) {
 	restOptions := handler.getRestClientOptions()
-	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetInClusterKubernetesClient(restOptions...)
+	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetServerKubernetesClient(restOptions...)
 
 	sa := models.NewServiceAccount(inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient)
 	accounts := models.Accounts{ServiceAccount: sa}

@@ -10,7 +10,6 @@ type Config struct {
 	MetricsPort                 int    `envconfig:"METRICS_PORT" default:"9090"  desc:"Port where Metrics will be served"`
 	ProfilePort                 int    `envconfig:"PROFILE_PORT" default:"7070"  desc:"Port where Profiler will be served"`
 	UseProfiler                 bool   `envconfig:"USE_PROFILER" default:"false" desc:"Enable Profiler"`
-	UseOutClusterClient         bool   `envconfig:"USE_OUT_CLUSTER_CLIENT" default:"true" desc:"In case of testing on local machine you may want to set this to false"`
 	ClusterName                 string `envconfig:"RADIX_CLUSTERNAME" required:"true"`
 	DNSZone                     string `envconfig:"RADIX_DNS_ZONE" required:"true"`
 	OidcIssuer                  string `envconfig:"OIDC_ISSUER" required:"true"`

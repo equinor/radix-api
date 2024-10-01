@@ -38,19 +38,12 @@ func WithBurst(burst int) RestClientConfigOption {
 
 // KubeUtil Interface to be mocked in tests
 type KubeUtil interface {
-	GetOutClusterKubernetesClient(string, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
-	GetOutClusterKubernetesClientWithImpersonation(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
-	GetInClusterKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
-	IsUseOutClusterClient() bool
+	GetUserKubernetesClient(string, radixmodels.Impersonation, ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
+	GetServerKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
 }
 
 type kubeUtil struct {
-	kubeApiServer       string
-	useOutClusterClient bool
-}
-
-func (ku *kubeUtil) IsUseOutClusterClient() bool {
-	return ku.useOutClusterClient
+	kubeApiServer string
 }
 
 var (
@@ -62,32 +55,23 @@ var (
 )
 
 // NewKubeUtil Constructor
-func NewKubeUtil(useOutClusterClient bool, kubeApiServer string) KubeUtil {
-	return &kubeUtil{kubeApiServer, useOutClusterClient}
+func NewKubeUtil(kubeApiServer string) KubeUtil {
+	return &kubeUtil{kubeApiServer}
 }
 
-// GetOutClusterKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClient(token string, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
-	return ku.GetOutClusterKubernetesClientWithImpersonation(token, radixmodels.Impersonation{}, options...)
-}
-
-// GetOutClusterKubernetesClientWithImpersonation Gets a kubernetes client using the bearer token from the radix api client
-func (ku *kubeUtil) GetOutClusterKubernetesClientWithImpersonation(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
-	if ku.useOutClusterClient {
-		config := getOutClusterClientConfig(token, impersonation, ku.kubeApiServer, options)
-		return getKubernetesClientFromConfig(config)
-	}
-
-	return ku.GetInClusterKubernetesClient(options...)
-}
-
-// GetInClusterKubernetesClient Gets a kubernetes client using the config of the running pod
-func (ku *kubeUtil) GetInClusterKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
-	config := getInClusterClientConfig(options)
+// GetUserKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
+func (ku *kubeUtil) GetUserKubernetesClient(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+	config := getUserClientConfig(token, impersonation, ku.kubeApiServer, options)
 	return getKubernetesClientFromConfig(config)
 }
 
-func getOutClusterClientConfig(token string, impersonation radixmodels.Impersonation, kubeApiServer string, options []RestClientConfigOption) *restclient.Config {
+// GetServerKubernetesClient Gets a kubernetes client using the config of host or pod
+func (ku *kubeUtil) GetServerKubernetesClient(options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
+	config := getServerClientConfig(options)
+	return getKubernetesClientFromConfig(config)
+}
+
+func getUserClientConfig(token string, impersonation radixmodels.Impersonation, kubeApiServer string, options []RestClientConfigOption) *restclient.Config {
 	kubeConfig := &restclient.Config{
 		Host:        kubeApiServer,
 		BearerToken: token,
@@ -111,7 +95,7 @@ func getOutClusterClientConfig(token string, impersonation radixmodels.Impersona
 	return addCommonConfigs(kubeConfig, options)
 }
 
-func getInClusterClientConfig(options []RestClientConfigOption) *restclient.Config {
+func getServerClientConfig(options []RestClientConfigOption) *restclient.Config {
 	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 type TokenPrincipal interface {
 	IsAuthenticated() bool
 	Token() string
-	Subject() string
+	Name() string
 }
 
 type ValidatorInterface interface {

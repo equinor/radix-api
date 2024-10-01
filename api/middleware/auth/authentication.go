@@ -39,7 +39,7 @@ func CreateAuthenticationMiddleware(validator token.ValidatorInterface) negroni.
 			}
 			return
 		}
-		logContext := log.Ctx(ctx).With().Str("user", principal.Subject())
+		logContext := log.Ctx(ctx).With().Str("user", principal.Name())
 
 		impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 		if err != nil {
@@ -62,7 +62,7 @@ func CreateAuthenticationMiddleware(validator token.ValidatorInterface) negroni.
 	}
 }
 
-func GetToken(ctx context.Context) token.TokenPrincipal {
+func CtxTokenPrincipal(ctx context.Context) token.TokenPrincipal {
 	val, ok := ctx.Value(ctxUserKey{}).(token.TokenPrincipal)
 
 	if !ok {
@@ -72,7 +72,7 @@ func GetToken(ctx context.Context) token.TokenPrincipal {
 	return val
 }
 
-func GetImpersonation(ctx context.Context) models.Impersonation {
+func CtxImpersonation(ctx context.Context) models.Impersonation {
 	if val, ok := ctx.Value(ctxImpersonationKey{}).(models.Impersonation); ok {
 		return val
 	}
@@ -83,7 +83,7 @@ func GetImpersonation(ctx context.Context) models.Impersonation {
 func CreateAuthorizeRequiredMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		logger := log.Ctx(r.Context())
-		user := GetToken(r.Context())
+		user := CtxTokenPrincipal(r.Context())
 
 		if !user.IsAuthenticated() {
 			logger.Warn().Msg("authorization error")

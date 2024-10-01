@@ -10,6 +10,7 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	tlsvalidationmock "github.com/equinor/radix-api/api/utils/tlsvalidation/mock"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -58,7 +59,9 @@ func setupTest(t *testing.T, tlsValidator tlsvalidation.Validator) (*commontest.
 	require.NoError(t, err)
 
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewSecretController(tlsValidator))
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewSecretController(tlsValidator))
 
 	return &commonTestUtils, &secretControllerTestUtils, kubeclient, radixclient, prometheusclient, secretproviderclient
 }

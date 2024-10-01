@@ -8,7 +8,9 @@ import (
 	"time"
 
 	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
+	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	"github.com/golang/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
@@ -40,7 +42,9 @@ func createGetLogEndpoint(appName, podName string) string {
 func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
 	commonTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, NewDeploymentController())
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, mockValidator, NewDeploymentController())
 	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {

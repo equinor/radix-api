@@ -2,7 +2,6 @@ package token
 
 import (
 	"context"
-	"errors"
 
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 )
@@ -13,14 +12,6 @@ type azureClaims struct {
 }
 
 func (c *azureClaims) Validate(_ context.Context) error {
-	if c == nil {
-		return errors.New("invalid claim")
-	}
-
-	if c.Upn == "" && c.AppId == "" {
-		return errors.New("missing one of the required field: upn,appid")
-	}
-
 	return nil
 }
 
@@ -36,10 +27,14 @@ func (p *AzurePrincipal) Token() string {
 func (p *AzurePrincipal) IsAuthenticated() bool {
 	return true
 }
-func (p *AzurePrincipal) Subject() string {
+func (p *AzurePrincipal) Name() string {
 	if p.azureClaims.Upn != "" {
 		return p.azureClaims.Upn
 	}
 
-	return p.azureClaims.AppId
+	if p.azureClaims.AppId != "" {
+		return p.azureClaims.AppId
+	}
+
+	return p.claims.RegisteredClaims.Subject
 }

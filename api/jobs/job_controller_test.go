@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/golang/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
@@ -44,7 +46,7 @@ const (
 	anyUser         = "a_user@equinor.com"
 )
 
-func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := fake.NewSimpleClientset()
@@ -56,14 +58,16 @@ func setupTest() (*commontest.Utils, *controllertest.Utils, kubernetes.Interface
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewJobController())
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewJobController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, secretproviderclient, certClient
 }
 
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, secretproviderclient, certClient := setupTest()
+	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, secretproviderclient, certClient := setupTest(t)
 
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -130,7 +134,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	anyJobName := "any-job"
 
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 	job, _ := commonTestUtils.ApplyJob(builders.AStartedBuildDeployJob().WithAppName(anyAppName).WithJobName(anyJobName))
 
 	// Test
@@ -148,7 +152,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 }
 
 func TestGetPipelineJobLogsError(t *testing.T) {
-	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest()
+	commonTestUtils, controllerTestUtils, _, _, _, _, _ := setupTest(t)
 
 	t.Run("job doesn't exist", func(t *testing.T) {
 		aJobName := "aJobName"

@@ -49,18 +49,18 @@ func (mr *MockTokenPrincipalMockRecorder) IsAuthenticated() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAuthenticated", reflect.TypeOf((*MockTokenPrincipal)(nil).IsAuthenticated))
 }
 
-// Subject mocks base method.
-func (m *MockTokenPrincipal) Subject() string {
+// Name mocks base method.
+func (m *MockTokenPrincipal) Name() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subject")
+	ret := m.ctrl.Call(m, "Name")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// Subject indicates an expected call of Subject.
-func (mr *MockTokenPrincipalMockRecorder) Subject() *gomock.Call {
+// Name indicates an expected call of Name.
+func (mr *MockTokenPrincipalMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subject", reflect.TypeOf((*MockTokenPrincipal)(nil).Subject))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockTokenPrincipal)(nil).Name))
 }
 
 // Token mocks base method.

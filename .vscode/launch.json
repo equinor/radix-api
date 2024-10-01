@@ -25,10 +25,7 @@
                 "RADIX_APP":"radix-api",
                 "LOG_LEVEL":"info",
                 "LOG_PRETTY":"true"
-            },
-            "args": [
-                "--useOutClusterClient=false"
-            ]
+            }
         }
     ]
 }
