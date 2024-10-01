@@ -90,9 +90,9 @@ func initializeTokenValidator(c config.Config) *token.Validator {
 }
 
 func initializeMetricsServer(c config.Config) *http.Server {
-	log.Info().Msgf("Initializing metrics server on port %d", c.Port)
+	log.Info().Msgf("Initializing metrics server on port %d", c.MetricsPort)
 	return &http.Server{
-		Addr:    fmt.Sprintf(":%d", c.Port),
+		Addr:    fmt.Sprintf(":%d", c.MetricsPort),
 		Handler: router.NewMetricsHandler(),
 	}
 }
