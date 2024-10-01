@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/equinor/radix-api/api/metrics/internal"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/prometheus/common/model"
 	prometheusModel "github.com/prometheus/common/model"
@@ -126,23 +124,4 @@ func getMetricsValue(ctx context.Context, queryResults map[internal.QueryName]pr
 		sum += float64(sample.Value)
 	}
 	return sum, true
-}
-
-func getPrometheusQueries(appName, envName, componentName, duration, since string) map[internal.QueryName]string {
-	environmentFilter := radixutils.TernaryString(envName == "",
-		fmt.Sprintf(`,namespace=~"%s-.*"`, appName),
-		fmt.Sprintf(`,namespace="%s"`, utils.GetEnvironmentNamespace(appName, envName)))
-	componentFilter := radixutils.TernaryString(envName == "", "", fmt.Sprintf(`,container="%s"`, componentName))
-	offsetFilter := radixutils.TernaryString(since == "", "", fmt.Sprintf(` offset %s `, since))
-	cpuUsageQuery := fmt.Sprintf(`sum by (namespace, container) (rate(container_cpu_usage_seconds_total{container!="", namespace!="%s-app" %s %s} [1h])) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
-	memoryUsageQuery := fmt.Sprintf(`sum by (namespace, container) (container_memory_usage_bytes{container!="", namespace!="%s-app" %s %s} > 0) [%s:] %s`, appName, environmentFilter, componentFilter, duration, offsetFilter)
-	queries := map[internal.QueryName]string{
-		internal.CpuMax:    fmt.Sprintf("max_over_time(%s)", cpuUsageQuery),
-		internal.CpuMin:    fmt.Sprintf("min_over_time(%s)", cpuUsageQuery),
-		internal.CpuAvg:    fmt.Sprintf("avg_over_time(%s)", cpuUsageQuery),
-		internal.MemoryMax: fmt.Sprintf("max_over_time(%s)", memoryUsageQuery),
-		internal.MemoryMin: fmt.Sprintf("min_over_time(%s)", memoryUsageQuery),
-		internal.MemoryAvg: fmt.Sprintf("avg_over_time(%s)", memoryUsageQuery),
-	}
-	return queries
 }
