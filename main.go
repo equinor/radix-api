@@ -160,7 +160,6 @@ func setupLogger(logLevelStr string, prettyPrint bool) {
 func getControllers(config config.Config) ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
 	applicatinoFactory := applications.NewApplicationHandlerFactory(config)
-	// PrometheusUrl               string `cfg:"prometheus_url" flag:"prometheus-url"`
 	prometheusClient, err := metrics.NewPrometheusClient(config.PrometheusUrl)
 	if err != nil {
 		return nil, err

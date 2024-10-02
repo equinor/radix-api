@@ -12,6 +12,7 @@ import (
 	"github.com/equinor/radix-api/api/applications"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	"github.com/equinor/radix-api/api/buildstatus"
+	metricsMock "github.com/equinor/radix-api/api/metrics/mock"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
 	token "github.com/equinor/radix-api/api/utils/token"
@@ -58,6 +59,8 @@ func setupTest(t *testing.T, validator *authnmock.MockValidatorInterface, buildS
 	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
+	mockPrometheusHandler := metricsMock.NewMockPrometheusHandler(ctrl)
+	mockPrometheusHandler.EXPECT().GetUsedResources(gomock.Any(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
 
 	if buildStatusMock == nil {
 		buildStatusMock = mock.NewMockPipelineBadge(ctrl)
@@ -86,6 +89,7 @@ func setupTest(t *testing.T, validator *authnmock.MockValidatorInterface, buildS
 					return true, nil
 				},
 			),
+			mockPrometheusHandler,
 		),
 		buildstatus.NewBuildStatusController(buildStatusMock),
 	)

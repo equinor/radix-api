@@ -23,6 +23,7 @@ type Config struct {
 	RequireAppADGroups          bool   `envconfig:"REQUIRE_APP_AD_GROUPS" default:"true"`
 	AppName                     string `envconfig:"RADIX_APP" required:"true"`
 	EnvironmentName             string `envconfig:"RADIX_ENVIRONMENT" required:"true"`
+	PrometheusUrl               string `envconfig:"PROMETHEUS_URL" required:"true"`
 }
 
 func MustParse() Config {

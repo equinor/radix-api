@@ -92,8 +92,8 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 		mockValidator,
 		NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-			return true, nil
-		}, handlerFactory, prometheusHandlerMock),
+				return true, nil
+			}, handlerFactory, prometheusHandlerMock),
 	)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
@@ -133,11 +133,11 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 			mockValidator,
 			NewApplicationController(
 				func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-				return false, nil
+					return false, nil
 				}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-					return true, nil
-				}), prometheusHandlerMock))
+					func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+						return true, nil
+					}), prometheusHandlerMock))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -153,10 +153,10 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
-			return rr.GetName() == "my-second-app", nil
+				return rr.GetName() == "my-second-app", nil
 			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-				return true, nil
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
 				}), prometheusHandlerMock))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
@@ -173,11 +173,11 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-			return true, nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 				return true, nil
-			}), prometheusHandlerMock))
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				}), prometheusHandlerMock))
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 		response := <-responseChannel
 
@@ -257,11 +257,11 @@ func TestSearchApplicationsPost(t *testing.T) {
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-		return true, nil
-		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 			return true, nil
-		}), prometheusHandlerMock))
+		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+				return true, nil
+			}), prometheusHandlerMock))
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
@@ -342,11 +342,11 @@ func TestSearchApplicationsPost(t *testing.T) {
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-			return false, nil
+				return false, nil
 			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-				return true, nil
-			}), prometheusHandlerMock))
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				}), prometheusHandlerMock))
 		params := applicationModels.ApplicationsSearchRequest{Names: []string{appNames[0]}}
 		responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications/_search", &params)
 		response := <-responseChannel
@@ -441,11 +441,11 @@ func TestSearchApplicationsGet(t *testing.T) {
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-		return true, nil
-		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 			return true, nil
-		}), prometheusHandlerMock))
+		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+				return true, nil
+			}), prometheusHandlerMock))
 
 	// Tests
 	t.Run("search for "+appNames[0], func(t *testing.T) {
@@ -516,11 +516,11 @@ func TestSearchApplicationsGet(t *testing.T) {
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-			return false, nil
+				return false, nil
 			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-				return true, nil
-			}), prometheusHandlerMock))
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				}), prometheusHandlerMock))
 		params := "apps=" + appNames[0]
 		responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications/_search?"+params)
 		response := <-responseChannel
@@ -2021,13 +2021,23 @@ func Test_GetUsedResources(t *testing.T) {
 					Times(1).
 					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
 			}
+			validator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(), nil)
 			prometheusHandlerMock := createPrometheusHandlerMock(t, radixClient, &mockHandlerModifier)
-			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, NewApplicationController(func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
-				return true, nil
-			}, newTestApplicationHandlerFactory(ApplicationHandlerConfig{RequireAppConfigurationItem: true, RequireAppADGroups: true},
-				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-					return true, nil
-				}), prometheusHandlerMock))
+			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,
+				NewApplicationController(
+					func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
+						return true, nil
+					},
+					newTestApplicationHandlerFactory(
+						config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+						func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+							return true, nil
+						},
+					),
+					prometheusHandlerMock,
+				),
+			)
 
 			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/resources%s", appName1, ts.queryString))
 			response := <-responseChannel
