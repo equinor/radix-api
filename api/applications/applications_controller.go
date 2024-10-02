@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/models"
 	"github.com/gorilla/mux"
 )
@@ -19,10 +20,11 @@ type applicationController struct {
 	*models.DefaultController
 	hasAccessToRR
 	applicationHandlerFactory ApplicationHandlerFactory
+	prometheusHandler         metrics.PrometheusHandler
 }
 
 // NewApplicationController Constructor
-func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory) models.Controller {
+func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, prometheusHandler metrics.PrometheusHandler) models.Controller {
 	if hasAccessTo == nil {
 		hasAccessTo = hasAccess
 	}
@@ -30,6 +32,7 @@ func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFacto
 	return &applicationController{
 		hasAccessToRR:             hasAccessTo,
 		applicationHandlerFactory: applicationHandlerFactory,
+		prometheusHandler:         prometheusHandler,
 	}
 }
 
@@ -132,6 +135,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Path:        appPath + "/regenerate-deploy-key",
 			Method:      "POST",
 			HandlerFunc: ac.RegenerateDeployKeyHandler,
+		},
+		models.Route{
+			Path:        appPath + "/resources",
+			Method:      "GET",
+			HandlerFunc: ac.GetUsedResources,
 		},
 	}
 
@@ -991,4 +999,67 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	}
 
 	ac.JSONResponse(w, r, &jobSummary)
+}
+
+// GetUsedResources Gets used resources for the application
+func (ac *applicationController) GetUsedResources(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/resources application getResources
+	// ---
+	// summary: Gets used resources for the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of the application
+	//   type: string
+	//   required: true
+	// - name: environment
+	//   in: query
+	//   description: Name of the application environment
+	//   type: string
+	//   required: false
+	// - name: component
+	//   in: query
+	//   description: Name of the application component in an environment
+	//   type: string
+	//   required: false
+	// - name: duration
+	//   in: query
+	//   description: Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
+	//   type: string
+	//   required: false
+	// - name: since
+	//   in: query
+	//   description: End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
+	//   type: string
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/UsedResources"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := r.FormValue("environment")
+	componentName := r.FormValue("component")
+	duration := r.FormValue("duration")
+	since := r.FormValue("since")
+
+	usedResources, err := ac.prometheusHandler.GetUsedResources(r.Context(), accounts.UserAccount.RadixClient, appName, envName, componentName, duration, since)
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	ac.JSONResponse(w, r, &usedResources)
 }

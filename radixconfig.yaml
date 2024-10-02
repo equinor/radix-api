@@ -34,6 +34,7 @@ spec:
         USE_PROFILER: "false"
         LOG_LEVEL: info
         LOG_PRETTY: "false"
+        PROMETHEUS_URL: http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090
       environmentConfig:
         - environment: qa
           horizontalScaling:

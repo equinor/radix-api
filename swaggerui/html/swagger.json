@@ -5021,6 +5021,71 @@
         }
       }
     },
+    "/applications/{appName}/resources": {
+      "get": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Gets used resources for the application",
+        "operationId": "getResources",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of the application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of the application environment",
+            "name": "environment",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Name of the application component in an environment",
+            "name": "component",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
+            "name": "duration",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/UsedResources"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/restart": {
       "post": {
         "tags": [
@@ -5781,6 +5846,9 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "server"
+        },
+        "network": {
+          "$ref": "#/definitions/Network"
         },
         "notifications": {
           "$ref": "#/definitions/Notifications"
@@ -6664,6 +6732,34 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/privateimagehubs/models"
     },
+    "Ingress": {
+      "description": "Ingress describes ingress configuration for a component",
+      "type": "object",
+      "properties": {
+        "public": {
+          "$ref": "#/definitions/IngressPublic"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "IngressPublic": {
+      "description": "IngressPublic describes public ingress configuration for a component",
+      "type": "object",
+      "required": [
+        "allow"
+      ],
+      "properties": {
+        "allow": {
+          "description": "List of allowed IP addresses or CIDRs. All traffic is allowed if list is empty.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Allow"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
     "Job": {
       "description": "Job holds general information about job",
       "type": "object",
@@ -6921,6 +7017,16 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
+    },
+    "Network": {
+      "description": "Network describes network configuration for a component",
+      "type": "object",
+      "properties": {
+        "ingress": {
+          "$ref": "#/definitions/Ingress"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
     "Node": {
       "description": "Node Defines node attributes, where pod should be scheduled",
@@ -7368,9 +7474,17 @@
       "description": "Port describe a port of a component",
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "port",
+        "isPublic"
       ],
       "properties": {
+        "isPublic": {
+          "description": "IsPublic indicates that the port is accessible from the Internet by proxying traffic from 443",
+          "type": "boolean",
+          "x-go-name": "IsPublic",
+          "example": true
+        },
         "name": {
           "description": "Component port name. From radixconfig.yaml",
           "type": "string",
@@ -8189,6 +8303,71 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
+    },
+    "UsedResource": {
+      "description": "UsedResource holds information about used resource",
+      "type": "object",
+      "properties": {
+        "avg": {
+          "description": "Avg Average resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "Avg",
+          "example": 0.00023
+        },
+        "max": {
+          "description": "Max resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "Max",
+          "example": 0.00037
+        },
+        "min": {
+          "description": "Min resource used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "Min",
+          "example": 0.00012
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "UsedResources": {
+      "description": "UsedResources holds information about used resources",
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/UsedResource"
+        },
+        "from": {
+          "description": "From timestamp",
+          "type": "string",
+          "x-go-name": "From",
+          "example": "2006-01-02T15:04:05Z"
+        },
+        "memory": {
+          "$ref": "#/definitions/UsedResource"
+        },
+        "to": {
+          "description": "To timestamp",
+          "type": "string",
+          "x-go-name": "To",
+          "example": "2006-01-03T15:04:05Z"
+        },
+        "warnings": {
+          "description": "Warning messages",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Warnings"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "X509Certificate": {
       "description": "X509Certificate holds information about a X509 certificate",
