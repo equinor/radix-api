@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -168,13 +169,19 @@ func setupLogger() {
 
 func getControllers() ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
-	applicationHandlerFactory, err := getApplicationHandlerFactory()
+	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
 	if err != nil {
 		return nil, err
 	}
+	prometheusClient, err := metrics.NewPrometheusClient(cfg.PrometheusUrl)
+	if err != nil {
+		return nil, err
+	}
+	prometheusHandler := metrics.NewPrometheusHandler(prometheusClient)
+	applicationHandlerFactory := applications.NewApplicationHandlerFactory(cfg)
 
 	return []models.Controller{
-		applications.NewApplicationController(nil, applicationHandlerFactory),
+		applications.NewApplicationController(nil, applicationHandlerFactory, prometheusHandler),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
@@ -185,14 +192,6 @@ func getControllers() ([]models.Controller, error) {
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(tlsvalidation.DefaultValidator()),
 	}, nil
-}
-
-func getApplicationHandlerFactory() (applications.ApplicationHandlerFactory, error) {
-	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
-	if err != nil {
-		return nil, err
-	}
-	return applications.NewApplicationHandlerFactory(cfg), nil
 }
 
 func initializeFlagSet() *pflag.FlagSet {
