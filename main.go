@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/secrets"
-	token "github.com/equinor/radix-api/api/utils/authn"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
+	token "github.com/equinor/radix-api/api/utils/token"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

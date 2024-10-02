@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	token "github.com/equinor/radix-api/api/utils/authn"
+	token "github.com/equinor/radix-api/api/utils/token"
 	"github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/rs/zerolog/log"

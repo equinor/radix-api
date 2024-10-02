@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"

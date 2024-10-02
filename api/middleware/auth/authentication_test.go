@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,9 +11,11 @@ import (
 	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	"github.com/equinor/radix-api/api/applications"
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/buildstatus"
 	controllertest "github.com/equinor/radix-api/api/test"
-	token "github.com/equinor/radix-api/api/utils/authn"
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	"github.com/equinor/radix-api/api/test/mock"
+	token "github.com/equinor/radix-api/api/utils/token"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -38,16 +41,9 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
-	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
-		config.Config{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
-		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-			return true, nil
-		},
-	))
-}
-func setupTestWithFactory(t *testing.T, handlerFactory applications.ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
+func setupTest(t *testing.T, validator *authnmock.MockValidatorInterface, buildStatusMock *mock.MockPipelineBadge) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
 	// Setup
+	ctrl := gomock.NewController(t)
 	kubeclient := kubefake.NewSimpleClientset()
 	radixclient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
@@ -62,21 +58,36 @@ func setupTestWithFactory(t *testing.T, handlerFactory applications.ApplicationH
 	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+
+	if buildStatusMock == nil {
+		buildStatusMock = mock.NewMockPipelineBadge(ctrl)
+		buildStatusMock.EXPECT().GetBadge(gomock.Any(), gomock.Any()).Return([]byte("hello world"), errors.New("error")).AnyTimes()
+	}
+
+	if validator == nil {
+		validator = authnmock.NewMockValidatorInterface(gomock.NewController(t))
+		validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(), nil)
+	}
+
 	controllerTestUtils := controllertest.NewTestUtils(
 		kubeclient,
 		radixclient,
 		kedaClient,
 		secretproviderclient,
 		certClient,
-		mockValidator,
+		validator,
 		applications.NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
 			},
-			handlerFactory,
+			newTestApplicationHandlerFactory(
+				config.Config{},
+				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
+					return true, nil
+				},
+			),
 		),
+		buildstatus.NewBuildStatusController(buildStatusMock),
 	)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
@@ -99,18 +110,15 @@ func (f *testApplicationHandlerFactory) Create(accounts models.Accounts) applica
 	return applications.NewApplicationHandler(accounts, f.config, f.hasAccessToGetConfigMap)
 }
 
-func TestGetApplications_Authenticated(t *testing.T) {
+func TestGetApplications_AuthenticatedRequestIsOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, nil, nil)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	require.NoError(t, err)
 
 	// Test
 
-	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(), nil)
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications"), controllertest.WithValidatorOverride(mockValidator))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications"))
 	response := <-responseChannel
 
 	applications := make([]applicationModels.ApplicationSummary, 0)
@@ -119,35 +127,51 @@ func TestGetApplications_Authenticated(t *testing.T) {
 	assert.Equal(t, 1, len(applications))
 }
 
-func TestGetApplications_Unauthenticated(t *testing.T) {
+func TestGetBuildStatus_AnonymousRequestIsOk(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
+	ctrl := gomock.NewController(t)
+	mockValidator := authnmock.NewMockValidatorInterface(ctrl)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Return(token.NewAnonymousPrincipal(), nil).Times(0)
+	buildStatusMock := mock.NewMockPipelineBadge(ctrl)
+	buildStatusMock.EXPECT().GetBadge(gomock.Any(), gomock.Any()).Return([]byte("hello world"), errors.New("error")).Times(1)
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, buildStatusMock)
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("anyapp"))
+	require.NoError(t, err)
+
+	// Test
+
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications/anyapp/environments/qa/buildstatus"))
+	<-responseChannel
+	ctrl.Finish() // We expect buildStatusMock to be called 1 time, without auth middleware getting in the way
+}
+
+func TestGetApplications_UnauthenticatedIsForbidden(t *testing.T) {
+	// Setup
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(token.NewAnonymousPrincipal(), radixhttp.ForbiddenError("invalid token"))
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, nil)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	require.NoError(t, err)
 
 	// Test
 
-	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(token.NewAnonymousPrincipal(), nil)
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications"), controllertest.WithValidatorOverride(mockValidator))
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications"))
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusForbidden, response.Code)
 }
 
-func TestGetApplications_InvalidToken(t *testing.T) {
+func TestGetApplications_InvalidTokenIsForbidden(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, true, true)
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(token.NewAnonymousPrincipal(), radixhttp.ForbiddenError("invalid token"))
+	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, nil)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	require.NoError(t, err)
 
 	// Test
 
-	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(token.NewAnonymousPrincipal(), radixhttp.ForbiddenError("invalid token"))
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications"), controllertest.WithValidatorOverride(mockValidator))
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications"))
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusForbidden, response.Code)

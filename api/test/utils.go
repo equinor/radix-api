@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	token "github.com/equinor/radix-api/api/utils/authn"
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	token "github.com/equinor/radix-api/api/utils/token"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/rs/zerolog/log"
@@ -56,34 +56,20 @@ func NewTestUtils(kubeClient *kubernetesfake.Clientset, radixClient *radixclient
 }
 
 // ExecuteRequest Helper method to issue a http request
-func (tu *Utils) ExecuteRequest(method, endpoint string, overrideOtions ...OverrideOption) <-chan *httptest.ResponseRecorder {
-	return tu.ExecuteRequestWithParameters(method, endpoint, nil, overrideOtions...)
+func (tu *Utils) ExecuteRequest(method, endpoint string) <-chan *httptest.ResponseRecorder {
+	return tu.ExecuteRequestWithParameters(method, endpoint, nil)
 }
 
-type OverrideOption func(Utils) Utils
-
-func WithValidatorOverride(validator token.ValidatorInterface) OverrideOption {
-	return func(utils Utils) Utils {
-		utils.validator = validator
-		return utils
-	}
-}
-
-func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string, overrideOtions ...OverrideOption) <-chan *httptest.ResponseRecorder {
+func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string) <-chan *httptest.ResponseRecorder {
 	var reader io.Reader
 
 	req, _ := http.NewRequest(method, endpoint, reader)
-
-	u := *tu
-	for _, overrideFn := range overrideOtions {
-		u = overrideFn(u)
-	}
 
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
 		defer close(response)
-		router.NewAPIHandler("anyClusterName", u.validator, "", NewKubeUtilMock(u.kubeClient, u.radixClient, u.kedaClient, u.secretProviderClient, u.certClient), u.controllers...).ServeHTTP(rr, req)
+		router.NewAPIHandler("anyClusterName", tu.validator, "", NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.kedaClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 	}()
 
@@ -91,7 +77,7 @@ func (tu *Utils) ExecuteUnAuthorizedRequest(method, endpoint string, overrideOti
 }
 
 // ExecuteRequestWithParameters Helper method to issue a http request with payload
-func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameters interface{}, overrideOtions ...OverrideOption) <-chan *httptest.ResponseRecorder {
+func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameters interface{}) <-chan *httptest.ResponseRecorder {
 	var reader io.Reader
 
 	if parameters != nil {
@@ -103,16 +89,11 @@ func (tu *Utils) ExecuteRequestWithParameters(method, endpoint string, parameter
 	req.Header.Add("Authorization", getFakeToken())
 	req.Header.Add("Accept", "application/json")
 
-	u := *tu
-	for _, overrideFn := range overrideOtions {
-		u = overrideFn(u)
-	}
-
 	response := make(chan *httptest.ResponseRecorder)
 	go func() {
 		rr := httptest.NewRecorder()
 		defer close(response)
-		router.NewAPIHandler("anyClusterName", u.validator, radixDNSZone, NewKubeUtilMock(u.kubeClient, u.radixClient, u.kedaClient, u.secretProviderClient, u.certClient), u.controllers...).ServeHTTP(rr, req)
+		router.NewAPIHandler("anyClusterName", tu.validator, radixDNSZone, NewKubeUtilMock(tu.kubeClient, tu.radixClient, tu.kedaClient, tu.secretProviderClient, tu.certClient), tu.controllers...).ServeHTTP(rr, req)
 		response <- rr
 	}()
 

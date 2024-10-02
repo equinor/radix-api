@@ -8,7 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/middleware/logger"
 	"github.com/equinor/radix-api/api/middleware/recovery"
 	"github.com/equinor/radix-api/api/utils"
-	token "github.com/equinor/radix-api/api/utils/authn"
+	"github.com/equinor/radix-api/api/utils/token"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-api/swaggerui"
 	"github.com/gorilla/mux"

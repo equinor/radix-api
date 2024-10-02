@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/golang/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"

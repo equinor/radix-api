@@ -20,7 +20,7 @@ import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-api/models"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"

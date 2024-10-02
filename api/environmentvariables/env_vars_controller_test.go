@@ -9,7 +9,7 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-operator/pkg/apis/config"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"

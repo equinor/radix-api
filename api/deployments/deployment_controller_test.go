@@ -8,7 +8,7 @@ import (
 	"time"
 
 	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
-	authnmock "github.com/equinor/radix-api/api/utils/authn/mock"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	"github.com/golang/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
