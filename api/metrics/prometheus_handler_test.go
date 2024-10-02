@@ -160,14 +160,14 @@ func getExpectedUsedResources(warnings ...string) *applicationModels.UsedResourc
 	return &applicationModels.UsedResources{
 		Warnings: warnings,
 		CPU: &applicationModels.UsedResource{
-			Min: pointers.Ptr(0.02520196),
-			Avg: pointers.Ptr(0.0498679316),
-			Max: pointers.Ptr(0.134699898),
+			Min: pointers.Ptr(0.025202),
+			Avg: pointers.Ptr(0.049868),
+			Max: pointers.Ptr(0.1347),
 		},
 		Memory: &applicationModels.UsedResource{
-			Min: pointers.Ptr(168965.6892544),
-			Avg: pointers.Ptr(241308.93398770998),
-			Max: pointers.Ptr(358023.69331542),
+			Min: pointers.Ptr(168966.0),
+			Avg: pointers.Ptr(241309.0),
+			Max: pointers.Ptr(358024.0),
 		},
 	}
 }
