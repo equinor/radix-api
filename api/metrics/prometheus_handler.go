@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"math"
 	"regexp"
 	"time"
 
@@ -97,14 +98,14 @@ func parseQueryDuration(duration string, defaultValue string) (time.Duration, st
 
 func getCpuMetricValue(ctx context.Context, queryResults map[internal.QueryName]prometheusModel.Value, queryName internal.QueryName) *float64 {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
-		return pointers.Ptr(value)
+		return pointers.Ptr(math.Round(value*1e6) / 1e6)
 	}
 	return nil
 }
 
 func getMemoryMetricValue(ctx context.Context, queryResults map[internal.QueryName]prometheusModel.Value, queryName internal.QueryName) *float64 {
 	if value, ok := getMetricsValue(ctx, queryResults, queryName); ok {
-		return pointers.Ptr(value)
+		return pointers.Ptr(math.Round(value))
 	}
 	return nil
 }
