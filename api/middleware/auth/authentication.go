@@ -94,6 +94,5 @@ func CreateAuthorizeRequiredMiddleware() negroni.HandlerFunc {
 		}
 
 		next(w, r)
-		return
 	}
 }

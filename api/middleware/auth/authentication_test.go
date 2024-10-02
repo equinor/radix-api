@@ -3,7 +3,6 @@ package auth_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -122,7 +121,7 @@ func TestGetApplications_AuthenticatedRequestIsOk(t *testing.T) {
 
 	// Test
 
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications"))
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/applications")
 	response := <-responseChannel
 
 	applications := make([]applicationModels.ApplicationSummary, 0)
@@ -144,7 +143,7 @@ func TestGetBuildStatus_AnonymousRequestIsOk(t *testing.T) {
 
 	// Test
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications/anyapp/environments/qa/buildstatus"))
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/anyapp/environments/qa/buildstatus")
 	<-responseChannel
 	ctrl.Finish() // We expect buildStatusMock to be called 1 time, without auth middleware getting in the way
 }
@@ -159,7 +158,7 @@ func TestGetApplications_UnauthenticatedIsForbidden(t *testing.T) {
 
 	// Test
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications"))
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications")
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusForbidden, response.Code)
@@ -175,7 +174,7 @@ func TestGetApplications_InvalidTokenIsForbidden(t *testing.T) {
 
 	// Test
 
-	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", fmt.Sprintf("/api/v1/applications"))
+	responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications")
 	response := <-responseChannel
 
 	assert.Equal(t, http.StatusForbidden, response.Code)
