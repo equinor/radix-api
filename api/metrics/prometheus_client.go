@@ -46,7 +46,7 @@ func (c *client) GetMetrics(ctx context.Context, appName, envName, componentName
 	for metricName, query := range getPrometheusQueries(appName, envName, componentName, duration, since) {
 		result, resultWarnings, err := c.api.Query(ctx, query, now)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("Failed to get Prometheus metrics: %v", err)
+			log.Ctx(ctx).Error().Err(err).Msgf("Failed to get Prometheus metrics for the query: %s", query)
 			return nil, nil, errors.New("failed to get Prometheus metrics")
 		}
 		if len(resultWarnings) > 0 {
