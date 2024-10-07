@@ -119,7 +119,7 @@ func (jc *jobController) GetApplicationJobs(accounts models.Accounts, w http.Res
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	jobSummaries, err := handler.GetApplicationJobs(r.Context(), appName)
 
 	if err != nil {
@@ -168,7 +168,7 @@ func (jc *jobController) GetApplicationJob(accounts models.Accounts, w http.Resp
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	jobDetail, err := handler.GetApplicationJob(r.Context(), appName, jobName)
 
 	if err != nil {
@@ -215,7 +215,7 @@ func (jc *jobController) StopApplicationJob(accounts models.Accounts, w http.Res
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.StopJob(r.Context(), appName, jobName)
 
 	if err != nil {
@@ -261,7 +261,7 @@ func (jc *jobController) RerunApplicationJob(accounts models.Accounts, w http.Re
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	err := handler.RerunJob(r.Context(), appName, jobName)
 
 	if err != nil {
@@ -312,7 +312,7 @@ func (jc *jobController) GetTektonPipelineRuns(accounts models.Accounts, w http.
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	tektonPipelineRuns, err := handler.GetTektonPipelineRuns(r.Context(), appName, jobName)
 
 	if err != nil {
@@ -367,7 +367,7 @@ func (jc *jobController) GetTektonPipelineRun(accounts models.Accounts, w http.R
 	jobName := mux.Vars(r)["jobName"]
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	tektonPipelineRun, err := handler.GetTektonPipelineRun(r.Context(), appName, jobName, pipelineRunName)
 
 	if err != nil {
@@ -424,7 +424,7 @@ func (jc *jobController) GetTektonPipelineRunTasks(accounts models.Accounts, w h
 	jobName := mux.Vars(r)["jobName"]
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	tektonTasks, err := handler.GetTektonPipelineRunTasks(r.Context(), appName, jobName, pipelineRunName)
 
 	if err != nil {
@@ -485,7 +485,7 @@ func (jc *jobController) GetTektonPipelineRunTask(accounts models.Accounts, w ht
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 	taskName := mux.Vars(r)["taskName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	tektonTasks, err := handler.GetTektonPipelineRunTask(r.Context(), appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
@@ -548,7 +548,7 @@ func (jc *jobController) GetTektonPipelineRunTaskSteps(accounts models.Accounts,
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 	taskName := mux.Vars(r)["taskName"]
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	tektonTaskSteps, err := handler.GetTektonPipelineRunTaskSteps(r.Context(), appName, jobName, pipelineRunName, taskName)
 
 	if err != nil {
@@ -638,7 +638,7 @@ func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accoun
 		return
 	}
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	log, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)
@@ -721,7 +721,7 @@ func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http
 		return
 	}
 
-	handler := Init(accounts, deployments.Init(accounts), "", "")
+	handler := Init(accounts, deployments.Init(accounts))
 	log, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)

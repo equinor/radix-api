@@ -32,23 +32,19 @@ const (
 
 // JobHandler Instance variables
 type JobHandler struct {
-	accounts         models.Accounts
-	userAccount      models.Account
-	serviceAccount   models.Account
-	deploy           deployments.DeployHandler
-	pipelineImageTag string
-	tektonImageTag   string
+	accounts       models.Accounts
+	userAccount    models.Account
+	serviceAccount models.Account
+	deploy         deployments.DeployHandler
 }
 
 // Init Constructor
-func Init(accounts models.Accounts, deployHandler deployments.DeployHandler, pipelineImageTag, tektonImageTag string) JobHandler {
+func Init(accounts models.Accounts, deployHandler deployments.DeployHandler) JobHandler {
 	return JobHandler{
-		accounts:         accounts,
-		userAccount:      accounts.UserAccount,
-		serviceAccount:   accounts.ServiceAccount,
-		deploy:           deployHandler,
-		pipelineImageTag: pipelineImageTag,
-		tektonImageTag:   tektonImageTag,
+		accounts:       accounts,
+		userAccount:    accounts.UserAccount,
+		serviceAccount: accounts.ServiceAccount,
+		deploy:         deployHandler,
 	}
 }
 

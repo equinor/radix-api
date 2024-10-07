@@ -66,7 +66,7 @@ type ApplicationHandler struct {
 // NewApplicationHandler Constructor
 func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap HasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
-		jobHandler:              jobController.Init(accounts, deployments.Init(accounts), config.PipelineImageTag, config.TektonImageTag),
+		jobHandler:              jobController.Init(accounts, deployments.Init(accounts)),
 		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
 		accounts:                accounts,
 		config:                  config,
