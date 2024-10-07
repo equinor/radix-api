@@ -246,7 +246,9 @@ func getLatestJobPerApplication(ctx context.Context, radixClient versioned.Inter
 	applicationJob := make(map[string]*jobModels.JobSummary, len(radixRegistations))
 	for _, rr := range radixRegistations {
 		job, _ := jobSummaries.Load(rr.GetName())
-		applicationJob[rr.GetName()] = job.(*jobModels.JobSummary)
+		if job != nil {
+			applicationJob[rr.GetName()] = job.(*jobModels.JobSummary)
+		}
 	}
 
 	return applicationJob, nil

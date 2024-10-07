@@ -885,7 +885,7 @@ func TestGetApplication_AllFieldsAreSet(t *testing.T) {
 	assert.Equal(t, adUsers, application.Registration.AdUsers)
 	assert.Equal(t, readerAdGroups, application.Registration.ReaderAdGroups)
 	assert.Equal(t, readerAdUsers, application.Registration.ReaderAdUsers)
-	assert.Equal(t, "not-existing-test-radix-email@equinor.com", application.Registration.Creator)
+	assert.Equal(t, "test-principal", application.Registration.Creator)
 	assert.Equal(t, "abranch", application.Registration.ConfigBranch)
 	assert.Equal(t, "a/custom-radixconfig.yaml", application.Registration.RadixConfigFullName)
 	assert.Equal(t, "ci", application.Registration.ConfigurationItem)
