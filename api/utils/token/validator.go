@@ -14,6 +14,7 @@ type TokenPrincipal interface {
 	IsAuthenticated() bool
 	Token() string
 	Id() string
+	Name() string
 }
 
 type ValidatorInterface interface {

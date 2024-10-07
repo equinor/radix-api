@@ -8,12 +8,14 @@ import (
 
 	"github.com/equinor/radix-api/api/deployments"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"golang.org/x/sync/errgroup"
@@ -24,7 +26,7 @@ import (
 )
 
 const (
-	workerImage              = "radix-pipeline"
+	WorkerImage              = "radix-pipeline"
 	tektonRealNameAnnotation = "radix.equinor.com/tekton-pipeline-name"
 )
 
@@ -336,21 +338,14 @@ func (jh JobHandler) getDefinedJobs(ctx context.Context, appNames []string) ([]*
 }
 
 func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getJobsInNamespace(ctx, crdUtils.GetAppNamespace(appName))
-}
-
-func (jh JobHandler) getJobsInNamespace(ctx context.Context, namespace string) ([]*jobModels.JobSummary, error) {
-	jobList, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(namespace).List(ctx, metav1.ListOptions{})
+	jobs, err := kubequery.GetRadixJobs(ctx, jh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	jobs := make([]*jobModels.JobSummary, len(jobList.Items))
-	for i, job := range jobList.Items {
-		jobs[i] = jobModels.GetSummaryFromRadixJob(&job)
-	}
-
-	return jobs, nil
+	return slice.Map(jobs, func(j v1.RadixJob) *jobModels.JobSummary {
+		return jobModels.GetSummaryFromRadixJob(&j)
+	}), nil
 }
 
 func (jh JobHandler) getLatestJobPerApplication(ctx context.Context, forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {

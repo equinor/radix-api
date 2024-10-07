@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/equinor/radix-api/api/applications"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/golang/mock/gomock"
@@ -21,12 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
-	"github.com/equinor/radix-api/api/deployments"
 	. "github.com/equinor/radix-api/api/jobs"
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
-	"github.com/equinor/radix-api/models"
-	radixmodels "github.com/equinor/radix-common/models"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -67,7 +65,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 
 func TestGetApplicationJob(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, secretproviderclient, certClient := setupTest(t)
+	commonTestUtils, controllerTestUtils, client, radixclient, _, _, _ := setupTest(t)
 
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
 		WithName(anyAppName).
@@ -82,11 +80,10 @@ func TestGetApplicationJob(t *testing.T) {
 		OverrideUseBuildCache: pointers.Ptr(true),
 	}
 
-	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
-	handler := Init(accounts, deployments.Init(accounts), "", "")
-
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	jobSummary, _ := handler.HandleStartPipelineJob(context.Background(), anyAppName, anyPipeline, jobParameters)
+	anyPipelineTagName := "latestPipelineImageTag"
+	anyTektonTagName := "latestTektonImageTag"
+	jobSummary, _ := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipelineTagName, anyTektonTagName, anyPipeline, jobParameters)
 	_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 	require.NoError(t, err)
 

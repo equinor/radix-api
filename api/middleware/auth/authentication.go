@@ -80,6 +80,17 @@ func CtxImpersonation(ctx context.Context) models.Impersonation {
 	return models.Impersonation{}
 }
 
+func GetOriginator(ctx context.Context) string {
+	impersonation := CtxImpersonation(ctx)
+	principal := CtxTokenPrincipal(ctx)
+
+	if impersonation.PerformImpersonation() {
+		return impersonation.User
+	}
+
+	return principal.Name()
+}
+
 func CreateAuthorizeRequiredMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		logger := log.Ctx(r.Context())
