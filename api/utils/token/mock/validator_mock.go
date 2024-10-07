@@ -63,6 +63,20 @@ func (mr *MockTokenPrincipalMockRecorder) IsAuthenticated() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAuthenticated", reflect.TypeOf((*MockTokenPrincipal)(nil).IsAuthenticated))
 }
 
+// Name mocks base method.
+func (m *MockTokenPrincipal) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockTokenPrincipalMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockTokenPrincipal)(nil).Name))
+}
+
 // Token mocks base method.
 func (m *MockTokenPrincipal) Token() string {
 	m.ctrl.T.Helper()

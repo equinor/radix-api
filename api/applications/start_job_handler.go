@@ -3,13 +3,10 @@ package applications
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/middleware/auth"
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
@@ -119,15 +116,6 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 	}
 
 	return &job
-}
-
-func getUniqueJobName(image string) (string, string) {
-	var jobName []string
-	timestamp := time.Now().Format("20060102150405")
-	randomStr := strings.ToLower(radixutils.RandString(5))
-	jobName = append(jobName, image, "-", timestamp, "-", randomStr)
-
-	return strings.Join(jobName, ""), randomStr
 }
 
 func getTriggeredBy(ctx context.Context, triggeredBy string) string {
