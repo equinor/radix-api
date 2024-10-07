@@ -18,7 +18,6 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -48,28 +47,19 @@ func Init(accounts models.Accounts, deployHandler deployments.DeployHandler) Job
 	}
 }
 
-// GetLatestJobPerApplication Handler for GetApplicationJobs - NOTE: does not get latestJob.Environments
-func (jh JobHandler) GetLatestJobPerApplication(ctx context.Context, forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	return jh.getLatestJobPerApplication(ctx, forApplications)
-}
-
 // GetApplicationJobs Handler for GetApplicationJobs
 func (jh JobHandler) GetApplicationJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
-	return jh.getApplicationJobs(ctx, appName)
-}
-
-// GetLatestApplicationJob Get last run application job
-func (jh JobHandler) GetLatestApplicationJob(ctx context.Context, appName string) (*jobModels.JobSummary, error) {
-	jobs, err := jh.getApplicationJobs(ctx, appName)
+	jobs, err := jh.getJobs(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(jobs) == 0 {
-		return nil, nil
-	}
+	// Sort jobs descending
+	sort.Slice(jobs, func(i, j int) bool {
+		return utils.IsBefore(jobs[j], jobs[i])
+	})
 
-	return jobs[0], nil
+	return jobs, nil
 }
 
 // GetApplicationJob Handler for GetApplicationJob
@@ -290,49 +280,6 @@ func sortPipelineTasks(tasks []jobModels.PipelineRunTask) []jobModels.PipelineRu
 	return tasks
 }
 
-func (jh JobHandler) getApplicationJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
-	jobs, err := jh.getJobs(ctx, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Sort jobs descending
-	sort.Slice(jobs, func(i, j int) bool {
-		return utils.IsBefore(jobs[j], jobs[i])
-	})
-
-	return jobs, nil
-}
-
-func (jh JobHandler) getDefinedJobs(ctx context.Context, appNames []string) ([]*jobModels.JobSummary, error) {
-	var g errgroup.Group
-	g.SetLimit(25)
-
-	jobsCh := make(chan []*jobModels.JobSummary, len(appNames))
-	for _, appName := range appNames {
-		name := appName // locally scope appName to avoid race condition in go routines
-		g.Go(func() error {
-			jobs, err := jh.getJobs(ctx, name)
-			if err == nil {
-				jobsCh <- jobs
-			}
-			return err
-		})
-	}
-
-	err := g.Wait()
-	close(jobsCh)
-	if err != nil {
-		return nil, err
-	}
-
-	var jobSummaries []*jobModels.JobSummary
-	for jobs := range jobsCh {
-		jobSummaries = append(jobSummaries, jobs...)
-	}
-	return jobSummaries, nil
-}
-
 func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.JobSummary, error) {
 	jobs, err := kubequery.GetRadixJobs(ctx, jh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
@@ -342,56 +289,4 @@ func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.
 	return slice.Map(jobs, func(j v1.RadixJob) *jobModels.JobSummary {
 		return jobModels.GetSummaryFromRadixJob(&j)
 	}), nil
-}
-
-func (jh JobHandler) getLatestJobPerApplication(ctx context.Context, forApplications map[string]bool) (map[string]*jobModels.JobSummary, error) {
-	// Primarily use Radix Jobs
-	var apps []string
-	for name, shouldAdd := range forApplications {
-		if shouldAdd {
-			apps = append(apps, name)
-		}
-	}
-
-	someJobs, err := jh.getDefinedJobs(ctx, apps)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(someJobs, func(i, j int) bool {
-		switch strings.Compare(someJobs[i].AppName, someJobs[j].AppName) {
-		case -1:
-			return true
-		case 1:
-			return false
-		}
-
-		return utils.IsBefore(someJobs[j], someJobs[i])
-	})
-
-	applicationJob := make(map[string]*jobModels.JobSummary)
-	for _, job := range someJobs {
-		if applicationJob[job.AppName] != nil {
-			continue
-		}
-		if !forApplications[job.AppName] {
-			continue
-		}
-
-		if job.Started == "" {
-			// Job may still be queued or waiting to be scheduled by the operator
-			continue
-		}
-
-		applicationJob[job.AppName] = job
-	}
-
-	forApplicationsWithNoRadixJob := make(map[string]bool)
-	for applicationName := range forApplications {
-		if applicationJob[applicationName] == nil {
-			forApplicationsWithNoRadixJob[applicationName] = true
-		}
-	}
-
-	return applicationJob, nil
 }

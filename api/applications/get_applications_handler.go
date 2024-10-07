@@ -4,13 +4,16 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	deployment "github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/access"
+	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
@@ -48,7 +51,7 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 
 	var latestApplicationJobs map[string]*jobModels.JobSummary
 	if options.IncludeLatestJobSummary {
-		if latestApplicationJobs, err = ah.getJobsForApplication(ctx, radixRegistrations); err != nil {
+		if latestApplicationJobs, err = getLatestJobPerApplication(ctx, ah.accounts.UserAccount.RadixClient, radixRegistrations); err != nil {
 			return nil, err
 		}
 	}
@@ -154,19 +157,6 @@ func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, deploy
 	return components, nil
 }
 
-func (ah *ApplicationHandler) getJobsForApplication(ctx context.Context, radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {
-	forApplications := map[string]bool{}
-	for _, app := range radixRegistations {
-		forApplications[app.GetName()] = true
-	}
-
-	applicationJobs, err := ah.jobHandler.GetLatestJobPerApplication(ctx, forApplications)
-	if err != nil {
-		return nil, err
-	}
-	return applicationJobs, nil
-}
-
 func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) ([]v1.RadixRegistration, error) {
 	result := []v1.RadixRegistration{}
 	limit := 25
@@ -220,4 +210,44 @@ func hasAccess(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegi
 		Version:  "*",
 		Name:     rr.GetName(),
 	})
+}
+
+func getLatestJobPerApplication(ctx context.Context, radixClient versioned.Interface, radixRegistations []v1.RadixRegistration) (map[string]*jobModels.JobSummary, error) {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(25)
+	jobSummaries := sync.Map{}
+
+	for _, rr := range radixRegistations {
+		g.Go(func() error {
+			jobs, err := kubequery.GetRadixJobs(ctx, radixClient, rr.GetName())
+			if err != nil {
+				return err
+			}
+
+			var latestJob *v1.RadixJob
+			for _, job := range jobs {
+				if latestJob == nil || job.Status.Started.After(latestJob.Status.Started.Time) {
+					latestJob = &job
+				}
+			}
+
+			if latestJob != nil {
+				jobSummaries.Store(rr.GetName(), jobModels.GetSummaryFromRadixJob(latestJob))
+			}
+			return nil
+		})
+	}
+
+	err := g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	applicationJob := make(map[string]*jobModels.JobSummary, len(radixRegistations))
+	for _, rr := range radixRegistations {
+		job, _ := jobSummaries.Load(rr.GetName())
+		applicationJob[rr.GetName()] = job.(*jobModels.JobSummary)
+	}
+
+	return applicationJob, nil
 }
