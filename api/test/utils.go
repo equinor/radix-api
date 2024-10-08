@@ -40,8 +40,6 @@ type Utils struct {
 	validator            token.ValidatorInterface
 }
 
-const radixDNSZone = "fakezone.radix.com"
-
 // NewTestUtils Constructor
 func NewTestUtils(kubeClient *kubernetesfake.Clientset, radixClient *radixclientfake.Clientset, kedaClient *kedafake.Clientset, secretProviderClient *secretsstorevclientfake.Clientset, certClient *certclientfake.Clientset, validator *authnmock.MockValidatorInterface, controllers ...models.Controller) Utils {
 	return Utils{
