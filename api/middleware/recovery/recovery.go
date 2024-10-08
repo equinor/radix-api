@@ -5,7 +5,7 @@ import (
 	"github.com/urfave/negroni/v3"
 )
 
-func CreateMiddleware() *negroni.Recovery {
+func NewMiddleware() *negroni.Recovery {
 	rec := negroni.NewRecovery()
 	rec.PrintStack = false
 	rec.Logger = &log.Logger

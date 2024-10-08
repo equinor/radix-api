@@ -10,7 +10,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/models"
-	radixmodels "github.com/equinor/radix-common/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -75,7 +74,7 @@ func (s *JobHandlerTestSuite) SetupTest() {
 
 func (s *JobHandlerTestSuite) setupTest() {
 	s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.certClient = s.getUtils()
-	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient)
 	s.accounts = accounts
 }
 

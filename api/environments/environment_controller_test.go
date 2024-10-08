@@ -22,7 +22,6 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-api/models"
-	radixmodels "github.com/equinor/radix-common/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
@@ -2709,7 +2708,7 @@ func initHandler(client kubernetes.Interface,
 	secretproviderclient secretsstorevclient.Interface,
 	certClient certclient.Interface,
 	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient, "", radixmodels.Impersonation{})
+	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient)
 	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
 	options = append(options, handlerConfig...)
 	return Init(options...)

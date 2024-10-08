@@ -14,7 +14,7 @@ import (
 type ctxUserKey struct{}
 type ctxImpersonationKey struct{}
 
-func CreateAuthenticationMiddleware(validator token.ValidatorInterface) negroni.HandlerFunc {
+func NewAuthenticationMiddleware(validator token.ValidatorInterface) negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		ctx := r.Context()
 		logger := log.Ctx(ctx)

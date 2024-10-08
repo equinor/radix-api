@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/negroni/v3"
 )
 
-func CreateZerologRequestLoggerMiddleware() negroni.HandlerFunc {
+func NewZerologResponseLoggerMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		m := httpsnoop.CaptureMetrics(next, w, r)
 
@@ -35,7 +35,7 @@ func CreateZerologRequestLoggerMiddleware() negroni.HandlerFunc {
 	}
 }
 
-func CreateZerologRequestIdMiddleware() negroni.HandlerFunc {
+func NewZerologRequestIdMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		logger := log.Ctx(r.Context()).With().Str("request_id", xid.New().String()).Logger()
 		r = r.WithContext(logger.WithContext(r.Context()))
@@ -43,7 +43,7 @@ func CreateZerologRequestIdMiddleware() negroni.HandlerFunc {
 		next(w, r)
 	}
 }
-func CreateZerologRequestDetailsMiddleware() negroni.HandlerFunc {
+func NewZerologRequestDetailsMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		remoteIp, _, _ := net.SplitHostPort(r.RemoteAddr)
 		logger := log.Ctx(r.Context()).With().

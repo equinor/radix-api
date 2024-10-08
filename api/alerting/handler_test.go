@@ -8,7 +8,6 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	alertModels "github.com/equinor/radix-api/api/alerting/models"
 	"github.com/equinor/radix-api/models"
-	radixmodels "github.com/equinor/radix-common/models"
 	operatoralert "github.com/equinor/radix-operator/pkg/apis/alert"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -34,7 +33,7 @@ func (s *HandlerTestSuite) SetupTest() {
 	kedaClient := kedafake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
-	s.accounts = models.NewAccounts(kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient, kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient, "", radixmodels.Impersonation{})
+	s.accounts = models.NewAccounts(kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient, kubeClient, radixClient, kedaClient, secretProviderClient, nil, certClient)
 }
 
 func TestHandlerTestSuite(t *testing.T) {

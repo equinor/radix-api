@@ -15,10 +15,10 @@ func NewMetricsHandler() http.Handler {
 	serveMux.Handle("GET /metrics", promhttp.Handler())
 
 	n := negroni.New(
-		recovery.CreateMiddleware(),
-		logger.CreateZerologRequestIdMiddleware(),
-		logger.CreateZerologRequestDetailsMiddleware(),
-		logger.CreateZerologRequestLoggerMiddleware(),
+		recovery.NewMiddleware(),
+		logger.NewZerologRequestIdMiddleware(),
+		logger.NewZerologRequestDetailsMiddleware(),
+		logger.NewZerologResponseLoggerMiddleware(),
 	)
 	n.UseHandler(serveMux)
 

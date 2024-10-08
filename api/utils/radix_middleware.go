@@ -65,21 +65,7 @@ func (handler *RadixMiddleware) handleAuthorization(w http.ResponseWriter, r *ht
 	inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient := handler.kubeUtil.GetServerKubernetesClient(restOptions...)
 	outClusterClient, outClusterRadixClient, outClusterKedaClient, outClusterSecretProviderClient, outClusterTektonClient, outClusterCertManagerClient := handler.kubeUtil.GetUserKubernetesClient(token, impersonation, restOptions...)
 
-	accounts := models.NewAccounts(
-		inClusterClient,
-		inClusterRadixClient,
-		inClusterKedaClient,
-		inClusterSecretProviderClient,
-		inClusterTektonClient,
-		inClusterCertManagerClient,
-		outClusterClient,
-		outClusterRadixClient,
-		outClusterKedaClient,
-		outClusterSecretProviderClient,
-		outClusterTektonClient,
-		outClusterCertManagerClient,
-		token,
-		impersonation)
+	accounts := models.NewAccounts(inClusterClient, inClusterRadixClient, inClusterKedaClient, inClusterSecretProviderClient, inClusterTektonClient, inClusterCertManagerClient, outClusterClient, outClusterRadixClient, outClusterKedaClient, outClusterSecretProviderClient, outClusterTektonClient, outClusterCertManagerClient)
 
 	// Check if registration of application exists for application-specific requests
 	if appName, exists := mux.Vars(r)["appName"]; exists {

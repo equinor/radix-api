@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func CreateMiddleware(clusterName, radixDNSZone string) *cors.Cors {
+func NewMiddleware(clusterName, radixDNSZone string) *cors.Cors {
 
 	corsOptions := cors.Options{
 		AllowedOrigins: []string{

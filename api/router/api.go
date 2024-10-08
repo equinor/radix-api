@@ -27,12 +27,12 @@ func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radix
 	serveMux.Handle("/api/", createApiRouter(kubeUtil, controllers))
 
 	n := negroni.New(
-		recovery.CreateMiddleware(),
-		logger.CreateZerologRequestIdMiddleware(),
-		cors.CreateMiddleware(clusterName, radixDNSZone),
-		logger.CreateZerologRequestDetailsMiddleware(),
-		auth.CreateAuthenticationMiddleware(validator),
-		logger.CreateZerologRequestLoggerMiddleware(),
+		recovery.NewMiddleware(),
+		logger.NewZerologRequestIdMiddleware(),
+		cors.NewMiddleware(clusterName, radixDNSZone),
+		logger.NewZerologRequestDetailsMiddleware(),
+		auth.NewAuthenticationMiddleware(validator),
+		logger.NewZerologResponseLoggerMiddleware(),
 	)
 	n.UseHandler(serveMux)
 
