@@ -2124,10 +2124,10 @@ func buildApplicationRegistrationRequest(applicationRegistration applicationMode
 
 type testApplicationHandlerFactory struct {
 	config                  config.Config
-	hasAccessToGetConfigMap HasAccessToGetConfigMapFunc
+	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
 }
 
-func newTestApplicationHandlerFactory(config config.Config, hasAccessToGetConfigMap HasAccessToGetConfigMapFunc) *testApplicationHandlerFactory {
+func newTestApplicationHandlerFactory(config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) *testApplicationHandlerFactory {
 	return &testApplicationHandlerFactory{
 		config:                  config,
 		hasAccessToGetConfigMap: hasAccessToGetConfigMap,

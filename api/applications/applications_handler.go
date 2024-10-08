@@ -47,7 +47,7 @@ type patch struct {
 	Value interface{} `json:"value"`
 }
 
-type HasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
@@ -55,13 +55,13 @@ type ApplicationHandler struct {
 	accounts                models.Accounts
 	config                  config.Config
 	namespace               string
-	hasAccessToGetConfigMap HasAccessToGetConfigMapFunc
+	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
 	tektonImageTag          string
 	pipelineImageTag        string
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap HasAccessToGetConfigMapFunc) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
 		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
 		accounts:                accounts,
