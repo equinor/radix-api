@@ -32,6 +32,7 @@ func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radix
 		cors.NewMiddleware(clusterName, radixDNSZone),
 		logger.NewZerologRequestDetailsMiddleware(),
 		auth.NewAuthenticationMiddleware(validator),
+		auth.NewZerologAuthenticationDetailsMiddleware(),
 		logger.NewZerologResponseLoggerMiddleware(),
 	)
 	n.UseHandler(serveMux)

@@ -39,7 +39,6 @@ func NewAuthenticationMiddleware(validator token.ValidatorInterface) negroni.Han
 			}
 			return
 		}
-		logContext := log.Ctx(ctx).With().Str("azure_oid", principal.Id())
 
 		impersonation, err := radixhttp.GetImpersonationFromHeader(r)
 		if err != nil {
@@ -49,13 +48,9 @@ func NewAuthenticationMiddleware(validator token.ValidatorInterface) negroni.Han
 			}
 			return
 		}
-		if impersonation.PerformImpersonation() {
-			logContext = logContext.Str("impersonate_user", impersonation.User).Strs("impersonate_groups", impersonation.Groups)
-		}
 
 		ctx = context.WithValue(ctx, ctxUserKey{}, principal)
 		ctx = context.WithValue(ctx, ctxImpersonationKey{}, impersonation)
-		ctx = logContext.Logger().WithContext(ctx)
 		r = r.WithContext(ctx)
 
 		next(w, r)
@@ -89,6 +84,28 @@ func GetOriginator(ctx context.Context) string {
 	}
 
 	return principal.Name()
+}
+
+func NewZerologAuthenticationDetailsMiddleware() negroni.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		ctx := r.Context()
+		user := CtxTokenPrincipal(ctx)
+		impersonation := CtxImpersonation(ctx)
+
+		logContext := log.Ctx(ctx).With()
+		if user.IsAuthenticated() {
+			logContext = logContext.Str("azure_oid", user.Id())
+		} else {
+			logContext = logContext.Bool("anonymous", true)
+		}
+		if impersonation.PerformImpersonation() {
+			logContext = logContext.Str("impersonate_user", impersonation.User).Strs("impersonate_groups", impersonation.Groups)
+		}
+		ctx = logContext.Logger().WithContext(ctx)
+
+		r = r.WithContext(ctx)
+		next(w, r)
+	}
 }
 
 func NewAuthorizeRequiredMiddleware() negroni.HandlerFunc {
