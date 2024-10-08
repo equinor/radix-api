@@ -9,6 +9,7 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-operator/pkg/apis/config"
 	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -44,8 +45,10 @@ func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commo
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
 	handlerFactory.EXPECT().createHandler(gomock.Any()).Return(handler)
 	controller := (&envVarsController{}).withHandlerFactory(handlerFactory)
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, controller)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, controller)
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, certClient, handler
 }

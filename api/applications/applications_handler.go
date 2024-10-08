@@ -11,12 +11,12 @@ import (
 	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
-	job "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-api/api/middleware/auth"
 	apimodels "github.com/equinor/radix-api/api/models"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
@@ -51,31 +51,24 @@ type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	jobHandler              job.JobHandler
 	environmentHandler      environments.EnvironmentHandler
 	accounts                models.Accounts
-	config                  ApplicationHandlerConfig
-	namespace               string
-	hasAccessToGetConfigMap func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+	config                  config.Config
+	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
+	tektonImageTag          string
+	pipelineImageTag        string
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config ApplicationHandlerConfig, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
+func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
 	return ApplicationHandler{
-		accounts:                accounts,
-		jobHandler:              job.Init(accounts, deployments.Init(accounts)),
 		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
+		accounts:                accounts,
 		config:                  config,
-		namespace:               getApiNamespace(config),
 		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
+		tektonImageTag:          config.TektonImageTag,
+		pipelineImageTag:        config.PipelineImageTag,
 	}
-}
-
-func getApiNamespace(config ApplicationHandlerConfig) string {
-	if namespace := operatorUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
-		return namespace
-	}
-	panic("missing RADIX_APP or RADIX_ENVIRONMENT environment variables")
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -129,11 +122,7 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 	var err error
 
 	application := applicationRegistrationRequest.ApplicationRegistration
-
-	creator, err := ah.accounts.GetOriginator()
-	if err != nil {
-		return nil, err
-	}
+	creator := auth.GetOriginator(ctx)
 
 	application.RadixConfigFullName = cleanFileFullName(application.RadixConfigFullName)
 	if len(application.RadixConfigFullName) > 0 {
@@ -442,7 +431,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 		return nil, radixhttp.ValidationError("Radix Application Pipeline", "Deployment name, from environment and to environment are required for \"promote\" pipeline")
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating promote pipeline job for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
+	log.Ctx(ctx).Info().Msgf("Creating promote pipeline jobController for %s using deployment %s from environment %s into environment %s", appName, deploymentName, fromEnvironment, toEnvironment)
 
 	pipeline, err := jobPipeline.GetPipelineFromName("promote")
 	if err != nil {
@@ -457,7 +446,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +486,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 		return nil, radixhttp.ValidationError("Radix Application Pipeline", "To environment is required for \"deploy\" pipeline")
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating deploy pipeline job for %s into environment %s", appName, toEnvironment)
+	log.Ctx(ctx).Info().Msgf("Creating deploy pipeline jobController for %s into environment %s", appName, toEnvironment)
 
 	pipeline, err := jobPipeline.GetPipelineFromName("deploy")
 	if err != nil {
@@ -506,7 +495,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +510,7 @@ func (ah *ApplicationHandler) TriggerPipelineApplyConfig(ctx context.Context, ap
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating apply config pipeline job for %s", appName)
+	log.Ctx(ctx).Info().Msgf("Creating apply config pipeline jobController for %s", appName)
 
 	pipeline, err := jobPipeline.GetPipelineFromName("apply-config")
 	if err != nil {
@@ -530,7 +519,7 @@ func (ah *ApplicationHandler) TriggerPipelineApplyConfig(ctx context.Context, ap
 
 	jobParameters := pipelineParameters.MapPipelineParametersApplyConfigToJobParameter()
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -553,7 +542,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline jobController for %s on branch %s for commit %s", appName, branch, commitID)
 
 	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
@@ -581,7 +570,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 
 	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
 
-	jobSummary, err := ah.jobHandler.HandleStartPipelineJob(ctx, appName, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -749,31 +738,32 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		}
 		return nil
 	}
+	radixApiAppNamespace := operatorUtils.GetEnvironmentNamespace(ah.config.AppName, ah.config.EnvironmentName)
 	name := fmt.Sprintf("access-validation-%s", appName)
 	labels := map[string]string{"radix-access-validation": "true"}
 	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(operatorUtils.RandString(6)))
-	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
+	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, radixApiAppNamespace, name, labels, configMapName)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, radixApiAppNamespace, role.GetName())
 		if err != nil {
 			log.Ctx(ctx).Warn().Msgf("Failed to delete role %s: %v", role.GetName(), err)
 		}
 	}()
-	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
+	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, radixApiAppNamespace, role, name, adGroups, labels)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, radixApiAppNamespace, roleBinding.GetName())
 		if err != nil {
 			log.Ctx(ctx).Warn().Msgf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
 		}
 	}()
 
-	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, ah.namespace, configMapName)
+	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, radixApiAppNamespace, configMapName)
 	if err != nil {
 		return err
 	}

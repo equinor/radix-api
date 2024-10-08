@@ -30,6 +30,7 @@ mocks: bootstrap
 	mockgen -source ./api/events/event_handler.go -destination ./api/events/mock/event_handler_mock.go -package mock
 	mockgen -source ./api/environmentvariables/env_vars_handler.go -destination ./api/environmentvariables/env_vars_handler_mock.go -package environmentvariables
 	mockgen -source ./api/environmentvariables/env_vars_handler_factory.go -destination ./api/environmentvariables/env_vars_handler_factory_mock.go -package environmentvariables
+	mockgen -source ./api/utils/token/validator.go -destination ./api/utils/token/mock/validator_mock.go -package mock
 
 .PHONY: test
 test:

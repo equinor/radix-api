@@ -3,11 +3,16 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-api/api/middleware/auth"
+	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,9 +65,20 @@ func (jh JobHandler) RerunJob(ctx context.Context, appName, jobName string) erro
 
 	return nil
 }
+func (jh JobHandler) createPipelineJob(ctx context.Context, appName string, job *radixv1.RadixJob) (*jobModels.JobSummary, error) {
+	log.Ctx(ctx).Info().Msgf("Starting job: %s, %s", job.GetName(), WorkerImage)
+	appNamespace := k8sObjectUtils.GetAppNamespace(appName)
+	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(appNamespace).Create(ctx, job, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	log.Ctx(ctx).Info().Msgf("Started job: %s, %s", job.GetName(), WorkerImage)
+	return jobModels.GetSummaryFromRadixJob(job), nil
+}
 
 func (jh JobHandler) buildPipelineJobToRerunFrom(ctx context.Context, radixJob *radixv1.RadixJob) *radixv1.RadixJob {
-	rerunJobName, imageTag := getUniqueJobName(workerImage)
+	rerunJobName, imageTag := GetUniqueJobName()
 	rerunRadixJob := radixv1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        rerunJobName,
@@ -79,11 +95,7 @@ func (jh JobHandler) buildPipelineJobToRerunFrom(ctx context.Context, radixJob *
 		rerunRadixJob.Spec.Build.ImageTag = imageTag
 	}
 	rerunRadixJob.Spec.Stop = false
-	triggeredBy, err := jh.getTriggeredBy("")
-	if err != nil {
-		log.Ctx(ctx).Warn().Msgf("failed to get triggeredBy: %v", err)
-	}
-	rerunRadixJob.Spec.TriggeredBy = triggeredBy
+	rerunRadixJob.Spec.TriggeredBy = auth.GetOriginator(ctx)
 	return &rerunRadixJob
 }
 
@@ -96,4 +108,13 @@ func (jh JobHandler) getPipelineJobByName(ctx context.Context, appName string, j
 		return nil, err
 	}
 	return radixJob, nil
+}
+
+func GetUniqueJobName() (string, string) {
+	var jobName []string
+	randomStr := strings.ToLower(radixutils.RandString(5))
+	timestamp := time.Now().Format("20060102150405")
+	jobName = append(jobName, WorkerImage, "-", timestamp, "-", randomStr)
+
+	return strings.Join(jobName, ""), randomStr
 }
