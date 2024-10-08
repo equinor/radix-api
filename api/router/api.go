@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/equinor/radix-api/api/middleware/auth"
-	"github.com/equinor/radix-api/api/middleware/cors"
 	"github.com/equinor/radix-api/api/middleware/logger"
 	"github.com/equinor/radix-api/api/middleware/recovery"
 	"github.com/equinor/radix-api/api/utils"
@@ -20,8 +19,9 @@ const (
 )
 
 // NewAPIHandler Constructor function
-func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radixDNSZone string, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
+func NewAPIHandler(validator token.ValidatorInterface, kubeUtil utils.KubeUtil, controllers ...models.Controller) http.Handler {
 	serveMux := http.NewServeMux()
+
 	serveMux.Handle("/health/", createHealthHandler())
 	serveMux.Handle("/swaggerui/", createSwaggerHandler())
 	serveMux.Handle("/api/", createApiRouter(kubeUtil, controllers))
@@ -29,7 +29,6 @@ func NewAPIHandler(clusterName string, validator token.ValidatorInterface, radix
 	n := negroni.New(
 		recovery.NewMiddleware(),
 		logger.NewZerologRequestIdMiddleware(),
-		cors.NewMiddleware(clusterName, radixDNSZone),
 		logger.NewZerologRequestDetailsMiddleware(),
 		auth.NewAuthenticationMiddleware(validator),
 		auth.NewZerologAuthenticationDetailsMiddleware(),
@@ -67,7 +66,7 @@ func createApiRouter(kubeUtil utils.KubeUtil, controllers []models.Controller) *
 
 func createSwaggerHandler() http.Handler {
 	swaggerFsHandler := http.FileServer(http.FS(swaggerui.FS()))
-	swaggerui := http.StripPrefix("swaggerui", swaggerFsHandler)
+	swaggerui := http.StripPrefix("/swaggerui", swaggerFsHandler)
 
 	return swaggerui
 }

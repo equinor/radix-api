@@ -67,7 +67,7 @@ func initializeServer(c config.Config) *http.Server {
 		log.Fatal().Err(err).Msgf("failed to initialize controllers: %v", err)
 	}
 
-	handler := router.NewAPIHandler(c.ClusterName, jwtValidator, c.DNSZone, utils.NewKubeUtil(), controllers...)
+	handler := router.NewAPIHandler(jwtValidator, utils.NewKubeUtil(), controllers...)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.Port),
 		Handler: handler,
