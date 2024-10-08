@@ -55,7 +55,7 @@ func createApiRouter(kubeUtil utils.KubeUtil, controllers []models.Controller) *
 
 			n := negroni.New()
 			if !route.AllowUnauthenticatedUsers {
-				n.Use(auth.CreateAuthorizeRequiredMiddleware())
+				n.Use(auth.NewAuthorizeRequiredMiddleware())
 			}
 			n.UseHandler(handler)
 			router.Handle(path, n).Methods(route.Method)

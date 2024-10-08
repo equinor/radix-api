@@ -91,7 +91,7 @@ func GetOriginator(ctx context.Context) string {
 	return principal.Name()
 }
 
-func CreateAuthorizeRequiredMiddleware() negroni.HandlerFunc {
+func NewAuthorizeRequiredMiddleware() negroni.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		logger := log.Ctx(r.Context())
 		user := CtxTokenPrincipal(r.Context())
