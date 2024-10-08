@@ -89,7 +89,7 @@ func getUserClientConfig(token string, impersonation radixmodels.Impersonation, 
 		kubeConfig.Impersonate = impersonationConfig
 	}
 	kubeConfig.Wrap(logs.Logger(func(e *zerolog.Event) {
-		e.Str("client", "out-cluster")
+		e.Str("client", "user")
 	}))
 
 	return addCommonConfigs(kubeConfig, options)
@@ -101,11 +101,11 @@ func getServerClientConfig(options []RestClientConfigOption) *restclient.Config 
 	if err != nil {
 		config, err = restclient.InClusterConfig()
 		if err != nil {
-			log.Fatal().Err(err).Msg("getClusterConfig InClusterConfig")
+			log.Fatal().Err(err).Msg("failed to create in cluster config")
 		}
 	}
 	config.Wrap(logs.Logger(func(e *zerolog.Event) {
-		e.Str("client", "in-cluster")
+		e.Str("client", "server")
 	}))
 
 	return addCommonConfigs(config, options)
