@@ -42,9 +42,7 @@ type KubeUtil interface {
 	GetServerKubernetesClient(...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface)
 }
 
-type kubeUtil struct {
-	kubeApiServer string
-}
+type kubeUtil struct{}
 
 var (
 	nrRequests = promauto.NewHistogramVec(prometheus.HistogramOpts{
@@ -55,13 +53,13 @@ var (
 )
 
 // NewKubeUtil Constructor
-func NewKubeUtil(kubeApiServer string) KubeUtil {
-	return &kubeUtil{kubeApiServer}
+func NewKubeUtil() KubeUtil {
+	return &kubeUtil{}
 }
 
 // GetUserKubernetesClient Gets a kubernetes client using the bearer token from the radix api client
 func (ku *kubeUtil) GetUserKubernetesClient(token string, impersonation radixmodels.Impersonation, options ...RestClientConfigOption) (kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretproviderclient.Interface, tektonclient.Interface, certclient.Interface) {
-	config := getUserClientConfig(token, impersonation, ku.kubeApiServer, options)
+	config := getUserClientConfig(token, impersonation, options)
 	return getKubernetesClientFromConfig(config)
 }
 
@@ -71,9 +69,11 @@ func (ku *kubeUtil) GetServerKubernetesClient(options ...RestClientConfigOption)
 	return getKubernetesClientFromConfig(config)
 }
 
-func getUserClientConfig(token string, impersonation radixmodels.Impersonation, kubeApiServer string, options []RestClientConfigOption) *restclient.Config {
+func getUserClientConfig(token string, impersonation radixmodels.Impersonation, options []RestClientConfigOption) *restclient.Config {
+	cfg := getServerClientConfig(options)
+
 	kubeConfig := &restclient.Config{
-		Host:        kubeApiServer,
+		Host:        cfg.Host,
 		BearerToken: token,
 		TLSClientConfig: restclient.TLSClientConfig{
 			Insecure: true,

@@ -10,7 +10,6 @@ type Config struct {
 	MetricsPort                 int    `envconfig:"METRICS_PORT" default:"9090"  desc:"Port where Metrics will be served"`
 	ProfilePort                 int    `envconfig:"PROFILE_PORT" default:"7070"  desc:"Port where Profiler will be served"`
 	UseProfiler                 bool   `envconfig:"USE_PROFILER" default:"false" desc:"Enable Profiler"`
-	KubernetesApiServer         string `envconfig:"K8S_API_HOST" default:"https://kubernetes.default.svc"`
 	PipelineImageTag            string `envconfig:"PIPELINE_IMG_TAG" default:"latest"`
 	TektonImageTag              string `envconfig:"TEKTON_IMG_TAG" default:"release-latest"`
 	RequireAppConfigurationItem bool   `envconfig:"REQUIRE_APP_CONFIGURATION_ITEM" default:"true"`
