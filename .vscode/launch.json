@@ -14,7 +14,6 @@
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "PIPELINE_IMG_TAG": "master-latest",
                 "TEKTON_IMG_TAG": "main-latest",
-                "K8S_API_HOST": "https://weekly-24-clusters-dev-16ede4-uk527vqt.hcp.northeurope.azmk8s.io:443",
                 "RADIX_CLUSTER_TYPE": "development",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",
                 "RADIX_CLUSTERNAME": "weekly-24",
