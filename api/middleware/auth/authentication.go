@@ -66,7 +66,7 @@ func CtxTokenPrincipal(ctx context.Context) token.TokenPrincipal {
 	val, ok := ctx.Value(ctxUserKey{}).(token.TokenPrincipal)
 
 	if !ok {
-		return token.NewAnonymousPrincipal()
+		return &anonPrincipal{}
 	}
 
 	return val

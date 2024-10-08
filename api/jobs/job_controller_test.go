@@ -57,7 +57,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewJobController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, secretproviderclient, certClient

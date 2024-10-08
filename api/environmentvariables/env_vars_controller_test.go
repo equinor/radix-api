@@ -46,7 +46,7 @@ func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commo
 	handlerFactory.EXPECT().createHandler(gomock.Any()).Return(handler)
 	controller := (&envVarsController{}).withHandlerFactory(handlerFactory)
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, controller)
 

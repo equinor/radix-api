@@ -17,21 +17,21 @@ func (c *azureClaims) Validate(_ context.Context) error {
 	return nil
 }
 
-type AzurePrincipal struct {
+type azurePrincipal struct {
 	token       string
 	claims      *validator.ValidatedClaims
 	azureClaims *azureClaims
 }
 
-func (p *AzurePrincipal) Token() string {
+func (p *azurePrincipal) Token() string {
 	return p.token
 }
-func (p *AzurePrincipal) IsAuthenticated() bool {
+func (p *azurePrincipal) IsAuthenticated() bool {
 	return true
 }
-func (p *AzurePrincipal) Id() string { return p.azureClaims.ObjectId }
+func (p *azurePrincipal) Id() string { return p.azureClaims.ObjectId }
 
-func (p *AzurePrincipal) Name() string {
+func (p *azurePrincipal) Name() string {
 	if p.azureClaims.Upn != "" {
 		return p.azureClaims.Upn
 	}

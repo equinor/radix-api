@@ -14,7 +14,6 @@ import (
 	metricsMock "github.com/equinor/radix-api/api/metrics/mock"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
-	token "github.com/equinor/radix-api/api/utils/token"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
@@ -68,7 +67,7 @@ func setupTest(t *testing.T, validator *authnmock.MockValidatorInterface, buildS
 
 	if validator == nil {
 		validator = authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(), nil)
+		validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
 	}
 
 	controllerTestUtils := controllertest.NewTestUtils(
@@ -134,7 +133,7 @@ func TestGetBuildStatus_AnonymousRequestIsOk(t *testing.T) {
 	// Setup
 	ctrl := gomock.NewController(t)
 	mockValidator := authnmock.NewMockValidatorInterface(ctrl)
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Return(token.NewAnonymousPrincipal(), nil).Times(0)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Return(controllertest.NewTestPrincipal(false), nil).Times(0)
 	buildStatusMock := mock.NewMockPipelineBadge(ctrl)
 	buildStatusMock.EXPECT().GetBadge(gomock.Any(), gomock.Any()).Return([]byte("hello world"), errors.New("error")).Times(1)
 	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, buildStatusMock)
@@ -151,7 +150,7 @@ func TestGetBuildStatus_AnonymousRequestIsOk(t *testing.T) {
 func TestGetApplications_UnauthenticatedIsForbidden(t *testing.T) {
 	// Setup
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(token.NewAnonymousPrincipal(), radixhttp.ForbiddenError("invalid token"))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(controllertest.NewTestPrincipal(false), radixhttp.ForbiddenError("invalid token"))
 	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, nil)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	require.NoError(t, err)
@@ -167,7 +166,7 @@ func TestGetApplications_UnauthenticatedIsForbidden(t *testing.T) {
 func TestGetApplications_InvalidTokenIsForbidden(t *testing.T) {
 	// Setup
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(token.NewAnonymousPrincipal(), radixhttp.ForbiddenError("invalid token"))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(0).Return(controllertest.NewTestPrincipal(false), radixhttp.ForbiddenError("invalid token"))
 	commonTestUtils, controllerTestUtils, _, _, _, _, _, _ := setupTest(t, mockValidator, nil)
 	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration())
 	require.NoError(t, err)

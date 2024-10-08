@@ -107,7 +107,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Times(1)
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
@@ -137,7 +137,7 @@ func TestGetBuildStatus(t *testing.T) {
 			})
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
@@ -167,7 +167,7 @@ func TestGetBuildStatus(t *testing.T) {
 			})
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=deploy")
@@ -197,7 +197,7 @@ func TestGetBuildStatus(t *testing.T) {
 			})
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=promote")
@@ -221,7 +221,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Times(1)
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")

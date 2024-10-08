@@ -64,6 +64,6 @@ func (v *Validator) ValidateToken(ctx context.Context, token string) (TokenPrinc
 		return nil, http.ForbiddenError("invalid azure token")
 	}
 
-	principal := &AzurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
+	principal := &azurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
 	return principal, nil
 }

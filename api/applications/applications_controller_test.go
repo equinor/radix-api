@@ -82,7 +82,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(
 		kubeclient,
 		radixclient,
@@ -123,7 +123,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	t.Run("no access", func(t *testing.T) {
 		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(
 			kubeclient,
 			radixclient,
@@ -150,7 +150,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	t.Run("access to single app", func(t *testing.T) {
 		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
@@ -170,7 +170,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	t.Run("access to all app", func(t *testing.T) {
 		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
@@ -254,7 +254,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 
 	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
@@ -339,7 +339,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
@@ -438,7 +438,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 
 	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
@@ -513,7 +513,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
 		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(), nil)
+		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
@@ -2022,7 +2022,7 @@ func Test_GetUsedResources(t *testing.T) {
 					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
 			}
 			validator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
-			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(), nil)
+			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
 			prometheusHandlerMock := createPrometheusHandlerMock(t, radixClient, &mockHandlerModifier)
 			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,
 				NewApplicationController(
