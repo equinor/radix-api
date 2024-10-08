@@ -54,7 +54,6 @@ type ApplicationHandler struct {
 	environmentHandler      environments.EnvironmentHandler
 	accounts                models.Accounts
 	config                  config.Config
-	namespace               string
 	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
 	tektonImageTag          string
 	pipelineImageTag        string
@@ -66,18 +65,10 @@ func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAc
 		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
 		accounts:                accounts,
 		config:                  config,
-		namespace:               getApiNamespace(config),
 		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
 		tektonImageTag:          config.TektonImageTag,
 		pipelineImageTag:        config.PipelineImageTag,
 	}
-}
-
-func getApiNamespace(config config.Config) string {
-	if namespace := operatorUtils.GetEnvironmentNamespace(config.AppName, config.EnvironmentName); len(namespace) > 0 {
-		return namespace
-	}
-	panic("missing RADIX_APP or RADIX_ENVIRONMENT environment variables")
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -747,31 +738,32 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		}
 		return nil
 	}
+	radixApiAppNamespace := operatorUtils.GetEnvironmentNamespace(ah.config.AppName, ah.config.EnvironmentName)
 	name := fmt.Sprintf("access-validation-%s", appName)
 	labels := map[string]string{"radix-access-validation": "true"}
 	configMapName := fmt.Sprintf("%s-%s", name, strings.ToLower(operatorUtils.RandString(6)))
-	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, name, labels, configMapName)
+	role, err := createRoleToGetConfigMap(ctx, ah.accounts.ServiceAccount.Client, radixApiAppNamespace, name, labels, configMapName)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, role.GetName())
+		err = deleteRole(context.Background(), ah.accounts.ServiceAccount.Client, radixApiAppNamespace, role.GetName())
 		if err != nil {
 			log.Ctx(ctx).Warn().Msgf("Failed to delete role %s: %v", role.GetName(), err)
 		}
 	}()
-	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, ah.namespace, role, name, adGroups, labels)
+	roleBinding, err := createRoleBindingForRole(ctx, ah.accounts.ServiceAccount.Client, radixApiAppNamespace, role, name, adGroups, labels)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, ah.namespace, roleBinding.GetName())
+		err = deleteRoleBinding(context.Background(), ah.accounts.ServiceAccount.Client, radixApiAppNamespace, roleBinding.GetName())
 		if err != nil {
 			log.Ctx(ctx).Warn().Msgf("Failed to delete role binding %s: %v", roleBinding.GetName(), err)
 		}
 	}()
 
-	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, ah.namespace, configMapName)
+	valid, err := ah.hasAccessToGetConfigMap(ctx, ah.accounts.UserAccount.Client, radixApiAppNamespace, configMapName)
 	if err != nil {
 		return err
 	}
