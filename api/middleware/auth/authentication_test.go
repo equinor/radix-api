@@ -22,14 +22,17 @@ func TestAuthenticatedRequest(t *testing.T) {
 	handler := auth.NewAuthenticationMiddleware(validator)
 	rw := httptest.NewRecorder()
 
-	req, _ := http.NewRequest("POST", "/api/anyendpoint", nil)
-	req.Header.Add("Authorization", "Bearer "+testPrincipal.Token())
 	var reqCtx context.Context
-	handler.ServeHTTP(rw, req, func(w http.ResponseWriter, r *http.Request) {
+	nextFn := func(w http.ResponseWriter, r *http.Request) {
 		reqCtx = r.Context()
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("hello world"))
-	})
+	}
+
+	req, _ := http.NewRequest("POST", "/api/anyendpoint", nil)
+	req.Header.Add("Authorization", "Bearer "+testPrincipal.Token())
+	handler.ServeHTTP(rw, req, nextFn)
+
 	reqPrincipal := auth.CtxTokenPrincipal(reqCtx)
 	assert.Same(t, testPrincipal, reqPrincipal)
 	assert.Equal(t, http.StatusOK, rw.Code)
@@ -45,8 +48,8 @@ func TestAnonumousRequest(t *testing.T) {
 	rw := httptest.NewRecorder()
 
 	req, _ := http.NewRequest("POST", "/api/anyendpoint", nil)
-
 	handler.ServeHTTP(rw, req, newNullMiddleware())
+
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "hello world", rw.Body.String())
 }
