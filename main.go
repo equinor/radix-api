@@ -76,14 +76,15 @@ func initializeServer(c config.Config) *http.Server {
 	return srv
 }
 
-func initializeTokenValidator(c config.Config) *token.Validator {
+func initializeTokenValidator(c config.Config) token.ValidatorInterface {
 	issuerUrl, err := url.Parse(c.OidcIssuer)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error parsing issuer url")
 	}
 
 	// Set up the validator.
-	jwtValidator, err := token.NewValidator(issuerUrl, c.OidcAudience)
+	// jwtValidator, err := token.NewValidator(issuerUrl, c.OidcAudience)
+	jwtValidator, err := token.NewUncheckedValidator(issuerUrl, c.OidcAudience)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating JWT validator")
 	}
