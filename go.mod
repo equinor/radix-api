@@ -12,6 +12,7 @@ require (
 	github.com/equinor/radix-operator v1.61.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
+	github.com/go-jose/go-jose/v4 v4.0.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
