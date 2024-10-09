@@ -7,7 +7,7 @@ import (
 
 	"github.com/equinor/radix-common/net/http"
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 )
 
 type UncheckedValidator struct{}
@@ -19,10 +19,10 @@ func NewUncheckedValidator(_ *url.URL, _ string) (*UncheckedValidator, error) {
 }
 
 func (v *UncheckedValidator) ValidateToken(_ context.Context, token string) (TokenPrincipal, error) {
-	var registeredClaims jwt.Claims
+	var registeredClaims josejwt.Claims
 	var azureClaims azureClaims
 
-	jwt, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256, jose.RS256})
+	jwt, err := josejwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256, jose.RS256})
 	if err != nil {
 		return nil, http.ForbiddenError("invalid token")
 	}
