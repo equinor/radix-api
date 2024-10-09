@@ -226,6 +226,10 @@ func getLatestJobPerApplication(ctx context.Context, radixClient versioned.Inter
 
 			var latestJob *v1.RadixJob
 			for _, job := range jobs {
+				if job.Status.Started == nil {
+					continue
+				}
+
 				if latestJob == nil || job.Status.Started.After(latestJob.Status.Started.Time) {
 					latestJob = &job
 				}
