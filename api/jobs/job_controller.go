@@ -644,7 +644,7 @@ func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accoun
 		jc.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = log.Close()}()
+	defer func() { _ = log.Close() }()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
@@ -727,7 +727,7 @@ func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http
 		jc.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = log.Close()}()
+	defer func() { _ = log.Close() }()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))

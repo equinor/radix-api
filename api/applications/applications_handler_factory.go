@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/equinor/radix-api/api/utils/access"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	authorizationapi "k8s.io/api/authorization/v1"
 	"k8s.io/client-go/kubernetes"
@@ -15,11 +16,11 @@ type ApplicationHandlerFactory interface {
 }
 
 type applicationHandlerFactory struct {
-	config ApplicationHandlerConfig
+	config config.Config
 }
 
 // NewApplicationHandlerFactory creates a new ApplicationHandlerFactory
-func NewApplicationHandlerFactory(config ApplicationHandlerConfig) ApplicationHandlerFactory {
+func NewApplicationHandlerFactory(config config.Config) ApplicationHandlerFactory {
 	return &applicationHandlerFactory{
 		config: config,
 	}

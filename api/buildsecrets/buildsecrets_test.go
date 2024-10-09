@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
+	"github.com/golang/mock/gomock"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
@@ -41,7 +43,9 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, *kubefak
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, NewBuildSecretsController())
+	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildSecretsController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient
 }

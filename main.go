@@ -7,9 +7,9 @@ import (
 	"io"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -17,15 +17,14 @@ import (
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	token "github.com/equinor/radix-api/api/utils/token"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/equinor/radix-api/api/environmentvariables"
 
 	"github.com/equinor/radix-api/api/buildstatus"
-
-	"github.com/spf13/pflag"
 
 	// Controllers
 	"github.com/equinor/radix-api/api/alerting"
@@ -42,65 +41,60 @@ import (
 	"github.com/equinor/radix-api/models"
 )
 
-const (
-	logLevelEnvironmentVariable    = "LOG_LEVEL"
-	logPrettyEnvironmentVariable   = "LOG_PRETTY"
-	useProfilerEnvironmentVariable = "USE_PROFILER"
-	defaultPort                    = "3002"
-	defaultMetricsPort             = "9090"
-	defaultProfilePort             = "7070"
-)
-
 //go:generate swagger generate spec
 func main() {
-	setupLogger()
-	fs := initializeFlagSet()
+	c := config.MustParse()
+	setupLogger(c.LogLevel, c.LogPrettyPrint)
 
-	var (
-		port                = fs.StringP("port", "p", defaultPort, "Port where API will be served")
-		metricsPort         = fs.String("metrics-port", defaultMetricsPort, "The metrics API server port")
-		useOutClusterClient = fs.Bool("useOutClusterClient", true, "In case of testing on local machine you may want to set this to false")
-		clusterName         = os.Getenv(defaults.ClusternameEnvironmentVariable)
-	)
-
-	parseFlagsFromArgs(fs)
-
-	var servers []*http.Server
-
-	srv, err := initializeServer(*port, clusterName, *useOutClusterClient)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize API server")
+	servers := []*http.Server{
+		initializeServer(c),
+		initializeMetricsServer(c),
 	}
 
-	servers = append(servers, srv, initializeMetricsServer(*metricsPort))
-
-	if useProfiler, _ := strconv.ParseBool(os.Getenv(useProfilerEnvironmentVariable)); useProfiler {
-		log.Info().Msgf("Initializing profile server on port %s", defaultProfilePort)
-		servers = append(servers, &http.Server{Addr: fmt.Sprintf("localhost:%s", defaultProfilePort)})
+	if c.UseProfiler {
+		log.Info().Msgf("Initializing profile server on port %d", c.ProfilePort)
+		servers = append(servers, &http.Server{Addr: fmt.Sprintf("localhost:%d", c.ProfilePort)})
 	}
 
 	startServers(servers...)
 	shutdownServersGracefulOnSignal(servers...)
 }
 
-func initializeServer(port, clusterName string, useOutClusterClient bool) (*http.Server, error) {
-	controllers, err := getControllers()
+func initializeServer(c config.Config) *http.Server {
+	jwtValidator := initializeTokenValidator(c)
+	controllers, err := getControllers(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize controllers: %w", err)
+		log.Fatal().Err(err).Msgf("failed to initialize controllers: %v", err)
 	}
-	handler := router.NewAPIHandler(clusterName, utils.NewKubeUtil(useOutClusterClient), controllers...)
+
+	handler := router.NewAPIHandler(jwtValidator, utils.NewKubeUtil(), controllers...)
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%d", c.Port),
 		Handler: handler,
 	}
 
-	return srv, nil
+	return srv
 }
 
-func initializeMetricsServer(port string) *http.Server {
-	log.Info().Msgf("Initializing metrics server on port %s", port)
+func initializeTokenValidator(c config.Config) token.ValidatorInterface {
+	issuerUrl, err := url.Parse(c.OidcIssuer)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error parsing issuer url")
+	}
+
+	// Set up the validator.
+	// jwtValidator, err := token.NewValidator(issuerUrl, c.OidcAudience)
+	jwtValidator, err := token.NewUncheckedValidator(issuerUrl, c.OidcAudience)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error creating JWT validator")
+	}
+	return jwtValidator
+}
+
+func initializeMetricsServer(c config.Config) *http.Server {
+	log.Info().Msgf("Initializing metrics server on port %d", c.MetricsPort)
 	return &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%d", c.MetricsPort),
 		Handler: router.NewMetricsHandler(),
 	}
 }
@@ -142,8 +136,7 @@ func shutdownServersGracefulOnSignal(servers ...*http.Server) {
 	wg.Wait()
 }
 
-func setupLogger() {
-	logLevelStr := os.Getenv(logLevelEnvironmentVariable)
+func setupLogger(logLevelStr string, prettyPrint bool) {
 	if len(logLevelStr) == 0 {
 		logLevelStr = zerolog.LevelInfoValue
 	}
@@ -154,10 +147,8 @@ func setupLogger() {
 		log.Warn().Msgf("Invalid log level '%s', fallback to '%s'", logLevelStr, logLevel.String())
 	}
 
-	logPretty, _ := strconv.ParseBool(os.Getenv(logPrettyEnvironmentVariable))
-
 	var logWriter io.Writer = os.Stderr
-	if logPretty {
+	if prettyPrint {
 		logWriter = &zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly}
 	}
 
@@ -167,21 +158,16 @@ func setupLogger() {
 	zerolog.DefaultContextLogger = &logger
 }
 
-func getControllers() ([]models.Controller, error) {
+func getControllers(config config.Config) ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
-	cfg, err := applications.LoadApplicationHandlerConfig(os.Args[1:])
-	if err != nil {
-		return nil, err
-	}
-	prometheusClient, err := metrics.NewPrometheusClient(cfg.PrometheusUrl)
+	applicatinoFactory := applications.NewApplicationHandlerFactory(config)
+	prometheusClient, err := metrics.NewPrometheusClient(config.PrometheusUrl)
 	if err != nil {
 		return nil, err
 	}
 	prometheusHandler := metrics.NewPrometheusHandler(prometheusClient)
-	applicationHandlerFactory := applications.NewApplicationHandlerFactory(cfg)
-
 	return []models.Controller{
-		applications.NewApplicationController(nil, applicationHandlerFactory, prometheusHandler),
+		applications.NewApplicationController(nil, applicatinoFactory, prometheusHandler),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
@@ -192,29 +178,4 @@ func getControllers() ([]models.Controller, error) {
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(tlsvalidation.DefaultValidator()),
 	}, nil
-}
-
-func initializeFlagSet() *pflag.FlagSet {
-	// Flag domain.
-	fs := pflag.NewFlagSet("default", pflag.ContinueOnError)
-	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "DESCRIPTION\n")
-		fmt.Fprintf(os.Stderr, "  radix api-server.\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "FLAGS\n")
-		fs.PrintDefaults()
-	}
-	return fs
-}
-
-func parseFlagsFromArgs(fs *pflag.FlagSet) {
-	err := fs.Parse(os.Args[1:])
-	switch {
-	case err == pflag.ErrHelp:
-		os.Exit(0)
-	case err != nil:
-		fmt.Fprintf(os.Stderr, "Error: %s\n\n", err.Error())
-		fs.Usage()
-		os.Exit(2)
-	}
 }

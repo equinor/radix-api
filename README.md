@@ -50,13 +50,6 @@ The following env vars are needed. Useful default values in brackets.
   kubectl -n monitor port-forward svc/prometheus-operator-prometheus 9091:9090
   ``` 
 
-You also probably want to start with the argument `--useOutClusterClient=false`. When `useOutClusterClient` is `false`, several debugging settings are enabled:
-* a service principal with superpowers is used to authorize the requests, and the client's `Authorization` bearer token is ignored. 
-* the Radix API will connect to the currently-configured `kubectl` context and ignore `K8S_API_HOST`.
-* the server CORS settings are modified to accept the `X-Requested-With` header in incoming requests. This is necessary to allow direct requests from web browser while e.g. debugging [radix-web-console](https://github.com/equinor/radix-web-console).
-* verbose debugging output from CORS rule evaluation is logged to console.
-
-
 If you are using VSCode, there is a convenient launch configuration in `.vscode`.
 
 #### Validate code
