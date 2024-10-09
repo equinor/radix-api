@@ -94,7 +94,7 @@ func NewZerologAuthenticationDetailsMiddleware() negroni.HandlerFunc {
 
 		logContext := log.Ctx(ctx).With()
 		if user.IsAuthenticated() {
-			logContext = logContext.Str("azure_oid", user.Id())
+			logContext = logContext.Str("user_id", user.Id())
 		} else {
 			logContext = logContext.Bool("anonymous", true)
 		}

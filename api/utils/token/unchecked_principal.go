@@ -25,28 +25,28 @@ func (p *unchechedClaimsPrincipal) IsAuthenticated() bool {
 }
 func (p *unchechedClaimsPrincipal) Id() string {
 	if p.azureClaims.ObjectId != "" {
-		return fmt.Sprintf("unverified: %s", p.azureClaims.ObjectId)
+		return fmt.Sprintf("oid:%s", p.azureClaims.ObjectId)
 	}
 
-	return fmt.Sprintf("unverified: %s (sub!)", p.claims.Subject)
+	return fmt.Sprintf("sub:%s", p.claims.Subject)
 }
 
 func (p *unchechedClaimsPrincipal) Name() string {
 	if p.azureClaims.Upn != "" {
-		return fmt.Sprintf("unverified: %s", p.azureClaims.Upn)
+		return p.azureClaims.Upn
 	}
 
 	if p.azureClaims.AppDisplayName != "" {
-		return fmt.Sprintf("unverified: %s", p.azureClaims.AppDisplayName)
+		return p.azureClaims.AppDisplayName
 	}
 
 	if p.azureClaims.AppId != "" {
-		return fmt.Sprintf("unverified: %s", p.azureClaims.AppId)
+		return p.azureClaims.AppId
 	}
 
 	if p.azureClaims.ObjectId != "" {
-		return fmt.Sprintf("unverified: %s", p.azureClaims.ObjectId)
+		return p.azureClaims.ObjectId
 	}
 
-	return fmt.Sprintf("unverified: %s", p.claims.Subject)
+	return p.claims.Subject
 }
