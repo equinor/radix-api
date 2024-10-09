@@ -28,7 +28,7 @@ func (v *UncheckedValidator) ValidateToken(_ context.Context, token string) (Tok
 	}
 	err = jwt.UnsafeClaimsWithoutVerification(&registeredClaims, &azureClaims)
 	if err != nil {
-		return nil, http.ForbiddenError(fmt.Sprintf("failed to extract JWT unsafeClaims: %w", err))
+		return nil, http.ForbiddenError(fmt.Sprintf("failed to extract JWT unsafeClaims: %s", err.Error()))
 	}
 
 	principal := &unchechedClaimsPrincipal{token: token, claims: &registeredClaims, azureClaims: &azureClaims}
