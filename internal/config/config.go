@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
 )
@@ -18,11 +20,16 @@ type Config struct {
 	LogPrettyPrint              bool   `envconfig:"LOG_PRETTY" default:"false"`
 	ClusterName                 string `envconfig:"RADIX_CLUSTERNAME" required:"true"`
 	DNSZone                     string `envconfig:"RADIX_DNS_ZONE" required:"true"`
-	OidcIssuer                  string `envconfig:"OIDC_ISSUER" required:"true"`
-	OidcAudience                string `envconfig:"OIDC_AUDIENCE" required:"true"`
+	AzureOidc                   Oidc   `envconfig:"OIDC_AZURE" required:"true"`
+	KubernetesOidc              Oidc   `envconfig:"OIDC_KUBERNETES" required:"true"`
 	AppName                     string `envconfig:"RADIX_APP" required:"true"`
 	EnvironmentName             string `envconfig:"RADIX_ENVIRONMENT" required:"true"`
 	PrometheusUrl               string `envconfig:"PROMETHEUS_URL" required:"true"`
+}
+
+type Oidc struct {
+	Issuer   IssuerUrl `envconfig:"ISSUER" required:"true"`
+	Audience string    `envconfig:"Audience" required:"true"`
 }
 
 func MustParse() Config {
@@ -34,4 +41,20 @@ func MustParse() Config {
 	}
 
 	return s
+}
+
+type IssuerUrl url.URL
+
+func (ipd *IssuerUrl) Decode(value string) error {
+	issuer, err := url.Parse(value)
+	if err != nil {
+		return err
+	}
+
+	*ipd = IssuerUrl(*issuer)
+	return nil
+}
+
+func (ipd *IssuerUrl) ToURL() url.URL {
+	return url.URL(*ipd)
 }
