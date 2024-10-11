@@ -42,19 +42,3 @@ func MustParse() Config {
 
 	return s
 }
-
-type IssuerUrl url.URL
-
-func (ipd *IssuerUrl) Decode(value string) error {
-	issuer, err := url.Parse(value)
-	if err != nil {
-		return err
-	}
-
-	*ipd = IssuerUrl(*issuer)
-	return nil
-}
-
-func (ipd *IssuerUrl) ToURL() url.URL {
-	return url.URL(*ipd)
-}
