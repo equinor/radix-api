@@ -78,12 +78,12 @@ func initializeServer(c config.Config) *http.Server {
 func initializeTokenValidator(c config.Config) token.ValidatorInterface {
 	azureValidator, err := token.NewValidator(c.AzureOidc.Issuer, c.AzureOidc.Audience)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating JWT validator")
+		log.Fatal().Err(err).Msg("Error creating JWT Azure OIDC validator")
 	}
 
 	kubernetesValidator, err := token.NewValidator(c.KubernetesOidc.Issuer, c.KubernetesOidc.Audience)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating JWT validator")
+		log.Fatal().Err(err).Msg("Error creating JWT Kubernetes OIDC validator")
 	}
 
 	chainedValidator := token.NewChainedValidator(azureValidator, kubernetesValidator)

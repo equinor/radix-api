@@ -3,6 +3,7 @@ package token
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 type ChainedValidator struct{ validators []ValidatorInterface }
@@ -14,15 +15,16 @@ func NewChainedValidator(validators ...ValidatorInterface) *ChainedValidator {
 	return &ChainedValidator{validators}
 }
 
-func (v *ChainedValidator) ValidateToken(ctx context.Context, token string) (principal TokenPrincipal, err error) {
-	for index, validator := range v.validators {
-		principal, err = validator.ValidateToken(ctx, token)
-		if err == nil {
+func (v *ChainedValidator) ValidateToken(ctx context.Context, token string) (TokenPrincipal, error) {
+	var errs []error
+
+	for _, validator := range v.validators {
+		principal, err := validator.ValidateToken(ctx, token)
+		if principal != nil {
 			return principal, nil
-		} else if index == len(v.validators)-1 {
-			return nil, err
 		}
+		errs = append(errs, err)
 	}
 
-	return nil, errNoIssuersFound
+	return nil, fmt.Errorf("%w: %v", errNoIssuersFound, errors.Join(errs...))
 }

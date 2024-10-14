@@ -18,6 +18,7 @@ type TokenPrincipal interface {
 }
 
 type ValidatorInterface interface {
+	// ValidateToken will return a TokenPrincipal object if token payload and signature is validated agains issuer. It will return nil principal and a error if it fails.
 	ValidateToken(context.Context, string) (TokenPrincipal, error)
 }
 
