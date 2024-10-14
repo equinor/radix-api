@@ -9,7 +9,7 @@ import (
 type ChainedValidator struct{ validators []ValidatorInterface }
 
 var _ ValidatorInterface = &ChainedValidator{}
-var errNoIssuersFound = errors.New("no issuers found")
+var errNoValidatorsFound = errors.New("no validators found")
 
 func NewChainedValidator(validators ...ValidatorInterface) *ChainedValidator {
 	return &ChainedValidator{validators}
@@ -26,5 +26,9 @@ func (v *ChainedValidator) ValidateToken(ctx context.Context, token string) (Tok
 		errs = append(errs, err)
 	}
 
-	return nil, fmt.Errorf("%w: %v", errNoIssuersFound, errors.Join(errs...))
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("no issuers could validate token: %w", errors.Join(errs...))
+	}
+
+	return nil, errNoValidatorsFound
 }
