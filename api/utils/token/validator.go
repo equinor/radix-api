@@ -18,6 +18,7 @@ type TokenPrincipal interface {
 }
 
 type ValidatorInterface interface {
+	// ValidateToken will return a TokenPrincipal object if token payload and signature is validated agains issuer. It will return nil principal and a error if it fails.
 	ValidateToken(context.Context, string) (TokenPrincipal, error)
 }
 
@@ -29,8 +30,8 @@ var _ ValidatorInterface = &Validator{}
 
 type KeyFunc func(context.Context) (interface{}, error)
 
-func NewValidator(issuerUrl *url.URL, audience string) (*Validator, error) {
-	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Hour)
+func NewValidator(issuerUrl url.URL, audience string) (*Validator, error) {
+	provider := jwks.NewCachingProvider(&issuerUrl, 5*time.Hour)
 
 	validator, err := validator.New(
 		provider.KeyFunc,
@@ -59,11 +60,11 @@ func (v *Validator) ValidateToken(ctx context.Context, token string) (TokenPrinc
 		return nil, http.ForbiddenError("invalid token")
 	}
 
-	azureClaims, ok := claims.CustomClaims.(*azureClaims)
-	if !ok {
+	azClaims, ok := claims.CustomClaims.(*azureClaims)
+	if !ok || azClaims == nil {
 		return nil, http.ForbiddenError("invalid azure token")
 	}
 
-	principal := &azurePrincipal{token: token, claims: claims, azureClaims: azureClaims}
+	principal := &azurePrincipal{token: token, claims: claims.RegisteredClaims, azureClaims: *azClaims}
 	return principal, nil
 }

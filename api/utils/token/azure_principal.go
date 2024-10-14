@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 )
@@ -19,8 +20,8 @@ func (c *azureClaims) Validate(_ context.Context) error {
 
 type azurePrincipal struct {
 	token       string
-	claims      *validator.ValidatedClaims
-	azureClaims *azureClaims
+	claims      validator.RegisteredClaims
+	azureClaims azureClaims
 }
 
 func (p *azurePrincipal) Token() string {
@@ -29,7 +30,13 @@ func (p *azurePrincipal) Token() string {
 func (p *azurePrincipal) IsAuthenticated() bool {
 	return true
 }
-func (p *azurePrincipal) Id() string { return p.azureClaims.ObjectId }
+func (p *azurePrincipal) Id() string {
+	if p.azureClaims.ObjectId != "" {
+		return fmt.Sprintf("oid:%s", p.azureClaims.ObjectId)
+	}
+
+	return fmt.Sprintf("sub:%s", p.claims.Subject)
+}
 
 func (p *azurePrincipal) Name() string {
 	if p.azureClaims.Upn != "" {
@@ -44,5 +51,9 @@ func (p *azurePrincipal) Name() string {
 		return p.azureClaims.AppId
 	}
 
-	return p.azureClaims.ObjectId
+	if p.azureClaims.ObjectId != "" {
+		return p.azureClaims.ObjectId
+	}
+
+	return p.claims.Subject
 }

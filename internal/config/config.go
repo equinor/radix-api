@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
 )
@@ -16,13 +18,18 @@ type Config struct {
 	RequireAppADGroups          bool   `envconfig:"REQUIRE_APP_AD_GROUPS" default:"true"`
 	LogLevel                    string `envconfig:"LOG_LEVEL" default:"info"`
 	LogPrettyPrint              bool   `envconfig:"LOG_PRETTY" default:"false"`
-	ClusterName                 string `envconfig:"RADIX_CLUSTERNAME" required:"true"`
-	DNSZone                     string `envconfig:"RADIX_DNS_ZONE" required:"true"`
-	OidcIssuer                  string `envconfig:"OIDC_ISSUER" required:"true"`
-	OidcAudience                string `envconfig:"OIDC_AUDIENCE" required:"true"`
-	AppName                     string `envconfig:"RADIX_APP" required:"true"`
-	EnvironmentName             string `envconfig:"RADIX_ENVIRONMENT" required:"true"`
-	PrometheusUrl               string `envconfig:"PROMETHEUS_URL" required:"true"`
+
+	AppName         string `envconfig:"RADIX_APP" required:"true" desc:"Should be radix-api"`
+	EnvironmentName string `envconfig:"RADIX_ENVIRONMENT" required:"true" desc:"Should be qa or prod"`
+	DNSZone         string `envconfig:"RADIX_DNS_ZONE" required:"true" desc:"should be <env>.radix.equinor.com"`
+	AzureOidc       Oidc   `envconfig:"OIDC_AZURE" required:"true"`
+	KubernetesOidc  Oidc   `envconfig:"OIDC_KUBERNETES" required:"true"`
+	PrometheusUrl   string `envconfig:"PROMETHEUS_URL" required:"true"`
+}
+
+type Oidc struct {
+	Issuer   url.URL `envconfig:"ISSUER" required:"true"`
+	Audience string  `envconfig:"Audience" required:"true"`
 }
 
 func MustParse() Config {

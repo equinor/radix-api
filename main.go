@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -77,18 +76,18 @@ func initializeServer(c config.Config) *http.Server {
 }
 
 func initializeTokenValidator(c config.Config) token.ValidatorInterface {
-	issuerUrl, err := url.Parse(c.OidcIssuer)
+	azureValidator, err := token.NewValidator(c.AzureOidc.Issuer, c.AzureOidc.Audience)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error parsing issuer url")
+		log.Fatal().Err(err).Msg("Error creating JWT Azure OIDC validator")
 	}
 
-	// Set up the validator.
-	// jwtValidator, err := token.NewValidator(issuerUrl, c.OidcAudience)
-	jwtValidator, err := token.NewUncheckedValidator(issuerUrl, c.OidcAudience)
+	kubernetesValidator, err := token.NewValidator(c.KubernetesOidc.Issuer, c.KubernetesOidc.Audience)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating JWT validator")
+		log.Fatal().Err(err).Msg("Error creating JWT Kubernetes OIDC validator")
 	}
-	return jwtValidator
+
+	chainedValidator := token.NewChainedValidator(azureValidator, kubernetesValidator)
+	return chainedValidator
 }
 
 func initializeMetricsServer(c config.Config) *http.Server {
