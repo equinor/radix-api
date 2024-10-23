@@ -256,26 +256,61 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 
 // GetEnvironmentEvents Handler for GetEnvironmentEvents
 func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
+	if err != nil {
+		return nil, err
+	}
+
+	return environmentEvents, nil
+}
+
+// GetComponentEvents Handler for GetComponentEvents
+func (eh EnvironmentHandler) GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	// TODO
+	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
+	if err != nil {
+		return nil, err
+	}
+	return environmentEvents, nil
+}
+
+// GetPodEvents Handler for GetReplicaEvents
+func (eh EnvironmentHandler) GetPodEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	// TODO
+	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
+	if err != nil {
+		return nil, err
+	}
+	return environmentEvents, nil
+}
+
+func (eh EnvironmentHandler) getRadixApplicationAndValidateEnvironment(ctx context.Context, appName string, envName string) (*radixv1.RadixApplication, error) {
 	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
-	// _, err = eh.getConfigurationStatus(ctx, envName, radixApplication)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
 		}
 		return nil, err
 	}
-
-	environmentEvents, err := eh.eventHandler.GetEvents(ctx, events.RadixEnvironmentNamespace(radixApplication, envName))
-	if err != nil {
-		return nil, err
-	}
-
-	return environmentEvents, nil
+	return radixApplication, err
 }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments

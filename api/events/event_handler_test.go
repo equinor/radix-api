@@ -20,14 +20,6 @@ func Test_EventHandler_Init(t *testing.T) {
 	assert.Equal(t, kubeClient, eh.kubeClient)
 }
 
-func Test_EventHandler_RadixEnvironmentNamespace(t *testing.T) {
-	appName, envName := "app", "env"
-	expected := operatorutils.GetEnvironmentNamespace(appName, envName)
-	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
-	actual := RadixEnvironmentNamespace(ra, envName)()
-	assert.Equal(t, expected, actual)
-}
-
 func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 	appName, envName := "app", "env"
 	appNamespace := operatorutils.GetEnvironmentNamespace(appName, envName)
@@ -39,7 +31,7 @@ func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 
 	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 	eventHandler := Init(kubeClient)
-	events, err := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
+	events, err := eventHandler.GetEvents(context.Background(), ra.Name, envName)
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
 	assert.ElementsMatch(
@@ -60,7 +52,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
 		require.NoError(t, err)
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})
@@ -71,7 +63,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
 		require.NoError(t, err)
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.NotNil(t, events[0].InvolvedObjectState)
 		assert.NotNil(t, events[0].InvolvedObjectState.Pod)
@@ -81,7 +73,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), RadixEnvironmentNamespace(ra, envName))
+		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})
