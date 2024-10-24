@@ -652,9 +652,10 @@ func (c *environmentController) GetPodEvents(accounts models.Accounts, w http.Re
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
+	podName := mux.Vars(r)["podName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetPodEvents(r.Context(), appName, envName, componentName)
+	events, err := environmentHandler.GetPodEvents(r.Context(), appName, envName, componentName, podName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)

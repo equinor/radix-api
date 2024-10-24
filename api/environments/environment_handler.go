@@ -271,18 +271,10 @@ func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, 
 
 // GetComponentEvents Handler for GetComponentEvents
 func (eh EnvironmentHandler) GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
-	if err != nil {
+	if exists, err := eh.existsDeployedComponent(ctx, appName, envName, componentName); !exists || err != nil {
 		return nil, err
 	}
-	ok, err := eh.existsRadixDeployComponent(ctx, radixApplication.Name, envName, componentName)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, nil
-	}
-	environmentEvents, err := eh.eventHandler.GetComponentEvents(ctx, radixApplication.Name, envName, componentName)
+	environmentEvents, err := eh.eventHandler.GetComponentEvents(ctx, appName, envName, componentName)
 	if err != nil {
 		return nil, err
 	}
@@ -290,13 +282,11 @@ func (eh EnvironmentHandler) GetComponentEvents(ctx context.Context, appName, en
 }
 
 // GetPodEvents Handler for GetPodEvents
-func (eh EnvironmentHandler) GetPodEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
-	if err != nil {
+func (eh EnvironmentHandler) GetPodEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error) {
+	if exists, err := eh.existsDeployedComponent(ctx, appName, envName, componentName); !exists || err != nil {
 		return nil, err
 	}
-	// TODO
-	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
+	environmentEvents, err := eh.eventHandler.GetPodEvents(ctx, appName, envName, componentName, podName)
 	if err != nil {
 		return nil, err
 	}
@@ -330,6 +320,14 @@ func (eh EnvironmentHandler) existsRadixDeployComponent(ctx context.Context, app
 	}
 	_, ok = slice.FindFirst(activeRd.Spec.Components, func(c radixv1.RadixDeployComponent) bool { return c.GetName() == componentName })
 	return ok, nil
+}
+
+func (eh EnvironmentHandler) existsDeployedComponent(ctx context.Context, appName string, envName string, componentName string) (bool, error) {
+	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		return true, err
+	}
+	return eh.existsRadixDeployComponent(ctx, radixApplication.Name, envName, componentName)
 }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
