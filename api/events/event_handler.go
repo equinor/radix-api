@@ -6,10 +6,19 @@ import (
 	"regexp"
 
 	eventModels "github.com/equinor/radix-api/api/events/models"
+	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	k8v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sTypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	k8sKindDeployment = "Deployment"
+	k8sKindReplicaSet = "ReplicaSet"
+	k8sKindPod        = "Pod"
 )
 
 // EventHandler defines methods for interacting with Kubernetes events
@@ -53,6 +62,10 @@ func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, compone
 	if err != nil {
 		return nil, err
 	}
+	environmentComponentsPodMap, err := eh.getEnvironmentComponentsPodMap(ctx, appName, envName, err)
+	if err != nil {
+		return nil, err
+	}
 
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
@@ -62,15 +75,35 @@ func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, compone
 		if len(componentName) > 0 && !eventIsRelatedToComponent(ev, componentName) {
 			continue
 		}
-		builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
-		buildObjectState(ctx, builder, ev, eh.kubeClient)
-		event := builder.Build()
+		event := eh.buildEvent(ev, environmentComponentsPodMap)
 		events = append(events, event)
 	}
 	return events, nil
 }
 
-func eventIsRelatedToComponent(ev k8v1.Event, componentName string) bool {
+func (eh *eventHandler) getEnvironmentComponentsPodMap(ctx context.Context, appName string, envName string, err error) (map[k8sTypes.UID]*corev1.Pod, error) {
+	componentPodList, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.kubeClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	podMap := slice.Reduce(componentPodList, make(map[k8sTypes.UID]*corev1.Pod), func(acc map[k8sTypes.UID]*corev1.Pod, pod corev1.Pod) map[k8sTypes.UID]*corev1.Pod {
+		acc[pod.GetUID()] = &pod
+		return acc
+	})
+	return podMap, nil
+}
+
+func (eh *eventHandler) buildEvent(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod) *eventModels.Event {
+	builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
+	if ev.Type != "Normal" {
+		if objectState := getObjectState(ev, podMap); objectState != nil {
+			builder.WithInvolvedObjectState(objectState)
+		}
+	}
+	return builder.Build()
+}
+
+func eventIsRelatedToComponent(ev corev1.Event, componentName string) bool {
 	if matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, "") {
 		return true
 	}
@@ -78,18 +111,18 @@ func eventIsRelatedToComponent(ev k8v1.Event, componentName string) bool {
 	if err != nil {
 		return false
 	}
-	if ev.InvolvedObject.Kind == "Pod" && podNameRegex.MatchString(ev.InvolvedObject.Name) {
+	if ev.InvolvedObject.Kind == k8sKindPod && podNameRegex.MatchString(ev.InvolvedObject.Name) {
 		return true
 	}
 	return false
 }
 
-func matchingToDeployment(ev k8v1.Event, componentName string) bool {
-	return ev.InvolvedObject.Kind == "Deployment" && ev.InvolvedObject.Name == componentName
+func matchingToDeployment(ev corev1.Event, componentName string) bool {
+	return ev.InvolvedObject.Kind == k8sKindDeployment && ev.InvolvedObject.Name == componentName
 }
 
-func matchingToReplicaSet(ev k8v1.Event, componentName, podName string) bool {
-	if ev.InvolvedObject.Kind != "ReplicaSet" {
+func matchingToReplicaSet(ev corev1.Event, componentName, podName string) bool {
+	if ev.InvolvedObject.Kind != k8sKindReplicaSet {
 		return false
 	}
 	if replicaSetNameRegex, err := regexp.Compile(fmt.Sprintf("^%s-[a-z0-9]{9,10}$", componentName)); err != nil || !replicaSetNameRegex.MatchString(ev.InvolvedObject.Name) {
@@ -105,45 +138,29 @@ func matchingToReplicaSet(ev k8v1.Event, componentName, podName string) bool {
 	return podNameRegex.MatchString(ev.Message)
 }
 
-func eventIsRelatedToPod(ev k8v1.Event, componentName, podName string) bool {
-	if ev.InvolvedObject.Kind == "Pod" && ev.InvolvedObject.Name == podName {
+func eventIsRelatedToPod(ev corev1.Event, componentName, podName string) bool {
+	if ev.InvolvedObject.Kind == k8sKindPod && ev.InvolvedObject.Name == podName {
 		return true
 	}
 	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName)
 }
 
-func buildObjectState(ctx context.Context, builder eventModels.EventBuilder, event k8v1.Event, kubeClient kubernetes.Interface) {
-	if event.Type == "Normal" {
-		return
-	}
-
-	if objectState := getObjectState(ctx, event, kubeClient); objectState != nil {
-		builder.WithInvolvedObjectState(objectState)
-	}
-}
-
-func getObjectState(ctx context.Context, event k8v1.Event, kubeClient kubernetes.Interface) *eventModels.ObjectState {
+func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod) *eventModels.ObjectState {
 	builder := eventModels.NewObjectStateBuilder()
-	build := false
-	obj := event.InvolvedObject
+	obj := ev.InvolvedObject
 
 	switch obj.Kind {
-	case "Pod":
-		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(ctx, obj.Name, metav1.GetOptions{}); err == nil {
+	case k8sKindPod:
+		if pod, ok := podMap[ev.InvolvedObject.UID]; ok {
 			state := getPodState(pod)
 			builder.WithPodState(state)
-			build = true
+			return builder.Build()
 		}
 	}
-
-	if !build {
-		return nil
-	}
-
-	return builder.Build()
+	return nil
 }
 
-func getPodState(pod *k8v1.Pod) *eventModels.PodState {
+func getPodState(pod *corev1.Pod) *eventModels.PodState {
 	return eventModels.NewPodStateBuilder().
 		WithPod(pod).
 		Build()
