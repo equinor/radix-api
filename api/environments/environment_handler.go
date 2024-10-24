@@ -275,15 +275,21 @@ func (eh EnvironmentHandler) GetComponentEvents(ctx context.Context, appName, en
 	if err != nil {
 		return nil, err
 	}
-	// TODO
-	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
+	ok, err := eh.existsRadixDeployComponent(ctx, radixApplication.Name, envName, componentName)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	environmentEvents, err := eh.eventHandler.GetComponentEvents(ctx, radixApplication.Name, envName, componentName)
 	if err != nil {
 		return nil, err
 	}
 	return environmentEvents, nil
 }
 
-// GetPodEvents Handler for GetReplicaEvents
+// GetPodEvents Handler for GetPodEvents
 func (eh EnvironmentHandler) GetPodEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
 	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
 	if err != nil {
@@ -311,6 +317,19 @@ func (eh EnvironmentHandler) getRadixApplicationAndValidateEnvironment(ctx conte
 		return nil, err
 	}
 	return radixApplication, err
+}
+
+func (eh EnvironmentHandler) existsRadixDeployComponent(ctx context.Context, appName, envName, componentName string) (bool, error) {
+	radixDeployments, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.accounts.UserAccount.RadixClient, appName, []string{envName}, 1)
+	if err != nil {
+		return false, err
+	}
+	activeRd, ok := slice.FindFirst(radixDeployments, func(rd radixv1.RadixDeployment) bool { return rd.Status.ActiveTo.IsZero() })
+	if !ok {
+		return false, nil
+	}
+	_, ok = slice.FindFirst(activeRd.Spec.Components, func(c radixv1.RadixDeployComponent) bool { return c.GetName() == componentName })
+	return ok, nil
 }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments
