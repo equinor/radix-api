@@ -21,10 +21,12 @@ import (
 )
 
 const (
-	k8sKindDeployment = "Deployment"
-	k8sKindReplicaSet = "ReplicaSet"
-	k8sKindIngress    = "Ingress"
-	k8sKindPod        = "Pod"
+	k8sKindDeployment   = "Deployment"
+	k8sKindReplicaSet   = "ReplicaSet"
+	k8sKindIngress      = "Ingress"
+	k8sKindPod          = "Pod"
+	k8sEventTypeNormal  = "Normal"
+	k8sEventTypeWarning = "Warning"
 )
 
 // EventHandler defines methods for interacting with Kubernetes events
@@ -173,7 +175,7 @@ func (eh *eventHandler) getEnvironmentComponentsIngressMap(ctx context.Context, 
 
 func (eh *eventHandler) buildEvent(ev corev1.Event, componentName string, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress) *eventModels.Event {
 	builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
-	if ev.Type != "Normal" || ev.InvolvedObject.Kind == k8sKindIngress {
+	if ev.Type != k8sEventTypeNormal || ev.InvolvedObject.Kind == k8sKindIngress {
 		if objectState := getObjectState(ev, podMap, ingressMap, componentName); objectState != nil {
 			builder.WithInvolvedObjectState(objectState)
 		}
