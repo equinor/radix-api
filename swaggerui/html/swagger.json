@@ -6889,6 +6889,34 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
+    "IngressRule": {
+      "description": "IngressRule specs",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "The host name of the ingress",
+          "type": "string",
+          "x-go-name": "Host"
+        },
+        "path": {
+          "description": "The path of the ingress",
+          "type": "string",
+          "x-go-name": "Path"
+        },
+        "port": {
+          "description": "The port of the ingress",
+          "type": "integer",
+          "format": "int32",
+          "x-go-name": "Port"
+        },
+        "service": {
+          "description": "The service name of the ingress",
+          "type": "string",
+          "x-go-name": "Service"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/events/models"
+    },
     "Job": {
       "description": "Job holds general information about job",
       "type": "object",
@@ -7202,6 +7230,14 @@
       "description": "ObjectState holds information about the state of objects involved in an event",
       "type": "object",
       "properties": {
+        "ingressRules": {
+          "description": "Details about the ingress rules for an ingress related event",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IngressRule"
+          },
+          "x-go-name": "IngressRules"
+        },
         "pod": {
           "$ref": "#/definitions/PodState"
         }

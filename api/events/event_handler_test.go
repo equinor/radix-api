@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -13,9 +14,15 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func Test_EventHandler_Init(t *testing.T) {
+func setupTest() (*kubefake.Clientset, *radixfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
-	eh := Init(kubeClient).(*eventHandler)
+	radixClient := radixfake.NewSimpleClientset()
+	return kubeClient, radixClient
+}
+
+func Test_EventHandler_Init(t *testing.T) {
+	kubeClient, radixClient := setupTest()
+	eh := Init(kubeClient, radixClient).(*eventHandler)
 	assert.NotNil(t, eh)
 	assert.Equal(t, kubeClient, eh.kubeClient)
 }
@@ -23,15 +30,15 @@ func Test_EventHandler_Init(t *testing.T) {
 func Test_EventHandler_GetEventsForRadixApplication(t *testing.T) {
 	appName, envName := "app", "env"
 	appNamespace := operatorutils.GetEnvironmentNamespace(appName, envName)
-	kubeClient := kubefake.NewSimpleClientset()
+	kubeClient, radixClient := setupTest()
 
 	createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 	createKubernetesEvent(t, kubeClient, appNamespace, "ev2", "Normal", "pod2", "Pod")
 	createKubernetesEvent(t, kubeClient, "app2-env", "ev3", "Normal", "pod3", "Pod")
 
 	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
-	eventHandler := Init(kubeClient)
-	events, err := eventHandler.GetEvents(context.Background(), ra.Name, envName)
+	eventHandler := Init(kubeClient, radixClient)
+	events, err := eventHandler.GetEnvironmentEvents(context.Background(), ra.Name, envName)
 	assert.Nil(t, err)
 	assert.Len(t, events, 2)
 	assert.ElementsMatch(
@@ -47,33 +54,33 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 	ra := operatorutils.NewRadixApplicationBuilder().WithAppName(appName).BuildRA()
 
 	t.Run("ObjectState is nil for normal event type", func(t *testing.T) {
-		kubeClient := kubefake.NewSimpleClientset()
+		kubeClient, radixClient := setupTest()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
 		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, true, 0)
 		require.NoError(t, err)
-		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
+		eventHandler := Init(kubeClient, radixClient)
+		events, _ := eventHandler.GetEnvironmentEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})
 
 	t.Run("ObjectState has Pod state for warning event type", func(t *testing.T) {
-		kubeClient := kubefake.NewSimpleClientset()
+		kubeClient, radixClient := setupTest()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Warning", "pod1", "Pod")
 		_, err := createKubernetesPod(kubeClient, "pod1", appNamespace, true, false, 0)
 		require.NoError(t, err)
-		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
+		eventHandler := Init(kubeClient, radixClient)
+		events, _ := eventHandler.GetEnvironmentEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.NotNil(t, events[0].InvolvedObjectState)
 		assert.NotNil(t, events[0].InvolvedObjectState.Pod)
 	})
 
 	t.Run("ObjectState is nil for warning event type when pod not exist", func(t *testing.T) {
-		kubeClient := kubefake.NewSimpleClientset()
+		kubeClient, radixClient := setupTest()
 		createKubernetesEvent(t, kubeClient, appNamespace, "ev1", "Normal", "pod1", "Pod")
-		eventHandler := Init(kubeClient)
-		events, _ := eventHandler.GetEvents(context.Background(), ra.Name, envName)
+		eventHandler := Init(kubeClient, radixClient)
+		events, _ := eventHandler.GetEnvironmentEvents(context.Background(), ra.Name, envName)
 		assert.Len(t, events, 1)
 		assert.Nil(t, events[0].InvolvedObjectState)
 	})

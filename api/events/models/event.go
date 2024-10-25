@@ -23,11 +23,26 @@ type PodState struct {
 	RestartCount int32 `json:"restartCount"`
 }
 
+// IngressRule specs
+// swagger:model IngressRule
+type IngressRule struct {
+	// The service name of the ingress
+	Service string `json:"service"`
+	// The host name of the ingress
+	Host string `json:"host"`
+	// The port of the ingress
+	Port int32 `json:"port"`
+	// The path of the ingress
+	Path string `json:"path"`
+}
+
 // ObjectState holds information about the state of objects involved in an event
 // swagger:model ObjectState
 type ObjectState struct {
 	// Details about the pod state for a pod related event
 	Pod *PodState `json:"pod"`
+	// Details about the ingress rules for an ingress related event
+	IngressRules []IngressRule `json:"ingressRules"`
 }
 
 // Event holds information about Kubernetes events

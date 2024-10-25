@@ -10,7 +10,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
-	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
@@ -39,7 +38,7 @@ type EnvironmentHandlerOptions func(*EnvironmentHandler)
 func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.deployHandler = deployments.Init(accounts)
-		eh.eventHandler = events.Init(accounts.UserAccount.Client)
+		eh.eventHandler = events.Init(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
 		eh.accounts = accounts
 	}
 }
@@ -252,82 +251,6 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 	}
 
 	return nil
-}
-
-// GetEnvironmentEvents Handler for GetEnvironmentEvents
-func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
-	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
-	if err != nil {
-		return nil, err
-	}
-
-	environmentEvents, err := eh.eventHandler.GetEvents(ctx, radixApplication.Name, envName)
-	if err != nil {
-		return nil, err
-	}
-
-	return environmentEvents, nil
-}
-
-// GetComponentEvents Handler for GetComponentEvents
-func (eh EnvironmentHandler) GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
-	if exists, err := eh.existsDeployedComponent(ctx, appName, envName, componentName); !exists || err != nil {
-		return nil, err
-	}
-	environmentEvents, err := eh.eventHandler.GetComponentEvents(ctx, appName, envName, componentName)
-	if err != nil {
-		return nil, err
-	}
-	return environmentEvents, nil
-}
-
-// GetPodEvents Handler for GetPodEvents
-func (eh EnvironmentHandler) GetPodEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error) {
-	if exists, err := eh.existsDeployedComponent(ctx, appName, envName, componentName); !exists || err != nil {
-		return nil, err
-	}
-	environmentEvents, err := eh.eventHandler.GetPodEvents(ctx, appName, envName, componentName, podName)
-	if err != nil {
-		return nil, err
-	}
-	return environmentEvents, nil
-}
-
-func (eh EnvironmentHandler) getRadixApplicationAndValidateEnvironment(ctx context.Context, appName string, envName string) (*radixv1.RadixApplication, error) {
-	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
-		}
-		return nil, err
-	}
-	return radixApplication, err
-}
-
-func (eh EnvironmentHandler) existsRadixDeployComponent(ctx context.Context, appName, envName, componentName string) (bool, error) {
-	radixDeployments, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.accounts.UserAccount.RadixClient, appName, []string{envName}, 1)
-	if err != nil {
-		return false, err
-	}
-	activeRd, ok := slice.FindFirst(radixDeployments, func(rd radixv1.RadixDeployment) bool { return rd.Status.ActiveTo.IsZero() })
-	if !ok {
-		return false, nil
-	}
-	_, ok = slice.FindFirst(activeRd.Spec.Components, func(c radixv1.RadixDeployComponent) bool { return c.GetName() == componentName })
-	return ok, nil
-}
-
-func (eh EnvironmentHandler) existsDeployedComponent(ctx context.Context, appName string, envName string, componentName string) (bool, error) {
-	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
-	if err != nil {
-		return true, err
-	}
-	return eh.existsRadixDeployComponent(ctx, radixApplication.Name, envName, componentName)
 }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments

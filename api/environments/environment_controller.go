@@ -532,7 +532,7 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetEnvironmentEvents(r.Context(), appName, envName)
+	events, err := environmentHandler.eventHandler.GetEnvironmentEvents(r.Context(), appName, envName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -591,7 +591,7 @@ func (c *environmentController) GetComponentEvents(accounts models.Accounts, w h
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetComponentEvents(r.Context(), appName, envName, componentName)
+	events, err := environmentHandler.eventHandler.GetComponentEvents(r.Context(), appName, envName, componentName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -655,7 +655,7 @@ func (c *environmentController) GetPodEvents(accounts models.Accounts, w http.Re
 	podName := mux.Vars(r)["podName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetPodEvents(r.Context(), appName, envName, componentName, podName)
+	events, err := environmentHandler.eventHandler.GetPodEvents(r.Context(), appName, envName, componentName, podName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
