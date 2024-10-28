@@ -37,8 +37,7 @@
         <text x="30" y="130" fill="#010101" fill-opacity=".3" transform="scale(.12)">{{.Operation}}</text>
         <text x="30" y="125" aria-hidden="true" transform="scale(.12)">{{.Operation}}</text>
 
-        <!-- Right side {{.StatusColor}} -->
-        <rect fill="#34d058" x="{{.OperationWidth}}" y="0" width="{{sum 10 .StatusWidth}}" height="20"/>
+        <rect fill="{{.StatusColor}}" x="{{.OperationWidth}}" y="0" width="{{sum 10 .StatusWidth}}" height="20"/>
         <text x="980" y="130" fill="#010101" fill-opacity=".3" transform="scale(.12)">{{.Status}}</text>
         <text x="980" y="125" aria-hidden="true" transform="scale(.12)">{{.Status}}</text>
 
