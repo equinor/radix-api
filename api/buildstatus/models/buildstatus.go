@@ -48,8 +48,6 @@ type pipelineBadgeData struct {
 	Status         string
 	StatusColor    string
 	StatusWidth    int
-
-	Width int
 }
 
 type pipelineBadge struct {
@@ -68,25 +66,13 @@ func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.R
 	statusWidth := calculateWidth(10, status)
 	badgeData := pipelineBadgeData{
 		Operation:      operation,
-		OperationWidth: operationWidth, // Build-deploy:  111px
+		OperationWidth: operationWidth,
 		Status:         status,
 		StatusColor:    color,
-		StatusWidth:    statusWidth, // Success: 75
-		Width:          30 + operationWidth + statusWidth,
+		StatusWidth:    statusWidth,
 	}
 
-	funcMap := template.FuncMap{
-		// The name "inc" is what the function will be called in the template text.
-		"sum": func(arg0 int, args ...int) int {
-			x := arg0
-			for _, arg := range args {
-				x += arg
-			}
-
-			return x
-		},
-	}
-
+	funcMap := template.FuncMap{"sum": TemplateSum}
 	svgTemplate := template.New("status-badge.svg").Funcs(funcMap)
 	_, err := svgTemplate.Parse(rbs.badgeTemplate)
 	if err != nil {
@@ -112,6 +98,15 @@ func calculateWidth(charWidth float32, value string) int {
 		}
 	}
 	return int(width + 5)
+}
+
+func TemplateSum(arg0 int, args ...int) int {
+	x := arg0
+	for _, arg := range args {
+		x += arg
+	}
+
+	return x
 }
 
 func translateCondition(condition v1.RadixJobCondition) string {
