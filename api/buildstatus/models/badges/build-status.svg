@@ -1,19 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{{.Width}}" height="20">
-    <defs>
-        <linearGradient id="glow" x2="0" y2="100%">
-            <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-            <stop offset="1" stop-opacity=".1"/>
-        </linearGradient>
-        <mask id="mask">
-            <rect width="{{.Width}}" height="20" rx="3" fill="#fff"/>
-        </mask>
-        <g id="{{.OperationTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="92" >
-            <text x="0" y="120" transform="scale(.12)">{{.Operation}}</text>
-        </g>
-        <g id="{{.StatusTextId}}" text-anchor="left" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="92" >
-            <text x="0" y="120" transform="scale(.12)">{{.Status}}</text>
-        </g>
-    </defs>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{{ sum 30 .OperationWidth .StatusWidth }}" height="20" role="img" aria-label="Radix Build status: {{.Status}}">
+    <title>{{.Operation}}</title>
+
+    <linearGradient id="glow" x2="0" y2="100%">
+        <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+        <stop offset="1" stop-opacity=".1"/>
+    </linearGradient>
+
+    <clipPath id="borderRadius">
+        <rect width="{{ sum 10 .OperationWidth .StatusWidth }}" height="20" rx="3" fill="#fff"/>
+    </clipPath>
+
+    <!--    Radix Logo -->
     <clipPath id="a">
         <rect width="30" height="20" rx="3" fill="#fff"/>
     </clipPath>
@@ -29,17 +26,21 @@
             <path d="M20,29 C19,33 16,37 8,38"/>
         </g>
     </g>
-    <g mask="url(#mask)" transform="translate(20, 0)">
-        <rect fill="{{.ColorLeft}}" x="0" y="0" width="{{.StatusOffset}}" height="20"/>
-        <rect fill="{{.ColorRight}}" x="{{.StatusOffset}}" y="0" width="{{.Width}}" height="20"/>
-        <rect fill="url(#glow)" x="0" y="0" width="{{.Width}}" height="20"/>
-    </g>
-    <g fill="{{.ColorFont}}" transform="translate(20, 0)">
-        <use x="2" y="0" fill="{{.ColorShadow}}" fill-opacity=".3" xlink:href="#{{.OperationTextId}}"/>
-        <use x="4" y="1" xlink:href="#{{.OperationTextId}}"/>
-    </g>
-    <g fill="{{.ColorFont}}" transform="translate(24, 0)">
-        <use x="{{.StatusOffset}}" y="0" fill="{{.ColorShadow}}" fill-opacity=".3" xlink:href="#{{.StatusTextId}}"/>
-        <use x="{{.StatusOffset}}" y="1" xlink:href="#{{.StatusTextId}}"/>
+
+    <!-- Main content -->
+    <g clip-path="url(#borderRadius)" transform="translate(20, 0)" fill="#fff"
+       text-anchor="left" text-rendering="optimizeLegibility" font-family="Verdana,Geneva,DejaVu Sans,sans-serif"
+       font-size="110" font-weight="500">
+
+        <!-- Left side -->
+        <rect fill="#777" x="0" y="0" width="{{.OperationWidth}}" height="20"/>
+        <text x="30" y="130" fill="#010101" fill-opacity=".3" transform="scale(.12)">{{.Operation}}</text>
+        <text x="30" y="125" aria-hidden="true" transform="scale(.12)">{{.Operation}}</text>
+
+        <rect fill="{{.StatusColor}}" x="{{.OperationWidth}}" y="0" width="{{sum 10 .StatusWidth}}" height="20"/>
+        <text x="980" y="130" fill="#010101" fill-opacity=".3" transform="scale(.12)">{{.Status}}</text>
+        <text x="980" y="125" aria-hidden="true" transform="scale(.12)">{{.Status}}</text>
+
+        <rect fill="url(#glow)" x="0" y="0" width="{{ sum 30 .OperationWidth .StatusWidth }}" height="20"/>
     </g>
 </svg>
