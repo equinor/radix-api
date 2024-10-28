@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/marstr/guid"
 )
 
 // embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
@@ -17,16 +16,16 @@ import (
 var defaultBadgeTemplate string
 
 const (
-	buildStatusFailing = "failing"
-	buildStatusSuccess = "success"
-	buildStatusStopped = "stopped"
-	buildStatusPending = "pending"
-	buildStatusRunning = "running"
-	buildStatusUnknown = "unknown"
+	buildStatusFailing = "Failing"
+	buildStatusSuccess = "Succeeded"
+	buildStatusStopped = "Stopped"
+	buildStatusPending = "Pending"
+	buildStatusRunning = "Running"
+	buildStatusUnknown = "Unknown"
 )
 
 const (
-	pipelineStatusSuccessColor = "#4c1"
+	pipelineStatusSuccessColor = "#34d058"
 	pipelineStatusFailedColor  = "#e05d44"
 	pipelineStatusStoppedColor = "#e05d44"
 	pipelineStatusRunningColor = "#33cccc"
@@ -44,17 +43,13 @@ func NewPipelineBadge() PipelineBadge {
 }
 
 type pipelineBadgeData struct {
-	Operation       string
-	Status          string
-	ColorLeft       string
-	ColorRight      string
-	ColorShadow     string
-	ColorFont       string
-	Width           int
-	Height          int
-	StatusOffset    int
-	OperationTextId string
-	StatusTextId    string
+	Operation      string
+	OperationWidth int
+	Status         string
+	StatusColor    string
+	StatusWidth    int
+
+	Width int
 }
 
 type pipelineBadge struct {
@@ -70,23 +65,29 @@ func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.R
 	status := translateCondition(condition)
 	color := getColor(condition)
 	operationWidth := calculateWidth(10, operation)
-	statusWidth := calculateWidth(10, status) + 24
-
+	statusWidth := calculateWidth(10, status)
 	badgeData := pipelineBadgeData{
-		Operation:       operation,
-		Status:          status,
-		ColorRight:      color,
-		ColorLeft:       "#aaa",
-		ColorShadow:     "#010101",
-		ColorFont:       "#fff",
-		Width:           statusWidth + operationWidth,
-		Height:          30,
-		StatusOffset:    operationWidth,
-		OperationTextId: guid.NewGUID().String(),
-		StatusTextId:    guid.NewGUID().String(),
+		Operation:      operation,
+		OperationWidth: operationWidth, // Build-deploy:  111px
+		Status:         status,
+		StatusColor:    color,
+		StatusWidth:    statusWidth, // Success: 75
+		Width:          30 + operationWidth + statusWidth,
 	}
 
-	svgTemplate := template.New("status-badge.svg")
+	funcMap := template.FuncMap{
+		// The name "inc" is what the function will be called in the template text.
+		"sum": func(arg0 int, args ...int) int {
+			x := arg0
+			for _, arg := range args {
+				x += arg
+			}
+
+			return x
+		},
+	}
+
+	svgTemplate := template.New("status-badge.svg").Funcs(funcMap)
 	_, err := svgTemplate.Parse(rbs.badgeTemplate)
 	if err != nil {
 		return nil, err
