@@ -104,7 +104,7 @@ func Test_EventHandler_NoEventsWhenThereIsNoRadixApplication(t *testing.T) {
 
 	eventHandler := Init(kubeClient, radixClient)
 	events, err := eventHandler.GetEnvironmentEvents(context.Background(), appName, envName)
-	assert.NoError(t, err)
+	assert.NotNil(t, err)
 	assert.Len(t, events, 0)
 }
 
@@ -120,7 +120,7 @@ func Test_EventHandler_NoEventsWhenThereIsNoRadixEnvironment(t *testing.T) {
 
 	eventHandler := Init(kubeClient, radixClient)
 	events, err := eventHandler.GetEnvironmentEvents(context.Background(), appName, envName)
-	assert.NoError(t, err)
+	assert.NotNil(t, err)
 	assert.Len(t, events, 0)
 }
 
@@ -168,7 +168,6 @@ func Test_EventHandler_GetEnvironmentEvents(t *testing.T) {
 	envNamespace := operatorutils.GetEnvironmentNamespace(appName1, envName1)
 
 	scenarios := []scenario{
-		{name: "NoEvents"},
 		{
 			name: "Pod events",
 			existingEventProps: []eventProps{
@@ -249,7 +248,6 @@ func Test_EventHandler_GetComponentEvents(t *testing.T) {
 	envNamespace := operatorutils.GetEnvironmentNamespace(appName1, envName1)
 
 	scenarios := []scenario{
-		{name: "NoEvents"},
 		{
 			name: "Pod events",
 			existingEventProps: []eventProps{
@@ -332,7 +330,6 @@ func Test_EventHandler_GetPodEvents(t *testing.T) {
 	envNamespace := operatorutils.GetEnvironmentNamespace(appName1, envName1)
 
 	scenarios := []scenario{
-		{name: "NoEvents"},
 		{
 			name: "Pod events",
 			existingEventProps: []eventProps{

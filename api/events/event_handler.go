@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-common/utils/slice"
@@ -53,9 +54,6 @@ func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) Ev
 func (eh *eventHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
 	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	environmentEvents, err := eh.getEvents(ctx, radixApplication.Name, envName, "", "")
@@ -97,6 +95,9 @@ func (eh *eventHandler) getRadixApplicationAndValidateEnvironment(ctx context.Co
 
 	_, err = kubequery.GetRadixEnvironment(ctx, eh.radixClient, appName, envName)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
+		}
 		return nil, err
 	}
 	return radixApplication, err
@@ -106,7 +107,7 @@ func (eh *eventHandler) existsRadixDeployComponent(ctx context.Context, appName,
 	_, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return false, nil
+			return false, environmentModels.NonExistingComponent(appName, componentName)
 		}
 		return false, err
 	}
