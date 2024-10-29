@@ -66,6 +66,7 @@ type eventProps struct {
 	appName       string
 	envName       string
 	componentName string
+	podName       string
 	eventType     string
 	objectName    string
 	objectUid     string
@@ -327,6 +328,89 @@ func Test_EventHandler_GetComponentEvents(t *testing.T) {
 	}
 }
 
+func Test_EventHandler_GetPodEvents(t *testing.T) {
+	envNamespace := operatorutils.GetEnvironmentNamespace(appName1, envName1)
+
+	scenarios := []scenario{
+		{name: "NoEvents"},
+		{
+			name: "Pod events",
+			existingEventProps: []eventProps{
+				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: podServer1, objectKind: k8sKindPod, objectUid: uid1},
+				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer1, eventType: k8sEventTypeNormal, objectName: podServer2, objectKind: k8sKindPod, objectUid: uid2},
+				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: podServer3, objectKind: k8sKindPod, objectUid: uid3},
+			},
+			expectedEvents: []eventModels.Event{
+				{InvolvedObjectName: podServer1, InvolvedObjectKind: k8sKindPod, InvolvedObjectNamespace: envNamespace},
+			},
+		},
+		{
+			name: "Deploy events",
+			existingEventProps: []eventProps{
+				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: deploy1, objectKind: k8sKindDeployment, objectUid: uid1},
+				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer1, eventType: k8sEventTypeNormal, objectName: deploy2, objectKind: k8sKindDeployment, objectUid: uid2},
+				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: deploy3, objectKind: k8sKindDeployment, objectUid: uid3},
+			},
+			expectedEvents: []eventModels.Event{
+				{InvolvedObjectName: deploy1, InvolvedObjectKind: k8sKindDeployment, InvolvedObjectNamespace: envNamespace},
+			},
+		},
+		{
+			name: "ReplicaSet events",
+			existingEventProps: []eventProps{
+				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: replicaSetServer1, objectKind: k8sKindReplicaSet, objectUid: uid1},
+				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer1, eventType: k8sEventTypeNormal, objectName: replicaSetServer2, objectKind: k8sKindReplicaSet, objectUid: uid2},
+				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: replicaSetServer3, objectKind: k8sKindReplicaSet, objectUid: uid3},
+			},
+			expectedEvents: []eventModels.Event{
+				{InvolvedObjectName: replicaSetServer1, InvolvedObjectKind: k8sKindReplicaSet, InvolvedObjectNamespace: envNamespace},
+			},
+		},
+		{
+			name: "Ingress events",
+			existingEventProps: []eventProps{
+				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
+				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
+				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
+			},
+			existingIngressRuleProps: []ingressRuleProps{
+				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
+				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
+				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
+			},
+			expectedEvents: []eventModels.Event{
+				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
+			},
+		},
+		{
+			name: "Ingress events with rules",
+			existingEventProps: []eventProps{
+				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
+				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
+				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
+			},
+			existingIngressRuleProps: []ingressRuleProps{
+				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
+				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
+				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
+			},
+			expectedEvents: []eventModels.Event{
+				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
+			},
+		},
+	}
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			eventHandler, radixClient := setupTestEnvForHandler(t, ts)
+			createActiveRadixDeployments(t, ts, radixClient)
+
+			actualEvents, err := eventHandler.GetPodEvents(context.Background(), appName1, envName1, component1, podServer1)
+			assert.Nil(t, err)
+			assertEvents(t, ts.expectedEvents, actualEvents)
+		})
+	}
+}
+
 func createActiveRadixDeployments(t *testing.T, ts scenario, radixClient *radixfake.Clientset) {
 	appEnvComponentMap := getAppEnvComponentMap(ts)
 	for appName, envComponentNameMap := range appEnvComponentMap {
@@ -388,6 +472,9 @@ func setupTestEnvForHandler(t *testing.T, ts scenario) (EventHandler, *radixfake
 	createRadixApplications(t, ts, kubeClient, radixClient)
 	for _, evProps := range ts.existingEventProps {
 		createKubernetesEvent(t, kubeClient, operatorutils.GetEnvironmentNamespace(evProps.appName, evProps.envName), evProps.name, evProps.eventType, evProps.objectName, evProps.objectKind, evProps.objectUid)
+		if evProps.podName != "" {
+			createKubernetesPod(kubeClient, evProps.podName, evProps.appName, evProps.envName, true, true, 0, evProps.objectUid)
+		}
 	}
 	for _, ingressRuleProp := range ts.existingIngressRuleProps {
 		createIngress(t, kubeClient, ingressRuleProp)
