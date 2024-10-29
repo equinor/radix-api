@@ -40,7 +40,7 @@ func (handler BuildStatusHandler) GetBuildStatusForApplication(ctx context.Conte
 		buildCondition = latestPipelineJob.Status.Condition
 	}
 
-	output, err = handler.pipelineBadge.GetBadge(buildCondition, v1.RadixPipelineType(pipeline))
+	output, err = handler.pipelineBadge.GetBadge(ctx, buildCondition, v1.RadixPipelineType(pipeline))
 	if err != nil {
 		return nil, err
 	}
