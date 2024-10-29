@@ -9,7 +9,7 @@ func getEnvironmentConfigurationStatus(re *radixv1.RadixEnvironment) environment
 	switch {
 	case re == nil:
 		return environmentModels.Pending
-	case re.Status.Orphaned:
+	case re.Status.Orphaned || re.Status.OrphanedTimestamp != nil:
 		return environmentModels.Orphan
 	case re.Status.Reconciled.IsZero():
 		return environmentModels.Pending

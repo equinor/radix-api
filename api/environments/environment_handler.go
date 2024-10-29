@@ -238,7 +238,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 		return err
 	}
 
-	if !re.Status.Orphaned {
+	if !re.Status.Orphaned && re.Status.OrphanedTimestamp == nil {
 		// Must be removed from radix config first
 		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, envName)
 	}

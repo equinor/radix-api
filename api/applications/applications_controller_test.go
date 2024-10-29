@@ -972,6 +972,7 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 		WithEnvironmentName(anyOrphanedEnvironment))
 	orphanedRe.Status.Reconciled = metav1.Now()
 	orphanedRe.Status.Orphaned = true
+	orphanedRe.Status.OrphanedTimestamp = pointers.Ptr(metav1.Now())
 	_, err = radix.RadixV1().RadixEnvironments().Update(context.Background(), orphanedRe, metav1.UpdateOptions{})
 	require.NoError(t, err)
 

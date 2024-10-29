@@ -323,7 +323,8 @@ func TestDeleteEnvironment_OneOrphanedEnvironment_OnlyOrphanedCanBeDeleted(t *te
 		NewEnvironmentBuilder().
 		WithAppLabel().
 		WithAppName(anyAppName).
-		WithEnvironmentName(anyOrphanedEnvironment))
+		WithEnvironmentName(anyOrphanedEnvironment).
+		WithOrphaned(true))
 	require.NoError(t, err)
 
 	// Test
@@ -589,13 +590,11 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	t.Run("Get events for non-existing environment", func(t *testing.T) {
 		responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/events", anyAppName, "prod"))
 		response := <-responseChannel
-		assert.Equal(t, http.StatusNotFound, response.Code)
-		errResponse, _ := controllertest.GetErrorResponse(response)
-		assert.Equal(
-			t,
-			environmentModels.NonExistingEnvironment(nil, anyAppName, "prod").Error(),
-			errResponse.Message,
-		)
+		assert.Equal(t, http.StatusOK, response.Code)
+		events := make([]eventModels.Event, 0)
+		err = controllertest.GetResponseBody(response, &events)
+		require.NoError(t, err)
+		assert.Len(t, events, 0)
 	})
 
 	t.Run("Get events for non-existing application", func(t *testing.T) {
