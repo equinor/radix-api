@@ -8,12 +8,9 @@ import (
 	"testing"
 	"time"
 
-	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
-	event "github.com/equinor/radix-api/api/events"
-	eventMock "github.com/equinor/radix-api/api/events/mock"
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/api/secrets"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -21,7 +18,6 @@ import (
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
-	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/numbers"
@@ -47,7 +43,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	testing2 "k8s.io/client-go/testing"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
@@ -985,27 +980,6 @@ func TestCreateSecret(t *testing.T) {
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func Test_GetEnvironmentEvents_Handler(t *testing.T) {
-	commonTestUtils, _, _, kubeclient, radixclient, kedaClient, _, secretproviderclient, certClient := setupTest(t, nil)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	eventHandler := eventMock.NewMockEventHandler(ctrl)
-	handler := initHandler(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, WithEventHandler(eventHandler))
-	raBuilder := operatorutils.ARadixApplication().WithAppName(anyAppName).WithEnvironment(anyEnvironment, "master")
-
-	_, err := commonTestUtils.ApplyApplication(raBuilder)
-	require.NoError(t, err)
-	nsFunc := event.RadixEnvironmentNamespace(raBuilder.BuildRA(), anyEnvironment)
-	eventHandler.EXPECT().
-		GetEvents(context.Background(), controllertest.EqualsNamespaceFunc(nsFunc)).
-		Return([]*eventModels.Event{{}, {}}, nil).
-		Times(1)
-
-	events, err := handler.GetEnvironmentEvents(context.Background(), anyAppName, anyEnvironment)
-	assert.Nil(t, err)
-	assert.Len(t, events, 2)
 }
 
 func TestRestartAuxiliaryResource(t *testing.T) {
@@ -2700,18 +2674,6 @@ func Test_DeleteBatch(t *testing.T) {
 	for _, batchName := range append(batchTypeBatchNames, batchTypeJobName) {
 		assertBatchDeleted(t, radixClient, namespace, batchName, deletableBatches)
 	}
-}
-
-func initHandler(client kubernetes.Interface,
-	radixclient radixclient.Interface,
-	kedaClient kedav2.Interface,
-	secretproviderclient secretsstorevclient.Interface,
-	certClient certclient.Interface,
-	handlerConfig ...EnvironmentHandlerOptions) EnvironmentHandler {
-	accounts := models.NewAccounts(client, radixclient, kedaClient, secretproviderclient, nil, certClient, client, radixclient, kedaClient, secretproviderclient, nil, certClient)
-	options := []EnvironmentHandlerOptions{WithAccounts(accounts)}
-	options = append(options, handlerConfig...)
-	return Init(options...)
 }
 
 type ComponentCreatorStruct struct {

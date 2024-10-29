@@ -19,6 +19,8 @@ import (
 )
 
 const (
+	appName           = "app1"
+	envName           = "env1"
 	ev1               = "ev1"
 	ev2               = "ev2"
 	ev3               = "ev3"
@@ -44,6 +46,31 @@ const (
 	port8090          = int32(8090)
 	port9090          = int32(9090)
 )
+
+type scenario struct {
+	name                     string
+	existingEventProps       []eventProps
+	expectedEvents           []eventModels.Event
+	existingIngressRuleProps []ingressRuleProps
+}
+
+type eventProps struct {
+	name       string
+	namespace  string
+	eventType  string
+	objectName string
+	objectUid  string
+	objectKind string
+}
+
+type ingressRuleProps struct {
+	name    string
+	host    string
+	service string
+	port    int32
+	appName string
+	envName string
+}
 
 func setupTest() (*kubefake.Clientset, *radixfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
@@ -146,33 +173,7 @@ func Test_EventHandler_GetEvents_PodState(t *testing.T) {
 	})
 }
 
-type scenario struct {
-	name                     string
-	existingEventProps       []eventProps
-	expectedEvents           []eventModels.Event
-	existingIngressRuleProps []ingressRuleProps
-}
-
-type eventProps struct {
-	name       string
-	namespace  string
-	eventType  string
-	objectName string
-	objectUid  string
-	objectKind string
-}
-
-type ingressRuleProps struct {
-	name    string
-	host    string
-	service string
-	port    int32
-	appName string
-	envName string
-}
-
 func Test_EventHandler_GetEnvironmentEvents(t *testing.T) {
-	appName, envName := "app1", "env1"
 	envNamespace := operatorutils.GetEnvironmentNamespace(appName, envName)
 
 	scenarios := []scenario{
@@ -245,27 +246,35 @@ func Test_EventHandler_GetEnvironmentEvents(t *testing.T) {
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
-			kubeClient, radixClient := setupTest()
-			createRadixAppWithEnvironment(t, radixClient, appName, envName)
-			for _, evProps := range ts.existingEventProps {
-				createKubernetesEvent(t, kubeClient, evProps.namespace, evProps.name, evProps.eventType, evProps.objectName, evProps.objectKind, evProps.objectUid)
-			}
-			for _, ingressRuleProp := range ts.existingIngressRuleProps {
-				createIngressRule(t, kubeClient, ingressRuleProp)
-			}
-
-			eventHandler := Init(kubeClient, radixClient)
-			events, err := eventHandler.GetEnvironmentEvents(context.Background(), appName, envName)
+			eventHandler := setupTestEnvForHandler(t, appName, envName, ts)
+			actualEvents, err := eventHandler.GetEnvironmentEvents(context.Background(), appName, envName)
 			assert.Nil(t, err)
-			if assert.Len(t, events, len(ts.expectedEvents)) {
-				for i := 0; i < len(ts.expectedEvents); i++ {
-					assert.Equal(t, ts.expectedEvents[i].InvolvedObjectName, events[i].InvolvedObjectName)
-					assert.Equal(t, ts.expectedEvents[i].InvolvedObjectKind, events[i].InvolvedObjectKind)
-					assert.Equal(t, ts.expectedEvents[i].InvolvedObjectNamespace, events[i].InvolvedObjectNamespace)
-				}
-			}
+			assertEvents(t, ts.expectedEvents, actualEvents)
 		})
 	}
+}
+
+func assertEvents(t *testing.T, expectedEvents []eventModels.Event, actualEvents []*eventModels.Event) {
+	if assert.Len(t, actualEvents, len(expectedEvents)) {
+		for i := 0; i < len(expectedEvents); i++ {
+			assert.Equal(t, expectedEvents[i].InvolvedObjectName, actualEvents[i].InvolvedObjectName)
+			assert.Equal(t, expectedEvents[i].InvolvedObjectKind, actualEvents[i].InvolvedObjectKind)
+			assert.Equal(t, expectedEvents[i].InvolvedObjectNamespace, actualEvents[i].InvolvedObjectNamespace)
+		}
+	}
+}
+
+func setupTestEnvForHandler(t *testing.T, appName string, envName string, ts scenario) EventHandler {
+	kubeClient, radixClient := setupTest()
+	createRadixAppWithEnvironment(t, radixClient, appName, envName)
+	for _, evProps := range ts.existingEventProps {
+		createKubernetesEvent(t, kubeClient, evProps.namespace, evProps.name, evProps.eventType, evProps.objectName, evProps.objectKind, evProps.objectUid)
+	}
+	for _, ingressRuleProp := range ts.existingIngressRuleProps {
+		createIngressRule(t, kubeClient, ingressRuleProp)
+	}
+	eventHandler := Init(kubeClient, radixClient)
+	return eventHandler
 }
 
 func createIngressRule(t *testing.T, kubeClient *kubefake.Clientset, props ingressRuleProps) {
