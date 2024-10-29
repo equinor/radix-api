@@ -102,7 +102,7 @@ func TestGetBuildStatus(t *testing.T) {
 		expected := []byte("badge")
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(expected, nil).
 			Times(1)
 
@@ -129,7 +129,7 @@ func TestGetBuildStatus(t *testing.T) {
 		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
 				actualPipeline = p
@@ -159,7 +159,7 @@ func TestGetBuildStatus(t *testing.T) {
 		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
 				actualPipeline = p
@@ -189,7 +189,7 @@ func TestGetBuildStatus(t *testing.T) {
 		var actualPipeline v1.RadixPipelineType
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
 				actualCondition = c
 				actualPipeline = p
@@ -216,7 +216,7 @@ func TestGetBuildStatus(t *testing.T) {
 		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("error")).
 			Times(1)
 

@@ -2,12 +2,14 @@ package models
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"errors"
 	"html/template"
 	"strings"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/rs/zerolog/log"
 )
 
 // embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
@@ -33,7 +35,7 @@ const (
 )
 
 type PipelineBadge interface {
-	GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
+	GetBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
 }
 
 func NewPipelineBadge() PipelineBadge {
@@ -54,16 +56,16 @@ type pipelineBadge struct {
 	badgeTemplate string
 }
 
-func (rbs *pipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
-	return rbs.getBadge(condition, pipeline)
+func (rbs *pipelineBadge) GetBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+	return rbs.getBadge(ctx, condition, pipeline)
 }
 
-func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+func (rbs *pipelineBadge) getBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	operation := translatePipeline(pipeline)
 	status := translateCondition(condition)
 	color := getColor(condition)
-	operationWidth := calculateWidth(10, operation)
-	statusWidth := calculateWidth(10, status)
+	operationWidth := calculateWidth(6, operation)
+	statusWidth := calculateWidth(6, status)
 	badgeData := pipelineBadgeData{
 		Operation:      operation,
 		OperationWidth: operationWidth,
@@ -71,6 +73,8 @@ func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.R
 		StatusColor:    color,
 		StatusWidth:    statusWidth,
 	}
+
+	log.Ctx(ctx).Trace().Interface("badge", badgeData).Msg("Rendering badge")
 
 	funcMap := template.FuncMap{"sum": TemplateSum}
 	svgTemplate := template.New("status-badge.svg").Funcs(funcMap)
