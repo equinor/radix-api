@@ -38,7 +38,7 @@ func (b *ingressStateBuilder) Build() []IngressRule {
 		return nil
 	}
 
-	var ingressRiles []IngressRule
+	var ingressRules []IngressRule
 	for _, rule := range b.ingress.Spec.Rules {
 		if rule.HTTP != nil {
 			for _, path := range rule.HTTP.Paths {
@@ -50,10 +50,10 @@ func (b *ingressStateBuilder) Build() []IngressRule {
 					}
 					ingressRule.Port = path.Backend.Service.Port.Number
 				}
-				ingressRiles = append(ingressRiles, ingressRule)
+				ingressRules = append(ingressRules , ingressRule)
 			}
 		}
 	}
 
-	return ingressRiles
+	return ingressRules 
 }
