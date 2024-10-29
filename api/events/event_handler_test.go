@@ -470,7 +470,8 @@ func setupTestEnvForHandler(t *testing.T, ts scenario) (EventHandler, *radixfake
 	for _, evProps := range ts.existingEventProps {
 		createKubernetesEvent(t, kubeClient, operatorutils.GetEnvironmentNamespace(evProps.appName, evProps.envName), evProps.name, evProps.eventType, evProps.objectName, evProps.objectKind, evProps.objectUid)
 		if evProps.podName != "" {
-			createKubernetesPod(kubeClient, evProps.podName, evProps.appName, evProps.envName, true, true, 0, evProps.objectUid)
+			_, err := createKubernetesPod(kubeClient, evProps.podName, evProps.appName, evProps.envName, true, true, 0, evProps.objectUid)
+			require.NoError(t, err)
 		}
 	}
 	for _, ingressRuleProp := range ts.existingIngressRuleProps {
