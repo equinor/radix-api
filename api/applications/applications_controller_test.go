@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -77,7 +76,6 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
 	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
@@ -1684,7 +1682,6 @@ func TestHandleTriggerPipeline_Promote_JobHasCorrectParameters(t *testing.T) {
 	const (
 		appName         = "an-app"
 		commitId        = "475f241c-478b-49da-adfb-3c336aaab8d2"
-		deploymentName  = "a-deployment"
 		fromEnvironment = "origin"
 		toEnvironment   = "target"
 	)

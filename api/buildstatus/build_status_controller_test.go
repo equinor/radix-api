@@ -3,7 +3,6 @@ package buildstatus
 import (
 	"errors"
 	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -43,8 +41,6 @@ func setupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *radixfake
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
-
 	return &commonTestUtils, kubeclient, radixclient, kedaClient, secretproviderclient, certClient
 }
 
