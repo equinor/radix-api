@@ -2,13 +2,14 @@ package models
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"errors"
 	"html/template"
 	"strings"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/marstr/guid"
+	"github.com/rs/zerolog/log"
 )
 
 // embed https://golang.org/pkg/embed/ - For embedding a single file, a variable of type []byte or string is often best
@@ -17,16 +18,16 @@ import (
 var defaultBadgeTemplate string
 
 const (
-	buildStatusFailing = "failing"
-	buildStatusSuccess = "success"
-	buildStatusStopped = "stopped"
-	buildStatusPending = "pending"
-	buildStatusRunning = "running"
-	buildStatusUnknown = "unknown"
+	buildStatusFailing = "Failing"
+	buildStatusSuccess = "Succeeded"
+	buildStatusStopped = "Stopped"
+	buildStatusPending = "Pending"
+	buildStatusRunning = "Running"
+	buildStatusUnknown = "Unknown"
 )
 
 const (
-	pipelineStatusSuccessColor = "#4c1"
+	pipelineStatusSuccessColor = "#34d058"
 	pipelineStatusFailedColor  = "#e05d44"
 	pipelineStatusStoppedColor = "#e05d44"
 	pipelineStatusRunningColor = "#33cccc"
@@ -34,7 +35,7 @@ const (
 )
 
 type PipelineBadge interface {
-	GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
+	GetBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error)
 }
 
 func NewPipelineBadge() PipelineBadge {
@@ -44,49 +45,39 @@ func NewPipelineBadge() PipelineBadge {
 }
 
 type pipelineBadgeData struct {
-	Operation       string
-	Status          string
-	ColorLeft       string
-	ColorRight      string
-	ColorShadow     string
-	ColorFont       string
-	Width           int
-	Height          int
-	StatusOffset    int
-	OperationTextId string
-	StatusTextId    string
+	Operation      string
+	OperationWidth int
+	Status         string
+	StatusColor    string
+	StatusWidth    int
 }
 
 type pipelineBadge struct {
 	badgeTemplate string
 }
 
-func (rbs *pipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
-	return rbs.getBadge(condition, pipeline)
+func (rbs *pipelineBadge) GetBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+	return rbs.getBadge(ctx, condition, pipeline)
 }
 
-func (rbs *pipelineBadge) getBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+func (rbs *pipelineBadge) getBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	operation := translatePipeline(pipeline)
 	status := translateCondition(condition)
 	color := getColor(condition)
-	operationWidth := calculateWidth(10, operation)
-	statusWidth := calculateWidth(10, status) + 24
-
+	operationWidth := calculateWidth(6, operation)
+	statusWidth := calculateWidth(6, status)
 	badgeData := pipelineBadgeData{
-		Operation:       operation,
-		Status:          status,
-		ColorRight:      color,
-		ColorLeft:       "#aaa",
-		ColorShadow:     "#010101",
-		ColorFont:       "#fff",
-		Width:           statusWidth + operationWidth,
-		Height:          30,
-		StatusOffset:    operationWidth,
-		OperationTextId: guid.NewGUID().String(),
-		StatusTextId:    guid.NewGUID().String(),
+		Operation:      operation,
+		OperationWidth: operationWidth,
+		Status:         status,
+		StatusColor:    color,
+		StatusWidth:    statusWidth,
 	}
 
-	svgTemplate := template.New("status-badge.svg")
+	log.Ctx(ctx).Trace().Interface("badge", badgeData).Msg("Rendering badge")
+
+	funcMap := template.FuncMap{"sum": TemplateSum}
+	svgTemplate := template.New("status-badge.svg").Funcs(funcMap)
 	_, err := svgTemplate.Parse(rbs.badgeTemplate)
 	if err != nil {
 		return nil, err
@@ -111,6 +102,15 @@ func calculateWidth(charWidth float32, value string) int {
 		}
 	}
 	return int(width + 5)
+}
+
+func TemplateSum(arg0 int, args ...int) int {
+	x := arg0
+	for _, arg := range args {
+		x += arg
+	}
+
+	return x
 }
 
 func translateCondition(condition v1.RadixJobCondition) string {

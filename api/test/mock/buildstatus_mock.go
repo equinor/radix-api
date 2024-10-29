@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	reflect "reflect"
 
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -35,16 +36,16 @@ func (m *MockPipelineBadge) EXPECT() *MockPipelineBadgeMockRecorder {
 }
 
 // GetBadge mocks base method.
-func (m *MockPipelineBadge) GetBadge(condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
+func (m *MockPipelineBadge) GetBadge(ctx context.Context, condition v1.RadixJobCondition, pipeline v1.RadixPipelineType) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBadge", condition, pipeline)
+	ret := m.ctrl.Call(m, "GetBadge", ctx, condition, pipeline)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBadge indicates an expected call of GetBadge.
-func (mr *MockPipelineBadgeMockRecorder) GetBadge(condition, pipeline interface{}) *gomock.Call {
+func (mr *MockPipelineBadgeMockRecorder) GetBadge(ctx, condition, pipeline interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBadge", reflect.TypeOf((*MockPipelineBadge)(nil).GetBadge), condition, pipeline)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBadge", reflect.TypeOf((*MockPipelineBadge)(nil).GetBadge), ctx, condition, pipeline)
 }
