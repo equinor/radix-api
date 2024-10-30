@@ -8,7 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	events "github.com/equinor/radix-api/api/events"
 	models "github.com/equinor/radix-api/api/events/models"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -36,17 +35,47 @@ func (m *MockEventHandler) EXPECT() *MockEventHandlerMockRecorder {
 	return m.recorder
 }
 
-// GetEvents mocks base method.
-func (m *MockEventHandler) GetEvents(ctx context.Context, namespaceFunc events.NamespaceFunc) ([]*models.Event, error) {
+// GetComponentEvents mocks base method.
+func (m *MockEventHandler) GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*models.Event, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEvents", ctx, namespaceFunc)
+	ret := m.ctrl.Call(m, "GetComponentEvents", ctx, appName, envName, componentName)
 	ret0, _ := ret[0].([]*models.Event)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetEvents indicates an expected call of GetEvents.
-func (mr *MockEventHandlerMockRecorder) GetEvents(ctx, namespaceFunc interface{}) *gomock.Call {
+// GetComponentEvents indicates an expected call of GetComponentEvents.
+func (mr *MockEventHandlerMockRecorder) GetComponentEvents(ctx, appName, envName, componentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvents", reflect.TypeOf((*MockEventHandler)(nil).GetEvents), ctx, namespaceFunc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetComponentEvents", reflect.TypeOf((*MockEventHandler)(nil).GetComponentEvents), ctx, appName, envName, componentName)
+}
+
+// GetEnvironmentEvents mocks base method.
+func (m *MockEventHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*models.Event, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEnvironmentEvents", ctx, appName, envName)
+	ret0, _ := ret[0].([]*models.Event)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEnvironmentEvents indicates an expected call of GetEnvironmentEvents.
+func (mr *MockEventHandlerMockRecorder) GetEnvironmentEvents(ctx, appName, envName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvironmentEvents", reflect.TypeOf((*MockEventHandler)(nil).GetEnvironmentEvents), ctx, appName, envName)
+}
+
+// GetPodEvents mocks base method.
+func (m *MockEventHandler) GetPodEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*models.Event, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPodEvents", ctx, appName, envName, componentName, podName)
+	ret0, _ := ret[0].([]*models.Event)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPodEvents indicates an expected call of GetPodEvents.
+func (mr *MockEventHandlerMockRecorder) GetPodEvents(ctx, appName, envName, componentName, podName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPodEvents", reflect.TypeOf((*MockEventHandler)(nil).GetPodEvents), ctx, appName, envName, componentName, podName)
 }

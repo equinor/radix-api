@@ -9,7 +9,7 @@ require (
 	github.com/cert-manager/cert-manager v1.15.0
 	github.com/equinor/radix-common v1.9.5
 	github.com/equinor/radix-job-scheduler v1.11.0
-	github.com/equinor/radix-operator v1.62.0
+	github.com/equinor/radix-operator v1.64.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -18,7 +18,6 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/kedacore/keda/v2 v2.15.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/marstr/guid v1.1.0
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.0
 	github.com/prometheus/client_golang v1.20.3

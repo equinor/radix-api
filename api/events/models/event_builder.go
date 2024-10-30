@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -100,6 +101,6 @@ func (eb *eventBuilder) Build() *Event {
 		InvolvedObjectState:     eb.involvedObjectState,
 		Type:                    eb.eventType,
 		Reason:                  eb.reason,
-		Message:                 eb.message,
+		Message:                 strings.ReplaceAll(eb.message, `\"`, "'"),
 	}
 }

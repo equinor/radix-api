@@ -2,95 +2,277 @@ package events
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
+	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	eventModels "github.com/equinor/radix-api/api/events/models"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
-	k8v1 "k8s.io/api/core/v1"
+	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-common/utils/slice"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sTypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	k8sKindDeployment   = "Deployment"
+	k8sKindReplicaSet   = "ReplicaSet"
+	k8sKindIngress      = "Ingress"
+	k8sKindPod          = "Pod"
+	k8sEventTypeNormal  = "Normal"
+	k8sEventTypeWarning = "Warning"
 )
 
 // EventHandler defines methods for interacting with Kubernetes events
 type EventHandler interface {
-	GetEvents(ctx context.Context, namespaceFunc NamespaceFunc) ([]*eventModels.Event, error)
+	GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error)
+	GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error)
+	GetPodEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error)
 }
 
 // NamespaceFunc defines a function that returns a namespace
 // Used as argument in GetEvents to filter events by namespace
 type NamespaceFunc func() string
 
-// RadixEnvironmentNamespace builds a namespace from a RadixApplication and environment name
-func RadixEnvironmentNamespace(ra *v1.RadixApplication, envName string) NamespaceFunc {
-	return func() string {
-		return k8sObjectUtils.GetEnvironmentNamespace(ra.Name, envName)
-	}
-}
-
 type eventHandler struct {
-	kubeClient kubernetes.Interface
+	kubeClient  kubernetes.Interface
+	radixClient radixclient.Interface
 }
 
 // Init creates a new EventHandler
-func Init(kubeClient kubernetes.Interface) EventHandler {
-	return &eventHandler{kubeClient: kubeClient}
+func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) EventHandler {
+	return &eventHandler{kubeClient: kubeClient, radixClient: radixClient}
 }
 
-// GetEvents return events for a namespace defined by a NamespaceFunc function
-func (eh *eventHandler) GetEvents(ctx context.Context, namespaceFunc NamespaceFunc) ([]*eventModels.Event, error) {
-	namespace := namespaceFunc()
-	return eh.getEvents(ctx, namespace)
+// GetEnvironmentEvents return events for a namespace defined by a namespace
+func (eh *eventHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
+	radixApplication, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	environmentEvents, err := eh.getEvents(ctx, radixApplication.Name, envName, "", "")
+	if err != nil {
+		return nil, err
+	}
+	return environmentEvents, nil
 }
 
-func (eh *eventHandler) getEvents(ctx context.Context, namespace string) ([]*eventModels.Event, error) {
+// GetComponentEvents return events for a namespace defined by a namespace for a specific component
+func (eh *eventHandler) GetComponentEvents(ctx context.Context, appName, envName, componentName string) ([]*eventModels.Event, error) {
+	if ok, err := eh.existsRadixDeployComponent(ctx, appName, envName, componentName); err != nil || !ok {
+		return nil, err
+	}
+	environmentEvents, err := eh.getEvents(ctx, appName, envName, componentName, "")
+	if err != nil {
+		return nil, err
+	}
+	return environmentEvents, nil
+}
+
+// GetPodEvents return events for a namespace defined by a namespace for a specific pod of a component
+func (eh *eventHandler) GetPodEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error) {
+	if ok, err := eh.existsRadixDeployComponent(ctx, appName, envName, componentName); err != nil || !ok {
+		return nil, err
+	}
+	environmentEvents, err := eh.getEvents(ctx, appName, envName, componentName, podName)
+	if err != nil {
+		return nil, err
+	}
+	return environmentEvents, nil
+}
+
+func (eh *eventHandler) getRadixApplicationAndValidateEnvironment(ctx context.Context, appName string, envName string) (*radixv1.RadixApplication, error) {
+	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.radixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = kubequery.GetRadixEnvironment(ctx, eh.radixClient, appName, envName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
+		}
+		return nil, err
+	}
+	return radixApplication, err
+}
+
+func (eh *eventHandler) existsRadixDeployComponent(ctx context.Context, appName, envName, componentName string) (bool, error) {
+	_, err := eh.getRadixApplicationAndValidateEnvironment(ctx, appName, envName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, environmentModels.NonExistingComponent(appName, componentName)
+		}
+		return false, err
+	}
+	radixDeployments, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.radixClient, appName, []string{envName}, 1)
+	if err != nil {
+		return false, err
+	}
+	activeRd, ok := slice.FindFirst(radixDeployments, func(rd radixv1.RadixDeployment) bool { return rd.Status.ActiveTo.IsZero() })
+	if !ok {
+		return false, nil
+	}
+	return slice.Any(activeRd.Spec.Components, func(c radixv1.RadixDeployComponent) bool { return c.GetName() == componentName }), nil
+}
+
+func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error) {
+	namespace := utils.GetEnvironmentNamespace(appName, envName)
 	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	environmentComponentsPodMap, err := eh.getEnvironmentComponentsPodMap(ctx, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentComponentsIngressMap, err := eh.getEnvironmentComponentsIngressMap(ctx, appName, envName)
 	if err != nil {
 		return nil, err
 	}
 
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
-		builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
-		buildObjectState(ctx, builder, ev, eh.kubeClient)
-		event := builder.Build()
+		if len(podName) > 0 && !eventIsRelatedToPod(ev, componentName, podName, environmentComponentsIngressMap) {
+			continue
+		}
+		if len(componentName) > 0 && !eventIsRelatedToComponent(ev, componentName, environmentComponentsIngressMap) {
+			continue
+		}
+		event := eh.buildEvent(ev, componentName, environmentComponentsPodMap, environmentComponentsIngressMap)
 		events = append(events, event)
 	}
-
 	return events, nil
 }
 
-func buildObjectState(ctx context.Context, builder eventModels.EventBuilder, event k8v1.Event, kubeClient kubernetes.Interface) {
-	if event.Type == "Normal" {
-		return
+func (eh *eventHandler) getEnvironmentComponentsPodMap(ctx context.Context, appName string, envName string) (map[k8sTypes.UID]*corev1.Pod, error) {
+	componentPods, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.kubeClient, appName, envName)
+	if err != nil {
+		return nil, err
 	}
-
-	if objectState := getObjectState(ctx, event, kubeClient); objectState != nil {
-		builder.WithInvolvedObjectState(objectState)
-	}
+	podMap := slice.Reduce(componentPods, make(map[k8sTypes.UID]*corev1.Pod), func(acc map[k8sTypes.UID]*corev1.Pod, pod corev1.Pod) map[k8sTypes.UID]*corev1.Pod {
+		acc[pod.GetUID()] = &pod
+		return acc
+	})
+	return podMap, nil
 }
 
-func getObjectState(ctx context.Context, event k8v1.Event, kubeClient kubernetes.Interface) *eventModels.ObjectState {
-	builder := eventModels.NewObjectStateBuilder()
-	build := false
-	obj := event.InvolvedObject
+func (eh *eventHandler) getEnvironmentComponentsIngressMap(ctx context.Context, appName string, envName string) (map[string]*networkingv1.Ingress, error) {
+	ingresses, err := kubequery.GetIngressesForEnvironments(ctx, eh.kubeClient, appName, []string{envName}, 1)
+	if err != nil {
+		return nil, err
+	}
+	ingressMap := slice.Reduce(ingresses, make(map[string]*networkingv1.Ingress), func(acc map[string]*networkingv1.Ingress, ingress networkingv1.Ingress) map[string]*networkingv1.Ingress {
+		acc[ingress.GetName()] = &ingress
+		return acc
+	})
+	return ingressMap, nil
+}
 
-	switch obj.Kind {
-	case "Pod":
-		if pod, err := kubeClient.CoreV1().Pods(obj.Namespace).Get(ctx, obj.Name, metav1.GetOptions{}); err == nil {
-			state := getPodState(pod)
-			builder.WithPodState(state)
-			build = true
+func (eh *eventHandler) buildEvent(ev corev1.Event, componentName string, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress) *eventModels.Event {
+	builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
+	if ev.Type != k8sEventTypeNormal || ev.InvolvedObject.Kind == k8sKindIngress {
+		if objectState := getObjectState(ev, podMap, ingressMap, componentName); objectState != nil {
+			builder.WithInvolvedObjectState(objectState)
 		}
 	}
-
-	if !build {
-		return nil
-	}
-
 	return builder.Build()
 }
 
-func getPodState(pod *k8v1.Pod) *eventModels.PodState {
+func eventIsRelatedToComponent(ev corev1.Event, componentName string, ingressMap map[string]*networkingv1.Ingress) bool {
+	if matchingToDeployment(ev, componentName) ||
+		matchingToReplicaSet(ev, componentName, "") ||
+		matchingToIngress(ev, componentName, ingressMap) {
+		return true
+	}
+	podNameRegex, err := regexp.Compile(fmt.Sprintf("^%s-[a-z0-9]{9,10}-[a-z0-9]{5}$", componentName))
+	if err != nil {
+		return false
+	}
+	if ev.InvolvedObject.Kind == k8sKindPod && podNameRegex.MatchString(ev.InvolvedObject.Name) {
+		return true
+	}
+	return false
+}
+
+func matchingToDeployment(ev corev1.Event, componentName string) bool {
+	return ev.InvolvedObject.Kind == k8sKindDeployment && ev.InvolvedObject.Name == componentName
+}
+
+func matchingToReplicaSet(ev corev1.Event, componentName, podName string) bool {
+	if ev.InvolvedObject.Kind != k8sKindReplicaSet {
+		return false
+	}
+	if replicaSetNameRegex, err := regexp.Compile(fmt.Sprintf("^%s-[a-z0-9]{9,10}$", componentName)); err != nil || !replicaSetNameRegex.MatchString(ev.InvolvedObject.Name) {
+		return false
+	}
+	if len(podName) == 0 || len(ev.Message) == 0 {
+		return true
+	}
+	podNameRegex, err := regexp.Compile(fmt.Sprintf(`^[\w\s]*:\s%s$`, podName))
+	if err != nil {
+		return false
+	}
+	return podNameRegex.MatchString(ev.Message)
+}
+
+func matchingToIngress(ev corev1.Event, componentName string, ingressMap map[string]*networkingv1.Ingress) bool {
+	if ev.InvolvedObject.Kind != k8sKindIngress {
+		return false
+	}
+	ingress, ok := ingressMap[ev.InvolvedObject.Name]
+	if !ok {
+		return false
+	}
+	for _, ingressRule := range ingress.Spec.Rules {
+		for _, ingressPath := range ingressRule.HTTP.Paths {
+			if ingressPath.Backend.Service != nil && ingressPath.Backend.Service.Name == componentName {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func eventIsRelatedToPod(ev corev1.Event, componentName, podName string, ingressMap map[string]*networkingv1.Ingress) bool {
+	if ev.InvolvedObject.Kind == k8sKindPod && ev.InvolvedObject.Name == podName {
+		return true
+	}
+	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName) || matchingToIngress(ev, componentName, ingressMap)
+}
+
+func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress, componentName string) *eventModels.ObjectState {
+	builder := eventModels.NewObjectStateBuilder()
+	obj := ev.InvolvedObject
+
+	switch obj.Kind {
+	case k8sKindPod:
+		if pod, ok := podMap[ev.InvolvedObject.UID]; ok {
+			state := getPodState(pod)
+			builder.WithPodState(state)
+			return builder.Build()
+		}
+	case k8sKindIngress:
+		if ingress, ok := ingressMap[ev.InvolvedObject.Name]; ok {
+			builder.WithIngress(getIngress(ingress, componentName))
+			return builder.Build()
+		}
+	}
+	return nil
+}
+
+func getIngress(ingress *networkingv1.Ingress, componentName string) []eventModels.IngressRule {
+	return eventModels.NewIngressBuilder().WithIngress(ingress).WithComponent(componentName).Build()
+}
+
+func getPodState(pod *corev1.Pod) *eventModels.PodState {
 	return eventModels.NewPodStateBuilder().
 		WithPod(pod).
 		Build()
