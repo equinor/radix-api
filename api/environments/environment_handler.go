@@ -10,7 +10,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/events"
-	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	apimodels "github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/pods"
@@ -39,7 +38,7 @@ type EnvironmentHandlerOptions func(*EnvironmentHandler)
 func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.deployHandler = deployments.Init(accounts)
-		eh.eventHandler = events.Init(accounts.UserAccount.Client)
+		eh.eventHandler = events.Init(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
 		eh.accounts = accounts
 	}
 }
@@ -239,7 +238,7 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 		return err
 	}
 
-	if !re.Status.Orphaned {
+	if !re.Status.Orphaned && re.Status.OrphanedTimestamp == nil {
 		// Must be removed from radix config first
 		return environmentModels.CannotDeleteNonOrphanedEnvironment(appName, envName)
 	}
@@ -252,30 +251,6 @@ func (eh EnvironmentHandler) DeleteEnvironment(ctx context.Context, appName, env
 	}
 
 	return nil
-}
-
-// GetEnvironmentEvents Handler for GetEnvironmentEvents
-func (eh EnvironmentHandler) GetEnvironmentEvents(ctx context.Context, appName, envName string) ([]*eventModels.Event, error) {
-	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
-	// _, err = eh.getConfigurationStatus(ctx, envName, radixApplication)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
-		}
-		return nil, err
-	}
-
-	environmentEvents, err := eh.eventHandler.GetEvents(ctx, events.RadixEnvironmentNamespace(radixApplication, envName))
-	if err != nil {
-		return nil, err
-	}
-
-	return environmentEvents, nil
 }
 
 // getNotOrphanedEnvNames returns a slice of non-unique-names of not-orphaned environments

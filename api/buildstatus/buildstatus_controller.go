@@ -9,6 +9,7 @@ import (
 	"github.com/equinor/radix-api/models"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 const rootPath = "/applications/{appName}/environments/{envName}"
@@ -77,6 +78,7 @@ func (bsc *buildStatusController) GetBuildStatus(accounts models.Accounts, w htt
 	buildStatus, err := buildStatusHandler.GetBuildStatusForApplication(r.Context(), appName, env, pipeline)
 
 	if err != nil {
+		log.Error().Err(err).Msg("Error getting build status")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

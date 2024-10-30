@@ -11,7 +11,7 @@ func IsNotOrphanEnvironment(re radixv1.RadixEnvironment) bool {
 }
 
 func IsOrphanEnvironment(re radixv1.RadixEnvironment) bool {
-	return re.Status.Orphaned
+	return re.Status.Orphaned || re.Status.OrphanedTimestamp != nil
 }
 
 func IsBatchJobStatusForBatchJob(job radixv1.RadixBatchJob) func(jobStatus radixv1.RadixBatchJobStatus) bool {

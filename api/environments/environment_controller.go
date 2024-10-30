@@ -64,6 +64,16 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetEnvironmentEvents,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/events/components/{componentName}",
+			Method:      "GET",
+			HandlerFunc: c.GetComponentEvents,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/events/components/{componentName}/replicas/{podName}",
+			Method:      "GET",
+			HandlerFunc: c.GetPodEvents,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
 			Method:      "POST",
 			HandlerFunc: c.StopComponent,
@@ -522,7 +532,7 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 	envName := mux.Vars(r)["envName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	events, err := environmentHandler.GetEnvironmentEvents(r.Context(), appName, envName)
+	events, err := environmentHandler.eventHandler.GetEnvironmentEvents(r.Context(), appName, envName)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -531,6 +541,128 @@ func (c *environmentController) GetEnvironmentEvents(accounts models.Accounts, w
 
 	c.JSONResponse(w, r, events)
 
+}
+
+// GetComponentEvents Get events for an application environment component
+func (c *environmentController) GetComponentEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/events/components/{componentName} environment getComponentEvents
+	// ---
+	// summary: Lists events for an application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful get environment events"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//          "$ref": "#/definitions/Event"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+
+	environmentHandler := c.environmentHandlerFactory(accounts)
+	events, err := environmentHandler.eventHandler.GetComponentEvents(r.Context(), appName, envName, componentName)
+
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	c.JSONResponse(w, r, events)
+}
+
+// GetPodEvents Get events for an application environment component
+func (c *environmentController) GetPodEvents(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/events/components/{componentName}/replicas/{podName} environment getReplicaEvents
+	// ---
+	// summary: Lists events for an application environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: name of environment
+	//   type: string
+	//   required: true
+	// - name: componentName
+	//   in: path
+	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: podName
+	//   in: path
+	//   description: Name of pod
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "Successful get environment events"
+	//     schema:
+	//        type: "array"
+	//        items:
+	//          "$ref": "#/definitions/Event"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	componentName := mux.Vars(r)["componentName"]
+	podName := mux.Vars(r)["podName"]
+
+	environmentHandler := c.environmentHandlerFactory(accounts)
+	events, err := environmentHandler.eventHandler.GetPodEvents(r.Context(), appName, envName, componentName, podName)
+
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	c.JSONResponse(w, r, events)
 }
 
 // StopComponent Stops job

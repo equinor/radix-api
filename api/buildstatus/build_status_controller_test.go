@@ -3,7 +3,6 @@ package buildstatus
 import (
 	"errors"
 	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/test/mock"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -43,8 +41,6 @@ func setupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *radixfake
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	_ = os.Setenv(defaults.ActiveClusternameEnvironmentVariable, clusterName)
-
 	return &commonTestUtils, kubeclient, radixclient, kedaClient, secretproviderclient, certClient
 }
 
@@ -102,7 +98,7 @@ func TestGetBuildStatus(t *testing.T) {
 		expected := []byte("badge")
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(expected, nil).
 			Times(1)
 
@@ -125,16 +121,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
-		var actualCondition v1.RadixJobCondition
-		var actualPipeline v1.RadixPipelineType
-
-		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
-				actualCondition = c
-				actualPipeline = p
-				return nil, nil
-			})
+		fakeBuildStatus.EXPECT().GetBadge(gomock.Any(), v1.JobRunning, v1.BuildDeploy).Return(nil, nil).Times(1)
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
@@ -144,8 +131,6 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobRunning, actualCondition)
-		assert.Equal(t, v1.BuildDeploy, actualPipeline)
 	})
 
 	t.Run("deploy in master - JobRunning", func(t *testing.T) {
@@ -154,17 +139,7 @@ func TestGetBuildStatus(t *testing.T) {
 		defer ctrl.Finish()
 
 		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
-
-		var actualCondition v1.RadixJobCondition
-		var actualPipeline v1.RadixPipelineType
-
-		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
-				actualCondition = c
-				actualPipeline = p
-				return nil, nil
-			})
+		fakeBuildStatus.EXPECT().GetBadge(gomock.Any(), v1.JobSucceeded, v1.Deploy).Return(nil, nil).Times(1)
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
@@ -174,8 +149,6 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobSucceeded, actualCondition)
-		assert.Equal(t, v1.Deploy, actualPipeline)
 	})
 
 	t.Run("promote in master - JobFailed", func(t *testing.T) {
@@ -184,17 +157,7 @@ func TestGetBuildStatus(t *testing.T) {
 		defer ctrl.Finish()
 
 		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
-
-		var actualCondition v1.RadixJobCondition
-		var actualPipeline v1.RadixPipelineType
-
-		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(c v1.RadixJobCondition, p v1.RadixPipelineType) ([]byte, error) {
-				actualCondition = c
-				actualPipeline = p
-				return nil, nil
-			})
+		fakeBuildStatus.EXPECT().GetBadge(gomock.Any(), v1.JobFailed, v1.Promote).Return(nil, nil).Times(1)
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
@@ -204,8 +167,6 @@ func TestGetBuildStatus(t *testing.T) {
 		response := <-responseChannel
 
 		assert.Equal(t, response.Result().StatusCode, 200)
-		assert.Equal(t, v1.JobFailed, actualCondition)
-		assert.Equal(t, v1.Promote, actualPipeline)
 	})
 
 	t.Run("return status 500", func(t *testing.T) {
@@ -216,7 +177,7 @@ func TestGetBuildStatus(t *testing.T) {
 		fakeBuildStatus := mock.NewMockPipelineBadge(ctrl)
 
 		fakeBuildStatus.EXPECT().
-			GetBadge(gomock.Any(), gomock.Any()).
+			GetBadge(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("error")).
 			Times(1)
 
