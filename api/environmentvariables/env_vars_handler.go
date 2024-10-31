@@ -6,14 +6,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
-	"github.com/rs/zerolog/log"
-
 	envvarsmodels "github.com/equinor/radix-api/api/environmentvariables/models"
 	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/rs/zerolog/log"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -68,7 +69,7 @@ func (eh *envVarsHandler) GetComponentEnvVars(ctx context.Context, appName strin
 	if err != nil {
 		return nil, err
 	}
-	envVars, err := deployment.GetEnvironmentVariables(ctx, eh.kubeUtil, appName, rd, radixDeployComponent)
+	envVars, err := eh.getDeploymentEnvironmentVariables(ctx, appName, rd.Spec.Environment, radixDeployComponent)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +163,18 @@ func (eh *envVarsHandler) ChangeEnvVar(ctx context.Context, appName, envName, co
 		return err
 	}
 	return eh.kubeUtil.ApplyEnvVarsMetadataConfigMap(ctx, namespace, envVarsMetadataConfigMap, envVarsMetadataMap)
+}
+
+func (eh *envVarsHandler) getDeploymentEnvironmentVariables(ctx context.Context, appName, envName string, radixDeployComponent v1.RadixCommonDeployComponent) ([]corev1.EnvVar, error) {
+	deployment, err := eh.accounts.UserAccount.Client.AppsV1().Deployments(crdUtils.GetEnvironmentNamespace(appName, envName)).Get(ctx, radixDeployComponent.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	componentContainer, ok := slice.FindFirst(deployment.Spec.Template.Spec.Containers, func(container corev1.Container) bool { return container.Name == radixDeployComponent.GetName() })
+	if !ok {
+		return nil, fmt.Errorf("container %s not found in deployment", radixDeployComponent.GetName())
+	}
+	return componentContainer.Env, nil
 }
 
 func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {
