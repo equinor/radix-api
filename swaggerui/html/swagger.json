@@ -6427,7 +6427,8 @@
             "build",
             "build-deploy",
             "promote",
-            "deploy"
+            "deploy",
+            "apply-config"
           ],
           "x-go-name": "PipelineJobType",
           "example": "build-deploy"
@@ -6462,7 +6463,8 @@
             "build",
             "build-deploy",
             "promote",
-            "deploy"
+            "deploy",
+            "apply-config"
           ],
           "x-go-name": "PipelineJobType",
           "example": "build-deploy"
@@ -6947,6 +6949,12 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "deployExternalDNS": {
+          "description": "DeployExternalDNS deploy external DNS",
+          "type": "boolean",
+          "x-go-name": "DeployExternalDNS",
+          "x-nullable": true
+        },
         "deployments": {
           "description": "Array of deployments",
           "type": "array",
@@ -6976,6 +6984,12 @@
           "x-go-name": "Name",
           "example": "radix-pipeline-20181029135644-algpv-6hznh"
         },
+        "overrideUseBuildCache": {
+          "description": "OverrideUseBuildCache override default or configured build cache option",
+          "type": "boolean",
+          "x-go-name": "OverrideUseBuildCache",
+          "x-nullable": true
+        },
         "pipeline": {
           "description": "Name of the pipeline",
           "type": "string",
@@ -6983,7 +6997,8 @@
             "build",
             "build-deploy",
             "promote",
-            "deploy"
+            "deploy",
+            "apply-config"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
@@ -7078,6 +7093,12 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "deployExternalDNS": {
+          "description": "DeployExternalDNS deploy external DNS",
+          "type": "boolean",
+          "x-go-name": "DeployExternalDNS",
+          "x-nullable": true
+        },
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
@@ -7124,7 +7145,8 @@
             "build",
             "build-deploy",
             "promote",
-            "deploy"
+            "deploy",
+            "apply-config"
           ],
           "x-go-name": "Pipeline",
           "example": "build-deploy"
@@ -7248,6 +7270,12 @@
       "description": "PipelineParametersApplyConfig describes base info",
       "type": "object",
       "properties": {
+        "deployExternalDNS": {
+          "description": "DeployExternalDNS deploy external DNS",
+          "type": "boolean",
+          "x-go-name": "DeployExternalDNS",
+          "x-nullable": true
+        },
         "triggeredBy": {
           "description": "TriggeredBy of the job - if empty will use user token upn (user principle name)",
           "type": "string",
@@ -7272,6 +7300,12 @@
           "type": "string",
           "x-go-name": "CommitID",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "deployExternalDNS": {
+          "description": "DeployExternalDNS deploy external DNS",
+          "type": "boolean",
+          "x-go-name": "DeployExternalDNS",
+          "x-nullable": true
         },
         "imageName": {
           "description": "ImageName of the component, without repository name and image-tag",

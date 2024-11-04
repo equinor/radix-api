@@ -2,6 +2,7 @@ package models
 
 import (
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -72,7 +73,7 @@ type JobSummary struct {
 	// Name of the pipeline
 	//
 	// required: false
-	// enum: build,build-deploy,promote,deploy
+	// enum: build,build-deploy,promote,deploy,apply-config
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 
@@ -103,6 +104,13 @@ type JobSummary struct {
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
@@ -140,6 +148,10 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 		pipelineJob.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
 		pipelineJob.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
 		pipelineJob.CommitID = job.Spec.Promote.CommitID
+	case radixv1.ApplyConfig:
+		if job.Spec.ApplyConfig.DeployExternalDNS {
+			pipelineJob.DeployExternalDNS = pointers.Ptr(true)
+		}
 	}
 
 	return pipelineJob
