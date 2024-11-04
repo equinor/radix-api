@@ -149,9 +149,7 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 		pipelineJob.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
 		pipelineJob.CommitID = job.Spec.Promote.CommitID
 	case radixv1.ApplyConfig:
-		if job.Spec.ApplyConfig.DeployExternalDNS {
-			pipelineJob.DeployExternalDNS = pointers.Ptr(true)
-		}
+		pipelineJob.DeployExternalDNS = pointers.Ptr(job.Spec.ApplyConfig.DeployExternalDNS)
 	}
 
 	return pipelineJob

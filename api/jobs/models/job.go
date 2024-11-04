@@ -186,9 +186,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 		jobModel.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
 		jobModel.CommitID = job.Spec.Promote.CommitID
 	case radixv1.ApplyConfig:
-		if job.Spec.ApplyConfig.DeployExternalDNS {
-			jobModel.DeployExternalDNS = pointers.Ptr(true)
-		}
+		jobModel.DeployExternalDNS = pointers.Ptr(job.Spec.ApplyConfig.DeployExternalDNS)
 	}
 	return &jobModel
 }
