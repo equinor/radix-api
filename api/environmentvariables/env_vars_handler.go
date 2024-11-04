@@ -174,7 +174,9 @@ func (eh *envVarsHandler) getDeploymentEnvironmentVariables(ctx context.Context,
 	if !ok {
 		return nil, fmt.Errorf("container %s not found in deployment", radixDeployComponent.GetName())
 	}
-	return componentContainer.Env, nil
+	return slice.FindAll(componentContainer.Env, func(envVar corev1.EnvVar) bool {
+		return envVar.ValueFrom == nil || envVar.ValueFrom.SecretKeyRef == nil
+	}), nil
 }
 
 func getComponent(rd *v1.RadixDeployment, componentName string) v1.RadixCommonDeployComponent {

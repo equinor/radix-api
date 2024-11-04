@@ -48,6 +48,10 @@ func Test_GetEnvVars(t *testing.T) {
 		envVarMap := convertToMap(envVars)
 		assert.Equal(t, "val1", envVarMap["VAR1"], "Invalid or missing VAR1")
 		assert.Equal(t, "val2", envVarMap["VAR2"], "Invalid or missing VAR2")
+		_, existsSecret1 := envVarMap["SECRET1"]
+		assert.False(t, existsSecret1, "Unexpected secret SECRET1 among env-vars")
+		_, existsSecret2 := envVarMap["SECRET2"]
+		assert.False(t, existsSecret2, "Unexpected secret SECRET2 among env-vars")
 		assertRadixEnvVars(t, envVarMap)
 	})
 }
