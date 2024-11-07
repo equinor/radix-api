@@ -11,9 +11,14 @@ func AppNameAndBranchAreRequiredForStartingPipeline() error {
 	return radixhttp.ValidationError("Radix Application Pipeline", "App name and branch are required")
 }
 
-// UnmatchedBranchToEnvironment Triggering a pipeline on a un-mapped branch is not allowed
+// UnmatchedBranchToEnvironment Triggering a pipeline on an un-mapped branch is not allowed
 func UnmatchedBranchToEnvironment(branch string) error {
 	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("Failed to match environment to branch: %s", branch))
+}
+
+// EnvironmentNotMappedToBranch Triggering a pipeline on an environment, not matched to a branch
+func EnvironmentNotMappedToBranch(envName, branch string) error {
+	return radixhttp.ValidationError("Radix Application Pipeline", fmt.Sprintf("Failed to match environment %s to branch: %s", envName, branch))
 }
 
 // UserNotAllowedToTriggerPipelineError Triggering a pipeline is not allowed for this user and app

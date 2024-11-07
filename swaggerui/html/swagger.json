@@ -6947,6 +6947,12 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "deployedToEnvironment": {
+          "description": "DeployedToEnvironment the name of the environment that was deployed to",
+          "type": "string",
+          "x-go-name": "DeployedToEnvironment",
+          "example": "qa"
+        },
         "deployments": {
           "description": "Array of deployments",
           "type": "array",
@@ -7302,6 +7308,12 @@
           "type": "string",
           "x-go-name": "PushImage",
           "example": "true"
+        },
+        "toEnvironment": {
+          "description": "Name of environment to build for",
+          "type": "string",
+          "x-go-name": "ToEnvironment",
+          "example": "prod"
         },
         "triggeredBy": {
           "description": "TriggeredBy of the job - if empty will use user token upn (user principle name)",
