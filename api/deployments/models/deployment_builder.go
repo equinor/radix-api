@@ -192,6 +192,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 	if b.pipelineJob != nil {
 		jobInfo.CommitID = b.pipelineJob.Spec.Build.CommitID
 		jobInfo.PipelineJobType = string(b.pipelineJob.Spec.PipeLineType)
+		jobInfo.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch
 		jobInfo.PromotedFromEnvironment = b.pipelineJob.Spec.Promote.FromEnvironment
 	}
 
@@ -200,7 +201,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 
 func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 	b.setSkipDeploymentForComponents()
-	return &Deployment{
+	deployment := Deployment{
 		Name:          b.name,
 		Namespace:     b.namespace,
 		Environment:   b.environment,
@@ -211,5 +212,9 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		GitCommitHash: b.gitCommitHash,
 		GitTags:       b.gitTags,
 		Repository:    b.repository,
-	}, b.buildError()
+	}
+	if b.pipelineJob != nil {
+		deployment.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch
+	}
+	return &deployment, b.buildError()
 }

@@ -25,19 +25,30 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 			re = &foundRe
 		}
 
+		deploymentSummary := getActiveDeploymentSummary(ra.GetName(), e.Name, rdList)
+		buildFromBranch := e.Build.From
+		if deploymentSummary != nil && len(deploymentSummary.BuiltFromBranch) > 0 {
+			buildFromBranch = deploymentSummary.BuiltFromBranch
+		}
 		env := &environmentModels.EnvironmentSummary{
 			Name:             e.Name,
-			BranchMapping:    e.Build.From,
-			ActiveDeployment: getActiveDeploymentSummary(ra.GetName(), e.Name, rdList),
+			BranchMapping:    buildFromBranch,
+			ActiveDeployment: deploymentSummary,
 			Status:           getEnvironmentConfigurationStatus(re).String(),
 		}
 		envList = append(envList, env)
 	}
 
 	for _, re := range slice.FindAll(reList, predicate.IsOrphanEnvironment) {
+		deploymentSummary := getActiveDeploymentSummary(ra.GetName(), re.Spec.EnvName, rdList)
+		buildFromBranch := ""
+		if deploymentSummary != nil {
+			buildFromBranch = deploymentSummary.BuiltFromBranch
+		}
 		env := &environmentModels.EnvironmentSummary{
 			Name:             re.Spec.EnvName,
-			ActiveDeployment: getActiveDeploymentSummary(ra.GetName(), re.Spec.EnvName, rdList),
+			BranchMapping:    buildFromBranch,
+			ActiveDeployment: deploymentSummary,
 			Status:           getEnvironmentConfigurationStatus(&re).String(),
 		}
 		envList = append(envList, env)
