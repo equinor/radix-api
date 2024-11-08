@@ -6269,6 +6269,12 @@
           "x-go-name": "ActiveTo",
           "example": "2006-01-02T15:04:05Z"
         },
+        "builtFromBranch": {
+          "description": "Name of the branch used to build the deployment",
+          "type": "string",
+          "x-go-name": "BuiltFromBranch",
+          "example": "main"
+        },
         "components": {
           "description": "Array of components",
           "type": "array",
@@ -6380,7 +6386,7 @@
         "builtFromBranch": {
           "description": "Name of the branch used to build the deployment",
           "type": "string",
-          "x-go-name": "BuildFromBranch",
+          "x-go-name": "BuiltFromBranch",
           "example": "main"
         },
         "commitID": {
@@ -6453,7 +6459,7 @@
         "builtFromBranch": {
           "description": "Name of the branch used to build the deployment",
           "type": "string",
-          "x-go-name": "BuildFromBranch",
+          "x-go-name": "BuiltFromBranch",
           "example": "main"
         },
         "commitID": {
