@@ -46,7 +46,6 @@ func NewDeploymentBuilder() DeploymentBuilder {
 
 func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
-
 	b.withComponentSummariesFromRadixDeployment(rd).
 		withEnvironment(rd.Spec.Environment).
 		withNamespace(rd.GetNamespace()).
