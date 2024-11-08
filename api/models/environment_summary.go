@@ -27,9 +27,6 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 
 		deploymentSummary := getActiveDeploymentSummary(ra.GetName(), e.Name, rdList)
 		buildFromBranch := e.Build.From
-		if deploymentSummary != nil && len(deploymentSummary.BuiltFromBranch) > 0 {
-			buildFromBranch = deploymentSummary.BuiltFromBranch
-		}
 		env := &environmentModels.EnvironmentSummary{
 			Name:             e.Name,
 			BranchMapping:    buildFromBranch,
