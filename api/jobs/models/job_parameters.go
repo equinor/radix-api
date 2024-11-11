@@ -50,6 +50,13 @@ type JobParameters struct {
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

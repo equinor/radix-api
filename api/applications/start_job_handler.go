@@ -62,6 +62,7 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 	var buildSpec v1.RadixBuildSpec
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
+	var applyConfigSpec v1.RadixApplyConfigSpec
 
 	log.Ctx(ctx).Info().Msgf("Using %s pipeline image tag", pipelineImageTag)
 	log.Ctx(ctx).Info().Msgf("Using %s as tekton image tag", tektonImageTag)
@@ -90,6 +91,10 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 			CommitID:           jobSpec.CommitID,
 			ComponentsToDeploy: jobSpec.ComponentsToDeploy,
 		}
+	case v1.ApplyConfig:
+		applyConfigSpec = v1.RadixApplyConfigSpec{
+			DeployExternalDNS: jobSpec.DeployExternalDNS != nil && *jobSpec.DeployExternalDNS,
+		}
 	}
 
 	job := v1.RadixJob{
@@ -105,12 +110,13 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 		Spec: v1.RadixJobSpec{
 			AppName:             appName,
 			CloneURL:            cloneURL,
+			TektonImage:         tektonImageTag,
 			PipeLineType:        pipeline.Type,
 			PipelineImage:       pipelineImageTag,
-			TektonImage:         tektonImageTag,
 			Build:               buildSpec,
 			Promote:             promoteSpec,
 			Deploy:              deploySpec,
+			ApplyConfig:         applyConfigSpec,
 			TriggeredBy:         getTriggeredBy(ctx, jobSpec.TriggeredBy),
 			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
 		},

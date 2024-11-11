@@ -92,6 +92,13 @@ type PipelineParametersBuild struct {
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
@@ -164,11 +171,19 @@ type PipelineParametersApplyConfig struct {
 	//
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // MapPipelineParametersApplyConfigToJobParameter maps to JobParameter
 func (param PipelineParametersApplyConfig) MapPipelineParametersApplyConfigToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		TriggeredBy: param.TriggeredBy,
+		TriggeredBy:       param.TriggeredBy,
+		DeployExternalDNS: param.DeployExternalDNS,
 	}
 }
