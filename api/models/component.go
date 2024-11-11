@@ -13,6 +13,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-common/utils/slice"
+	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -59,11 +60,12 @@ func buildComponent(
 		WithHorizontalScalingSummary(GetHpaSummary(ra.Name, radixComponent.GetName(), hpaList, scaledObjects)).
 		WithExternalDNS(getComponentExternalDNS(ra.Name, radixComponent, secretList, certs, certRequests, tlsValidator))
 
-	componentPods := slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName()))
 	var kd *appsv1.Deployment
 	if depl, ok := slice.FindFirst(deploymentList, predicate.IsDeploymentForComponent(ra.Name, radixComponent.GetName())); ok {
 		kd = &depl
 	}
+	componentPods := append(slice.FindAll(podList, predicate.IsPodForComponent(ra.Name, radixComponent.GetName())),
+		slice.FindAll(podList, predicate.IsPodForAuxComponent(ra.Name, radixComponent.GetName(), kube.RadixJobTypeManagerAux))...)
 
 	if rd.Status.ActiveTo.IsZero() {
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))

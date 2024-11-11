@@ -9,9 +9,15 @@ type DeploymentSummaryPipelineJobInfo struct {
 	// Type of pipeline job
 	//
 	// required: false
-	// enum: build,build-deploy,promote,deploy
+	// enum: build,build-deploy,promote,deploy,apply-config
 	// example: build-deploy
 	PipelineJobType string `json:"pipelineJobType,omitempty"`
+
+	// Name of the branch used to build the deployment
+	//
+	// required: false
+	// example: main
+	BuiltFromBranch string `json:"builtFromBranch,omitempty"`
 
 	// Name of the environment the deployment was promoted from
 	// Applies only for pipeline jobs of type 'promote'

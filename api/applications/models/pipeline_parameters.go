@@ -50,6 +50,11 @@ type PipelineParametersBuild struct {
 	// example: master
 	Branch string `json:"branch"`
 
+	// Name of environment to build for
+	//
+	// example: prod
+	ToEnvironment string `json:"toEnvironment,omitempty"`
+
 	// CommitID the commit ID of the branch to build
 	// REQUIRED for "build" and "build-deploy" pipelines
 	//
@@ -87,12 +92,20 @@ type PipelineParametersBuild struct {
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
 		Branch:                buildParam.Branch,
+		ToEnvironment:         buildParam.ToEnvironment,
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
@@ -158,11 +171,19 @@ type PipelineParametersApplyConfig struct {
 	//
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // MapPipelineParametersApplyConfigToJobParameter maps to JobParameter
 func (param PipelineParametersApplyConfig) MapPipelineParametersApplyConfigToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		TriggeredBy: param.TriggeredBy,
+		TriggeredBy:       param.TriggeredBy,
+		DeployExternalDNS: param.DeployExternalDNS,
 	}
 }

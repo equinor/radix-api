@@ -21,7 +21,7 @@ type JobParameters struct {
 	// For promote pipeline: Environment to locate deployment to promote
 	FromEnvironment string `json:"fromEnvironment"`
 
-	// For promote pipeline: Target environment for promotion
+	// For build or promote pipeline: Target environment for building and promotion
 	ToEnvironment string `json:"toEnvironment"`
 
 	// ImageRepository of the component, without image name and image-tag
@@ -50,6 +50,13 @@ type JobParameters struct {
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

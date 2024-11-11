@@ -31,6 +31,7 @@ import (
 
 const (
 	clusterName     = "AnyClusterName"
+	clusterType     = "development"
 	appName         = "any-app"
 	environmentName = "dev"
 	componentName   = "backend"

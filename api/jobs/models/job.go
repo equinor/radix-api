@@ -6,6 +6,7 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
@@ -80,7 +81,7 @@ type Job struct {
 	// Name of the pipeline
 	//
 	// required: false
-	// enum: build,build-deploy,promote,deploy
+	// enum: build,build-deploy,promote,deploy,apply-config
 	// example: build-deploy
 	Pipeline string `json:"pipeline"`
 
@@ -100,6 +101,12 @@ type Job struct {
 	// required: false
 	// example: qa
 	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
+
+	// DeployedToEnvironment the name of the environment that was deployed to
+	//
+	// required: false
+	// example: qa
+	DeployedToEnvironment string `json:"deployedToEnvironment,omitempty"`
 
 	// Array of steps
 	//
@@ -126,6 +133,20 @@ type Job struct {
 	// items:
 	//    "$ref": "#/definitions/ComponentSummary"
 	Components []*deploymentModels.ComponentSummary `json:"components,omitempty"`
+
+	// OverrideUseBuildCache override default or configured build cache option
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// DeployExternalDNS deploy external DNS
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 }
 
 // GetJobFromRadixJob Gets job from a radix job
@@ -160,15 +181,20 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
 		jobModel.Branch = job.Spec.Build.Branch
+		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
 		jobModel.CommitID = job.Spec.Build.CommitID
+		jobModel.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 	case radixv1.Deploy:
 		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
+		jobModel.DeployedToEnvironment = job.Spec.Deploy.ToEnvironment
 		jobModel.CommitID = job.Spec.Deploy.CommitID
 	case radixv1.Promote:
 		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName
 		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
 		jobModel.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
 		jobModel.CommitID = job.Spec.Promote.CommitID
+	case radixv1.ApplyConfig:
+		jobModel.DeployExternalDNS = pointers.Ptr(job.Spec.ApplyConfig.DeployExternalDNS)
 	}
 	return &jobModel
 }
