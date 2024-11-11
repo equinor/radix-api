@@ -6269,6 +6269,12 @@
           "x-go-name": "ActiveTo",
           "example": "2006-01-02T15:04:05Z"
         },
+        "builtFromBranch": {
+          "description": "Name of the branch used to build the deployment",
+          "type": "string",
+          "x-go-name": "BuiltFromBranch",
+          "example": "main"
+        },
         "components": {
           "description": "Array of components",
           "type": "array",
@@ -6377,6 +6383,12 @@
           "x-go-name": "ActiveTo",
           "example": "2006-01-02T15:04:05Z"
         },
+        "builtFromBranch": {
+          "description": "Name of the branch used to build the deployment",
+          "type": "string",
+          "x-go-name": "BuiltFromBranch",
+          "example": "main"
+        },
         "commitID": {
           "description": "CommitID the commit ID of the branch to build",
           "type": "string",
@@ -6444,6 +6456,12 @@
     "DeploymentSummaryPipelineJobInfo": {
       "type": "object",
       "properties": {
+        "builtFromBranch": {
+          "description": "Name of the branch used to build the deployment",
+          "type": "string",
+          "x-go-name": "BuiltFromBranch",
+          "example": "main"
+        },
         "commitID": {
           "description": "CommitID the commit ID of the branch to build",
           "type": "string",
@@ -6947,6 +6965,12 @@
           "x-go-name": "Created",
           "example": "2006-01-02T15:04:05Z"
         },
+        "deployedToEnvironment": {
+          "description": "DeployedToEnvironment the name of the environment that was deployed to",
+          "type": "string",
+          "x-go-name": "DeployedToEnvironment",
+          "example": "qa"
+        },
         "deployments": {
           "description": "Array of deployments",
           "type": "array",
@@ -7302,6 +7326,12 @@
           "type": "string",
           "x-go-name": "PushImage",
           "example": "true"
+        },
+        "toEnvironment": {
+          "description": "Name of environment to build for",
+          "type": "string",
+          "x-go-name": "ToEnvironment",
+          "example": "prod"
         },
         "triggeredBy": {
           "description": "TriggeredBy of the job - if empty will use user token upn (user principle name)",

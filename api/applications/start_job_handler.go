@@ -71,6 +71,7 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 		buildSpec = v1.RadixBuildSpec{
 			ImageTag:              imageTag,
 			Branch:                jobSpec.Branch,
+			ToEnvironment:         jobSpec.ToEnvironment,
 			CommitID:              jobSpec.CommitID,
 			PushImage:             jobSpec.PushImage,
 			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,

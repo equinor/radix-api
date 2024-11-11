@@ -536,6 +536,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	}
 
 	branch := pipelineParameters.Branch
+	envName := pipelineParameters.ToEnvironment
 	commitID := pipelineParameters.CommitID
 
 	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
@@ -543,7 +544,6 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	}
 
 	log.Ctx(ctx).Info().Msgf("Creating build pipeline jobController for %s on branch %s for commit %s", appName, branch, commitID)
-
 	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -559,6 +559,10 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		if len(targetEnvironments) == 0 {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
+
+		if len(envName) > 0 && !slice.Any(targetEnvironments, func(targetEnvName string) bool { return targetEnvName == envName }) {
+			return nil, applicationModels.EnvironmentNotMappedToBranch(envName, branch)
+		}
 	}
 
 	jobParameters := pipelineParameters.MapPipelineParametersBuildToJobParameter()
@@ -568,7 +572,8 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s%s", appName, branch, commitID,
+		radixutils.TernaryString(len(envName) > 0, fmt.Sprintf(", for environment %s", envName), ""))
 
 	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
 	if err != nil {

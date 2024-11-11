@@ -101,6 +101,12 @@ type Job struct {
 	// example: qa
 	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
 
+	// DeployedToEnvironment the name of the environment that was deployed to
+	//
+	// required: false
+	// example: qa
+	DeployedToEnvironment string `json:"deployedToEnvironment,omitempty"`
+
 	// Array of steps
 	//
 	// required: false
@@ -160,9 +166,11 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
 		jobModel.Branch = job.Spec.Build.Branch
+		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
 		jobModel.CommitID = job.Spec.Build.CommitID
 	case radixv1.Deploy:
 		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
+		jobModel.DeployedToEnvironment = job.Spec.Deploy.ToEnvironment
 		jobModel.CommitID = job.Spec.Deploy.CommitID
 	case radixv1.Promote:
 		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName

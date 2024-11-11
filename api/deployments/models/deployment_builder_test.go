@@ -15,9 +15,9 @@ import (
 )
 
 func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
-	deploymentName, envName, jobName, commitID, promoteFromEnv, activeFrom, activeTo :=
+	deploymentName, envName, jobName, commitID, promoteFromEnv, activeFrom, activeTo, buildFromBranch :=
 		"deployment-name", "env-name", "job-name", "commit-id", "from-env-name",
-		time.Now().Add(-10*time.Second).Truncate(1*time.Second), time.Now().Truncate(1*time.Second)
+		time.Now().Add(-10*time.Second).Truncate(1*time.Second), time.Now().Truncate(1*time.Second), "anybranch"
 
 	t.Run("build with deployment", func(t *testing.T) {
 		t.Parallel()
@@ -81,6 +81,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 					PipeLineType: radixv1.BuildDeploy,
 					Build: radixv1.RadixBuildSpec{
 						CommitID: commitID,
+						Branch:   buildFromBranch,
 					},
 					Promote: radixv1.RadixPromoteSpec{
 						FromEnvironment: promoteFromEnv,
@@ -96,6 +97,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 				CommitID:                commitID,
 				PipelineJobType:         string(radixv1.BuildDeploy),
 				PromotedFromEnvironment: promoteFromEnv,
+				BuiltFromBranch:         buildFromBranch,
 			},
 		}
 		assert.Equal(t, expected, actual)
