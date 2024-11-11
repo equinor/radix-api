@@ -50,6 +50,11 @@ type PipelineParametersBuild struct {
 	// example: master
 	Branch string `json:"branch"`
 
+	// Name of environment to build for
+	//
+	// example: prod
+	ToEnvironment string `json:"toEnvironment,omitempty"`
+
 	// CommitID the commit ID of the branch to build
 	// REQUIRED for "build" and "build-deploy" pipelines
 	//
@@ -100,6 +105,7 @@ type PipelineParametersBuild struct {
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
 		Branch:                buildParam.Branch,
+		ToEnvironment:         buildParam.ToEnvironment,
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,

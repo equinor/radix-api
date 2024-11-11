@@ -21,7 +21,7 @@ type JobParameters struct {
 	// For promote pipeline: Environment to locate deployment to promote
 	FromEnvironment string `json:"fromEnvironment"`
 
-	// For promote pipeline: Target environment for promotion
+	// For build or promote pipeline: Target environment for building and promotion
 	ToEnvironment string `json:"toEnvironment"`
 
 	// ImageRepository of the component, without image name and image-tag
