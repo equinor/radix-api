@@ -6565,6 +6565,9 @@
     "Environment": {
       "description": "Environment holds detail information about environment",
       "type": "object",
+      "required": [
+        "name"
+      ],
       "properties": {
         "activeDeployment": {
           "$ref": "#/definitions/Deployment"
