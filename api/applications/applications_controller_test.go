@@ -361,12 +361,12 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	apps := []applicationModels.Application{
 		{Name: "app-1", Jobs: []*jobModels.JobSummary{
-			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
+			{Name: "app-1-job-1", Started: createTimePtr("2018-11-12T11:45:26Z")},
 		}},
 		{Name: "app-2", Jobs: []*jobModels.JobSummary{
-			{Name: "app-2-job-1", Started: "2018-11-12T12:30:14Z"},
-			{Name: "app-2-job-2", Started: "2018-11-20T09:00:00Z"},
-			{Name: "app-2-job-3", Started: "2018-11-20T09:00:01Z"},
+			{Name: "app-2-job-1", Started: createTimePtr("2018-11-12T12:30:14Z")},
+			{Name: "app-2-job-2", Started: createTimePtr("2018-11-20T09:00:00Z")},
+			{Name: "app-2-job-3", Started: createTimePtr("2018-11-20T09:00:01Z")},
 		}},
 		{Name: "app-3"},
 	}
@@ -378,8 +378,8 @@ func TestSearchApplicationsPost_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, job := range app.Jobs {
-			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
-				err = createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+			if job.Started != nil {
+				err = createRadixJob(commonTestUtils, app.Name, job.Name, *job.Started)
 				require.NoError(t, err)
 			}
 		}
@@ -535,12 +535,12 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _ := setupTest(t, true, true)
 	apps := []applicationModels.Application{
 		{Name: "app-1", Jobs: []*jobModels.JobSummary{
-			{Name: "app-1-job-1", Started: "2018-11-12T11:45:26Z"},
+			{Name: "app-1-job-1", Started: createTimePtr("2018-11-12T11:45:26Z")},
 		}},
 		{Name: "app-2", Jobs: []*jobModels.JobSummary{
-			{Name: "app-2-job-1", Started: "2018-11-12T12:30:14Z"},
-			{Name: "app-2-job-2", Started: "2018-11-20T09:00:00Z"},
-			{Name: "app-2-job-3", Started: "2018-11-20T09:00:01Z"},
+			{Name: "app-2-job-1", Started: createTimePtr("2018-11-12T12:30:14Z")},
+			{Name: "app-2-job-2", Started: createTimePtr("2018-11-20T09:00:00Z")},
+			{Name: "app-2-job-3", Started: createTimePtr("2018-11-20T09:00:01Z")},
 		}},
 		{Name: "app-3"},
 	}
@@ -552,8 +552,8 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, job := range app.Jobs {
-			if startTime, err := radixutils.ParseTimestamp(job.Started); err == nil {
-				err = createRadixJob(commonTestUtils, app.Name, job.Name, startTime)
+			if job.Started != nil {
+				err = createRadixJob(commonTestUtils, app.Name, job.Name, *job.Started)
 				require.NoError(t, err)
 			}
 		}
@@ -2135,4 +2135,22 @@ func newTestApplicationHandlerFactory(config config.Config, hasAccessToGetConfig
 // Create creates a new ApplicationHandler
 func (f *testApplicationHandlerFactory) Create(accounts models.Accounts) ApplicationHandler {
 	return NewApplicationHandler(accounts, f.config, f.hasAccessToGetConfigMap)
+}
+
+func createTime(timestamp string) time.Time {
+	if timestamp == "" {
+		return time.Time{}
+	}
+
+	t, _ := time.Parse(time.RFC3339, timestamp)
+	return t
+}
+
+func createTimePtr(timestamp string) *time.Time {
+	if timestamp == "" {
+		return &time.Time{}
+	}
+
+	t, _ := time.Parse(time.RFC3339, timestamp)
+	return &t
 }

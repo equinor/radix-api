@@ -7,7 +7,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/stretchr/testify/assert"
@@ -53,8 +52,8 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		expected := &DeploymentSummary{
 			Name:        deploymentName,
 			Environment: envName,
-			ActiveFrom:  radixutils.FormatTimestamp(activeFrom),
-			ActiveTo:    radixutils.FormatTimestamp(activeTo),
+			ActiveFrom:  activeFrom,
+			ActiveTo:    &activeTo,
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
 				CreatedByJob: jobName,
 			},
@@ -187,8 +186,8 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 			Namespace:    deploymentNamespace,
 			CreatedByJob: jobName,
 			Environment:  envName,
-			ActiveFrom:   radixutils.FormatTimestamp(activeFrom),
-			ActiveTo:     radixutils.FormatTimestamp(activeTo),
+			ActiveFrom:   activeFrom,
+			ActiveTo:     &activeTo,
 			Repository:   repoUrl,
 		}
 		assert.Equal(t, expected, actual)

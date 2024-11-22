@@ -1,11 +1,13 @@
 package models
 
+import "time"
+
 // Deployment describe an deployment
 // swagger:model Deployment
 type Deployment struct {
 	// Name the unique name of the Radix application deployment
 	//
-	// required: false
+	// required: true
 	// example: radix-canary-golang-tzbqi
 	Name string `json:"name"`
 
@@ -33,15 +35,15 @@ type Deployment struct {
 
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
-	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ActiveFrom string `json:"activeFrom"`
+	// required: true
+	// swagger:strfmt date-time
+	ActiveFrom time.Time `json:"activeFrom"`
 
 	// ActiveTo Timestamp when the deployment ends
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ActiveTo string `json:"activeTo,omitempty"`
+	// swagger:strfmt date-time
+	ActiveTo *time.Time `json:"activeTo"`
 
 	// GitCommitHash the hash of the git commit from which radixconfig.yaml was parsed
 	//

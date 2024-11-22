@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -376,27 +377,27 @@ type ReplicaSummary struct {
 
 	// Created timestamp
 	//
-	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	// required: true
+	// swagger:strfmt date-time
+	Created time.Time `json:"created"`
 
 	// The time at which the batch job's pod startedAt
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	StartTime string `json:"startTime,omitempty"`
+	// swagger:strfmt date-time
+	StartTime *time.Time `json:"startTime"`
 
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	EndTime string `json:"endTime,omitempty"`
+	// swagger:strfmt date-time
+	EndTime *time.Time `json:"endTime"`
 
 	// Container started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ContainerStarted string `json:"containerStarted,omitempty"`
+	// swagger:strfmt date-time
+	ContainerStarted *time.Time `json:"containerStarted"`
 
 	// Status describes the component container status
 	//
@@ -569,7 +570,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 	}
 	replicaSummary.Name = pod.GetName()
 	creationTimestamp := pod.GetCreationTimestamp()
-	replicaSummary.Created = radixutils.FormatTimestamp(creationTimestamp.Time)
+	replicaSummary.Created = creationTimestamp.Time
 
 	// Set default Pending status
 	replicaSummary.Status = ReplicaStatus{Status: Pending}
@@ -593,7 +594,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 		}
 	}
 	if containerState.Running != nil {
-		replicaSummary.ContainerStarted = radixutils.FormatTimestamp(containerState.Running.StartedAt.Time)
+		replicaSummary.ContainerStarted = &containerState.Running.StartedAt.Time
 		if containerStatus.Ready {
 			replicaSummary.Status = ReplicaStatus{Status: Running}
 		} else {
@@ -666,15 +667,15 @@ func sortStatusConditionsDesc(conditions []corev1.PodCondition) []corev1.PodCond
 	return conditions
 }
 
-func (job *ScheduledJobSummary) GetCreated() string {
+func (job *ScheduledJobSummary) GetCreated() time.Time {
 	return job.Created
 }
 
-func (job *ScheduledJobSummary) GetStarted() string {
+func (job *ScheduledJobSummary) GetStarted() *time.Time {
 	return job.Started
 }
 
-func (job *ScheduledJobSummary) GetEnded() string {
+func (job *ScheduledJobSummary) GetEnded() *time.Time {
 	return job.Ended
 }
 
@@ -682,15 +683,15 @@ func (job *ScheduledJobSummary) GetStatus() string {
 	return string(job.Status)
 }
 
-func (job *ScheduledBatchSummary) GetCreated() string {
+func (job *ScheduledBatchSummary) GetCreated() time.Time {
 	return job.Created
 }
 
-func (job *ScheduledBatchSummary) GetStarted() string {
+func (job *ScheduledBatchSummary) GetStarted() *time.Time {
 	return job.Started
 }
 
-func (job *ScheduledBatchSummary) GetEnded() string {
+func (job *ScheduledBatchSummary) GetEnded() *time.Time {
 	return job.Ended
 }
 

@@ -124,8 +124,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 	deploySummary := deploymentModels.DeploymentSummary{
 		Name:        deploymentName,
 		Environment: "any_env",
-		ActiveFrom:  "any_from",
-		ActiveTo:    "any_to",
+		ActiveFrom:  time.Time{},
+		ActiveTo:    &time.Time{},
 		Components: []*deploymentModels.ComponentSummary{
 			{Name: comp1Name, Image: comp1Image, Type: comp1Type},
 			{Name: comp2Name, Image: comp2Image, Type: comp2Type},

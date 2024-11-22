@@ -2,11 +2,11 @@ package models
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/equinor/radix-api/api/deployments/models"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	utils2 "github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v2"
@@ -72,10 +72,17 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 		summary.Started = radixBatchStatus.Started
 		summary.Ended = radixBatchStatus.Ended
 	} else {
+		var started, ended *time.Time
+		if radixBatch.Status.Condition.ActiveTime != nil {
+			started = &radixBatch.Status.Condition.ActiveTime.Time
+		}
+		if radixBatch.Status.Condition.CompletionTime != nil {
+			ended = &radixBatch.Status.Condition.CompletionTime.Time
+		}
 		summary.Status = utils2.GetBatchJobStatusByJobApiCondition(radixBatch.Status.Condition.Type)
-		summary.Created = utils.FormatTimestamp(radixBatch.GetCreationTimestamp().Time)
-		summary.Started = utils.FormatTime(radixBatch.Status.Condition.ActiveTime)
-		summary.Ended = utils.FormatTime(radixBatch.Status.Condition.CompletionTime)
+		summary.Created = radixBatch.GetCreationTimestamp().Time
+		summary.Started = started
+		summary.Ended = ended
 	}
 	return summary
 }
@@ -155,7 +162,7 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 func GetReplicaSummaryByJobPodStatus(radixBatchJob radixv1.RadixBatchJob, jobPodStatus radixv1.RadixBatchJobPodStatus) models.ReplicaSummary {
 	summary := models.ReplicaSummary{
 		Name:          jobPodStatus.Name,
-		Created:       utils.FormatTimestamp(jobPodStatus.CreationTime.Time),
+		Created:       jobPodStatus.CreationTime.Time,
 		RestartCount:  jobPodStatus.RestartCount,
 		Image:         jobPodStatus.Image,
 		ImageId:       jobPodStatus.ImageID,
@@ -166,10 +173,10 @@ func GetReplicaSummaryByJobPodStatus(radixBatchJob radixv1.RadixBatchJob, jobPod
 		Status:        models.ReplicaStatus{Status: getReplicaStatusByPodStatus(jobPodStatus.Phase)},
 	}
 	if jobPodStatus.StartTime != nil {
-		summary.StartTime = utils.FormatTimestamp(jobPodStatus.StartTime.Time)
+		summary.StartTime = &jobPodStatus.StartTime.Time
 	}
 	if jobPodStatus.EndTime != nil {
-		summary.EndTime = utils.FormatTimestamp(jobPodStatus.EndTime.Time)
+		summary.EndTime = &jobPodStatus.EndTime.Time
 	}
 	if radixBatchJob.Resources != nil {
 		summary.Resources = pointers.Ptr(models.ConvertRadixResourceRequirements(*radixBatchJob.Resources))

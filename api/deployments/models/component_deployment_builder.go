@@ -2,7 +2,8 @@ package models
 
 import (
 	"fmt"
-	radixutils "github.com/equinor/radix-common/utils"
+	"time"
+
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -31,10 +32,15 @@ func (b *deploymentItemBuilder) Build() (*DeploymentItem, error) {
 	if b.radixDeployment == nil {
 		return nil, fmt.Errorf("RadixDeployment is empty")
 	}
+	var activeTo *time.Time
+	if !b.radixDeployment.Status.ActiveTo.IsZero() {
+		activeTo = &b.radixDeployment.Status.ActiveTo.Time
+	}
+
 	return &DeploymentItem{
 		Name:          b.radixDeployment.GetName(),
-		ActiveFrom:    radixutils.FormatTimestamp(b.radixDeployment.Status.ActiveFrom.Time),
-		ActiveTo:      radixutils.FormatTimestamp(b.radixDeployment.Status.ActiveTo.Time),
+		ActiveFrom:    b.radixDeployment.Status.ActiveFrom.Time,
+		ActiveTo:      activeTo,
 		GitCommitHash: b.radixDeployment.GetLabels()[kube.RadixCommitLabel],
 	}, nil
 }

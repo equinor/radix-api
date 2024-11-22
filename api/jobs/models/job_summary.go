@@ -1,7 +1,8 @@
 package models
 
 import (
-	radixutils "github.com/equinor/radix-common/utils"
+	"time"
+
 	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
@@ -11,7 +12,7 @@ import (
 type JobSummary struct {
 	// Name of the job
 	//
-	// required: false
+	// required: true
 	// example: radix-pipeline-20181029135644-algpv-6hznh
 	Name string `json:"name"`
 
@@ -41,9 +42,9 @@ type JobSummary struct {
 
 	// Created timestamp
 	//
-	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created"`
+	// required: true
+	// swagger:strfmt date-time
+	Created time.Time `json:"created"`
 
 	// TriggeredBy user that triggered the job. If through webhook = sender.login. If through api - usertoken.upn
 	//
@@ -54,14 +55,14 @@ type JobSummary struct {
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -115,21 +116,27 @@ type JobSummary struct {
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
 func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
-	status := job.Status
-	ended := radixutils.FormatTime(status.Ended)
-	created := radixutils.FormatTime(&job.CreationTimestamp)
-	if status.Created != nil {
+	created := job.CreationTimestamp.Time
+	if job.Status.Created != nil {
 		// Use this instead, because in a migration this may be more correct
 		// as migrated jobs will have the same creation timestamp in the new cluster
-		created = radixutils.FormatTime(status.Created)
+		created = job.Status.Created.Time
+	}
+
+	var started, ended *time.Time
+	if job.Status.Started != nil {
+		started = &job.Status.Started.Time
+	}
+	if job.Status.Ended != nil {
+		ended = &job.Status.Ended.Time
 	}
 
 	pipelineJob := &JobSummary{
 		Name:         job.Name,
 		AppName:      job.Spec.AppName,
-		Status:       GetStatusFromRadixJobStatus(status, job.Spec.Stop),
+		Status:       GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
 		Created:      created,
-		Started:      radixutils.FormatTime(status.Started),
+		Started:      started,
 		Ended:        ended,
 		Pipeline:     string(job.Spec.PipeLineType),
 		Environments: job.Status.TargetEnvs,
@@ -155,15 +162,15 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	return pipelineJob
 }
 
-func (job *JobSummary) GetCreated() string {
+func (job *JobSummary) GetCreated() time.Time {
 	return job.Created
 }
 
-func (job *JobSummary) GetStarted() string {
+func (job *JobSummary) GetStarted() *time.Time {
 	return job.Started
 }
 
-func (job *JobSummary) GetEnded() string {
+func (job *JobSummary) GetEnded() *time.Time {
 	return job.Ended
 }
 
