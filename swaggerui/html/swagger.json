@@ -6258,6 +6258,7 @@
       "required": [
         "name",
         "namespace",
+        "environment",
         "activeFrom",
         "repository"
       ],
