@@ -29,7 +29,7 @@ type Deployment struct {
 
 	// Environment the environment this Radix application deployment runs in
 	//
-	// required: false
+	// required: true
 	// example: prod
 	Environment string `json:"environment"`
 
