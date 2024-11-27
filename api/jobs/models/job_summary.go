@@ -162,8 +162,12 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	return pipelineJob
 }
 
-func (job *JobSummary) GetCreated() time.Time {
-	return job.Created
+func (job *JobSummary) GetCreated() *time.Time {
+	if job.Created.IsZero() {
+		return nil
+	}
+
+	return &job.Created
 }
 
 func (job *JobSummary) GetStarted() *time.Time {

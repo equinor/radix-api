@@ -1664,7 +1664,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
 		Name:             "job-batch1-job1",
-		Created:          creationTime.Time,
+		Created:          &creationTime.Time,
 		Started:          &startTime.Time,
 		Ended:            &endTime.Time,
 		Status:           deploymentModels.ScheduledBatchJobStatusSucceeded,
@@ -1693,6 +1693,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
+		Created:          &time.Time{},
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
 		Status:           deploymentModels.ScheduledBatchJobStatusWaiting,

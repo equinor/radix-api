@@ -68,7 +68,7 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 	}
 	if radixBatchStatus != nil {
 		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(radixBatchStatus.Status)
-		summary.Created = radixBatchStatus.CreationTime
+		summary.Created = &radixBatchStatus.CreationTime
 		summary.Started = radixBatchStatus.Started
 		summary.Ended = radixBatchStatus.Ended
 	} else {
@@ -80,7 +80,7 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 			ended = &radixBatch.Status.Condition.CompletionTime.Time
 		}
 		summary.Status = utils2.GetBatchJobStatusByJobApiCondition(radixBatch.Status.Condition.Type)
-		summary.Created = radixBatch.GetCreationTimestamp().Time
+		summary.Created = pointers.Ptr(radixBatch.GetCreationTimestamp().Time)
 		summary.Started = started
 		summary.Ended = ended
 	}
@@ -148,7 +148,7 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		return jobStatus.Name == jobName
 	}); ok {
 		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(jobStatus.Status)
-		summary.Created = jobStatus.CreationTime
+		summary.Created = &jobStatus.CreationTime
 		summary.Started = jobStatus.Started
 		summary.Ended = jobStatus.Ended
 		summary.Message = jobStatus.Message

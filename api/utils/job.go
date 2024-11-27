@@ -5,7 +5,7 @@ import (
 )
 
 type Job interface {
-	GetCreated() time.Time
+	GetCreated() *time.Time
 	GetStarted() *time.Time
 	GetEnded() *time.Time
 	GetStatus() string
@@ -18,13 +18,21 @@ func IsBefore(j, i Job) bool {
 	jStarted := j.GetStarted()
 	iStarted := i.GetStarted()
 
-	if jStarted != nil && (iStarted == nil || jStarted.Before(*iStarted)) {
-		return true
-	}
-
-	if jCreated.Equal(iCreated) {
+	if jCreated == nil {
 		return false
 	}
 
-	return iCreated.IsZero() || jCreated.Before(iCreated)
+	if iCreated == nil {
+		return true
+	}
+
+	if iStarted != nil && jStarted != nil && jStarted.Before(*iStarted) {
+		return true
+	}
+
+	if jCreated.Equal(*iCreated) {
+		return false
+	}
+
+	return jCreated.Before(*iCreated)
 }

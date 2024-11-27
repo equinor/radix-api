@@ -667,7 +667,7 @@ func sortStatusConditionsDesc(conditions []corev1.PodCondition) []corev1.PodCond
 	return conditions
 }
 
-func (job *ScheduledJobSummary) GetCreated() time.Time {
+func (job *ScheduledJobSummary) GetCreated() *time.Time {
 	return job.Created
 }
 
@@ -683,7 +683,7 @@ func (job *ScheduledJobSummary) GetStatus() string {
 	return string(job.Status)
 }
 
-func (job *ScheduledBatchSummary) GetCreated() time.Time {
+func (job *ScheduledBatchSummary) GetCreated() *time.Time {
 	return job.Created
 }
 

@@ -13,9 +13,9 @@ type ScheduledJobSummary struct {
 
 	// Created timestamp
 	//
-	// required: true
+	// required: false
 	// swagger:strfmt date-time
-	Created time.Time `json:"created"`
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
@@ -115,9 +115,9 @@ type ScheduledBatchSummary struct {
 
 	// Created timestamp
 	//
-	// required: true
+	// required: false
 	// swagger:strfmt date-time
-	Created time.Time `json:"created"`
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
