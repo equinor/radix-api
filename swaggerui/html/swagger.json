@@ -5408,6 +5408,8 @@
       "description": "Application details of an application",
       "type": "object",
       "required": [
+        "name",
+        "registration",
         "userIsAdmin"
       ],
       "properties": {
@@ -8010,7 +8012,6 @@
       "type": "object",
       "required": [
         "name",
-        "created",
         "status",
         "totalJobCount",
         "deploymentName"
@@ -8111,7 +8112,6 @@
       "type": "object",
       "required": [
         "name",
-        "created",
         "status",
         "backoffLimit",
         "deploymentName",

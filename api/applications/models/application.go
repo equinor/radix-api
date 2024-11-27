@@ -16,7 +16,7 @@ type Application struct {
 
 	// Registration registration details
 	//
-	// required: false
+	// required: true
 	Registration ApplicationRegistration `json:"registration"`
 
 	// Environments List of environments for this application
