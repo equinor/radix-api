@@ -148,7 +148,7 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		return jobStatus.Name == jobName
 	}); ok {
 		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(jobStatus.Status)
-		summary.Created = &jobStatus.CreationTime
+		summary.Created = jobStatus.CreationTime
 		summary.Started = jobStatus.Started
 		summary.Ended = jobStatus.Ended
 		summary.Message = jobStatus.Message

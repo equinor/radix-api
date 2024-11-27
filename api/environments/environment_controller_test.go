@@ -1693,7 +1693,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
-		Created:          &time.Time{},
+		Created:          nil,
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
 		Status:           deploymentModels.ScheduledBatchJobStatusWaiting,
