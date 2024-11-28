@@ -101,6 +101,8 @@ github.com/equinor/radix-job-scheduler v1.11.1-0.20241122084303-95b87f773af0 h1:
 github.com/equinor/radix-job-scheduler v1.11.1-0.20241122084303-95b87f773af0/go.mod h1:y9nt8Js786rQHs8tR4gkAbX5suOhA4/OOF5Tv6DeO+4=
 github.com/equinor/radix-job-scheduler v1.11.1-0.20241127121954-0bba7249ecb3 h1:+h+2J3XF9NxK8aGUL0wWypKrRmzAtJsukU3cf9bh064=
 github.com/equinor/radix-job-scheduler v1.11.1-0.20241127121954-0bba7249ecb3/go.mod h1:y9nt8Js786rQHs8tR4gkAbX5suOhA4/OOF5Tv6DeO+4=
+github.com/equinor/radix-job-scheduler v1.12.0 h1:t54uSTYNe7g3dBoNAl1t4g+x6X4f1BmJ3ysJn2OwDIY=
+github.com/equinor/radix-job-scheduler v1.12.0/go.mod h1:y9nt8Js786rQHs8tR4gkAbX5suOhA4/OOF5Tv6DeO+4=
 github.com/equinor/radix-operator v1.66.0 h1:3gRM6mrmmaLMKnpF/hzfAFFuqeW8512XDlQRW1B0kXQ=
 github.com/equinor/radix-operator v1.66.0/go.mod h1:bYXKrNGkeRL7ctqj4fwytRFsgHj4XR5ZRks7wXwqjXo=
 github.com/equinor/radix-operator v1.66.3 h1:rrlqB9n9KnrfjOvnktJsfvpc4Hcx5u7A8ZZ2uSMuzMw=
