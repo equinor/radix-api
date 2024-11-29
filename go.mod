@@ -6,7 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
-	github.com/cert-manager/cert-manager v1.15.0
+	github.com/cert-manager/cert-manager v1.15.4
 	github.com/equinor/radix-common v1.9.5
 	github.com/equinor/radix-job-scheduler v1.12.0 // TODO: Update with real tag!
 	github.com/equinor/radix-operator v1.66.3
@@ -57,7 +57,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.10.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
