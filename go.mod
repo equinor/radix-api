@@ -6,10 +6,10 @@ toolchain go1.22.5
 
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
-	github.com/cert-manager/cert-manager v1.15.0
+	github.com/cert-manager/cert-manager v1.15.4
 	github.com/equinor/radix-common v1.9.5
-	github.com/equinor/radix-job-scheduler v1.11.0
-	github.com/equinor/radix-operator v1.66.0
+	github.com/equinor/radix-job-scheduler v1.12.0
+	github.com/equinor/radix-operator v1.66.3
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -50,7 +50,7 @@ require (
 	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

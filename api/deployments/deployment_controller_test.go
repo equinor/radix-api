@@ -216,18 +216,18 @@ func TestGetDeployments_OneEnvironment_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 	assert.Equal(t, gitCommitHash, deployments[0].GitCommitHash)
 	assert.Equal(t, gitTags, deployments[0].GitTags)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
+	assert.Equal(t, deploymentTwoCreated, deployments[1].ActiveFrom)
+	assert.Equal(t, &deploymentThreeCreated, deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+	assert.Equal(t, deploymentOneCreated, deployments[2].ActiveFrom)
+	assert.Equal(t, &deploymentTwoCreated, deployments[2].ActiveTo)
 }
 
 func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
@@ -256,8 +256,8 @@ func TestGetDeployments_OneEnvironment_Latest(t *testing.T) {
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 }
 
 func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
@@ -286,16 +286,16 @@ func TestGetDeployments_TwoEnvironments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, "", deployments[1].ActiveTo)
+	assert.Equal(t, deploymentTwoCreated, deployments[1].ActiveFrom)
+	assert.Nil(t, deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[2].ActiveTo)
+	assert.Equal(t, deploymentOneCreated, deployments[2].ActiveFrom)
+	assert.Equal(t, &deploymentThreeCreated, deployments[2].ActiveTo)
 }
 
 func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
@@ -324,12 +324,12 @@ func TestGetDeployments_TwoEnvironments_Latest(t *testing.T) {
 	assert.Equal(t, 2, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, "", deployments[1].ActiveTo)
+	assert.Equal(t, deploymentTwoCreated, deployments[1].ActiveFrom)
+	assert.Nil(t, deployments[1].ActiveTo)
 }
 
 func TestGetDeployment_NoApplicationRegistered(t *testing.T) {
@@ -424,8 +424,8 @@ func TestGetDeployment_TwoDeploymentsFirstDeployment_ReturnsDeploymentWithCompon
 	require.NoError(t, err)
 
 	assert.Equal(t, anyDeployment1Name, deployment.Name)
-	assert.Equal(t, radixutils.FormatTimestamp(appDeployment1Created), deployment.ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(appDeployment2Created), deployment.ActiveTo)
+	assert.Equal(t, appDeployment1Created, deployment.ActiveFrom)
+	assert.Equal(t, &appDeployment2Created, deployment.ActiveTo)
 	assert.Equal(t, 4, len(deployment.Components))
 
 }

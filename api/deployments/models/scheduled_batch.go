@@ -1,31 +1,33 @@
 package models
 
+import "time"
+
 // ScheduledJobSummary holds general information about scheduled job
 // swagger:model ScheduledJobSummary
 type ScheduledJobSummary struct {
 	// Name of the scheduled job
 	//
-	// required: false
+	// required: true
 	// example: job-component-20181029135644-algpv-6hznh
 	Name string `json:"name"`
 
 	// Created timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	// swagger:strfmt date-time
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -83,8 +85,8 @@ type ScheduledJobSummary struct {
 
 	// DeploymentName name of RadixDeployment for the job
 	//
-	// required: false
-	DeploymentName string `json:"deploymentName,omitempty"`
+	// required: true
+	DeploymentName string `json:"deploymentName"`
 
 	// FailedCount is the number of times the job has failed
 	//
@@ -114,20 +116,20 @@ type ScheduledBatchSummary struct {
 	// Created timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Created string `json:"created,omitempty"`
+	// swagger:strfmt date-time
+	Created *time.Time `json:"created"`
 
 	// Started timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Started string `json:"started,omitempty"`
+	// swagger:strfmt date-time
+	Started *time.Time `json:"started"`
 
 	// Ended timestamp
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	Ended string `json:"ended,omitempty"`
+	// swagger:strfmt date-time
+	Ended *time.Time `json:"ended"`
 
 	// Status of the job
 	//
@@ -160,5 +162,5 @@ type ScheduledBatchSummary struct {
 	// DeploymentName name of RadixDeployment for the batch
 	//
 	// required: true
-	DeploymentName string `json:"deploymentName,omitempty"`
+	DeploymentName string `json:"deploymentName"`
 }

@@ -10,7 +10,7 @@ import (
 type Environment struct {
 	// Name of the environment
 	//
-	// required: false
+	// required: true
 	// example: prod
 	Name string `json:"name"`
 

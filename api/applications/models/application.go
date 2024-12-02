@@ -10,13 +10,13 @@ import (
 type Application struct {
 	// Name the name of the application
 	//
-	// required: false
+	// required: true
 	// example: radix-canary-golang
 	Name string `json:"name"`
 
 	// Registration registration details
 	//
-	// required: false
+	// required: true
 	Registration ApplicationRegistration `json:"registration"`
 
 	// Environments List of environments for this application

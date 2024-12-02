@@ -130,7 +130,7 @@ func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, deploy
 	chanData := make(chan *ChannelData, len(environments))
 	for _, env := range environments {
 		deployment := env.ActiveDeployment
-		if deployment == nil || deployment.ActiveTo != "" {
+		if deployment == nil || deployment.ActiveTo != nil {
 			continue
 		}
 
