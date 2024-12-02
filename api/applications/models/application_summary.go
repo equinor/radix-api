@@ -10,7 +10,7 @@ import (
 type ApplicationSummary struct {
 	// Name the name of the application
 	//
-	// required: false
+	// required: true
 	// example: radix-canary-golang
 	Name string `json:"name"`
 

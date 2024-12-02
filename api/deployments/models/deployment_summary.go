@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type DeploymentSummaryPipelineJobInfo struct {
 	// Name of job creating deployment
 	//
@@ -58,14 +60,14 @@ type DeploymentSummary struct {
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
 	// required: true
-	// example: 2006-01-02T15:04:05Z
-	ActiveFrom string `json:"activeFrom"`
+	// swagger:strfmt date-time
+	ActiveFrom time.Time `json:"activeFrom"`
 
 	// ActiveTo Timestamp when the deployment ends
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ActiveTo string `json:"activeTo,omitempty"`
+	// swagger:strfmt date-time
+	ActiveTo *time.Time `json:"activeTo"`
 
 	// GitCommitHash the hash of the git commit from which radixconfig.yaml was parsed
 	//
@@ -92,14 +94,14 @@ type DeploymentItem struct {
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
 	// required: true
-	// example: 2006-01-02T15:04:05Z
-	ActiveFrom string `json:"activeFrom"`
+	// swagger:strfmt date-time
+	ActiveFrom time.Time `json:"activeFrom"`
 
 	// ActiveTo Timestamp when the deployment ends
 	//
 	// required: false
-	// example: 2006-01-02T15:04:05Z
-	ActiveTo string `json:"activeTo,omitempty"`
+	// swagger:strfmt date-time
+	ActiveTo *time.Time `json:"activeTo"`
 
 	// GitCommitHash the hash of the git commit from which radixconfig.yaml was parsed
 	//

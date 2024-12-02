@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -28,7 +27,7 @@ type deploymentBuilder struct {
 	namespace          string
 	environment        string
 	activeFrom         time.Time
-	activeTo           time.Time
+	activeTo           *time.Time
 	jobName            string
 	pipelineJob        *v1.RadixJob
 	components         []*Component
@@ -46,13 +45,18 @@ func NewDeploymentBuilder() DeploymentBuilder {
 
 func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
+	var activeTo *time.Time
+	if !rd.Status.ActiveTo.IsZero() {
+		activeTo = &rd.Status.ActiveTo.Time
+	}
+
 	b.withComponentSummariesFromRadixDeployment(rd).
 		withEnvironment(rd.Spec.Environment).
 		withNamespace(rd.GetNamespace()).
 		withName(rd.GetName()).
 		withActiveFrom(rd.Status.ActiveFrom.Time).
 		withJobName(jobName).
-		withActiveTo(rd.Status.ActiveTo.Time).
+		withActiveTo(activeTo).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation])
 
@@ -104,7 +108,7 @@ func (b *deploymentBuilder) withActiveFrom(activeFrom time.Time) *deploymentBuil
 	return b
 }
 
-func (b *deploymentBuilder) withActiveTo(activeTo time.Time) *deploymentBuilder {
+func (b *deploymentBuilder) withActiveTo(activeTo *time.Time) *deploymentBuilder {
 	b.activeTo = activeTo
 	return b
 }
@@ -155,8 +159,8 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		Name:                             b.name,
 		Components:                       b.componentSummaries,
 		Environment:                      b.environment,
-		ActiveFrom:                       radixutils.FormatTimestamp(b.activeFrom),
-		ActiveTo:                         radixutils.FormatTimestamp(b.activeTo),
+		ActiveFrom:                       b.activeFrom,
+		ActiveTo:                         b.activeTo,
 		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
 		GitCommitHash:                    b.gitCommitHash,
 		GitTags:                          b.gitTags,
@@ -204,8 +208,8 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		Name:          b.name,
 		Namespace:     b.namespace,
 		Environment:   b.environment,
-		ActiveFrom:    radixutils.FormatTimestamp(b.activeFrom),
-		ActiveTo:      radixutils.FormatTimestamp(b.activeTo),
+		ActiveFrom:    b.activeFrom,
+		ActiveTo:      b.activeTo,
 		Components:    b.components,
 		CreatedByJob:  b.jobName,
 		GitCommitHash: b.gitCommitHash,
