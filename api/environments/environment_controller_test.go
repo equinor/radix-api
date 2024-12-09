@@ -108,16 +108,16 @@ func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
+	assert.Equal(t, deploymentTwoCreated, deployments[1].ActiveFrom)
+	assert.Equal(t, &deploymentThreeCreated, deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+	assert.Equal(t, deploymentOneCreated, deployments[2].ActiveFrom)
+	assert.Equal(t, &deploymentTwoCreated, deployments[2].ActiveTo)
 }
 
 func TestGetEnvironmentDeployments_Latest(t *testing.T) {
@@ -142,8 +142,8 @@ func TestGetEnvironmentDeployments_Latest(t *testing.T) {
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 }
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_EnvironmentPending(t *testing.T) {
@@ -785,16 +785,16 @@ func TestGetSecretDeployments_SortedWithFromTo(t *testing.T) {
 	assert.Equal(t, 3, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 
 	assert.Equal(t, deploymentTwoImage, deployments[1].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[1].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[1].ActiveTo)
+	assert.Equal(t, deploymentTwoCreated, deployments[1].ActiveFrom)
+	assert.Equal(t, &deploymentThreeCreated, deployments[1].ActiveTo)
 
 	assert.Equal(t, deploymentOneImage, deployments[2].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentOneCreated), deployments[2].ActiveFrom)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentTwoCreated), deployments[2].ActiveTo)
+	assert.Equal(t, deploymentOneCreated, deployments[2].ActiveFrom)
+	assert.Equal(t, &deploymentTwoCreated, deployments[2].ActiveTo)
 }
 
 func TestGetSecretDeployments_Latest(t *testing.T) {
@@ -819,8 +819,8 @@ func TestGetSecretDeployments_Latest(t *testing.T) {
 	assert.Equal(t, 1, len(deployments))
 
 	assert.Equal(t, deploymentThreeImage, deployments[0].Name)
-	assert.Equal(t, radixutils.FormatTimestamp(deploymentThreeCreated), deployments[0].ActiveFrom)
-	assert.Equal(t, "", deployments[0].ActiveTo)
+	assert.Equal(t, deploymentThreeCreated, deployments[0].ActiveFrom)
+	assert.Nil(t, deployments[0].ActiveTo)
 }
 
 func TestGetEnvironmentSummary_ApplicationWithNoDeployments_SecretPending(t *testing.T) {
@@ -1664,9 +1664,9 @@ func Test_GetJob_AllProps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
 		Name:             "job-batch1-job1",
-		Created:          radixutils.FormatTime(&creationTime),
-		Started:          radixutils.FormatTime(&startTime),
-		Ended:            radixutils.FormatTime(&endTime),
+		Created:          &creationTime.Time,
+		Started:          &startTime.Time,
+		Ended:            &endTime.Time,
 		Status:           deploymentModels.ScheduledBatchJobStatusSucceeded,
 		Message:          "anymessage",
 		BackoffLimit:     *defaultBackoffLimit,
@@ -1678,7 +1678,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Node:           &deploymentModels.Node{Gpu: "gpu1", GpuCount: "2"},
 		DeploymentName: anyDeployment,
 		ReplicaList: []deploymentModels.ReplicaSummary{{
-			Created: radixutils.FormatTimestamp(podCreationTime.Time),
+			Created: podCreationTime.Time,
 			Status:  deploymentModels.ReplicaStatus{Status: deploymentModels.Succeeded},
 		}},
 		Runtime: &deploymentModels.Runtime{
@@ -1693,6 +1693,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &actual)
 	require.NoError(t, err)
 	assert.Equal(t, deploymentModels.ScheduledJobSummary{
+		Created:          nil,
 		Name:             "job-batch1-job2",
 		JobId:            "anyjobid",
 		Status:           deploymentModels.ScheduledBatchJobStatusWaiting,

@@ -5408,6 +5408,8 @@
       "description": "Application details of an application",
       "type": "object",
       "required": [
+        "name",
+        "registration",
         "userIsAdmin"
       ],
       "properties": {
@@ -5732,6 +5734,9 @@
     "ApplicationSummary": {
       "description": "ApplicationSummary describe an application",
       "type": "object",
+      "required": [
+        "name"
+      ],
       "properties": {
         "environmentActiveComponents": {
           "description": "EnvironmentActiveComponents All component summaries of the active deployments in the environments",
@@ -6253,21 +6258,24 @@
       "description": "Deployment describe an deployment",
       "type": "object",
       "required": [
+        "name",
         "namespace",
+        "environment",
+        "activeFrom",
         "repository"
       ],
       "properties": {
         "activeFrom": {
           "description": "ActiveFrom Timestamp when the deployment starts (or created)",
           "type": "string",
-          "x-go-name": "ActiveFrom",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveFrom"
         },
         "activeTo": {
           "description": "ActiveTo Timestamp when the deployment ends",
           "type": "string",
-          "x-go-name": "ActiveTo",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveTo"
         },
         "builtFromBranch": {
           "description": "Name of the branch used to build the deployment",
@@ -6338,14 +6346,14 @@
         "activeFrom": {
           "description": "ActiveFrom Timestamp when the deployment starts (or created)",
           "type": "string",
-          "x-go-name": "ActiveFrom",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveFrom"
         },
         "activeTo": {
           "description": "ActiveTo Timestamp when the deployment ends",
           "type": "string",
-          "x-go-name": "ActiveTo",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveTo"
         },
         "gitCommitHash": {
           "description": "GitCommitHash the hash of the git commit from which radixconfig.yaml was parsed",
@@ -6374,14 +6382,14 @@
         "activeFrom": {
           "description": "ActiveFrom Timestamp when the deployment starts (or created)",
           "type": "string",
-          "x-go-name": "ActiveFrom",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveFrom"
         },
         "activeTo": {
           "description": "ActiveTo Timestamp when the deployment ends",
           "type": "string",
-          "x-go-name": "ActiveTo",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ActiveTo"
         },
         "builtFromBranch": {
           "description": "Name of the branch used to build the deployment",
@@ -6560,6 +6568,9 @@
     "Environment": {
       "description": "Environment holds detail information about environment",
       "type": "object",
+      "required": [
+        "name"
+      ],
       "properties": {
         "activeDeployment": {
           "$ref": "#/definitions/Deployment"
@@ -6609,6 +6620,9 @@
     "EnvironmentSummary": {
       "description": "EnvironmentSummary holds general information about environment",
       "type": "object",
+      "required": [
+        "name"
+      ],
       "properties": {
         "activeDeployment": {
           "$ref": "#/definitions/DeploymentSummary"
@@ -7092,6 +7106,10 @@
     "JobSummary": {
       "description": "JobSummary holds general information about job",
       "type": "object",
+      "required": [
+        "name",
+        "created"
+      ],
       "properties": {
         "appName": {
           "description": "AppName of the application",
@@ -7114,8 +7132,8 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "deployExternalDNS": {
           "description": "DeployExternalDNS deploy external DNS",
@@ -7126,8 +7144,8 @@
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "environments": {
           "description": "Environments the job deployed to",
@@ -7193,8 +7211,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job",
@@ -7839,26 +7857,27 @@
       "description": "ReplicaSummary describes condition of a pod",
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "created"
       ],
       "properties": {
         "containerStarted": {
           "description": "Container started timestamp",
           "type": "string",
-          "x-go-name": "ContainerStarted",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "ContainerStarted"
         },
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "endTime": {
           "description": "The time at which the batch job's pod finishedAt.",
           "type": "string",
-          "x-go-name": "EndTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "EndTime"
         },
         "exitCode": {
           "description": "Exit status from the last termination of the container",
@@ -7910,8 +7929,8 @@
         "startTime": {
           "description": "The time at which the batch job's pod startedAt",
           "type": "string",
-          "x-go-name": "StartTime",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "StartTime"
         },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
@@ -8006,8 +8025,8 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "deploymentName": {
           "description": "DeploymentName name of RadixDeployment for the batch",
@@ -8017,8 +8036,8 @@
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "jobList": {
           "description": "Jobs within the batch of ScheduledJobSummary",
@@ -8046,8 +8065,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job\nRunning ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
@@ -8092,8 +8111,10 @@
       "description": "ScheduledJobSummary holds general information about scheduled job",
       "type": "object",
       "required": [
+        "name",
         "status",
         "backoffLimit",
+        "deploymentName",
         "failedCount"
       ],
       "properties": {
@@ -8117,8 +8138,8 @@
         "created": {
           "description": "Created timestamp",
           "type": "string",
-          "x-go-name": "Created",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Created"
         },
         "deploymentName": {
           "description": "DeploymentName name of RadixDeployment for the job",
@@ -8128,8 +8149,8 @@
         "ended": {
           "description": "Ended timestamp",
           "type": "string",
-          "x-go-name": "Ended",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Ended"
         },
         "failedCount": {
           "description": "FailedCount is the number of times the job has failed",
@@ -8176,8 +8197,8 @@
         "started": {
           "description": "Started timestamp",
           "type": "string",
-          "x-go-name": "Started",
-          "example": "2006-01-02T15:04:05Z"
+          "format": "date-time",
+          "x-go-name": "Started"
         },
         "status": {
           "description": "Status of the job\nRunning ScheduledBatchJobStatusRunning  ScheduledBatchJobStatusRunning Active\nSucceeded ScheduledBatchJobStatusSucceeded  ScheduledBatchJobStatusSucceeded Job succeeded\nFailed ScheduledBatchJobStatusFailed  ScheduledBatchJobStatusFailed Job failed\nWaiting ScheduledBatchJobStatusWaiting  ScheduledBatchJobStatusWaiting Job pending\nStopping ScheduledBatchJobStatusStopping  ScheduledBatchJobStatusStopping job is stopping\nStopped ScheduledBatchJobStatusStopped  ScheduledBatchJobStatusStopped job stopped\nActive ScheduledBatchJobStatusActive  ScheduledBatchJobStatusActive job, one or more pods are not ready\nCompleted ScheduledBatchJobStatusCompleted  ScheduledBatchJobStatusCompleted batch jobs are completed",
