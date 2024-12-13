@@ -38,7 +38,7 @@ type EnvironmentHandlerOptions func(*EnvironmentHandler)
 func WithAccounts(accounts models.Accounts) EnvironmentHandlerOptions {
 	return func(eh *EnvironmentHandler) {
 		eh.deployHandler = deployments.Init(accounts)
-		eh.eventHandler = events.Init(accounts.UserAccount.Client, accounts.UserAccount.RadixClient)
+		eh.eventHandler = events.Init(accounts)
 		eh.accounts = accounts
 	}
 }
