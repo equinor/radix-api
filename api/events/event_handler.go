@@ -8,16 +8,15 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/api/kubequery"
+	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -41,13 +40,12 @@ type EventHandler interface {
 type NamespaceFunc func() string
 
 type eventHandler struct {
-	kubeClient  kubernetes.Interface
-	radixClient radixclient.Interface
+	accounts models.Accounts
 }
 
 // Init creates a new EventHandler
-func Init(kubeClient kubernetes.Interface, radixClient radixclient.Interface) EventHandler {
-	return &eventHandler{kubeClient: kubeClient, radixClient: radixClient}
+func Init(accounts models.Accounts) EventHandler {
+	return &eventHandler{accounts: accounts}
 }
 
 // GetEnvironmentEvents return events for a namespace defined by a namespace
@@ -88,12 +86,12 @@ func (eh *eventHandler) GetPodEvents(ctx context.Context, appName, envName, comp
 }
 
 func (eh *eventHandler) getRadixApplicationAndValidateEnvironment(ctx context.Context, appName string, envName string) (*radixv1.RadixApplication, error) {
-	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.radixClient, appName)
+	radixApplication, err := kubequery.GetRadixApplication(ctx, eh.accounts.UserAccount.RadixClient, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = kubequery.GetRadixEnvironment(ctx, eh.radixClient, appName, envName)
+	_, err = kubequery.GetRadixEnvironment(ctx, eh.accounts.ServiceAccount.RadixClient, appName, envName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, environmentModels.NonExistingEnvironment(err, appName, envName)
@@ -111,7 +109,7 @@ func (eh *eventHandler) existsRadixDeployComponent(ctx context.Context, appName,
 		}
 		return false, err
 	}
-	radixDeployments, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.radixClient, appName, []string{envName}, 1)
+	radixDeployments, err := kubequery.GetRadixDeploymentsForEnvironments(ctx, eh.accounts.UserAccount.RadixClient, appName, []string{envName}, 1)
 	if err != nil {
 		return false, err
 	}
@@ -124,7 +122,7 @@ func (eh *eventHandler) existsRadixDeployComponent(ctx context.Context, appName,
 
 func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, componentName, podName string) ([]*eventModels.Event, error) {
 	namespace := utils.GetEnvironmentNamespace(appName, envName)
-	k8sEvents, err := eh.kubeClient.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	k8sEvents, err := eh.accounts.UserAccount.Client.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +151,7 @@ func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, compone
 }
 
 func (eh *eventHandler) getEnvironmentComponentsPodMap(ctx context.Context, appName string, envName string) (map[k8sTypes.UID]*corev1.Pod, error) {
-	componentPods, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.kubeClient, appName, envName)
+	componentPods, err := kubequery.GetPodsForEnvironmentComponents(ctx, eh.accounts.UserAccount.Client, appName, envName)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +163,7 @@ func (eh *eventHandler) getEnvironmentComponentsPodMap(ctx context.Context, appN
 }
 
 func (eh *eventHandler) getEnvironmentComponentsIngressMap(ctx context.Context, appName string, envName string) (map[string]*networkingv1.Ingress, error) {
-	ingresses, err := kubequery.GetIngressesForEnvironments(ctx, eh.kubeClient, appName, []string{envName}, 1)
+	ingresses, err := kubequery.GetIngressesForEnvironments(ctx, eh.accounts.UserAccount.Client, appName, []string{envName}, 1)
 	if err != nil {
 		return nil, err
 	}
