@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/metrics/internal"
+	"github.com/equinor/radix-api/api/utils/logs"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	prometheusModel "github.com/prometheus/common/model"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,7 +26,10 @@ type PrometheusClient interface {
 
 // NewPrometheusClient Constructor for Prometheus client
 func NewPrometheusClient(prometheusUrl string) (PrometheusClient, error) {
-	apiClient, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl})
+	roundTripLogger := logs.Logger(func(e *zerolog.Event) {
+		e.Str("client", "prometheus")
+	})
+	apiClient, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl, RoundTripper: roundTripLogger(prometheusApi.DefaultRoundTripper)})
 	if err != nil {
 		return nil, errors.New("failed to create the Prometheus API client")
 	}
@@ -50,7 +55,7 @@ func (c *client) GetMetrics(ctx context.Context, appName, envName, componentName
 			return nil, nil, errors.New("failed to get Prometheus metrics")
 		}
 		if len(resultWarnings) > 0 {
-			log.Ctx(ctx).Warn().Msgf("Warnings: %v\n", resultWarnings)
+			log.Ctx(ctx).Warn().Strs("warnings", resultWarnings).Msg("promethus warnings")
 			warnings = append(warnings, resultWarnings...)
 		}
 		results[metricName] = result
@@ -75,4 +80,51 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 		internal.MemoryAvg: fmt.Sprintf("avg_over_time(%s)", memoryUsageQuery),
 	}
 	return queries
+}
+
+type MetricsByPodResponse struct {
+	ResoureceRequests struct {
+		Memory map[string]float64
+		Cpu    map[string]float64
+	}
+	MaxUsage map[string]float64
+}
+
+func (c *client) GetMetricsByPod(ctx context.Context, appName, envName string, duration time.Duration) (MetricsByPodResponse, error) {
+	respone := MetricsByPodResponse{}
+	namespace := ".*"
+	if envName != "" {
+		namespace = envName
+	}
+
+	resurceRequets := fmt.Sprintf(`max by(container, pod, resource) (kube_pod_container_resource_requests{namespace!="%s-app", namespace=~"%s-%s"})`, appName, appName, namespace)
+	cpuUsage := fmt.Sprintf(`max by (container, pod) (rate(container_cpu_usage_seconds_total{namespace!="%s-app", namespace="%s-%s"} [%s]))`, appName, appName, namespace, duration)
+	memoryUsage := fmt.Sprintf(`max_over_time(max by(container, pod) (container_memory_usage_bytes{namespace!="%s-app", namespace="%s-%s"})[%s:])`, appName, appName, namespace, duration)
+	value, w, err := c.api.Query(ctx, resurceRequets, time.Now())
+	if err != nil {
+		return MetricsByPodResponse{}, err
+	}
+	if len(w) > 0 {
+		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching resource requests")
+	}
+
+	value, w, err = c.api.Query(ctx, cpuUsage, time.Now())
+	if err != nil {
+		return MetricsByPodResponse{}, err
+	}
+	if len(w) > 0 {
+		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching cpu usage")
+	}
+	
+	value, w, err = c.api.Query(ctx, memoryUsage, time.Now())
+	if err != nil {
+		return MetricsByPodResponse{}, err
+	}
+	if len(w) > 0 {
+		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching cpu usage")
+	}
+
+	// TODO: Map results to resposne
+
+	return respone, nil
 }
