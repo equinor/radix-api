@@ -4,10 +4,12 @@ package internal
 type QueryName string
 
 const (
-	CpuMax    QueryName = "CpuMax"
-	CpuMin    QueryName = "CpuMin"
-	CpuAvg    QueryName = "CpuAvg"
-	MemoryMax QueryName = "MemoryMax"
-	MemoryMin QueryName = "MemoryMin"
-	MemoryAvg QueryName = "MemoryAvg"
+	CpuMax        QueryName = "CpuMax"
+	CpuMin        QueryName = "CpuMin"
+	CpuAvg        QueryName = "CpuAvg"
+	MemoryMax     QueryName = "MemoryMax"
+	MemoryMin     QueryName = "MemoryMin"
+	MemoryAvg     QueryName = "MemoryAvg"
+	MemoryRequest QueryName = "MemoryRequest"
+	CpuRequests   QueryName = "SetCpuRequests"
 )

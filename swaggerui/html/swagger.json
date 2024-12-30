@@ -5338,6 +5338,59 @@
           }
         }
       }
+    },
+    "/applications/{appName}/utilization": {
+      "get": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Gets max resources used by the application",
+        "operationId": "GetReplicaResourcesUtilization",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of the application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of the application environment",
+            "name": "environment",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
+            "name": "duration",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/UsedResources"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -6155,6 +6208,29 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
+    "ComponentUtilization": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ReplicaUtilization"
+          },
+          "x-go-name": "Replica"
+        },
+        "requested_cpu": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "RequestedCPU"
+        },
+        "requested_memory": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "RequestedMemory"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "DNSAlias": {
       "description": "DNSAlias holds public DNS alias information",
       "type": "object",
@@ -6651,6 +6727,19 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/environments/models"
+    },
+    "EnvironmentUtilization": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ComponentUtilization"
+          },
+          "x-go-name": "Components"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "Event": {
       "description": "Event holds information about Kubernetes events",
@@ -7826,6 +7915,20 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
+    "ReplicaResourcesUtilizationResponse": {
+      "description": "ReplicaResourcesUtilizationResponse holds information about resource utilization",
+      "type": "object",
+      "properties": {
+        "environments": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/EnvironmentUtilization"
+          },
+          "x-go-name": "Environments"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "ReplicaStatus": {
       "description": "ReplicaStatus describes the status of a component container inside a pod",
       "type": "object",
@@ -7953,6 +8056,22 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "ReplicaUtilization": {
+      "type": "object",
+      "properties": {
+        "max_cpu": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MaxCPU"
+        },
+        "max_memory": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MaxMemory"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "ResourceRequirements": {
       "description": "ResourceRequirements Requirements of resources for pods",

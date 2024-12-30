@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"regexp"
+	"strings"
 	"time"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -26,6 +27,7 @@ const (
 // PrometheusHandler Interface for Prometheus handler
 type PrometheusHandler interface {
 	GetUsedResources(ctx context.Context, radixClient radixclient.Interface, appName, envName, componentName, duration, since string) (*applicationModels.UsedResources, error)
+	GetReplicaResourcesUtilization(ctx context.Context, radixClient radixclient.Interface, appName, envName, duration string) (*applicationModels.ReplicaResourcesUtilizationResponse, error)
 }
 
 type handler struct {
@@ -65,6 +67,69 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 	resources.Warnings = warnings
 	log.Ctx(ctx).Debug().Msgf("Got used resources for application %s", appName)
 	return resources, nil
+}
+
+// GetReplicaResourcesUtilization Get used resources for the application
+func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClient radixclient.Interface, appName, envName, duration string) (*applicationModels.ReplicaResourcesUtilizationResponse, error) {
+	_, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	_, duration, err = parseQueryDuration(duration, defaultDuration)
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := pc.client.GetMetricsByPod(ctx, appName, envName, duration)
+	if err != nil {
+		return nil, err
+	}
+
+	response := applicationModels.NewPodResourcesUtilizationResponse()
+
+	if queryResults, ok := results[internal.CpuRequests]; ok {
+		for _, result := range queryResults {
+			namespace := result.Labels["namespace"]
+			component := result.Labels["label_radix_component"]
+			environment, _ := strings.CutPrefix(namespace, appName+"-")
+
+			response.SetCpuRequests(environment, component, result.Value)
+		}
+	}
+
+	if queryResults, ok := results[internal.MemoryRequest]; ok {
+		for _, result := range queryResults {
+			namespace := result.Labels["namespace"]
+			component := result.Labels["label_radix_component"]
+			environment, _ := strings.CutPrefix(namespace, appName+"-")
+
+			response.SetMemoryRequests(environment, component, result.Value)
+		}
+	}
+
+	if queryResults, ok := results[internal.CpuMax]; ok {
+		for _, result := range queryResults {
+			namespace := result.Labels["namespace"]
+			pod := result.Labels["pod"]
+			component := result.Labels["label_radix_component"]
+			environment, _ := strings.CutPrefix(namespace, appName+"-")
+			response.SetMaxCpuUsage(environment, component, pod, result.Value)
+		}
+	}
+
+	if queryResults, ok := results[internal.MemoryMax]; ok {
+		for _, result := range queryResults {
+			namespace := result.Labels["namespace"]
+			pod := result.Labels["pod"]
+			component := result.Labels["label_radix_component"]
+			environment, _ := strings.CutPrefix(namespace, appName+"-")
+
+			response.SetMaxMemoryUsage(environment, component, pod, result.Value)
+		}
+	}
+
+	return response, nil
 }
 
 func getUsedResourcesByMetrics(ctx context.Context, results map[internal.QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration) *applicationModels.UsedResources {

@@ -22,6 +22,7 @@ import (
 type PrometheusClient interface {
 	// GetMetrics Get metrics for the application
 	GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error)
+	GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error)
 }
 
 // NewPrometheusClient Constructor for Prometheus client
@@ -82,49 +83,74 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	return queries
 }
 
-type MetricsByPodResponse struct {
-	ResoureceRequests struct {
-		Memory map[string]float64
-		Cpu    map[string]float64
-	}
-	MaxUsage map[string]float64
+type ResourceCategory struct {
+	Memory prometheusModel.SampleValue
+	Cpu    prometheusModel.SampleValue
 }
 
-func (c *client) GetMetricsByPod(ctx context.Context, appName, envName string, duration time.Duration) (MetricsByPodResponse, error) {
-	respone := MetricsByPodResponse{}
+type Containers struct {
+	Requests ResourceCategory
+	Replicas map[string]ResourceCategory
+}
+
+func (c *client) GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error) {
 	namespace := ".*"
 	if envName != "" {
 		namespace = envName
 	}
 
-	resurceRequets := fmt.Sprintf(`max by(container, pod, resource) (kube_pod_container_resource_requests{namespace!="%s-app", namespace=~"%s-%s"})`, appName, appName, namespace)
-	cpuUsage := fmt.Sprintf(`max by (container, pod) (rate(container_cpu_usage_seconds_total{namespace!="%s-app", namespace="%s-%s"} [%s]))`, appName, appName, namespace, duration)
-	memoryUsage := fmt.Sprintf(`max_over_time(max by(container, pod) (container_memory_usage_bytes{namespace!="%s-app", namespace="%s-%s"})[%s:])`, appName, appName, namespace, duration)
-	value, w, err := c.api.Query(ctx, resurceRequets, time.Now())
-	if err != nil {
-		return MetricsByPodResponse{}, err
-	}
-	if len(w) > 0 {
-		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching resource requests")
+	queries := map[internal.QueryName]string{
+		internal.CpuRequests:   fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s-%s",resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace),
+		internal.MemoryRequest: fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s-%s",resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace),
+		internal.CpuMax:        fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(rate(container_cpu_usage_seconds_total{container!="",namespace!="%s-app", namespace=~"%s-%s"}[1m]) [%s:1m])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace, duration),
+		internal.MemoryMax:     fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_usage_bytes{container!="",namespace!="%s-app", namespace=~"%s-%s"} [%s:1m])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace, duration),
 	}
 
-	value, w, err = c.api.Query(ctx, cpuUsage, time.Now())
-	if err != nil {
-		return MetricsByPodResponse{}, err
-	}
-	if len(w) > 0 {
-		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching cpu usage")
-	}
-	
-	value, w, err = c.api.Query(ctx, memoryUsage, time.Now())
-	if err != nil {
-		return MetricsByPodResponse{}, err
-	}
-	if len(w) > 0 {
-		log.Ctx(ctx).Warn().Strs("warnings", w).Msgf("warnings fetching cpu usage")
+	results := make(map[internal.QueryName][]QueryVectorResult)
+	for queryName, query := range queries {
+		values, err := c.queryVector(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		results[queryName] = values
 	}
 
-	// TODO: Map results to resposne
+	return results, nil
+}
 
-	return respone, nil
+type QueryVectorResult struct {
+	Labels map[string]string
+	Value  float64
+}
+
+func (c *client) queryVector(ctx context.Context, query string) ([]QueryVectorResult, error) {
+	response, w, err := c.api.Query(ctx, query, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	if len(w) > 0 {
+		log.Ctx(ctx).Warn().Str("query", query).Strs("warnings", w).Msgf("fetching vector query")
+	} else {
+		log.Ctx(ctx).Trace().Str("query", query).Msgf("fetching vector query")
+	}
+
+	r, ok := response.(prometheusModel.Vector)
+	if !ok {
+		return nil, fmt.Errorf("queryVector returned non-vector response")
+	}
+
+	var result []QueryVectorResult
+	for _, sample := range r {
+
+		labels := make(map[string]string)
+		for name, value := range sample.Metric {
+			labels[string(name)] = string(value)
+		}
+
+		result = append(result, QueryVectorResult{
+			Value:  float64(sample.Value),
+			Labels: labels,
+		})
+	}
+	return result, nil
 }

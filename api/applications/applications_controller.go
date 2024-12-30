@@ -141,6 +141,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			Method:      "GET",
 			HandlerFunc: ac.GetUsedResources,
 		},
+		models.Route{
+			Path:        rootPath + "/utilization",
+			Method:      "GET",
+			HandlerFunc: ac.GetPodResourcesUtilization,
+		},
 	}
 
 	return routes
@@ -1062,4 +1067,55 @@ func (ac *applicationController) GetUsedResources(accounts models.Accounts, w ht
 	}
 
 	ac.JSONResponse(w, r, &usedResources)
+}
+
+// GetPodResourcesUtilization Gets used resources for the application
+func (ac *applicationController) GetPodResourcesUtilization(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/utilization application GetReplicaResourcesUtilization
+	// ---
+	// summary: Gets max resources used by the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of the application
+	//   type: string
+	//   required: true
+	// - name: environment
+	//   in: query
+	//   description: Name of the application environment
+	//   type: string
+	//   required: false
+	// - name: duration
+	//   in: query
+	//   description: Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
+	//   type: string
+	//   required: false
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/UsedResources"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := r.FormValue("environment")
+	duration := r.FormValue("duration")
+
+	_, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	ac.ErrorResponse(w, r, errors.New("Not implemented"))
 }
