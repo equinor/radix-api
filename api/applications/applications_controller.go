@@ -142,7 +142,7 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.GetUsedResources,
 		},
 		models.Route{
-			Path:        rootPath + "/utilization",
+			Path:        appPath + "/utilization",
 			Method:      "GET",
 			HandlerFunc: ac.GetPodResourcesUtilization,
 		},
@@ -1104,18 +1104,18 @@ func (ac *applicationController) GetPodResourcesUtilization(accounts models.Acco
 	//   "200":
 	//     description: Successful trigger pipeline
 	//     schema:
-	//       "$ref": "#/definitions/UsedResources"
+	//       "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 	envName := r.FormValue("environment")
 	duration := r.FormValue("duration")
 
-	_, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
+	response, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	ac.ErrorResponse(w, r, errors.New("Not implemented"))
+	ac.JSONResponse(w, r, &response)
 }

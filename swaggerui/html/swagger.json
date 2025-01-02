@@ -5383,7 +5383,7 @@
           "200": {
             "description": "Successful trigger pipeline",
             "schema": {
-              "$ref": "#/definitions/UsedResources"
+              "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
             }
           },
           "404": {
