@@ -83,16 +83,6 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	return queries
 }
 
-type ResourceCategory struct {
-	Memory prometheusModel.SampleValue
-	Cpu    prometheusModel.SampleValue
-}
-
-type Containers struct {
-	Requests ResourceCategory
-	Replicas map[string]ResourceCategory
-}
-
 func (c *client) GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error) {
 	namespace := ".*"
 	if envName != "" {
