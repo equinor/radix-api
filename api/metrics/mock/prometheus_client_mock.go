@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	metrics "github.com/equinor/radix-api/api/metrics"
 	internal "github.com/equinor/radix-api/api/metrics/internal"
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/prometheus/common/model"
@@ -50,4 +51,19 @@ func (m *MockPrometheusClient) GetMetrics(ctx context.Context, appName, envName,
 func (mr *MockPrometheusClientMockRecorder) GetMetrics(ctx, appName, envName, componentName, duration, since interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockPrometheusClient)(nil).GetMetrics), ctx, appName, envName, componentName, duration, since)
+}
+
+// GetMetricsByPod mocks base method.
+func (m *MockPrometheusClient) GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]metrics.QueryVectorResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMetricsByPod", ctx, appName, envName, duration)
+	ret0, _ := ret[0].(map[internal.QueryName][]metrics.QueryVectorResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMetricsByPod indicates an expected call of GetMetricsByPod.
+func (mr *MockPrometheusClientMockRecorder) GetMetricsByPod(ctx, appName, envName, duration interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricsByPod", reflect.TypeOf((*MockPrometheusClient)(nil).GetMetricsByPod), ctx, appName, envName, duration)
 }

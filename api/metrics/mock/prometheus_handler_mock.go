@@ -36,6 +36,21 @@ func (m *MockPrometheusHandler) EXPECT() *MockPrometheusHandlerMockRecorder {
 	return m.recorder
 }
 
+// GetReplicaResourcesUtilization mocks base method.
+func (m *MockPrometheusHandler) GetReplicaResourcesUtilization(ctx context.Context, radixClient versioned.Interface, appName, envName, duration string) (*models.ReplicaResourcesUtilizationResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReplicaResourcesUtilization", ctx, radixClient, appName, envName, duration)
+	ret0, _ := ret[0].(*models.ReplicaResourcesUtilizationResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReplicaResourcesUtilization indicates an expected call of GetReplicaResourcesUtilization.
+func (mr *MockPrometheusHandlerMockRecorder) GetReplicaResourcesUtilization(ctx, radixClient, appName, envName, duration interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReplicaResourcesUtilization", reflect.TypeOf((*MockPrometheusHandler)(nil).GetReplicaResourcesUtilization), ctx, radixClient, appName, envName, duration)
+}
+
 // GetUsedResources mocks base method.
 func (m *MockPrometheusHandler) GetUsedResources(ctx context.Context, radixClient versioned.Interface, appName, envName, componentName, duration, since string) (*models.UsedResources, error) {
 	m.ctrl.T.Helper()
