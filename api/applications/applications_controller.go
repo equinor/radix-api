@@ -1111,11 +1111,11 @@ func (ac *applicationController) GetPodResourcesUtilization(accounts models.Acco
 	envName := r.FormValue("environment")
 	duration := r.FormValue("duration")
 
-	response, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
+	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
 	}
 
-	ac.JSONResponse(w, r, &response)
+	ac.JSONResponse(w, r, &utilization)
 }

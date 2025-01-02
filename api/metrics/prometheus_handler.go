@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"math"
-	"regexp"
 	"strings"
 	"time"
 
@@ -16,12 +15,6 @@ import (
 	prometheusModel "github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	durationExpression = `^[0-9]{1,5}[mhdw]$`
-	defaultDuration    = "30d"
-	defaultOffset      = ""
 )
 
 // PrometheusHandler Interface for Prometheus handler
@@ -47,11 +40,11 @@ func (pc *handler) GetUsedResources(ctx context.Context, radixClient radixclient
 	if err != nil {
 		return nil, err
 	}
-	durationValue, duration, err := parseQueryDuration(duration, defaultDuration)
+	durationValue, duration, err := parseQueryDuration(duration, internal.DefaultDuration)
 	if err != nil {
 		return nil, err
 	}
-	sinceValue, since, err := parseQueryDuration(since, defaultOffset)
+	sinceValue, since, err := parseQueryDuration(since, internal.DefaultOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +69,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 		return nil, err
 	}
 
-	_, duration, err = parseQueryDuration(duration, defaultDuration)
+	_, duration, err = parseQueryDuration(duration, internal.DefaultDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +79,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 		return nil, err
 	}
 
-	response := applicationModels.NewPodResourcesUtilizationResponse()
+	utilization := applicationModels.NewPodResourcesUtilizationResponse()
 
 	if queryResults, ok := results[internal.CpuRequests]; ok {
 		for _, result := range queryResults {
@@ -94,7 +87,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
 
-			response.SetCpuRequests(environment, component, result.Value)
+			utilization.SetCpuRequests(environment, component, result.Value)
 		}
 	}
 
@@ -104,7 +97,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
 
-			response.SetMemoryRequests(environment, component, result.Value)
+			utilization.SetMemoryRequests(environment, component, result.Value)
 		}
 	}
 
@@ -114,7 +107,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			pod := result.Labels["pod"]
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
-			response.SetMaxCpuUsage(environment, component, pod, result.Value)
+			utilization.SetMaxCpuUsage(environment, component, pod, result.Value)
 		}
 	}
 
@@ -125,11 +118,11 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
 
-			response.SetMaxMemoryUsage(environment, component, pod, result.Value)
+			utilization.SetMaxMemoryUsage(environment, component, pod, result.Value)
 		}
 	}
 
-	return response, nil
+	return utilization, nil
 }
 
 func getUsedResourcesByMetrics(ctx context.Context, results map[internal.QueryName]prometheusModel.Value, queryDuration time.Duration, querySince time.Duration) *applicationModels.UsedResources {
@@ -151,7 +144,7 @@ func getUsedResourcesByMetrics(ctx context.Context, results map[internal.QueryNa
 }
 
 func parseQueryDuration(duration string, defaultValue string) (time.Duration, string, error) {
-	if len(duration) == 0 || !regexp.MustCompile(durationExpression).MatchString(duration) {
+	if len(duration) == 0 || !internal.DurationExpression.MatchString(duration) {
 		duration = defaultValue
 	}
 	if len(duration) == 0 {

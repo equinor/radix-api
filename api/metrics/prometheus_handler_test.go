@@ -1,4 +1,4 @@
-package metrics
+package metrics_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/metrics/internal"
 	"github.com/equinor/radix-api/api/metrics/mock"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -47,7 +48,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			name: "Got used resources",
 			args: args{
 				appName:  appName1,
-				duration: defaultDuration,
+				duration: internal.DefaultDuration,
 			},
 			clientReturnsMetrics:  getClientReturnsMetrics(),
 			expectedUsedResources: getExpectedUsedResources(),
@@ -56,7 +57,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			name: "Got used resources with warnings",
 			args: args{
 				appName:  appName1,
-				duration: defaultDuration,
+				duration: internal.DefaultDuration,
 			},
 			clientReturnsMetrics:  getClientReturnsMetrics(),
 			expectedUsedResources: getExpectedUsedResources("Warning1", "Warning2"),
@@ -68,7 +69,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 				appName:       appName1,
 				envName:       "dev",
 				componentName: "component1",
-				duration:      defaultDuration,
+				duration:      internal.DefaultDuration,
 				since:         "2d",
 			},
 			clientReturnsMetrics:  getClientReturnsMetrics(),
@@ -78,7 +79,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			name: "With error",
 			args: args{
 				appName:  appName1,
-				duration: defaultDuration,
+				duration: internal.DefaultDuration,
 			},
 			expectedError: errors.New("failed to get Prometheus metrics"),
 		},
@@ -94,9 +95,7 @@ func Test_handler_GetUsedResources(t *testing.T) {
 			mockPrometheusClient.EXPECT().GetMetrics(gomock.Any(), appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since).
 				Return(ts.clientReturnsMetrics, ts.expectedWarnings, ts.expectedError)
 
-			prometheusHandler := &handler{
-				client: mockPrometheusClient,
-			}
+			prometheusHandler := metrics.NewPrometheusHandler(mockPrometheusClient)
 			got, err := prometheusHandler.GetUsedResources(context.Background(), radixClient, appName1, ts.args.envName, ts.args.componentName, ts.args.duration, ts.args.since)
 			if ts.expectedError != nil {
 				assert.ErrorIs(t, err, ts.expectedError, "Missing or not matching GetUsedResources() error")
