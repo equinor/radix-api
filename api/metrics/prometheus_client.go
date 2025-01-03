@@ -18,39 +18,43 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// PrometheusClient Interface for Prometheus client
+// PrometheusClient Interface for Prometheus Client
 type PrometheusClient interface {
 	// GetMetrics Get metrics for the application
 	GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error)
 	GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error)
 }
 
-// NewPrometheusClient Constructor for Prometheus client
+type PrometheusApiClient interface {
+	Query(ctx context.Context, query string, ts time.Time, opts ...prometheusV1.Option) (model.Value, prometheusV1.Warnings, error)
+}
+
+// NewPrometheusClient Constructor for Prometheus Client
 func NewPrometheusClient(prometheusUrl string) (PrometheusClient, error) {
-	roundTripLogger := logs.Logger(func(e *zerolog.Event) {
-		e.Str("client", "prometheus")
+	logger := logs.NewRoundtripLogger(func(e *zerolog.Event) {
+		e.Str("Client", "prometheus")
 	})
-	apiClient, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl, RoundTripper: roundTripLogger(prometheusApi.DefaultRoundTripper)})
+	apiClient, err := prometheusApi.NewClient(prometheusApi.Config{Address: prometheusUrl, RoundTripper: logger(prometheusApi.DefaultRoundTripper)})
 	if err != nil {
-		return nil, errors.New("failed to create the Prometheus API client")
+		return nil, errors.New("failed to create the Prometheus API Client")
 	}
 	api := prometheusV1.NewAPI(apiClient)
-	return &client{
-		api: api,
+	return &Client{
+		Api: api,
 	}, nil
 }
 
-type client struct {
-	api prometheusV1.API
+type Client struct {
+	Api PrometheusApiClient
 }
 
 // GetMetrics Get metrics for the application
-func (c *client) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error) {
+func (c *Client) GetMetrics(ctx context.Context, appName, envName, componentName, duration, since string) (map[internal.QueryName]prometheusModel.Value, []string, error) {
 	results := make(map[internal.QueryName]model.Value)
 	now := time.Now()
 	var warnings []string
 	for metricName, query := range getPrometheusQueries(appName, envName, componentName, duration, since) {
-		result, resultWarnings, err := c.api.Query(ctx, query, now)
+		result, resultWarnings, err := c.Api.Query(ctx, query, now)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("Failed to get Prometheus metrics for the query: %s", query)
 			return nil, nil, errors.New("failed to get Prometheus metrics")
@@ -83,17 +87,17 @@ func getPrometheusQueries(appName, envName, componentName, duration, since strin
 	return queries
 }
 
-func (c *client) GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error) {
+func (c *Client) GetMetricsByPod(ctx context.Context, appName, envName, duration string) (map[internal.QueryName][]QueryVectorResult, error) {
 	namespace := ".*"
 	if envName != "" {
 		namespace = envName
 	}
 
 	queries := map[internal.QueryName]string{
-		internal.CpuRequests:   fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s-%s",resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace),
-		internal.MemoryRequest: fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s-%s",resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace),
-		internal.CpuMax:        fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(rate(container_cpu_usage_seconds_total{container!="",namespace!="%s-app", namespace=~"%s-%s"}[1m]) [%s:1m])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace, duration),
-		internal.MemoryMax:     fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_usage_bytes{container!="",namespace!="%s-app", namespace=~"%s-%s"} [%s:1m])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, appName, namespace, duration),
+		internal.CpuRequests:   fmt.Sprintf(internal.Queries[internal.CpuRequests], appName, appName, namespace),
+		internal.MemoryRequest: fmt.Sprintf(internal.Queries[internal.MemoryRequest], appName, appName, namespace),
+		internal.CpuMax:        fmt.Sprintf(internal.Queries[internal.CpuMax], appName, appName, namespace, duration),
+		internal.MemoryMax:     fmt.Sprintf(internal.Queries[internal.MemoryMax], appName, appName, namespace, duration),
 	}
 
 	results := make(map[internal.QueryName][]QueryVectorResult)
@@ -113,8 +117,8 @@ type QueryVectorResult struct {
 	Value  float64
 }
 
-func (c *client) queryVector(ctx context.Context, query string) ([]QueryVectorResult, error) {
-	response, w, err := c.api.Query(ctx, query, time.Now())
+func (c *Client) queryVector(ctx context.Context, query string) ([]QueryVectorResult, error) {
+	response, w, err := c.Api.Query(ctx, query, time.Now())
 	if err != nil {
 		return nil, err
 	}

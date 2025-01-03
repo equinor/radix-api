@@ -107,7 +107,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			pod := result.Labels["pod"]
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
-			utilization.SetMaxCpuUsage(environment, component, pod, result.Value)
+			utilization.SetMaxCpuUsage(environment, component, pod, math.Round(result.Value*1e6)/1e6)
 		}
 	}
 
@@ -118,7 +118,7 @@ func (pc *handler) GetReplicaResourcesUtilization(ctx context.Context, radixClie
 			component := result.Labels["label_radix_component"]
 			environment, _ := strings.CutPrefix(namespace, appName+"-")
 
-			utilization.SetMaxMemoryUsage(environment, component, pod, result.Value)
+			utilization.SetMaxMemoryUsage(environment, component, pod, math.Round(result.Value))
 		}
 	}
 

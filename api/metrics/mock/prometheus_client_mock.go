@@ -7,10 +7,12 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	metrics "github.com/equinor/radix-api/api/metrics"
 	internal "github.com/equinor/radix-api/api/metrics/internal"
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	model "github.com/prometheus/common/model"
 )
 
@@ -66,4 +68,48 @@ func (m *MockPrometheusClient) GetMetricsByPod(ctx context.Context, appName, env
 func (mr *MockPrometheusClientMockRecorder) GetMetricsByPod(ctx, appName, envName, duration interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricsByPod", reflect.TypeOf((*MockPrometheusClient)(nil).GetMetricsByPod), ctx, appName, envName, duration)
+}
+
+// MockPrometheusApiClient is a mock of PrometheusApiClient interface.
+type MockPrometheusApiClient struct {
+	ctrl     *gomock.Controller
+	recorder *MockPrometheusApiClientMockRecorder
+}
+
+// MockPrometheusApiClientMockRecorder is the mock recorder for MockPrometheusApiClient.
+type MockPrometheusApiClientMockRecorder struct {
+	mock *MockPrometheusApiClient
+}
+
+// NewMockPrometheusApiClient creates a new mock instance.
+func NewMockPrometheusApiClient(ctrl *gomock.Controller) *MockPrometheusApiClient {
+	mock := &MockPrometheusApiClient{ctrl: ctrl}
+	mock.recorder = &MockPrometheusApiClientMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPrometheusApiClient) EXPECT() *MockPrometheusApiClientMockRecorder {
+	return m.recorder
+}
+
+// Query mocks base method.
+func (m *MockPrometheusApiClient) Query(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, query, ts}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Query", varargs...)
+	ret0, _ := ret[0].(model.Value)
+	ret1, _ := ret[1].(v1.Warnings)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Query indicates an expected call of Query.
+func (mr *MockPrometheusApiClientMockRecorder) Query(ctx, query, ts interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, query, ts}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockPrometheusApiClient)(nil).Query), varargs...)
 }

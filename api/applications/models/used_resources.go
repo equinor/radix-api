@@ -68,7 +68,7 @@ type EnvironmentUtilization struct {
 type ComponentUtilization struct {
 	RequestedCPU    float64                       `json:"requested_cpu"`
 	RequestedMemory float64                       `json:"requested_memory"`
-	Replica         map[string]ReplicaUtilization `json:"replicas"`
+	Replicas        map[string]ReplicaUtilization `json:"replicas"`
 }
 type ReplicaUtilization struct {
 	MaxMemory float64 `json:"max_memory"`
@@ -100,17 +100,17 @@ func (r *ReplicaResourcesUtilizationResponse) SetMemoryRequests(environment, com
 func (r *ReplicaResourcesUtilizationResponse) SetMaxCpuUsage(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
-	p := r.Environments[environment].Components[component].Replica[pod]
-	p.MaxCPU = math.Round(value*1e6) / 1e6
-	r.Environments[environment].Components[component].Replica[pod] = p
+	p := r.Environments[environment].Components[component].Replicas[pod]
+	p.MaxCPU = value
+	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
 func (r *ReplicaResourcesUtilizationResponse) SetMaxMemoryUsage(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
-	p := r.Environments[environment].Components[component].Replica[pod]
-	p.MaxMemory = math.Round(value)
-	r.Environments[environment].Components[component].Replica[pod] = p
+	p := r.Environments[environment].Components[component].Replicas[pod]
+	p.MaxMemory = value
+	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
 func (r *ReplicaResourcesUtilizationResponse) ensureComponent(environment, component string) {
@@ -122,7 +122,7 @@ func (r *ReplicaResourcesUtilizationResponse) ensureComponent(environment, compo
 
 	if _, ok := r.Environments[environment].Components[component]; !ok {
 		r.Environments[environment].Components[component] = ComponentUtilization{
-			Replica: make(map[string]ReplicaUtilization),
+			Replicas: make(map[string]ReplicaUtilization),
 		}
 	}
 
@@ -131,7 +131,7 @@ func (r *ReplicaResourcesUtilizationResponse) ensureComponent(environment, compo
 func (r *ReplicaResourcesUtilizationResponse) ensurePod(environment, component, pod string) {
 	r.ensureComponent(environment, component)
 
-	if _, ok := r.Environments[environment].Components[component].Replica[pod]; !ok {
-		r.Environments[environment].Components[component].Replica[pod] = ReplicaUtilization{}
+	if _, ok := r.Environments[environment].Components[component].Replicas[pod]; !ok {
+		r.Environments[environment].Components[component].Replicas[pod] = ReplicaUtilization{}
 	}
 }

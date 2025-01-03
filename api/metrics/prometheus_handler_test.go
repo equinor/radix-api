@@ -3,6 +3,7 @@ package metrics_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -168,5 +169,65 @@ func getExpectedUsedResources(warnings ...string) *applicationModels.UsedResourc
 			Avg: pointers.Ptr(241309.0),
 			Max: pointers.Ptr(358024.0),
 		},
+	}
+}
+
+func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
+	scenarios := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Get utilization in all environments",
+			args: args{
+				appName:  appName1,
+				duration: "24h",
+			},
+		},
+		{
+			name: "Get utilization in specific environments",
+			args: args{
+				appName: appName1,
+				envName: "dev",
+			},
+		},
+		{
+			name: "Requested with arguments",
+			args: args{
+				appName:       appName1,
+				envName:       "dev",
+				componentName: "component1",
+				duration:      "36h",
+			},
+		},
+	}
+	for _, ts := range scenarios {
+		t.Run(ts.name, func(t *testing.T) {
+			expectedDur := ts.args.duration
+			if expectedDur == "" {
+				expectedDur = "30d"
+			}
+			expectedNs := ".*"
+			if ts.args.envName != "" {
+				expectedNs = ts.args.envName
+			}
+
+			radixClient := fake.NewSimpleClientset()
+			commonTestUtils := commontest.NewTestUtils(nil, radixClient, nil, nil)
+			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
+			require.NoError(t, err)
+			ctrl := gomock.NewController(t)
+			api := mock.NewMockPrometheusApiClient(ctrl)
+
+			api.EXPECT().Query(gomock.Any(), fmt.Sprintf(internal.Queries[internal.CpuRequests], appName1, appName1, expectedNs), gomock.Any()).Times(1).Return(model.Vector{}, nil, nil)
+			api.EXPECT().Query(gomock.Any(), fmt.Sprintf(internal.Queries[internal.MemoryRequest], appName1, appName1, expectedNs), gomock.Any()).Times(1).Return(model.Vector{}, nil, nil)
+			api.EXPECT().Query(gomock.Any(), fmt.Sprintf(internal.Queries[internal.CpuMax], appName1, appName1, expectedNs, expectedDur), gomock.Any()).Times(1).Return(model.Vector{}, nil, nil)
+			api.EXPECT().Query(gomock.Any(), fmt.Sprintf(internal.Queries[internal.MemoryMax], appName1, appName1, expectedNs, expectedDur), gomock.Any()).Times(1).Return(model.Vector{}, nil, nil)
+
+			client := &metrics.Client{Api: api}
+			prometheusHandler := metrics.NewPrometheusHandler(client)
+			_, err = prometheusHandler.GetReplicaResourcesUtilization(context.Background(), radixClient, appName1, ts.args.envName, ts.args.duration)
+			assert.NoError(t, err)
+		})
 	}
 }

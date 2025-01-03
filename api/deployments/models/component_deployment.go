@@ -246,7 +246,7 @@ type AuxiliaryResourceDeployment struct {
 	// required: true
 	// - Consistent: All replicas are running with the desired state
 	// - Reconciling: Waiting for new replicas to enter desired state
-	// - Stopped: Replica count is set to 0
+	// - Stopped: Replicas count is set to 0
 	//
 	// enum: Stopped,Consistent,Reconciling
 	// example: Consistent
@@ -334,13 +334,13 @@ type ComponentSummary struct {
 type ReplicaType int
 
 const (
-	// JobManager Replica of a Radix job-component scheduler
+	// JobManager Replicas of a Radix job-component scheduler
 	JobManager ReplicaType = iota
-	// JobManagerAux Replica of a Radix job-component scheduler auxiliary
+	// JobManagerAux Replicas of a Radix job-component scheduler auxiliary
 	JobManagerAux
-	// OAuth2 Replica of a Radix OAuth2 component
+	// OAuth2 Replicas of a Radix OAuth2 component
 	OAuth2
-	// Undefined Replica without defined type - to be extended
+	// Undefined Replicas without defined type - to be extended
 	Undefined
 	numReplicaType
 )
@@ -363,12 +363,12 @@ type ReplicaSummary struct {
 	Name string `json:"name"`
 
 	// Pod type
-	// - ComponentReplica = Replica of a Radix component
-	// - ScheduledJobReplica = Replica of a Radix job-component
-	// - JobManager = Replica of a Radix job-component scheduler
-	// - JobManagerAux = Replica of a Radix job-component scheduler auxiliary
-	// - OAuth2 = Replica of a Radix OAuth2 component
-	// - Undefined = Replica without defined type - to be extended
+	// - ComponentReplica = Replicas of a Radix component
+	// - ScheduledJobReplica = Replicas of a Radix job-component
+	// - JobManager = Replicas of a Radix job-component scheduler
+	// - JobManagerAux = Replicas of a Radix job-component scheduler auxiliary
+	// - OAuth2 = Replicas of a Radix OAuth2 component
+	// - Undefined = Replicas without defined type - to be extended
 	//
 	// required: false
 	// enum: ComponentReplica,ScheduledJobReplica,JobManager,JobManagerAux,OAuth2,Undefined
@@ -451,7 +451,7 @@ type ReplicaStatus struct {
 	// - Failing = Container is failed
 	// - Running = Container in Running state
 	// - Succeeded = Container in Succeeded state
-	// - Stopped = Replica was deleted du to job stopped
+	// - Stopped = Replicas was deleted du to job stopped
 	// - Terminated = Container in Terminated state
 	//
 	// required: true
