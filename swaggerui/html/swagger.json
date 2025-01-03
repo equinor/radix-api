@@ -6216,7 +6216,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/ReplicaUtilization"
           },
-          "x-go-name": "Replica"
+          "x-go-name": "Replicas"
         },
         "requested_cpu": {
           "type": "number",
@@ -7937,7 +7937,7 @@
       ],
       "properties": {
         "status": {
-          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nStarting = Container is starting\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nStopped = Replica was deleted du to job stopped\nTerminated = Container in Terminated state\nPending Pending  Pending container\nFailed Failed  Failed container permanently exists in a failed state\nFailing Failing  Failing container, which can attempt to restart\nRunning Running  Running container\nTerminated Terminated  Terminated container\nStarting Starting  Starting container\nStopped Stopped  Stopped container\nSucceeded Succeeded  Succeeded all containers in the pod have voluntarily terminated",
+          "description": "Status of the container\nPending = Container in Waiting state and the reason is ContainerCreating\nStarting = Container is starting\nFailed = Container is failed\nFailing = Container is failed\nRunning = Container in Running state\nSucceeded = Container in Succeeded state\nStopped = Replicas was deleted du to job stopped\nTerminated = Container in Terminated state\nPending Pending  Pending container\nFailed Failed  Failed container permanently exists in a failed state\nFailing Failing  Failing container, which can attempt to restart\nRunning Running  Running container\nTerminated Terminated  Terminated container\nStarting Starting  Starting container\nStopped Stopped  Stopped container\nSucceeded Succeeded  Succeeded all containers in the pod have voluntarily terminated",
           "type": "string",
           "enum": [
             "Pending",
@@ -8041,7 +8041,7 @@
           "x-go-name": "StatusMessage"
         },
         "type": {
-          "description": "Pod type\nComponentReplica = Replica of a Radix component\nScheduledJobReplica = Replica of a Radix job-component\nJobManager = Replica of a Radix job-component scheduler\nJobManagerAux = Replica of a Radix job-component scheduler auxiliary\nOAuth2 = Replica of a Radix OAuth2 component\nUndefined = Replica without defined type - to be extended",
+          "description": "Pod type\nComponentReplica = Replicas of a Radix component\nScheduledJobReplica = Replicas of a Radix job-component\nJobManager = Replicas of a Radix job-component scheduler\nJobManagerAux = Replicas of a Radix job-component scheduler auxiliary\nOAuth2 = Replicas of a Radix OAuth2 component\nUndefined = Replicas without defined type - to be extended",
           "type": "string",
           "enum": [
             "ComponentReplica",
