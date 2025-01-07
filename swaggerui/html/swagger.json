@@ -7926,12 +7926,6 @@
           "format": "int32",
           "x-go-name": "RestartCount"
         },
-        "startTime": {
-          "description": "The time at which the batch job's pod startedAt",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "StartTime"
-        },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
           "type": "string",
@@ -8047,20 +8041,11 @@
           },
           "x-go-name": "JobList"
         },
-        "message": {
-          "description": "Deprecated: Message of a status, if any, of the job",
-          "type": "string",
-          "x-go-name": "Message",
-          "example": "\"Error occurred\""
-        },
         "name": {
           "description": "Name of the scheduled batch",
           "type": "string",
           "x-go-name": "Name",
           "example": "batch-20181029135644-algpv-6hznh"
-        },
-        "replica": {
-          "$ref": "#/definitions/ReplicaSummary"
         },
         "started": {
           "description": "Started timestamp",
