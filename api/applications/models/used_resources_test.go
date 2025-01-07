@@ -13,23 +13,25 @@ func TestComponentUtilization(t *testing.T) {
 
 	assert.Empty(t, r.Environments)
 
-	r.SetCpuRequests("dev", "web", 1)
-	r.SetMemoryRequests("prod", "srv", 2)
+	r.SetCpuReqs("dev", "web", "web-abccdc-1234", 1)
+	r.SetMemReqs("prod", "srv", "srv-abccdc-1234", 2)
+	r.SetMemMax("dev", "web", "web-abccdc-1234", 1500)
+	r.SetCpuAvg("prod", "srv", "srv-abccdc-1234", 2.5)
+
 	require.Len(t, r.Environments, 2)
 	require.Contains(t, r.Environments, "dev")
 	require.Contains(t, r.Environments, "prod")
 	require.Len(t, r.Environments["dev"].Components, 1)
 	require.Len(t, r.Environments["prod"].Components, 1)
-	assert.Equal(t, 1.0, r.Environments["dev"].Components["web"].RequestedCPU)
-	assert.Equal(t, 2.0, r.Environments["prod"].Components["srv"].RequestedMemory)
-
-	r.SetMaxMemoryUsage("dev", "web", "web-abccdc-1234", 1500)
-	r.SetMaxCpuUsage("prod", "srv", "srv-abccdc-1234", 2.5)
 	require.Len(t, r.Environments["dev"].Components["web"].Replicas, 1)
 	require.Len(t, r.Environments["prod"].Components["srv"].Replicas, 1)
+
 	require.Contains(t, r.Environments["dev"].Components["web"].Replicas, "web-abccdc-1234")
 	require.Contains(t, r.Environments["prod"].Components["srv"].Replicas, "srv-abccdc-1234")
 
-	assert.Equal(t, 1500.0, r.Environments["dev"].Components["web"].Replicas["web-abccdc-1234"].MaxMemory)
-	assert.Equal(t, 2.5, r.Environments["prod"].Components["srv"].Replicas["srv-abccdc-1234"].MaxCPU)
+	assert.Equal(t, 1.0, r.Environments["dev"].Components["web"].Replicas["web-abccdc-1234"].CpuReqs)
+	assert.Equal(t, 2.0, r.Environments["prod"].Components["srv"].Replicas["srv-abccdc-1234"].MemReqs)
+
+	assert.Equal(t, 1500.0, r.Environments["dev"].Components["web"].Replicas["web-abccdc-1234"].MemMax)
+	assert.Equal(t, 2.5, r.Environments["prod"].Components["srv"].Replicas["srv-abccdc-1234"].CpuAvg)
 }

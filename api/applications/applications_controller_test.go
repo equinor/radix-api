@@ -16,7 +16,9 @@ import (
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
-	metricsMock "github.com/equinor/radix-api/api/metrics/mock"
+	"github.com/equinor/radix-api/api/metrics"
+	"github.com/equinor/radix-api/api/metrics/prometheus"
+	"github.com/equinor/radix-api/api/metrics/prometheus/mock"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
@@ -39,6 +41,7 @@ import (
 	"github.com/google/uuid"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +79,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
 	require.NoError(t, err)
-	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+	prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
@@ -97,15 +100,19 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient
 }
 
-func createPrometheusHandlerMock(t *testing.T, radixclient *radixfake.Clientset, mockHandler *func(handler *metricsMock.MockPrometheusHandler)) *metricsMock.MockPrometheusHandler {
+func createPrometheusHandlerMock(t *testing.T, mockHandler *func(handler *mock.MockQueryAPI)) *metrics.Handler {
 	ctrl := gomock.NewController(t)
-	mockPrometheusHandler := metricsMock.NewMockPrometheusHandler(ctrl)
+
+	promQueryApi := mock.NewMockQueryAPI(ctrl)
+	promClient := prometheus.NewClient(promQueryApi)
+
+	metricsHandler := metrics.NewHandler(promClient)
 	if mockHandler != nil {
-		(*mockHandler)(mockPrometheusHandler)
+		(*mockHandler)(promQueryApi)
 	} else {
-		mockPrometheusHandler.EXPECT().GetUsedResources(gomock.Any(), radixclient, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&applicationModels.UsedResources{}, nil)
+		promQueryApi.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&model.Vector{}, nil, nil)
 	}
-	return mockPrometheusHandler
+	return metricsHandler
 }
 
 func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
@@ -119,7 +126,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("no access", func(t *testing.T) {
-		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+		prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(
@@ -146,7 +153,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to single app", func(t *testing.T) {
-		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+		prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -166,7 +173,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 	})
 
 	t.Run("access to all app", func(t *testing.T) {
-		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+		prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -250,7 +257,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+	prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -335,7 +342,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+		prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -434,7 +441,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+	prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -509,7 +516,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	})
 
 	t.Run("search for "+appNames[0]+" - no access", func(t *testing.T) {
-		prometheusHandlerMock := createPrometheusHandlerMock(t, radixclient, nil)
+		prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewApplicationController(
@@ -1961,24 +1968,14 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 
 func Test_GetUsedResources(t *testing.T) {
 	const (
-		appName1       = "app-1"
-		envName1       = "prod"
-		componentName1 = "component1"
+		appName1 = "app-1"
 	)
-
-	type expectedArgs struct {
-		environment string
-		component   string
-		duration    string
-		since       string
-	}
 
 	type scenario struct {
 		name                       string
 		expectedUsedResources      *applicationModels.UsedResources
 		expectedError              error
 		queryString                string
-		expectedArgs               expectedArgs
 		expectedUsedResourcesError error
 	}
 
@@ -1986,18 +1983,11 @@ func Test_GetUsedResources(t *testing.T) {
 		{
 			name:                  "Get used resources",
 			expectedUsedResources: getTestUsedResources(),
-			expectedArgs:          expectedArgs{},
 		},
 		{
 			name:                  "Get used resources with arguments",
 			queryString:           "?environment=prod&component=component1&duration=10d&since=2w",
 			expectedUsedResources: getTestUsedResources(),
-			expectedArgs: expectedArgs{
-				environment: envName1,
-				component:   componentName1,
-				duration:    "10d",
-				since:       "2w",
-			},
 		},
 		{
 			name:                       "UsedResources returns an error",
@@ -2013,15 +2003,14 @@ func Test_GetUsedResources(t *testing.T) {
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 
-			mockHandlerModifier := func(handler *metricsMock.MockPrometheusHandler) {
-				args := ts.expectedArgs
-				handler.EXPECT().GetUsedResources(gomock.Any(), radixClient, appName1, args.environment, args.component, args.duration, args.since).
+			mockHandlerModifier := func(handler *mock.MockQueryAPI) {
+				handler.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).
 					Times(1).
 					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
 			}
 			validator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
-			prometheusHandlerMock := createPrometheusHandlerMock(t, radixClient, &mockHandlerModifier)
+			prometheusHandlerMock := createPrometheusHandlerMock(t, &mockHandlerModifier)
 			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,
 				NewApplicationController(
 					func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
@@ -2037,7 +2026,7 @@ func Test_GetUsedResources(t *testing.T) {
 				),
 			)
 
-			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/resources%s", appName1, ts.queryString))
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/utilization", appName1))
 			response := <-responseChannel
 			if ts.expectedError != nil {
 				assert.Equal(t, http.StatusBadRequest, response.Code)

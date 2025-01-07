@@ -1,7 +1,5 @@
 package models
 
-import "math"
-
 // UsedResources holds information about used resources
 // swagger:model UsedResources
 type UsedResources struct {
@@ -66,13 +64,13 @@ type EnvironmentUtilization struct {
 }
 
 type ComponentUtilization struct {
-	RequestedCPU    float64                       `json:"requested_cpu"`
-	RequestedMemory float64                       `json:"requested_memory"`
-	Replicas        map[string]ReplicaUtilization `json:"replicas"`
+	Replicas map[string]ReplicaUtilization `json:"replicas"`
 }
 type ReplicaUtilization struct {
-	MaxMemory float64 `json:"max_memory"`
-	MaxCPU    float64 `json:"max_cpu"`
+	MemReqs float64 `json:"mem_reqs"`
+	MemMax  float64 `json:"mem_max"`
+	CpuReqs float64 `json:"cpu_reqs"`
+	CpuAvg  float64 `json:"cpu_avg"`
 }
 
 func NewPodResourcesUtilizationResponse() *ReplicaResourcesUtilizationResponse {
@@ -81,39 +79,39 @@ func NewPodResourcesUtilizationResponse() *ReplicaResourcesUtilizationResponse {
 	}
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetCpuRequests(environment, component string, value float64) {
-	r.ensureComponent(environment, component)
-
-	c := r.Environments[environment].Components[component]
-	c.RequestedCPU = math.Round(value*1e6) / 1e6
-	r.Environments[environment].Components[component] = c
-}
-
-func (r *ReplicaResourcesUtilizationResponse) SetMemoryRequests(environment, component string, value float64) {
-	r.ensureComponent(environment, component)
-
-	c := r.Environments[environment].Components[component]
-	c.RequestedMemory = math.Round(value)
-	r.Environments[environment].Components[component] = c
-}
-
-func (r *ReplicaResourcesUtilizationResponse) SetMaxCpuUsage(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetCpuReqs(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.MaxCPU = value
+	p.CpuReqs = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetMaxMemoryUsage(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetCpuAvg(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.MaxMemory = value
+	p.CpuAvg = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
-func (r *ReplicaResourcesUtilizationResponse) ensureComponent(environment, component string) {
+func (r *ReplicaResourcesUtilizationResponse) SetMemReqs(environment, component, pod string, value float64) {
+	r.ensurePod(environment, component, pod)
+
+	p := r.Environments[environment].Components[component].Replicas[pod]
+	p.MemReqs = value
+	r.Environments[environment].Components[component].Replicas[pod] = p
+}
+
+func (r *ReplicaResourcesUtilizationResponse) SetMemMax(environment, component, pod string, value float64) {
+	r.ensurePod(environment, component, pod)
+
+	p := r.Environments[environment].Components[component].Replicas[pod]
+	p.MemMax = value
+	r.Environments[environment].Components[component].Replicas[pod] = p
+}
+
+func (r *ReplicaResourcesUtilizationResponse) ensurePod(environment, component, pod string) {
 	if _, ok := r.Environments[environment]; !ok {
 		r.Environments[environment] = EnvironmentUtilization{
 			Components: make(map[string]ComponentUtilization),
@@ -125,11 +123,6 @@ func (r *ReplicaResourcesUtilizationResponse) ensureComponent(environment, compo
 			Replicas: make(map[string]ReplicaUtilization),
 		}
 	}
-
-}
-
-func (r *ReplicaResourcesUtilizationResponse) ensurePod(environment, component, pod string) {
-	r.ensureComponent(environment, component)
 
 	if _, ok := r.Environments[environment].Components[component].Replicas[pod]; !ok {
 		r.Environments[environment].Components[component].Replicas[pod] = ReplicaUtilization{}

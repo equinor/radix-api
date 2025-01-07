@@ -20,11 +20,11 @@ type applicationController struct {
 	*models.DefaultController
 	hasAccessToRR
 	applicationHandlerFactory ApplicationHandlerFactory
-	prometheusHandler         metrics.PrometheusHandler
+	prometheusHandler         *metrics.Handler
 }
 
 // NewApplicationController Constructor
-func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, prometheusHandler metrics.PrometheusHandler) models.Controller {
+func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, prometheusHandler *metrics.Handler) models.Controller {
 	if hasAccessTo == nil {
 		hasAccessTo = hasAccess
 	}
@@ -137,14 +137,14 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.RegenerateDeployKeyHandler,
 		},
 		models.Route{
-			Path:        appPath + "/resources",
-			Method:      "GET",
-			HandlerFunc: ac.GetUsedResources,
-		},
-		models.Route{
 			Path:        appPath + "/utilization",
 			Method:      "GET",
-			HandlerFunc: ac.GetPodResourcesUtilization,
+			HandlerFunc: ac.GetApplicationResourcesUtilization,
+		},
+		models.Route{
+			Path:        appPath + "/environments/{envName}/utilization",
+			Method:      "GET",
+			HandlerFunc: ac.GetEnvironmentResourcesUtilization,
 		},
 	}
 
@@ -1006,71 +1006,8 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 	ac.JSONResponse(w, r, &jobSummary)
 }
 
-// GetUsedResources Gets used resources for the application
-func (ac *applicationController) GetUsedResources(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/resources application getResources
-	// ---
-	// summary: Gets used resources for the application
-	// parameters:
-	// - name: appName
-	//   in: path
-	//   description: Name of the application
-	//   type: string
-	//   required: true
-	// - name: environment
-	//   in: query
-	//   description: Name of the application environment
-	//   type: string
-	//   required: false
-	// - name: component
-	//   in: query
-	//   description: Name of the application component in an environment
-	//   type: string
-	//   required: false
-	// - name: duration
-	//   in: query
-	//   description: Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
-	//   type: string
-	//   required: false
-	// - name: since
-	//   in: query
-	//   description: End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
-	//   type: string
-	//   required: false
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: Successful trigger pipeline
-	//     schema:
-	//       "$ref": "#/definitions/UsedResources"
-	//   "404":
-	//     description: "Not found"
-	appName := mux.Vars(r)["appName"]
-	envName := r.FormValue("environment")
-	componentName := r.FormValue("component")
-	duration := r.FormValue("duration")
-	since := r.FormValue("since")
-
-	usedResources, err := ac.prometheusHandler.GetUsedResources(r.Context(), accounts.UserAccount.RadixClient, appName, envName, componentName, duration, since)
-	if err != nil {
-		ac.ErrorResponse(w, r, err)
-		return
-	}
-
-	ac.JSONResponse(w, r, &usedResources)
-}
-
-// GetPodResourcesUtilization Gets used resources for the application
-func (ac *applicationController) GetPodResourcesUtilization(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+// GetApplicationResourcesUtilization Gets used resources for the application
+func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/utilization application GetReplicaResourcesUtilization
 	// ---
 	// summary: Gets max resources used by the application
@@ -1080,16 +1017,6 @@ func (ac *applicationController) GetPodResourcesUtilization(accounts models.Acco
 	//   description: Name of the application
 	//   type: string
 	//   required: true
-	// - name: environment
-	//   in: query
-	//   description: Name of the application environment
-	//   type: string
-	//   required: false
-	// - name: duration
-	//   in: query
-	//   description: Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks
-	//   type: string
-	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -1108,10 +1035,53 @@ func (ac *applicationController) GetPodResourcesUtilization(accounts models.Acco
 	//   "404":
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
-	envName := r.FormValue("environment")
-	duration := r.FormValue("duration")
 
-	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName, duration)
+	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), appName, "")
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	ac.JSONResponse(w, r, &utilization)
+}
+
+// GetEnvironmentResourcesUtilization Gets used resources for the application
+func (ac *applicationController) GetEnvironmentResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/environments/{envName}/utilization application GetEnvironmentResourcesUtilization
+	// ---
+	// summary: Gets max resources used by the application
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of the application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of the application environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: Successful trigger pipeline
+	//     schema:
+	//       "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), appName, envName)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
