@@ -4019,7 +4019,7 @@
           "200": {
             "description": "Successful trigger pipeline",
             "schema": {
-              "$ref": "#/definitions/ReplicaResourcesUtilizationEnvironmentResponse"
+              "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
             }
           },
           "404": {
@@ -6689,6 +6689,19 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/environments/models"
     },
+    "EnvironmentUtilization": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ComponentUtilization"
+          },
+          "x-go-name": "Components"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "Event": {
       "description": "Event holds information about Kubernetes events",
       "type": "object",
@@ -7863,21 +7876,6 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
-    "ReplicaResourcesUtilizationEnvironmentResponse": {
-      "description": "EnvironmentUtilization holds information about resource utilization for environment",
-      "type": "object",
-      "properties": {
-        "components": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/ComponentUtilization"
-          },
-          "x-go-name": "Components"
-        }
-      },
-      "x-go-name": "EnvironmentUtilization",
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
     "ReplicaResourcesUtilizationResponse": {
       "description": "ReplicaResourcesUtilizationResponse holds information about resource utilization",
       "type": "object",
@@ -7885,7 +7883,7 @@
         "environments": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/ReplicaResourcesUtilizationEnvironmentResponse"
+            "$ref": "#/definitions/EnvironmentUtilization"
           },
           "x-go-name": "Environments"
         }
