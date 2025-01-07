@@ -13,8 +13,10 @@ const (
 )
 
 type LabeledResults struct {
-	Labels map[string]string
-	Value  float64
+	Value     float64
+	Namespace string
+	Component string
+	Pod       string
 }
 type Client interface {
 	GetCpuReqs(ctx context.Context, appName, namespace string) ([]LabeledResults, error)
@@ -47,12 +49,8 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 		return nil, err
 	}
 	for _, result := range results {
-		namespace := result.Labels["namespace"]
-		pod := result.Labels["pod"]
-		component := result.Labels["label_radix_component"]
-		environment, _ := strings.CutPrefix(namespace, appName+"-")
-
-		utilization.SetCpuReqs(environment, component, pod, math.Round(result.Value*1e6)/1e6)
+		environment, _ := strings.CutPrefix(result.Namespace, appName+"-")
+		utilization.SetCpuReqs(environment, result.Component, result.Pod, math.Round(result.Value*1e6)/1e6)
 	}
 
 	results, err = pc.client.GetCpuAvg(ctx, appName, namespace, DefaultDuration)
@@ -60,11 +58,8 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 		return nil, err
 	}
 	for _, result := range results {
-		namespace := result.Labels["namespace"]
-		pod := result.Labels["pod"]
-		component := result.Labels["label_radix_component"]
-		environment, _ := strings.CutPrefix(namespace, appName+"-")
-		utilization.SetCpuAvg(environment, component, pod, math.Round(result.Value*1e6)/1e6)
+		environment, _ := strings.CutPrefix(result.Namespace, appName+"-")
+		utilization.SetCpuAvg(environment, result.Component, result.Pod, math.Round(result.Value*1e6)/1e6)
 	}
 
 	results, err = pc.client.GetMemReqs(ctx, appName, namespace)
@@ -72,12 +67,8 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 		return nil, err
 	}
 	for _, result := range results {
-		namespace := result.Labels["namespace"]
-		pod := result.Labels["pod"]
-		component := result.Labels["label_radix_component"]
-		environment, _ := strings.CutPrefix(namespace, appName+"-")
-
-		utilization.SetMemReqs(environment, component, pod, math.Round(result.Value))
+		environment, _ := strings.CutPrefix(result.Namespace, appName+"-")
+		utilization.SetMemReqs(environment, result.Component, result.Pod, math.Round(result.Value))
 	}
 
 	results, err = pc.client.GetMemMax(ctx, appName, namespace, DefaultDuration)
@@ -85,12 +76,8 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 		return nil, err
 	}
 	for _, result := range results {
-		namespace := result.Labels["namespace"]
-		pod := result.Labels["pod"]
-		component := result.Labels["label_radix_component"]
-		environment, _ := strings.CutPrefix(namespace, appName+"-")
-
-		utilization.SetMemMax(environment, component, pod, math.Round(result.Value))
+		environment, _ := strings.CutPrefix(result.Namespace, appName+"-")
+		utilization.SetMemMax(environment, result.Component, result.Pod, math.Round(result.Value))
 	}
 
 	return utilization, nil

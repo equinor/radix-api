@@ -8020,23 +8020,33 @@
     },
     "ReplicaUtilization": {
       "type": "object",
+      "required": [
+        "mem_reqs",
+        "mem_max",
+        "cpu_reqs",
+        "cpu_avg"
+      ],
       "properties": {
         "cpu_avg": {
+          "description": "Average CPU Used",
           "type": "number",
           "format": "double",
           "x-go-name": "CpuAvg"
         },
         "cpu_reqs": {
+          "description": "Cpu Requests",
           "type": "number",
           "format": "double",
           "x-go-name": "CpuReqs"
         },
         "mem_max": {
+          "description": "Max memory used",
           "type": "number",
           "format": "double",
           "x-go-name": "MemMax"
         },
         "mem_reqs": {
+          "description": "Memory Requests",
           "type": "number",
           "format": "double",
           "x-go-name": "MemReqs"
@@ -8643,71 +8653,6 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UsedResource": {
-      "description": "UsedResource holds information about used resource",
-      "type": "object",
-      "properties": {
-        "avg": {
-          "description": "Avg Average resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Avg",
-          "example": 0.00023
-        },
-        "max": {
-          "description": "Max resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Max",
-          "example": 0.00037
-        },
-        "min": {
-          "description": "Min resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Min",
-          "example": 0.00012
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
-    "UsedResources": {
-      "description": "UsedResources holds information about used resources",
-      "type": "object",
-      "required": [
-        "from",
-        "to"
-      ],
-      "properties": {
-        "cpu": {
-          "$ref": "#/definitions/UsedResource"
-        },
-        "from": {
-          "description": "From timestamp",
-          "type": "string",
-          "x-go-name": "From",
-          "example": "2006-01-02T15:04:05Z"
-        },
-        "memory": {
-          "$ref": "#/definitions/UsedResource"
-        },
-        "to": {
-          "description": "To timestamp",
-          "type": "string",
-          "x-go-name": "To",
-          "example": "2006-01-03T15:04:05Z"
-        },
-        "warnings": {
-          "description": "Warning messages",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "Warnings"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "X509Certificate": {
       "description": "X509Certificate holds information about a X509 certificate",

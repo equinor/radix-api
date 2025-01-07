@@ -5,17 +5,10 @@ import (
 	"testing"
 
 	"github.com/equinor/radix-api/api/metrics"
-	"github.com/equinor/radix-api/api/metrics/prometheus"
-	prometheusMock "github.com/equinor/radix-api/api/metrics/prometheus/mock"
+	"github.com/equinor/radix-api/api/metrics/mock"
 	"github.com/golang/mock/gomock"
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 )
-
-type args struct {
-	appName string
-	envName string
-}
 
 const (
 	appName1 = "app1"
@@ -23,44 +16,46 @@ const (
 
 func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 	scenarios := []struct {
-		name string
-		args args
+		name    string
+		appName string
+		envName string
 	}{
 		{
-			name: "Get utilization in all environments",
-			args: args{
-				appName: appName1,
-			},
+			name:    "Get utilization in all environments",
+			appName: appName1,
 		},
 		{
-			name: "Get utilization in specific environments",
-			args: args{
-				appName: appName1,
-				envName: "dev",
-			},
+			name:    "Get utilization in specific environments",
+			appName: appName1,
+			envName: "dev",
 		},
 		{
-			name: "Requested with arguments",
-			args: args{
-				appName: appName1,
-				envName: "dev",
-			},
+			name:    "Requested with arguments",
+			appName: appName1,
+			envName: "dev",
 		},
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			api := prometheusMock.NewMockQueryAPI(ctrl)
+			client := mock.NewMockClient(ctrl)
+			expectedNamespace := getExpectedNamespace(ts.appName, ts.envName)
 
-			api.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(4).Return(model.Vector{}, nil, nil)
-
-			client := prometheus.NewClient(api)
-
-			assert.Fail(t, "Test arguements are used correctly")
+			client.EXPECT().GetCpuReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetCpuAvg(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemMax(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return([]metrics.LabeledResults{}, nil)
 
 			metricsHandler := metrics.NewHandler(client)
-			_, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.args.envName)
+			_, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func getExpectedNamespace(appName, envName string) string {
+	if envName == "" {
+		return appName + "-.*"
+	}
+	return appName + "-" + envName
 }
