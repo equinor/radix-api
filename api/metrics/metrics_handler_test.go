@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/metrics/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -41,14 +42,49 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 			client := mock.NewMockClient(ctrl)
 			expectedNamespace := getExpectedNamespace(ts.appName, ts.envName)
 
-			client.EXPECT().GetCpuReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetCpuAvg(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemMax(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return([]metrics.LabeledResults{}, nil)
+			cpuReqs := []metrics.LabeledResults{
+				{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 2, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+			}
+			cpuAvg := []metrics.LabeledResults{
+				{Value: 0.5, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 0.7, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+			}
+			memReqs := []metrics.LabeledResults{
+				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 200, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+			}
+			MemMax := []metrics.LabeledResults{
+				{Value: 50, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+			}
+
+			client.EXPECT().GetCpuReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAvg(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return(cpuAvg, nil)
+			client.EXPECT().GetMemReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return(memReqs, nil)
+			client.EXPECT().GetMemMax(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return(MemMax, nil)
 
 			metricsHandler := metrics.NewHandler(client)
-			_, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
+			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
 			assert.NoError(t, err)
+
+			require.NotNil(t, response)
+			require.Contains(t, response.Environments, "dev")
+			require.Contains(t, response.Environments["dev"].Components, "web")
+			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-1")
+			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-2")
+
+			assert.EqualValues(t, 1, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuReqs)
+			assert.EqualValues(t, 0.5, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuAvg)
+			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemReqs)
+			assert.EqualValues(t, 50, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemMax)
+
+			assert.EqualValues(t, 2, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuReqs)
+			assert.EqualValues(t, 0.7, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuAvg)
+			assert.EqualValues(t, 200, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemReqs)
+			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemMax)
+
+			assert.NotEmpty(t, response)
 		})
 	}
 }
