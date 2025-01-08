@@ -17,6 +17,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/metrics"
+	mock2 "github.com/equinor/radix-api/api/metrics/mock"
 	"github.com/equinor/radix-api/api/metrics/prometheus"
 	"github.com/equinor/radix-api/api/metrics/prometheus/mock"
 	controllertest "github.com/equinor/radix-api/api/test"
@@ -1973,7 +1974,6 @@ func Test_GetUsedResources(t *testing.T) {
 
 	type scenario struct {
 		name                       string
-		expectedUsedResources      *applicationModels.UsedResources
 		expectedError              error
 		queryString                string
 		expectedUsedResourcesError error
@@ -1981,36 +1981,41 @@ func Test_GetUsedResources(t *testing.T) {
 
 	scenarios := []scenario{
 		{
-			name:                  "Get used resources",
-			expectedUsedResources: getTestUsedResources(),
+			name: "Get used resources",
 		},
 		{
-			name:                  "Get used resources with arguments",
-			queryString:           "?environment=prod&component=component1&duration=10d&since=2w",
-			expectedUsedResources: getTestUsedResources(),
+			name:        "Get used resources with arguments",
+			queryString: "?environment=prod&component=component1&duration=10d&since=2w",
 		},
 		{
 			name:                       "UsedResources returns an error",
-			expectedUsedResources:      getTestUsedResources(),
 			expectedUsedResourcesError: errors.New("error-123"),
-			expectedError:              errors.New("Error: error-123"),
+			expectedError:              errors.New("error: error-123"),
 		},
 	}
 
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			commonTestUtils, _, kubeClient, radixClient, kedaClient, _, secretProviderClient, certClient := setupTest(t, true, true)
 			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
 			require.NoError(t, err)
 
-			mockHandlerModifier := func(handler *mock.MockQueryAPI) {
-				handler.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).
-					Times(1).
-					Return(ts.expectedUsedResources, ts.expectedUsedResourcesError)
-			}
-			validator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
+			expectedUtilization := applicationModels.NewPodResourcesUtilizationResponse()
+			expectedUtilization.SetCpuReqs("dev", "web", "web-abcd-1", 1)
+
+			cpuReqs := []metrics.LabeledResults{{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"}}
+
+			validator := authnmock.NewMockValidatorInterface(ctrl)
 			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
-			prometheusHandlerMock := createPrometheusHandlerMock(t, &mockHandlerModifier)
+
+			client := mock2.NewMockClient(ctrl)
+			client.EXPECT().GetCpuReqs(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAvg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemReqs(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemMax(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, ts.expectedError)
+			metricsHandler := metrics.NewHandler(client)
+
 			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,
 				NewApplicationController(
 					func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
@@ -2022,7 +2027,7 @@ func Test_GetUsedResources(t *testing.T) {
 							return true, nil
 						},
 					),
-					prometheusHandlerMock,
+					metricsHandler,
 				),
 			)
 
@@ -2031,33 +2036,15 @@ func Test_GetUsedResources(t *testing.T) {
 			if ts.expectedError != nil {
 				assert.Equal(t, http.StatusBadRequest, response.Code)
 				errorResponse, _ := controllertest.GetErrorResponse(response)
-				assert.Equal(t, ts.expectedError.Error(), errorResponse.Message)
+				assert.Equal(t, ts.expectedError.Error(), errorResponse.Error())
 				return
 			}
 			assert.Equal(t, http.StatusOK, response.Code)
-			actualUsedResources := &applicationModels.UsedResources{}
-			err = controllertest.GetResponseBody(response, &actualUsedResources)
+			actualUtilization := &applicationModels.ReplicaResourcesUtilizationResponse{}
+			err = controllertest.GetResponseBody(response, &actualUtilization)
 			require.NoError(t, err)
-			assert.Equal(t, ts.expectedUsedResources, actualUsedResources)
+			assert.Equal(t, expectedUtilization, actualUtilization)
 		})
-	}
-}
-
-func getTestUsedResources() *applicationModels.UsedResources {
-	return &applicationModels.UsedResources{
-		From: radixutils.FormatTimestamp(time.Now().Add(time.Minute * -10)),
-		To:   radixutils.FormatTimestamp(time.Now()),
-		CPU: &applicationModels.UsedResource{
-			Min: pointers.Ptr(1.1),
-			Max: pointers.Ptr(10.12),
-			Avg: pointers.Ptr(5.56),
-		},
-		Memory: &applicationModels.UsedResource{
-			Min: pointers.Ptr(100.1),
-			Max: pointers.Ptr(1000.12),
-			Avg: pointers.Ptr(500.56),
-		},
-		Warnings: []string{"warning1", "warning2"},
 	}
 }
 
