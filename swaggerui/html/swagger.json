@@ -8021,35 +8021,35 @@
     "ReplicaUtilization": {
       "type": "object",
       "required": [
-        "mem_reqs",
-        "mem_max",
-        "cpu_reqs",
-        "cpu_avg"
+        "memoryRequests",
+        "memoryMaximum",
+        "cpuRequests",
+        "cpuAverage"
       ],
       "properties": {
-        "cpu_avg": {
+        "cpuAverage": {
           "description": "Average CPU Used",
           "type": "number",
           "format": "double",
-          "x-go-name": "CpuAvg"
+          "x-go-name": "CpuAverage"
         },
-        "cpu_reqs": {
+        "cpuRequests": {
           "description": "Cpu Requests",
           "type": "number",
           "format": "double",
-          "x-go-name": "CpuReqs"
+          "x-go-name": "CpuRequests"
         },
-        "mem_max": {
+        "memoryMaximum": {
           "description": "Max memory used",
           "type": "number",
           "format": "double",
-          "x-go-name": "MemMax"
+          "x-go-name": "MemoryMaximum"
         },
-        "mem_reqs": {
+        "memoryRequests": {
           "description": "Memory Requests",
           "type": "number",
           "format": "double",
-          "x-go-name": "MemReqs"
+          "x-go-name": "MemoryRequests"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"

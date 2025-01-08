@@ -42,24 +42,24 @@ func NewClient(api QueryAPI) metrics.Client {
 	return &Client{api: api}
 }
 
-// GetCpuReqs returns a list of all pods with their CPU requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetCpuReqs(ctx context.Context, appName, namespace string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s",resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, namespace))
+// GetCpuRequests returns a list of all pods with their CPU requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
+func (c *Client) GetCpuRequests(ctx context.Context, namespace string) ([]metrics.LabeledResults, error) {
+	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~"%s",resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace))
 }
 
-// GetCpuAvg returns a list of all pods with their average CPU usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetCpuAvg(ctx context.Context, appName, namespace, duration string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (avg_over_time(irate(container_cpu_usage_seconds_total{container!="",namespace!="%s-app", namespace=~"%s"}[1m]) [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, namespace, duration))
+// GetCpuAverage returns a list of all pods with their average CPU usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
+func (c *Client) GetCpuAverage(ctx context.Context, namespace, duration string) ([]metrics.LabeledResults, error) {
+	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (avg_over_time(irate(container_cpu_usage_seconds_total{container!="", namespace=~"%s"}[1m]) [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
 }
 
-// GetMemReqs returns a list of all pods with their Memory requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetMemReqs(ctx context.Context, appName, namespace string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="",namespace!="%s-app", namespace=~"%s",resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, namespace))
+// GetMemoryRequests returns a list of all pods with their Memory requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
+func (c *Client) GetMemoryRequests(ctx context.Context, namespace string) ([]metrics.LabeledResults, error) {
+	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~"%s",resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace))
 }
 
-// GetMemMax returns a list of all pods with their maximum Memory usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetMemMax(ctx context.Context, appName, namespace, duration string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_usage_bytes{container!="",namespace!="%s-app", namespace=~"%s"} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, appName, namespace, duration))
+// GetMemoryMaximum returns a list of all pods with their maximum Memory usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
+func (c *Client) GetMemoryMaximum(ctx context.Context, namespace, duration string) ([]metrics.LabeledResults, error) {
+	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_usage_bytes{container!="", namespace=~"%s"} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
 }
 
 func (c *Client) queryVector(ctx context.Context, query string) ([]metrics.LabeledResults, error) {

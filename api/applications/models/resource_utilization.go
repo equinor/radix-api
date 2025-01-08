@@ -16,16 +16,16 @@ type ComponentUtilization struct {
 type ReplicaUtilization struct {
 	// Memory Requests
 	// required: true
-	MemReqs float64 `json:"mem_reqs"`
+	MemoryRequests float64 `json:"memoryRequests"`
 	// Max memory used
 	// required: true
-	MemMax float64 `json:"mem_max"`
+	MemoryMaximum float64 `json:"memoryMaximum"`
 	// Cpu Requests
 	// required: true
-	CpuReqs float64 `json:"cpu_reqs"`
+	CpuRequests float64 `json:"cpuRequests"`
 	// Average CPU Used
 	// required: true
-	CpuAvg float64 `json:"cpu_avg"`
+	CpuAverage float64 `json:"cpuAverage"`
 }
 
 func NewPodResourcesUtilizationResponse() *ReplicaResourcesUtilizationResponse {
@@ -34,35 +34,35 @@ func NewPodResourcesUtilizationResponse() *ReplicaResourcesUtilizationResponse {
 	}
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetCpuReqs(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetCpuRequests(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.CpuReqs = value
+	p.CpuRequests = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetCpuAvg(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetCpuAverage(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.CpuAvg = value
+	p.CpuAverage = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetMemReqs(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetMemoryRequests(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.MemReqs = value
+	p.MemoryRequests = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 
-func (r *ReplicaResourcesUtilizationResponse) SetMemMax(environment, component, pod string, value float64) {
+func (r *ReplicaResourcesUtilizationResponse) SetMemoryMaximum(environment, component, pod string, value float64) {
 	r.ensurePod(environment, component, pod)
 
 	p := r.Environments[environment].Components[component].Replicas[pod]
-	p.MemMax = value
+	p.MemoryMaximum = value
 	r.Environments[environment].Components[component].Replicas[pod] = p
 }
 

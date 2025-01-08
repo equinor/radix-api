@@ -2002,7 +2002,7 @@ func Test_GetUsedResources(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedUtilization := applicationModels.NewPodResourcesUtilizationResponse()
-			expectedUtilization.SetCpuReqs("dev", "web", "web-abcd-1", 1)
+			expectedUtilization.SetCpuRequests("dev", "web", "web-abcd-1", 1)
 
 			cpuReqs := []metrics.LabeledResults{{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"}}
 
@@ -2010,10 +2010,10 @@ func Test_GetUsedResources(t *testing.T) {
 			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
 
 			client := mock2.NewMockClient(ctrl)
-			client.EXPECT().GetCpuReqs(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cpuReqs, nil)
-			client.EXPECT().GetCpuAvg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemReqs(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemMax(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, ts.expectedError)
+			client.EXPECT().GetCpuRequests(gomock.Any(), gomock.Any()).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAverage(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemoryRequests(gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemoryMaximum(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, ts.expectedError)
 			metricsHandler := metrics.NewHandler(client)
 
 			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,

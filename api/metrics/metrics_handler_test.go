@@ -59,10 +59,10 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
 			}
 
-			client.EXPECT().GetCpuReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return(cpuReqs, nil)
-			client.EXPECT().GetCpuAvg(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return(cpuAvg, nil)
-			client.EXPECT().GetMemReqs(gomock.Any(), ts.appName, expectedNamespace).Times(1).Return(memReqs, nil)
-			client.EXPECT().GetMemMax(gomock.Any(), ts.appName, expectedNamespace, "24h").Times(1).Return(MemMax, nil)
+			client.EXPECT().GetCpuRequests(gomock.Any(), expectedNamespace).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAverage(gomock.Any(), expectedNamespace, "24h").Times(1).Return(cpuAvg, nil)
+			client.EXPECT().GetMemoryRequests(gomock.Any(), expectedNamespace).Times(1).Return(memReqs, nil)
+			client.EXPECT().GetMemoryMaximum(gomock.Any(), expectedNamespace, "24h").Times(1).Return(MemMax, nil)
 
 			metricsHandler := metrics.NewHandler(client)
 			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
@@ -74,15 +74,15 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-1")
 			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-2")
 
-			assert.EqualValues(t, 1, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuReqs)
-			assert.EqualValues(t, 0.5, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuAvg)
-			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemReqs)
-			assert.EqualValues(t, 50, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemMax)
+			assert.EqualValues(t, 1, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuRequests)
+			assert.EqualValues(t, 0.5, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuAverage)
+			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemoryRequests)
+			assert.EqualValues(t, 50, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemoryMaximum)
 
-			assert.EqualValues(t, 2, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuReqs)
-			assert.EqualValues(t, 0.7, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuAvg)
-			assert.EqualValues(t, 200, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemReqs)
-			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemMax)
+			assert.EqualValues(t, 2, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuRequests)
+			assert.EqualValues(t, 0.7, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuAverage)
+			assert.EqualValues(t, 200, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemoryRequests)
+			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemoryMaximum)
 
 			assert.NotEmpty(t, response)
 		})
