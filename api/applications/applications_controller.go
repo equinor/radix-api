@@ -1047,7 +1047,7 @@ func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Acc
 
 // GetEnvironmentResourcesUtilization Gets used resources for the application
 func (ac *applicationController) GetEnvironmentResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/utilization application GetEnvironmentResourcesUtilization
+	// swagger:operation GET /applications/{appName}/environments/{envName}/utilization environment GetEnvironmentResourcesUtilization
 	// ---
 	// summary: Gets max resources used by the application
 	// parameters:
