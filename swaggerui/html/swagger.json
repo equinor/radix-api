@@ -3983,7 +3983,7 @@
     "/applications/{appName}/environments/{envName}/utilization": {
       "get": {
         "tags": [
-          "application"
+          "environment"
         ],
         "summary": "Gets max resources used by the application",
         "operationId": "GetEnvironmentResourcesUtilization",
