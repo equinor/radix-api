@@ -1008,7 +1008,7 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 
 // GetApplicationResourcesUtilization Gets used resources for the application
 func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/utilization application GetReplicaResourcesUtilization
+	// swagger:operation GET /applications/{appName}/utilization application GetApplicationResourcesUtilization
 	// ---
 	// summary: Gets max resources used by the application
 	// parameters:
