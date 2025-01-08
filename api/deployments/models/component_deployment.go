@@ -381,12 +381,6 @@ type ReplicaSummary struct {
 	// swagger:strfmt date-time
 	Created time.Time `json:"created"`
 
-	// The time at which the batch job's pod startedAt
-	//
-	// required: false
-	// swagger:strfmt date-time
-	StartTime *time.Time `json:"startTime"`
-
 	// The time at which the batch job's pod finishedAt.
 	//
 	// required: false
