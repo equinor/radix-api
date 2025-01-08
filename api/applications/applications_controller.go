@@ -20,11 +20,11 @@ type applicationController struct {
 	*models.DefaultController
 	hasAccessToRR
 	applicationHandlerFactory ApplicationHandlerFactory
-	prometheusHandler         *metrics.Handler
+	metricsHandler            *metrics.Handler
 }
 
 // NewApplicationController Constructor
-func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, prometheusHandler *metrics.Handler) models.Controller {
+func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFactory ApplicationHandlerFactory, metricsHandler *metrics.Handler) models.Controller {
 	if hasAccessTo == nil {
 		hasAccessTo = hasAccess
 	}
@@ -32,7 +32,7 @@ func NewApplicationController(hasAccessTo hasAccessToRR, applicationHandlerFacto
 	return &applicationController{
 		hasAccessToRR:             hasAccessTo,
 		applicationHandlerFactory: applicationHandlerFactory,
-		prometheusHandler:         prometheusHandler,
+		metricsHandler:            metricsHandler,
 	}
 }
 
@@ -1036,7 +1036,7 @@ func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Acc
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), appName, "")
+	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), appName, "")
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
@@ -1081,7 +1081,7 @@ func (ac *applicationController) GetEnvironmentResourcesUtilization(_ models.Acc
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	utilization, err := ac.prometheusHandler.GetReplicaResourcesUtilization(r.Context(), appName, envName)
+	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), appName, envName)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
