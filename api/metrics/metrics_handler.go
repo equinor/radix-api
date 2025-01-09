@@ -3,13 +3,19 @@ package metrics
 import (
 	"context"
 	"math"
+	"regexp"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
+	"github.com/equinor/radix-common/net/http"
 )
 
 const (
 	DefaultDuration = "24h"
+)
+
+var (
+	envNameRequirement = regexp.MustCompile(`^(([a-z0-9][-a-z0-9]*)?[a-z0-9])?$`)
 )
 
 type LabeledResults struct {
@@ -41,6 +47,9 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 	utilization := applicationModels.NewPodResourcesUtilizationResponse()
 	namespace := appName + "-.*"
 	if envName != "" {
+		if !envNameRequirement.MatchString(envName) {
+			return nil, http.ValidationError("envName", "envName can only contain alphanumeric characters, and hyphens (but not at the start or end)")
+		}
 		namespace = appName + "-" + envName
 	}
 
