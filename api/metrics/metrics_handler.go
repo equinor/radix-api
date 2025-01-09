@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	"github.com/equinor/radix-common/net/http"
 )
 
 const (
@@ -47,9 +46,6 @@ func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, 
 	utilization := applicationModels.NewPodResourcesUtilizationResponse()
 	namespace := appName + "-.*"
 	if envName != "" {
-		if !envNameRequirement.MatchString(envName) {
-			return nil, http.ValidationError("envName", "envName can only contain alphanumeric characters, and hyphens (but not at the start or end)")
-		}
 		namespace = appName + "-" + envName
 	}
 

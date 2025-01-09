@@ -89,6 +89,12 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 	}
 }
 
+func TestInvalidEnvName(t *testing.T) {
+	metricsHandler := metrics.NewHandler(nil)
+	_, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, "test-")
+	assert.Error(t, err)
+}
+
 func getExpectedNamespace(appName, envName string) string {
 	if envName == "" {
 		return appName + "-.*"
