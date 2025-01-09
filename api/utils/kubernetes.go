@@ -88,7 +88,7 @@ func getUserClientConfig(token string, impersonation radixmodels.Impersonation, 
 
 		kubeConfig.Impersonate = impersonationConfig
 	}
-	kubeConfig.Wrap(logs.Logger(func(e *zerolog.Event) {
+	kubeConfig.Wrap(logs.NewRoundtripLogger(func(e *zerolog.Event) {
 		e.Str("client", "user")
 	}))
 
@@ -104,7 +104,7 @@ func getServerClientConfig(options []RestClientConfigOption) *restclient.Config 
 			log.Fatal().Err(err).Msg("failed to create in cluster config")
 		}
 	}
-	config.Wrap(logs.Logger(func(e *zerolog.Event) {
+	config.Wrap(logs.NewRoundtripLogger(func(e *zerolog.Event) {
 		e.Str("client", "server")
 	}))
 
