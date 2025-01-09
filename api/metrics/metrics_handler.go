@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"math"
+	"regexp"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -39,6 +40,9 @@ func NewHandler(client Client) *Handler {
 // GetReplicaResourcesUtilization Get used resources for the application. envName is optional. Will fallback to all copmonent environments to the application.
 func (pc *Handler) GetReplicaResourcesUtilization(ctx context.Context, appName, envName string) (*applicationModels.ReplicaResourcesUtilizationResponse, error) {
 	utilization := applicationModels.NewPodResourcesUtilizationResponse()
+	appName = regexp.QuoteMeta(appName)
+	envName = regexp.QuoteMeta(envName)
+
 	namespace := appName + "-.*"
 	if envName != "" {
 		namespace = appName + "-" + envName
