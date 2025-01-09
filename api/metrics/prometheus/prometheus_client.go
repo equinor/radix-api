@@ -20,8 +20,6 @@ type QueryAPI interface {
 	Query(ctx context.Context, query string, ts time.Time, opts ...prometheusV1.Option) (model.Value, prometheusV1.Warnings, error)
 }
 
-var ErrInvalidNamespace = errors.New("invalid namespace character ` or \"")
-
 type Client struct {
 	api QueryAPI
 }

@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"math"
-	"regexp"
 	"strings"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
@@ -11,10 +10,6 @@ import (
 
 const (
 	DefaultDuration = "24h"
-)
-
-var (
-	envNameRequirement = regexp.MustCompile(`^(([a-z0-9][-a-z0-9]*)?[a-z0-9])?$`)
 )
 
 type LabeledResults struct {
