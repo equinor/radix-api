@@ -5,6 +5,9 @@ package models
 type ScheduledBatchJobStatus string
 
 const (
+	// ScheduledBatchJobStatusWaiting Job pending
+	ScheduledBatchJobStatusWaiting ScheduledBatchJobStatus = "Waiting"
+
 	// ScheduledBatchJobStatusRunning Active
 	ScheduledBatchJobStatusRunning ScheduledBatchJobStatus = "Running"
 
@@ -13,9 +16,6 @@ const (
 
 	// ScheduledBatchJobStatusFailed Job failed
 	ScheduledBatchJobStatusFailed ScheduledBatchJobStatus = "Failed"
-
-	// ScheduledBatchJobStatusWaiting Job pending
-	ScheduledBatchJobStatusWaiting ScheduledBatchJobStatus = "Waiting"
 
 	// ScheduledBatchJobStatusStopping job is stopping
 	ScheduledBatchJobStatusStopping ScheduledBatchJobStatus = "Stopping"

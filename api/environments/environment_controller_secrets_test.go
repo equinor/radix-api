@@ -805,6 +805,7 @@ func (s *secretHandlerTestSuite) prepareTestRun(scenario *getSecretScenario, app
 		ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
 		Spec: v1.RadixDeploymentSpec{
 			Environment: envName,
+			AppName:     appName,
 			Components:  scenario.components,
 			Jobs:        scenario.jobs,
 		},

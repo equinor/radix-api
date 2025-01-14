@@ -33,7 +33,7 @@ func getAuxiliaryResourceDeployment(rd *radixv1.RadixDeployment, component radix
 	}
 	deployment := auxDeployments[0]
 	auxPods := slice.FindAll(podList, predicate.IsPodForAuxComponent(rd.Spec.AppName, component.GetName(), auxType))
-	auxResourceDeployment.ReplicaList = BuildReplicaSummaryList(auxPods, eventWarnings)
+	auxResourceDeployment.ReplicaList = buildReplicaSummaryListFromPods(auxPods, eventWarnings)
 	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(component, &deployment, rd).String()
 	return auxResourceDeployment
 }

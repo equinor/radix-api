@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	environmentModels "github.com/equinor/radix-api/api/environments/models"
+	deploymentmodels "github.com/equinor/radix-api/api/deployments/models"
+	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/models"
 	"github.com/equinor/radix-api/api/utils"
@@ -17,71 +18,39 @@ import (
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerBatch "github.com/equinor/radix-job-scheduler/pkg/batch"
+	jobschedulerbatch "github.com/equinor/radix-job-scheduler/pkg/batch"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GetBatches Get batches
-func (eh EnvironmentHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledBatchSummary, error) {
-	radixBatches, err := kubequery.GetRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
-	if err != nil {
-		return nil, err
-	}
-	radixDeploymentsMap, activeRadixDeployJobComponent, err := eh.getDeploymentMapAndActiveDeployJobComponent(ctx, appName, envName, jobComponentName)
-	if err != nil {
-		return nil, err
-	}
-	radixBatchStatuses := jobSchedulerBatch.GetRadixBatchStatuses(radixBatches, activeRadixDeployJobComponent)
-	batchSummaryList := models.GetScheduledBatchSummaryList(radixBatches, radixBatchStatuses, radixDeploymentsMap, jobComponentName)
-	sort.SliceStable(batchSummaryList, func(i, j int) bool {
-		return utils.IsBefore(&batchSummaryList[j], &batchSummaryList[i])
-	})
-	return batchSummaryList, nil
-}
-
 // GetJobs Get jobs
-func (eh EnvironmentHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentModels.ScheduledJobSummary, error) {
+func (eh EnvironmentHandler) GetJobs(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentmodels.ScheduledJobSummary, error) {
 	radixBatches, err := kubequery.GetRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeJob)
 	if err != nil {
 		return nil, err
 	}
-	radixDeploymentsMap, activeRadixDeployJobComponent, err := eh.getDeploymentMapAndActiveDeployJobComponent(ctx, appName, envName, jobComponentName)
+	envRdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatuses := jobSchedulerBatch.GetRadixBatchStatuses(radixBatches, activeRadixDeployJobComponent)
-	jobSummaryList := models.GetScheduledSingleJobSummaryList(radixBatches, radixBatchStatuses, radixDeploymentsMap, jobComponentName)
-	sort.SliceStable(jobSummaryList, func(i, j int) bool {
-		return utils.IsBefore(&jobSummaryList[j], &jobSummaryList[i])
-	})
-	return jobSummaryList, nil
-}
+	batchSummaries := models.BuildScheduledBatchSummaryList(radixBatches, envRdList)
 
-// GetBatch Gets batch by name
-func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentModels.ScheduledBatchSummary, error) {
-	radixBatch, err := kubequery.GetRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
-	if err != nil {
-		return nil, err
-	}
-	_, activeDeployJobComponent, batchDeployJobComponent, err := eh.getDeploymentMapAndDeployJobComponents(ctx, appName, envName, jobComponentName, radixBatch)
-	if err != nil {
-		return nil, err
-	}
-	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
-	batchSummary := models.GetScheduledBatchSummary(radixBatch, &radixBatchStatus, batchDeployJobComponent)
-	return &batchSummary, nil
+	jobSummaries := slices.Concat(slice.Map(batchSummaries, func(v deploymentmodels.ScheduledBatchSummary) []deploymentmodels.ScheduledJobSummary {
+		return v.JobList
+	})...)
+	return jobSummaries, nil
 }
 
 // GetJob Gets job by name
-func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentModels.ScheduledJobSummary, error) {
+func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobComponentName, jobName string) (*deploymentmodels.ScheduledJobSummary, error) {
 	batchName, batchJobName, ok := parseBatchAndJobNameFromScheduledJobName(jobName)
 	if !ok {
 		return nil, jobNotFoundError(jobName)
 	}
+
 	radixBatch, err := kubequery.GetRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchName, "")
 	if err != nil {
 		return nil, err
@@ -90,12 +59,62 @@ func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobCo
 	if err != nil {
 		return nil, jobNotFoundError(batchJobName)
 	}
-	_, activeDeployJobComponent, batchDeployJobComponent, err := eh.getDeploymentMapAndDeployJobComponents(ctx, appName, envName, jobComponentName, radixBatch)
+
+	envRdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
-	return pointers.Ptr(models.GetScheduledJobSummary(radixBatch, radixBatchJob, &radixBatchStatus, batchDeployJobComponent)), nil
+	var activeRd, batchRd *radixv1.RadixDeployment
+	if rd, ok := slice.FindFirst(envRdList, predicate.IsActiveRadixDeployment); ok {
+		activeRd = &rd
+	}
+	if rd, ok := slice.FindFirst(envRdList, predicate.IsRadixDeploymentForRadixBatch(radixBatch)); ok {
+		batchRd = &rd
+	}
+
+	jobSummary := models.BuildScheduleJobSummary(radixBatch, radixBatchJob, batchRd, activeRd)
+	return jobSummary, nil
+}
+
+// GetBatches Get batches
+func (eh EnvironmentHandler) GetBatches(ctx context.Context, appName, envName, jobComponentName string) ([]deploymentmodels.ScheduledBatchSummary, error) {
+	radixBatches, err := kubequery.GetRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return nil, err
+	}
+	envRdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+
+	batchSummaryList := models.BuildScheduledBatchSummaryList(radixBatches, envRdList)
+	sort.SliceStable(batchSummaryList, func(i, j int) bool {
+		return utils.IsBefore(&batchSummaryList[j], &batchSummaryList[i])
+	})
+	return batchSummaryList, nil
+}
+
+// GetBatch Gets batch by name
+func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, jobComponentName, batchName string) (*deploymentmodels.ScheduledBatchSummary, error) {
+	radixBatch, err := kubequery.GetRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
+	if err != nil {
+		return nil, err
+	}
+
+	envRdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	var activeRd, batchRd *radixv1.RadixDeployment
+	if rd, ok := slice.FindFirst(envRdList, predicate.IsActiveRadixDeployment); ok {
+		activeRd = &rd
+	}
+	if rd, ok := slice.FindFirst(envRdList, predicate.IsRadixDeploymentForRadixBatch(radixBatch)); ok {
+		batchRd = &rd
+	}
+
+	batchSummary := models.BuildScheduledBatchSummary(radixBatch, batchRd, activeRd)
+	return batchSummary, nil
 }
 
 // RestartBatch Restart a scheduled or stopped batch
@@ -104,7 +123,7 @@ func (eh EnvironmentHandler) RestartBatch(ctx context.Context, appName, envName,
 	if err != nil {
 		return err
 	}
-	return jobSchedulerBatch.RestartRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobschedulerbatch.RestartRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // RestartJob Start running or stopped job by name
@@ -116,11 +135,11 @@ func (eh EnvironmentHandler) RestartJob(ctx context.Context, appName, envName, j
 	if _, err = findJobInRadixBatch(radixBatch, batchJobName); err != nil {
 		return err
 	}
-	return jobSchedulerBatch.RestartRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
+	return jobschedulerbatch.RestartRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
 }
 
 // CopyBatch Copy batch by name
-func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledBatchRequest environmentModels.ScheduledBatchRequest) (*deploymentModels.ScheduledBatchSummary, error) {
+func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jobComponentName, batchName string, scheduledBatchRequest environmentmodels.ScheduledBatchRequest) (*deploymentmodels.ScheduledBatchSummary, error) {
 	radixBatch, err := kubequery.GetRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
 	if err != nil {
 		return nil, err
@@ -129,16 +148,17 @@ func (eh EnvironmentHandler) CopyBatch(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus, err := jobSchedulerBatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, "", activeDeployJobComponent, scheduledBatchRequest.DeploymentName)
+	rb, err := jobschedulerbatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, "", scheduledBatchRequest.DeploymentName)
 	if err != nil {
 		return nil, err
 	}
-	summary := models.GetScheduledBatchSummary(radixBatch, radixBatchStatus, batchDeployJobComponent)
-	return &summary, nil
+
+	summary := models.BuildScheduledBatchSummary(rb, nil, nil)
+	return summary, nil
 }
 
 // CopyJob Copy job by name
-func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobComponentName, jobName string, scheduledJobRequest environmentModels.ScheduledJobRequest) (*deploymentModels.ScheduledJobSummary, error) {
+func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobComponentName, jobName string, scheduledJobRequest environmentmodels.ScheduledJobRequest) (*deploymentmodels.ScheduledJobSummary, error) {
 	radixBatch, batchJobName, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
 	if err != nil {
 		return nil, err
@@ -147,7 +167,7 @@ func (eh EnvironmentHandler) CopyJob(ctx context.Context, appName, envName, jobC
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus, err := jobSchedulerBatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName, activeDeployJobComponent, scheduledJobRequest.DeploymentName)
+	radixBatchStatus, err := jobschedulerbatch.CopyRadixBatchOrJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName, activeDeployJobComponent, scheduledJobRequest.DeploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +184,7 @@ func (eh EnvironmentHandler) StopBatch(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return err
 	}
-	return jobSchedulerBatch.StopRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobschedulerbatch.StopRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // StopJob Stop job by name
@@ -176,7 +196,7 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 	if _, err = findJobInRadixBatch(radixBatch, batchJobName); err != nil {
 		return err
 	}
-	return jobSchedulerBatch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
+	return jobschedulerbatch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
 }
 
 // DeleteBatch Delete batch by name
@@ -185,7 +205,7 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 	if err != nil {
 		return err
 	}
-	return jobSchedulerBatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobschedulerbatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // DeleteJob Delete a job by name
@@ -198,7 +218,7 @@ func (eh EnvironmentHandler) DeleteJob(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return err
 	}
-	return jobSchedulerBatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobschedulerbatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
 }
 
 // GetJobPayload Gets job payload
@@ -219,17 +239,17 @@ func (eh EnvironmentHandler) GetJobPayload(ctx context.Context, appName, envName
 	if radixBatchJob.PayloadSecretRef == nil {
 		return io.NopCloser(&bytes.Buffer{}), nil
 	}
-	namespace := operatorUtils.GetEnvironmentNamespace(appName, envName)
+	namespace := operatorutils.GetEnvironmentNamespace(appName, envName)
 	secret, err := eh.accounts.ServiceAccount.Client.CoreV1().Secrets(namespace).Get(ctx, radixBatchJob.PayloadSecretRef.Name, metav1.GetOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
-			return nil, environmentModels.ScheduledJobPayloadNotFoundError(appName, jobName)
+			return nil, environmentmodels.ScheduledJobPayloadNotFoundError(appName, jobName)
 		}
 		return nil, err
 	}
 	payload, ok := secret.Data[radixBatchJob.PayloadSecretRef.Key]
 	if !ok {
-		return nil, environmentModels.ScheduledJobPayloadNotFoundError(appName, jobName)
+		return nil, environmentmodels.ScheduledJobPayloadNotFoundError(appName, jobName)
 	}
 	return io.NopCloser(bytes.NewReader(payload)), nil
 }
@@ -295,20 +315,21 @@ func (eh EnvironmentHandler) getDeploymentMapAndDeployJobComponents(ctx context.
 		return nil, nil, nil, err
 	}
 	batchDeployJobComponent := models.GetBatchDeployJobComponent(radixBatch.Spec.RadixDeploymentJobRef.Name, jobComponentName, radixDeploymentsMap)
-	if err != nil && !kubeerrors.IsNotFound(err) {
-		return nil, nil, nil, err
-	}
 	return radixDeploymentsMap, activeDeployJobComponent, batchDeployJobComponent, nil
 }
 
 func (eh EnvironmentHandler) getDeploymentMapAndActiveDeployJobComponent(ctx context.Context, appName string, envName string, jobComponentName string) (map[string]radixv1.RadixDeployment, *radixv1.RadixDeployJobComponent, error) {
-	radixDeploymentsMap, err := kubequery.GetRadixDeploymentsMapForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		return nil, nil, err
 	}
-	activeRadixDeployJobComponent, err := getActiveDeployJobComponent(appName, envName, jobComponentName, radixDeploymentsMap)
+	rdMap := slice.Reduce(rdList, make(map[string]radixv1.RadixDeployment), func(acc map[string]radixv1.RadixDeployment, rd radixv1.RadixDeployment) map[string]radixv1.RadixDeployment {
+		acc[rd.Name] = rd
+		return acc
+	})
+	activeRadixDeployJobComponent, err := getActiveDeployJobComponent(appName, envName, jobComponentName, rdMap)
 	if err != nil {
 		return nil, nil, err
 	}
-	return radixDeploymentsMap, activeRadixDeployJobComponent, nil
+	return rdMap, activeRadixDeployJobComponent, nil
 }

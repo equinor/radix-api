@@ -15,6 +15,13 @@ func Test_IsActiveRadixDeployment(t *testing.T) {
 	assert.False(t, IsActiveRadixDeployment(radixv1.RadixDeployment{}))
 }
 
+func Test_IsRadixDeploymentForAppAndEnv(t *testing.T) {
+	sut := IsRadixDeploymentForAppAndEnv("app", "env")
+	assert.True(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "app", Environment: "env"}}))
+	assert.False(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "other-app", Environment: "env"}}))
+	assert.False(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "app", Environment: "other-env"}}))
+}
+
 func Test_IsNotOrphanEnvironment(t *testing.T) {
 	assert.True(t, IsNotOrphanEnvironment(radixv1.RadixEnvironment{}))
 	assert.True(t, IsNotOrphanEnvironment(radixv1.RadixEnvironment{Status: radixv1.RadixEnvironmentStatus{Orphaned: false, OrphanedTimestamp: nil}}))
@@ -28,7 +35,7 @@ func Test_IsOrphanEnvironment(t *testing.T) {
 }
 
 func Test_IsBatchJobStatusForBatchJob(t *testing.T) {
-	sut := IsBatchJobStatusForBatchJob(radixv1.RadixBatchJob{Name: "jobname"})
+	sut := IsBatchJobStatusForJobName("jobname")
 	assert.True(t, sut(radixv1.RadixBatchJobStatus{Name: "jobname"}))
 	assert.False(t, sut(radixv1.RadixBatchJobStatus{Name: "otherjobname"}))
 }

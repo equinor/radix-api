@@ -13,7 +13,7 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 	var envList []*environmentModels.EnvironmentSummary
 
 	getActiveDeploymentSummary := func(appName, envName string, rds []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
-		if activeRd, ok := GetActiveDeploymentForAppEnv(appName, envName, rds); ok {
+		if activeRd, ok := slice.FindFirst(rds, predicate.MatchAll(predicate.IsRadixDeploymentForAppAndEnv(appName, envName), predicate.IsActiveRadixDeployment)); ok {
 			return BuildDeploymentSummary(&activeRd, rr, rjList)
 		}
 		return nil

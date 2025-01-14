@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/equinor/radix-common/net/http"
-	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -16,24 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func GetRadixBatchesForJobComponent(ctx context.Context, client radixclient.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType) ([]radixv1.RadixBatch, error) {
-	namespace := operatorutils.GetEnvironmentNamespace(appName, envName)
-	selector := radixlabels.Merge(
-		radixlabels.ForApplicationName(appName),
-		radixlabels.ForComponentName(jobComponentName),
-		radixlabels.ForBatchType(batchType),
-	)
-
-	batches, err := client.RadixV1().RadixBatches(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, err
-	}
-
-	return batches.Items, nil
-}
-
 // GetRadixBatches Get Radix batches
-func GetRadixBatches(ctx context.Context, radixClient radixclient.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType) ([]*radixv1.RadixBatch, error) {
+func GetRadixBatches(ctx context.Context, radixClient radixclient.Interface, appName, envName, jobComponentName string, batchType kube.RadixBatchType) ([]radixv1.RadixBatch, error) {
 	namespace := operatorutils.GetEnvironmentNamespace(appName, envName)
 	selector := radixlabels.Merge(
 		radixlabels.ForApplicationName(appName),
@@ -44,7 +27,7 @@ func GetRadixBatches(ctx context.Context, radixClient radixclient.Interface, app
 	if err != nil {
 		return nil, err
 	}
-	return slice.PointersOf(radixBatchList.Items).([]*radixv1.RadixBatch), nil
+	return radixBatchList.Items, nil
 }
 
 // GetRadixBatch Get Radix batch

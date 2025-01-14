@@ -5,6 +5,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
+	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -29,7 +30,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 		buildFromBranch = raEnv.Build.From
 	}
 
-	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
+	if activeRd, ok := slice.FindFirst(rdList, predicate.MatchAll(predicate.IsRadixDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName), predicate.IsActiveRadixDeployment)); ok {
 		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, rjList, certs, certRequests, tlsValidator, scaledObjects)
 		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 		if len(activeDeployment.BuiltFromBranch) > 0 {

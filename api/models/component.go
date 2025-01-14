@@ -70,7 +70,7 @@ func buildComponent(
 	if rd.Status.ActiveTo.IsZero() {
 		builder.WithPodNames(slice.Map(componentPods, func(pod corev1.Pod) string { return pod.Name }))
 		builder.WithRadixEnvironmentVariables(getRadixEnvironmentVariables(componentPods))
-		builder.WithReplicaSummaryList(BuildReplicaSummaryList(componentPods, lastEventWarnings))
+		builder.WithReplicaSummaryList(buildReplicaSummaryListFromPods(componentPods, lastEventWarnings))
 		builder.WithStatus(deploymentModels.ComponentStatusFromDeployment(radixComponent, kd, rd))
 		builder.WithAuxiliaryResource(getAuxiliaryResources(rd, radixComponent, deploymentList, podList, lastEventWarnings))
 	}

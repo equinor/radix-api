@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_GetRadixBatchesForJobComponent(t *testing.T) {
+func Test_GetRadixBatches(t *testing.T) {
 	app, env, comp := "app1", "env1", "c1"
 
 	ns := func(app, env string) string { return fmt.Sprintf("%s-%s", app, env) }
@@ -75,13 +75,13 @@ func Test_GetRadixBatchesForJobComponent(t *testing.T) {
 	require.NoError(t, applyRb(&unmatched5))
 
 	// Get batches of type job
-	actual, err := kubequery.GetRadixBatchesForJobComponent(context.Background(), client, app, env, comp, kube.RadixBatchTypeJob)
+	actual, err := kubequery.GetRadixBatches(context.Background(), client, app, env, comp, kube.RadixBatchTypeJob)
 	require.NoError(t, err)
 	expected := []radixv1.RadixBatch{matchjob1, matchjob2}
 	assert.ElementsMatch(t, expected, actual)
 
 	// Get batches of type batch
-	actual, err = kubequery.GetRadixBatchesForJobComponent(context.Background(), client, app, env, comp, kube.RadixBatchTypeBatch)
+	actual, err = kubequery.GetRadixBatches(context.Background(), client, app, env, comp, kube.RadixBatchTypeBatch)
 	require.NoError(t, err)
 	expected = []radixv1.RadixBatch{matchbatch1}
 	assert.ElementsMatch(t, expected, actual)
