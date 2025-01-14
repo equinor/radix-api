@@ -1341,13 +1341,13 @@ func Test_GetBatch_JobsListStatus_StopIsTrue(t *testing.T) {
 		return assertMapped{Name: job.Name, Status: job.Status}
 	})
 	expected := []assertMapped{
-		{Name: anyBatchName + "-no1", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no2", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no3", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no4", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopping)},
-		{Name: anyBatchName + "-no5", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusSucceeded)},
-		{Name: anyBatchName + "-no6", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusFailed)},
-		{Name: anyBatchName + "-no7", Status: utils.GetBatchJobStatusByJobApiStatus(v1.RadixBatchJobApiStatusStopped)},
+		{Name: anyBatchName + "-no1", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no2", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no3", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no4", Status: deploymentModels.ScheduledBatchJobStatusStopping},
+		{Name: anyBatchName + "-no5", Status: deploymentModels.ScheduledBatchJobStatusSucceeded},
+		{Name: anyBatchName + "-no6", Status: deploymentModels.ScheduledBatchJobStatusFailed},
+		{Name: anyBatchName + "-no7", Status: deploymentModels.ScheduledBatchJobStatusStopped},
 	}
 	assert.ElementsMatch(t, expected, actualMapped)
 }

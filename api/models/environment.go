@@ -9,6 +9,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -30,7 +31,7 @@ func BuildEnvironment(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 		buildFromBranch = raEnv.Build.From
 	}
 
-	if activeRd, ok := slice.FindFirst(rdList, predicate.MatchAll(predicate.IsRadixDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName), predicate.IsActiveRadixDeployment)); ok {
+	if activeRd, ok := slice.FindFirst(rdList, predicate.MatchAll(predicate.IsRadixDeploymentInNamespace(operatorutils.GetEnvironmentNamespace(ra.Name, re.Spec.EnvName)), predicate.IsActiveRadixDeployment)); ok {
 		activeDeployment = BuildDeployment(rr, ra, &activeRd, deploymentList, podList, hpaList, secretList, eventList, rjList, certs, certRequests, tlsValidator, scaledObjects)
 		secrets = BuildSecrets(secretList, secretProviderClassList, &activeRd)
 		if len(activeDeployment.BuiltFromBranch) > 0 {

@@ -15,11 +15,10 @@ func Test_IsActiveRadixDeployment(t *testing.T) {
 	assert.False(t, IsActiveRadixDeployment(radixv1.RadixDeployment{}))
 }
 
-func Test_IsRadixDeploymentForAppAndEnv(t *testing.T) {
-	sut := IsRadixDeploymentForAppAndEnv("app", "env")
-	assert.True(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "app", Environment: "env"}}))
-	assert.False(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "other-app", Environment: "env"}}))
-	assert.False(t, sut(radixv1.RadixDeployment{Spec: radixv1.RadixDeploymentSpec{AppName: "app", Environment: "other-env"}}))
+func Test_IsRadixDeploymentInNamespace(t *testing.T) {
+	sut := IsRadixDeploymentInNamespace("anyns")
+	assert.True(t, sut(radixv1.RadixDeployment{ObjectMeta: metav1.ObjectMeta{Namespace: "anyns"}}))
+	assert.False(t, sut(radixv1.RadixDeployment{ObjectMeta: metav1.ObjectMeta{Namespace: "otherns"}}))
 }
 
 func Test_IsNotOrphanEnvironment(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 // BuildEnvironmentSummaryList builds a list of EnvironmentSummary models.
@@ -13,7 +14,7 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 	var envList []*environmentModels.EnvironmentSummary
 
 	getActiveDeploymentSummary := func(appName, envName string, rds []radixv1.RadixDeployment) *deploymentModels.DeploymentSummary {
-		if activeRd, ok := slice.FindFirst(rds, predicate.MatchAll(predicate.IsRadixDeploymentForAppAndEnv(appName, envName), predicate.IsActiveRadixDeployment)); ok {
+		if activeRd, ok := slice.FindFirst(rds, predicate.MatchAll(predicate.IsRadixDeploymentInNamespace(utils.GetEnvironmentNamespace(appName, envName)), predicate.IsActiveRadixDeployment)); ok {
 			return BuildDeploymentSummary(&activeRd, rr, rjList)
 		}
 		return nil
