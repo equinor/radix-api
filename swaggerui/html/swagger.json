@@ -3980,6 +3980,54 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/utilization": {
+      "get": {
+        "tags": [
+          "environment"
+        ],
+        "summary": "Gets max resources used by the application",
+        "operationId": "GetEnvironmentResourcesUtilization",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of the application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of the application environment",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/jobs": {
       "get": {
         "tags": [
@@ -5150,71 +5198,6 @@
         }
       }
     },
-    "/applications/{appName}/resources": {
-      "get": {
-        "tags": [
-          "application"
-        ],
-        "summary": "Gets used resources for the application",
-        "operationId": "getResources",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Name of the application",
-            "name": "appName",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "Name of the application environment",
-            "name": "environment",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "description": "Name of the application component in an environment",
-            "name": "component",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "description": "Duration of the period, default is 30d (30 days). Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
-            "name": "duration",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "description": "End time-point of the period in the past, default is now. Example 10m, 1h, 2d, 3w, where m-minutes, h-hours, d-days, w-weeks",
-            "name": "since",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
-            "name": "Impersonate-User",
-            "in": "header"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
-            "name": "Impersonate-Group",
-            "in": "header"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful trigger pipeline",
-            "schema": {
-              "$ref": "#/definitions/UsedResources"
-            }
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
     "/applications/{appName}/restart": {
       "post": {
         "tags": [
@@ -5332,6 +5315,47 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/applications/{appName}/utilization": {
+      "get": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Gets max resources used by the application",
+        "operationId": "GetApplicationResourcesUtilization",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of the application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful trigger pipeline",
+            "schema": {
+              "$ref": "#/definitions/ReplicaResourcesUtilizationResponse"
+            }
           },
           "404": {
             "description": "Not found"
@@ -6155,6 +6179,19 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
+    "ComponentUtilization": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ReplicaUtilization"
+          },
+          "x-go-name": "Replicas"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "DNSAlias": {
       "description": "DNSAlias holds public DNS alias information",
       "type": "object",
@@ -6651,6 +6688,19 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/environments/models"
+    },
+    "EnvironmentUtilization": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ComponentUtilization"
+          },
+          "x-go-name": "Components"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "Event": {
       "description": "Event holds information about Kubernetes events",
@@ -7826,6 +7876,20 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
+    "ReplicaResourcesUtilizationResponse": {
+      "description": "ReplicaResourcesUtilizationResponse holds information about resource utilization",
+      "type": "object",
+      "properties": {
+        "environments": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/EnvironmentUtilization"
+          },
+          "x-go-name": "Environments"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
     "ReplicaStatus": {
       "description": "ReplicaStatus describes the status of a component container inside a pod",
       "type": "object",
@@ -7926,12 +7990,6 @@
           "format": "int32",
           "x-go-name": "RestartCount"
         },
-        "startTime": {
-          "description": "The time at which the batch job's pod startedAt",
-          "type": "string",
-          "format": "date-time",
-          "x-go-name": "StartTime"
-        },
         "statusMessage": {
           "description": "StatusMessage provides message describing the status of a component container inside a pod",
           "type": "string",
@@ -7953,6 +8011,42 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+    },
+    "ReplicaUtilization": {
+      "type": "object",
+      "required": [
+        "memoryRequests",
+        "memoryMaximum",
+        "cpuRequests",
+        "cpuAverage"
+      ],
+      "properties": {
+        "cpuAverage": {
+          "description": "Average CPU Used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CpuAverage"
+        },
+        "cpuRequests": {
+          "description": "Cpu Requests",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CpuRequests"
+        },
+        "memoryMaximum": {
+          "description": "Max memory used",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MemoryMaximum"
+        },
+        "memoryRequests": {
+          "description": "Memory Requests",
+          "type": "number",
+          "format": "double",
+          "x-go-name": "MemoryRequests"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "ResourceRequirements": {
       "description": "ResourceRequirements Requirements of resources for pods",
@@ -8047,20 +8141,11 @@
           },
           "x-go-name": "JobList"
         },
-        "message": {
-          "description": "Deprecated: Message of a status, if any, of the job",
-          "type": "string",
-          "x-go-name": "Message",
-          "example": "\"Error occurred\""
-        },
         "name": {
           "description": "Name of the scheduled batch",
           "type": "string",
           "x-go-name": "Name",
           "example": "batch-20181029135644-algpv-6hznh"
-        },
-        "replica": {
-          "$ref": "#/definitions/ReplicaSummary"
         },
         "started": {
           "description": "Started timestamp",
@@ -8553,71 +8638,6 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
-    },
-    "UsedResource": {
-      "description": "UsedResource holds information about used resource",
-      "type": "object",
-      "properties": {
-        "avg": {
-          "description": "Avg Average resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Avg",
-          "example": 0.00023
-        },
-        "max": {
-          "description": "Max resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Max",
-          "example": 0.00037
-        },
-        "min": {
-          "description": "Min resource used",
-          "type": "number",
-          "format": "double",
-          "x-go-name": "Min",
-          "example": 0.00012
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
-    "UsedResources": {
-      "description": "UsedResources holds information about used resources",
-      "type": "object",
-      "required": [
-        "from",
-        "to"
-      ],
-      "properties": {
-        "cpu": {
-          "$ref": "#/definitions/UsedResource"
-        },
-        "from": {
-          "description": "From timestamp",
-          "type": "string",
-          "x-go-name": "From",
-          "example": "2006-01-02T15:04:05Z"
-        },
-        "memory": {
-          "$ref": "#/definitions/UsedResource"
-        },
-        "to": {
-          "description": "To timestamp",
-          "type": "string",
-          "x-go-name": "To",
-          "example": "2006-01-03T15:04:05Z"
-        },
-        "warnings": {
-          "description": "Warning messages",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "Warnings"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "X509Certificate": {
       "description": "X509Certificate holds information about a X509 certificate",

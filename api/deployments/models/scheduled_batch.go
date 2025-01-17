@@ -137,17 +137,6 @@ type ScheduledBatchSummary struct {
 	// example: Waiting
 	Status ScheduledBatchJobStatus `json:"status"`
 
-	// Deprecated: Message of a status, if any, of the job
-	//
-	// required: false
-	// example: "Error occurred"
-	Message string `json:"message,omitempty"`
-
-	// Deprecated: ReplicaSummary
-	//
-	// required: false
-	Replica *ReplicaSummary `json:"replica,omitempty"`
-
 	// TotalJobCount count of jobs, requested to be scheduled by a batch
 	//
 	// required: true

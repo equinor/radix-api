@@ -173,7 +173,7 @@ func GetReplicaSummaryByJobPodStatus(radixBatchJob radixv1.RadixBatchJob, jobPod
 		Status:        models.ReplicaStatus{Status: getReplicaStatusByPodStatus(jobPodStatus.Phase)},
 	}
 	if jobPodStatus.StartTime != nil {
-		summary.StartTime = &jobPodStatus.StartTime.Time
+		summary.ContainerStarted = &jobPodStatus.StartTime.Time
 	}
 	if jobPodStatus.EndTime != nil {
 		summary.EndTime = &jobPodStatus.EndTime.Time

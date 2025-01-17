@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/equinor/radix-api/api/metrics"
+	"github.com/equinor/radix-api/api/metrics/prometheus"
 	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	token "github.com/equinor/radix-api/api/utils/token"
@@ -160,13 +161,13 @@ func setupLogger(logLevelStr string, prettyPrint bool) {
 func getControllers(config config.Config) ([]models.Controller, error) {
 	buildStatus := build_models.NewPipelineBadge()
 	applicatinoFactory := applications.NewApplicationHandlerFactory(config)
-	prometheusClient, err := metrics.NewPrometheusClient(config.PrometheusUrl)
+	prometheusClient, err := prometheus.NewPrometheusClient(config.PrometheusUrl)
 	if err != nil {
 		return nil, err
 	}
-	prometheusHandler := metrics.NewPrometheusHandler(prometheusClient)
+	metricsHandler := metrics.NewHandler(prometheusClient)
 	return []models.Controller{
-		applications.NewApplicationController(nil, applicatinoFactory, prometheusHandler),
+		applications.NewApplicationController(nil, applicatinoFactory, metricsHandler),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),
