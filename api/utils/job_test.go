@@ -28,6 +28,7 @@ func TestIsBefore(t *testing.T) {
 	job1.Created = createTime("2019-08-26T12:56:48Z")
 	job2.Created = createTime("2019-08-26T12:56:48Z")
 	job1.Started = pointers.Ptr(createTime("2019-08-26T12:56:51Z"))
+
 	job2.Started = pointers.Ptr(createTime("2019-08-26T12:56:52Z"))
 	assert.True(t, IsBefore(&job1, &job2))
 
