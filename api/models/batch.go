@@ -107,7 +107,7 @@ func buildScheduleJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radi
 	}
 	jobSchedulerBatchStatus := jobschedulerbatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
 	jobSchedulerBatchJobName := fmt.Sprintf("%s-%s", radixBatch.GetName(), radixBatchJob.Name)
-	if jobSchedulerBatchJobStatus, ok := slice.FindFirst(jobSchedulerBatchStatus.JobStatuses, func(js jobschedulermodels.RadixBatchJobStatus) bool {
+	if jobSchedulerBatchJobStatus, ok := slice.FindFirst(jobSchedulerBatchStatus.JobStatuses, func(js jobschedulermodels.Job) bool {
 		return js.Name == jobSchedulerBatchJobName
 	}); ok {
 		jobSummary.Status = mapScheduledBatchJobStatus(jobSchedulerBatchJobStatus.Status)
