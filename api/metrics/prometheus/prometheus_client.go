@@ -59,7 +59,7 @@ func (c *Client) GetMemoryRequests(ctx context.Context, namespace string) ([]met
 
 // GetMemoryMaximum returns a list of all pods with their maximum Memory usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
 func (c *Client) GetMemoryMaximum(ctx context.Context, namespace, duration string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_usage_bytes{container!="", namespace=~%q} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
+	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_working_set_bytes{container!="", namespace=~%q} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
 }
 
 func (c *Client) queryVector(ctx context.Context, query string) ([]metrics.LabeledResults, error) {
