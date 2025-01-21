@@ -7,7 +7,7 @@ toolchain go1.22.5
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
 	github.com/cert-manager/cert-manager v1.15.4
-	github.com/equinor/radix-common v1.9.6
+	github.com/equinor/radix-common v1.9.7
 	github.com/equinor/radix-job-scheduler v1.13.1
 	github.com/equinor/radix-operator v1.68.4
 	github.com/evanphx/json-patch/v5 v5.9.0
