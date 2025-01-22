@@ -2004,7 +2004,7 @@ func Test_GetUsedResources(t *testing.T) {
 			expectedUtilization := applicationModels.NewPodResourcesUtilizationResponse()
 			expectedUtilization.SetCpuRequests("dev", "web", "web-abcd-1", 1)
 
-			cpuReqs := []metrics.LabeledResults{{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"}}
+			cpuReqs := []metrics.LabeledResults{{Value: 1, Environment: "dev", Component: "web", Pod: "web-abcd-1"}}
 
 			validator := authnmock.NewMockValidatorInterface(ctrl)
 			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)

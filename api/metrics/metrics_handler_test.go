@@ -30,42 +30,36 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 			appName: appName1,
 			envName: "dev",
 		},
-		{
-			name:    "Requested with arguments",
-			appName: appName1,
-			envName: "dev",
-		},
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock.NewMockClient(ctrl)
-			expectedNamespace := getExpectedNamespace(ts.appName, ts.envName)
 
 			cpuReqs := []metrics.LabeledResults{
-				{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 2, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 1, Environment: "dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 2, Environment: "dev", Component: "web", Pod: "web-abcd-2"},
 			}
 			cpuAvg := []metrics.LabeledResults{
-				{Value: 0.5, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 0.7, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 0.5, Environment: "dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 0.7, Environment: "dev", Component: "web", Pod: "web-abcd-2"},
 			}
 			memReqs := []metrics.LabeledResults{
-				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 200, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 100, Environment: "dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 200, Environment: "dev", Component: "web", Pod: "web-abcd-2"},
 			}
 			MemMax := []metrics.LabeledResults{
-				{Value: 50, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 50, Environment: "dev", Component: "web", Pod: "web-abcd-1"},
+				{Value: 100, Environment: "dev", Component: "web", Pod: "web-abcd-2"},
 			}
 
-			client.EXPECT().GetCpuRequests(gomock.Any(), expectedNamespace).Times(1).Return(cpuReqs, nil)
-			client.EXPECT().GetCpuAverage(gomock.Any(), expectedNamespace, "24h").Times(1).Return(cpuAvg, nil)
-			client.EXPECT().GetMemoryRequests(gomock.Any(), expectedNamespace).Times(1).Return(memReqs, nil)
-			client.EXPECT().GetMemoryMaximum(gomock.Any(), expectedNamespace, "24h").Times(1).Return(MemMax, nil)
+			client.EXPECT().GetCpuRequests(gomock.Any(), ts.appName, ts.envName).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAverage(gomock.Any(), ts.appName, ts.envName, "24h").Times(1).Return(cpuAvg, nil)
+			client.EXPECT().GetMemoryRequests(gomock.Any(), ts.appName, ts.envName).Times(1).Return(memReqs, nil)
+			client.EXPECT().GetMemoryMaximum(gomock.Any(), ts.appName, ts.envName, "24h").Times(1).Return(MemMax, nil)
 
 			metricsHandler := metrics.NewHandler(client)
-			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
+			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), ts.appName, ts.envName)
 			assert.NoError(t, err)
 
 			require.NotNil(t, response)

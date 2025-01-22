@@ -22,7 +22,7 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 		mock.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
 			func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
 
-				assert.Contains(t, query, "namespace1")
+				assert.Contains(t, query, "app0-.*")
 
 				return nil, nil, nil
 			},
@@ -30,7 +30,8 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 		mock.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
 			func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
 
-				assert.Contains(t, query, "namespace2")
+				assert.Contains(t, query, "app1")
+				assert.Contains(t, query, "dev1")
 
 				return nil, nil, nil
 			},
@@ -38,7 +39,17 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 		mock.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
 			func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
 
-				assert.Contains(t, query, "namespace3")
+				assert.Contains(t, query, "app2")
+				assert.Contains(t, query, "dev2")
+
+				return nil, nil, nil
+			},
+		),
+		mock.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
+			func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+
+				assert.Contains(t, query, "app3")
+				assert.Contains(t, query, "dev3")
 				assert.Contains(t, query, "24h")
 
 				return nil, nil, nil
@@ -47,7 +58,8 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 		mock.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
 			func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
 
-				assert.Contains(t, query, "namespace4")
+				assert.Contains(t, query, "app4")
+				assert.Contains(t, query, "dev4")
 				assert.Contains(t, query, "36h")
 
 				return nil, nil, nil
@@ -56,8 +68,9 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 	)
 
 	client := prometheus.NewClient(mock)
-	_, _ = client.GetCpuRequests(context.Background(), "namespace1")
-	_, _ = client.GetMemoryRequests(context.Background(), "namespace2")
-	_, _ = client.GetCpuAverage(context.Background(), "namespace3", "24h")
-	_, _ = client.GetMemoryMaximum(context.Background(), "namespace4", "36h")
+	_, _ = client.GetCpuRequests(context.Background(), "app0", "")
+	_, _ = client.GetCpuRequests(context.Background(), "app1", "dev1")
+	_, _ = client.GetMemoryRequests(context.Background(), "app2", "dev2")
+	_, _ = client.GetCpuAverage(context.Background(), "app3", "dev3", "24h")
+	_, _ = client.GetMemoryMaximum(context.Background(), "app4", "dev4", "36h")
 }
