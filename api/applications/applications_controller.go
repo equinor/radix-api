@@ -1007,7 +1007,7 @@ func (ac *applicationController) TriggerPipelinePromote(accounts models.Accounts
 }
 
 // GetApplicationResourcesUtilization Gets used resources for the application
-func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) GetApplicationResourcesUtilization(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/utilization application GetApplicationResourcesUtilization
 	// ---
 	// summary: Gets max resources used by the application
@@ -1036,7 +1036,7 @@ func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Acc
 	//     description: "Not found"
 	appName := mux.Vars(r)["appName"]
 
-	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), appName, "")
+	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, "")
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
@@ -1046,7 +1046,7 @@ func (ac *applicationController) GetApplicationResourcesUtilization(_ models.Acc
 }
 
 // GetEnvironmentResourcesUtilization Gets used resources for the application
-func (ac *applicationController) GetEnvironmentResourcesUtilization(_ models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ac *applicationController) GetEnvironmentResourcesUtilization(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/environments/{envName}/utilization environment GetEnvironmentResourcesUtilization
 	// ---
 	// summary: Gets max resources used by the application
@@ -1081,7 +1081,7 @@ func (ac *applicationController) GetEnvironmentResourcesUtilization(_ models.Acc
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 
-	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), appName, envName)
+	utilization, err := ac.metricsHandler.GetReplicaResourcesUtilization(r.Context(), accounts.UserAccount.RadixClient, appName, envName)
 	if err != nil {
 		ac.ErrorResponse(w, r, err)
 		return

@@ -36,61 +36,61 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetCpuAverage mocks base method.
-func (m *MockClient) GetCpuAverage(ctx context.Context, appName, envName, duration string) ([]metrics.LabeledResults, error) {
+func (m *MockClient) GetCpuAverage(ctx context.Context, appName, envName string, compNames []string, duration string) ([]metrics.LabeledResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCpuAverage", ctx, appName, envName, duration)
+	ret := m.ctrl.Call(m, "GetCpuAverage", ctx, appName, envName, compNames, duration)
 	ret0, _ := ret[0].([]metrics.LabeledResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCpuAverage indicates an expected call of GetCpuAverage.
-func (mr *MockClientMockRecorder) GetCpuAverage(ctx, appName, envName, duration interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetCpuAverage(ctx, appName, envName, compNames, duration interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCpuAverage", reflect.TypeOf((*MockClient)(nil).GetCpuAverage), ctx, appName, envName, duration)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCpuAverage", reflect.TypeOf((*MockClient)(nil).GetCpuAverage), ctx, appName, envName, compNames, duration)
 }
 
 // GetCpuRequests mocks base method.
-func (m *MockClient) GetCpuRequests(ctx context.Context, appName, envName string) ([]metrics.LabeledResults, error) {
+func (m *MockClient) GetCpuRequests(ctx context.Context, appName, envName string, compNames []string) ([]metrics.LabeledResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCpuRequests", ctx, appName, envName)
+	ret := m.ctrl.Call(m, "GetCpuRequests", ctx, appName, envName, compNames)
 	ret0, _ := ret[0].([]metrics.LabeledResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCpuRequests indicates an expected call of GetCpuRequests.
-func (mr *MockClientMockRecorder) GetCpuRequests(ctx, appName, envName interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetCpuRequests(ctx, appName, envName, compNames interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCpuRequests", reflect.TypeOf((*MockClient)(nil).GetCpuRequests), ctx, appName, envName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCpuRequests", reflect.TypeOf((*MockClient)(nil).GetCpuRequests), ctx, appName, envName, compNames)
 }
 
 // GetMemoryMaximum mocks base method.
-func (m *MockClient) GetMemoryMaximum(ctx context.Context, appName, envName, duration string) ([]metrics.LabeledResults, error) {
+func (m *MockClient) GetMemoryMaximum(ctx context.Context, appName, envName string, compNames []string, duration string) ([]metrics.LabeledResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMemoryMaximum", ctx, appName, envName, duration)
+	ret := m.ctrl.Call(m, "GetMemoryMaximum", ctx, appName, envName, compNames, duration)
 	ret0, _ := ret[0].([]metrics.LabeledResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMemoryMaximum indicates an expected call of GetMemoryMaximum.
-func (mr *MockClientMockRecorder) GetMemoryMaximum(ctx, appName, envName, duration interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetMemoryMaximum(ctx, appName, envName, compNames, duration interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemoryMaximum", reflect.TypeOf((*MockClient)(nil).GetMemoryMaximum), ctx, appName, envName, duration)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemoryMaximum", reflect.TypeOf((*MockClient)(nil).GetMemoryMaximum), ctx, appName, envName, compNames, duration)
 }
 
 // GetMemoryRequests mocks base method.
-func (m *MockClient) GetMemoryRequests(ctx context.Context, appName, envName string) ([]metrics.LabeledResults, error) {
+func (m *MockClient) GetMemoryRequests(ctx context.Context, appName, envName string, compNames []string) ([]metrics.LabeledResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMemoryRequests", ctx, appName, envName)
+	ret := m.ctrl.Call(m, "GetMemoryRequests", ctx, appName, envName, compNames)
 	ret0, _ := ret[0].([]metrics.LabeledResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMemoryRequests indicates an expected call of GetMemoryRequests.
-func (mr *MockClientMockRecorder) GetMemoryRequests(ctx, appName, envName interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetMemoryRequests(ctx, appName, envName, compNames interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemoryRequests", reflect.TypeOf((*MockClient)(nil).GetMemoryRequests), ctx, appName, envName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemoryRequests", reflect.TypeOf((*MockClient)(nil).GetMemoryRequests), ctx, appName, envName, compNames)
 }

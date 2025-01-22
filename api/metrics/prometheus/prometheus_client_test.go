@@ -68,9 +68,9 @@ func TestArguemtsExistsInQuery(t *testing.T) {
 	)
 
 	client := prometheus.NewClient(mock)
-	_, _ = client.GetCpuRequests(context.Background(), "app0", "")
-	_, _ = client.GetCpuRequests(context.Background(), "app1", "dev1")
-	_, _ = client.GetMemoryRequests(context.Background(), "app2", "dev2")
-	_, _ = client.GetCpuAverage(context.Background(), "app3", "dev3", "24h")
-	_, _ = client.GetMemoryMaximum(context.Background(), "app4", "dev4", "36h")
+	_, _ = client.GetCpuRequests(context.Background(), "app0", "", nil)
+	_, _ = client.GetCpuRequests(context.Background(), "app1", "dev1", nil)
+	_, _ = client.GetMemoryRequests(context.Background(), "app2", "dev2", nil)
+	_, _ = client.GetCpuAverage(context.Background(), "app3", "dev3", nil, "24h")
+	_, _ = client.GetMemoryMaximum(context.Background(), "app4", "dev4", nil, "36h")
 }
