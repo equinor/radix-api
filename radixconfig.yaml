@@ -57,7 +57,7 @@ spec:
               memory: "100M"
             limits:
               cpu: "200m"
-              memory: "200M"
+              memory: "400Mi"
           variables:
             PIPELINE_IMG_TAG: "master-latest"
             TEKTON_IMG_TAG: "main-latest"
