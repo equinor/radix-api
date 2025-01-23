@@ -1968,10 +1968,6 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 }
 
 func Test_GetUsedResources(t *testing.T) {
-	const (
-		appName1 = "app-1"
-	)
-
 	type scenario struct {
 		name                       string
 		expectedError              error
@@ -1997,23 +1993,28 @@ func Test_GetUsedResources(t *testing.T) {
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			commonTestUtils, _, kubeClient, radixClient, kedaClient, _, secretProviderClient, certClient := setupTest(t, true, true)
-			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName(appName1))
+			_, _, kubeClient, radixClient, kedaClient, _, secretProviderClient, certClient := setupTest(t, true, true)
+
+			_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), builders.ARadixRegistration().BuildRR(), metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			ra := builders.ARadixApplication().BuildRA()
+			_, err = radixClient.RadixV1().RadixApplications(builders.GetAppNamespace(ra.GetName())).Create(context.Background(), ra, metav1.CreateOptions{})
 			require.NoError(t, err)
 
 			expectedUtilization := applicationModels.NewPodResourcesUtilizationResponse()
-			expectedUtilization.SetCpuRequests("dev", "web", "web-abcd-1", 1)
+			expectedUtilization.SetCpuRequests("test", "app", "app-abcd-1", 1)
 
-			cpuReqs := []metrics.LabeledResults{{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"}}
+			cpuReqs := []metrics.LabeledResults{{Value: 1, Environment: "test", Component: "app", Pod: "app-abcd-1"}}
 
 			validator := authnmock.NewMockValidatorInterface(ctrl)
 			validator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).Times(1).Return(controllertest.NewTestPrincipal(true), nil)
 
 			client := mock2.NewMockClient(ctrl)
-			client.EXPECT().GetCpuRequests(gomock.Any(), gomock.Any()).Times(1).Return(cpuReqs, nil)
-			client.EXPECT().GetCpuAverage(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemoryRequests(gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
-			client.EXPECT().GetMemoryMaximum(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, ts.expectedError)
+			client.EXPECT().GetCpuRequests(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAverage(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemoryRequests(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, nil)
+			client.EXPECT().GetMemoryMaximum(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]metrics.LabeledResults{}, ts.expectedError)
 			metricsHandler := metrics.NewHandler(client)
 
 			controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, validator,
@@ -2031,7 +2032,7 @@ func Test_GetUsedResources(t *testing.T) {
 				),
 			)
 
-			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/utilization", appName1))
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/utilization", ra.GetName()))
 			response := <-responseChannel
 			if ts.expectedError != nil {
 				assert.Equal(t, http.StatusBadRequest, response.Code)

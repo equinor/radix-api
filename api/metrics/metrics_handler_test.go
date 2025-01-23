@@ -6,16 +6,25 @@ import (
 
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/metrics/mock"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	appName1 = "app1"
+	appName1 = "anyapp"
 )
 
 func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
+	radixclient := radixfake.NewSimpleClientset()
+
+	ra := utils.ARadixApplication().BuildRA()
+	_, err := radixclient.RadixV1().RadixApplications(utils.GetAppNamespace(appName1)).Create(context.Background(), ra, v1.CreateOptions{})
+	require.NoError(t, err)
+
 	scenarios := []struct {
 		name    string
 		appName string
@@ -28,70 +37,57 @@ func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
 		{
 			name:    "Get utilization in specific environments",
 			appName: appName1,
-			envName: "dev",
-		},
-		{
-			name:    "Requested with arguments",
-			appName: appName1,
-			envName: "dev",
+			envName: "test",
 		},
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock.NewMockClient(ctrl)
-			expectedNamespace := getExpectedNamespace(ts.appName, ts.envName)
 
 			cpuReqs := []metrics.LabeledResults{
-				{Value: 1, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 2, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 1, Environment: "test", Component: "app", Pod: "app-abcd-1"},
+				{Value: 2, Environment: "test", Component: "app", Pod: "app-abcd-2"},
 			}
 			cpuAvg := []metrics.LabeledResults{
-				{Value: 0.5, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 0.7, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 0.5, Environment: "test", Component: "app", Pod: "app-abcd-1"},
+				{Value: 0.7, Environment: "test", Component: "app", Pod: "app-abcd-2"},
 			}
 			memReqs := []metrics.LabeledResults{
-				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 200, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 100, Environment: "test", Component: "app", Pod: "app-abcd-1"},
+				{Value: 200, Environment: "test", Component: "app", Pod: "app-abcd-2"},
 			}
 			MemMax := []metrics.LabeledResults{
-				{Value: 50, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-1"},
-				{Value: 100, Namespace: appName1 + "-dev", Component: "web", Pod: "web-abcd-2"},
+				{Value: 50, Environment: "test", Component: "app", Pod: "app-abcd-1"},
+				{Value: 100, Environment: "test", Component: "app", Pod: "app-abcd-2"},
 			}
 
-			client.EXPECT().GetCpuRequests(gomock.Any(), expectedNamespace).Times(1).Return(cpuReqs, nil)
-			client.EXPECT().GetCpuAverage(gomock.Any(), expectedNamespace, "24h").Times(1).Return(cpuAvg, nil)
-			client.EXPECT().GetMemoryRequests(gomock.Any(), expectedNamespace).Times(1).Return(memReqs, nil)
-			client.EXPECT().GetMemoryMaximum(gomock.Any(), expectedNamespace, "24h").Times(1).Return(MemMax, nil)
+			client.EXPECT().GetCpuRequests(gomock.Any(), ts.appName, ts.envName, []string{"app"}).Times(1).Return(cpuReqs, nil)
+			client.EXPECT().GetCpuAverage(gomock.Any(), ts.appName, ts.envName, []string{"app"}, "24h").Times(1).Return(cpuAvg, nil)
+			client.EXPECT().GetMemoryRequests(gomock.Any(), ts.appName, ts.envName, []string{"app"}).Times(1).Return(memReqs, nil)
+			client.EXPECT().GetMemoryMaximum(gomock.Any(), ts.appName, ts.envName, []string{"app"}, "24h").Times(1).Return(MemMax, nil)
 
 			metricsHandler := metrics.NewHandler(client)
-			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), appName1, ts.envName)
+			response, err := metricsHandler.GetReplicaResourcesUtilization(context.Background(), radixclient, ts.appName, ts.envName)
 			assert.NoError(t, err)
 
 			require.NotNil(t, response)
-			require.Contains(t, response.Environments, "dev")
-			require.Contains(t, response.Environments["dev"].Components, "web")
-			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-1")
-			assert.Contains(t, response.Environments["dev"].Components["web"].Replicas, "web-abcd-2")
+			require.Contains(t, response.Environments, "test")
+			require.Contains(t, response.Environments["test"].Components, "app")
+			assert.Contains(t, response.Environments["test"].Components["app"].Replicas, "app-abcd-1")
+			assert.Contains(t, response.Environments["test"].Components["app"].Replicas, "app-abcd-2")
 
-			assert.EqualValues(t, 1, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuRequests)
-			assert.EqualValues(t, 0.5, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].CpuAverage)
-			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemoryRequests)
-			assert.EqualValues(t, 50, response.Environments["dev"].Components["web"].Replicas["web-abcd-1"].MemoryMaximum)
+			assert.EqualValues(t, 1, response.Environments["test"].Components["app"].Replicas["app-abcd-1"].CpuRequests)
+			assert.EqualValues(t, 0.5, response.Environments["test"].Components["app"].Replicas["app-abcd-1"].CpuAverage)
+			assert.EqualValues(t, 100, response.Environments["test"].Components["app"].Replicas["app-abcd-1"].MemoryRequests)
+			assert.EqualValues(t, 50, response.Environments["test"].Components["app"].Replicas["app-abcd-1"].MemoryMaximum)
 
-			assert.EqualValues(t, 2, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuRequests)
-			assert.EqualValues(t, 0.7, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].CpuAverage)
-			assert.EqualValues(t, 200, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemoryRequests)
-			assert.EqualValues(t, 100, response.Environments["dev"].Components["web"].Replicas["web-abcd-2"].MemoryMaximum)
+			assert.EqualValues(t, 2, response.Environments["test"].Components["app"].Replicas["app-abcd-2"].CpuRequests)
+			assert.EqualValues(t, 0.7, response.Environments["test"].Components["app"].Replicas["app-abcd-2"].CpuAverage)
+			assert.EqualValues(t, 200, response.Environments["test"].Components["app"].Replicas["app-abcd-2"].MemoryRequests)
+			assert.EqualValues(t, 100, response.Environments["test"].Components["app"].Replicas["app-abcd-2"].MemoryMaximum)
 
 			assert.NotEmpty(t, response)
 		})
 	}
-}
-
-func getExpectedNamespace(appName, envName string) string {
-	if envName == "" {
-		return appName + "-.*"
-	}
-	return appName + "-" + envName
 }

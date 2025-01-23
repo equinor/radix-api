@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/utils/logs"
+	"github.com/equinor/radix-common/utils/slice"
 	prometheusApi "github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -18,6 +21,8 @@ import (
 type QueryAPI interface {
 	Query(ctx context.Context, query string, ts time.Time, opts ...prometheusV1.Option) (model.Value, prometheusV1.Warnings, error)
 }
+
+var ErrComponentsIsRequired = errors.New("components is required and must not be empty")
 
 type Client struct {
 	api QueryAPI
@@ -42,27 +47,55 @@ func NewClient(api QueryAPI) metrics.Client {
 	return &Client{api: api}
 }
 
-// GetCpuRequests returns a list of all pods with their CPU requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetCpuRequests(ctx context.Context, namespace string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~%q,resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace))
+// GetCpuRequests returns a list of all pods with their CPU requets. The envName can be empty to return all environments.
+func (c *Client) GetCpuRequests(ctx context.Context, appName, envName string, compNames []string) ([]metrics.LabeledResults, error) {
+	namespace := getNamespace(appName, envName)
+	compSelector := getCompSelector(compNames)
+	query := fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~%q,resource="cpu"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component=~%q, label_radix_app=%q}`, namespace, compSelector, appName)
+	return c.queryVector(ctx, appName, query)
 }
 
-// GetCpuAverage returns a list of all pods with their average CPU usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetCpuAverage(ctx context.Context, namespace, duration string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (avg_over_time(irate(container_cpu_usage_seconds_total{container!="", namespace=~%q}[1m]) [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
+// GetCpuAverage returns a list of all pods with their average CPU usage. The envName can be empty to return all environments.
+func (c *Client) GetCpuAverage(ctx context.Context, appName, envName string, compNames []string, duration string) ([]metrics.LabeledResults, error) {
+	namespace := getNamespace(appName, envName)
+	compSelector := getCompSelector(compNames)
+	query := fmt.Sprintf(`max by(namespace, container, pod) (avg_over_time(irate(container_cpu_usage_seconds_total{container!="", namespace=~%q}[1m]) [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component=~%q, label_radix_app=%q}`, namespace, duration, compSelector, appName)
+	return c.queryVector(ctx, appName, query)
 }
 
-// GetMemoryRequests returns a list of all pods with their Memory requets. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetMemoryRequests(ctx context.Context, namespace string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~%q,resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace))
+// GetMemoryRequests returns a list of all pods with their Memory requets. The envName can be empty to return all environments.
+func (c *Client) GetMemoryRequests(ctx context.Context, appName, envName string, compNames []string) ([]metrics.LabeledResults, error) {
+	namespace := getNamespace(appName, envName)
+	compSelector := getCompSelector(compNames)
+	query := fmt.Sprintf(`max by(namespace, container, pod) (kube_pod_container_resource_requests{container!="", namespace=~%q,resource="memory"}) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component=~%q, label_radix_app=%q}`, namespace, compSelector, appName)
+	return c.queryVector(ctx, appName, query)
 }
 
-// GetMemoryMaximum returns a list of all pods with their maximum Memory usage. The Namespace can be regex. It will return the labels label_radix_component, namespace, pod and container.
-func (c *Client) GetMemoryMaximum(ctx context.Context, namespace, duration string) ([]metrics.LabeledResults, error) {
-	return c.queryVector(ctx, fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_working_set_bytes{container!="", namespace=~%q} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component!=""}`, namespace, duration))
+// GetMemoryMaximum returns a list of all pods with their maximum Memory usage. The envName can be empty to return all environments.
+func (c *Client) GetMemoryMaximum(ctx context.Context, appName, envName string, compNames []string, duration string) ([]metrics.LabeledResults, error) {
+	namespace := getNamespace(appName, envName)
+	compSelector := getCompSelector(compNames)
+	query := fmt.Sprintf(`max by(namespace, container, pod) (max_over_time(container_memory_working_set_bytes{container!="", namespace=~%q} [%s:])) * on(pod) group_left(label_radix_component) kube_pod_labels{label_radix_component=~%q, label_radix_app=%q}`, namespace, duration, compSelector, appName)
+	return c.queryVector(ctx, appName, query)
 }
 
-func (c *Client) queryVector(ctx context.Context, query string) ([]metrics.LabeledResults, error) {
+func getNamespace(appName, envName string) string {
+	appName = regexp.QuoteMeta(appName)
+	envName = regexp.QuoteMeta(envName)
+
+	if envName == "" {
+		return appName + "-.*"
+	}
+
+	return appName + "-" + envName
+}
+
+func getCompSelector(compNames []string) string {
+	names := slice.Map(compNames, func(compName string) string { return regexp.QuoteMeta(compName) })
+	return strings.Join(names, "|")
+}
+
+func (c *Client) queryVector(ctx context.Context, appName, query string) ([]metrics.LabeledResults, error) {
 	response, w, err := c.api.Query(ctx, query, time.Now())
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Str("query", query).Msg("fetching vector query")
@@ -81,11 +114,14 @@ func (c *Client) queryVector(ctx context.Context, query string) ([]metrics.Label
 
 	var result []metrics.LabeledResults
 	for _, sample := range r {
+		namespace := string(sample.Metric["namespace"])
+		envName, _ := strings.CutPrefix(namespace, appName+"-")
+
 		result = append(result, metrics.LabeledResults{
-			Value:     float64(sample.Value),
-			Namespace: string(sample.Metric["namespace"]),
-			Component: string(sample.Metric["label_radix_component"]),
-			Pod:       string(sample.Metric["pod"]),
+			Value:       float64(sample.Value),
+			Environment: envName,
+			Component:   string(sample.Metric["label_radix_component"]),
+			Pod:         string(sample.Metric["pod"]),
 		})
 	}
 	return result, nil
