@@ -89,12 +89,8 @@ github.com/equinor/radix-common v1.9.6 h1:BvgXwvk618WMVRDqAAeNvlm/1QAesJ8bEO8RYU
 github.com/equinor/radix-common v1.9.6/go.mod h1:8MW0iqRmyZ3RdSiBurNRxqS19XPsfxtNkHefVQ6B+TM=
 github.com/equinor/radix-job-scheduler v1.13.1 h1:aj3T4vIpkcYq021tmAIS42KvkZdNVgxWIveMdZpIVl4=
 github.com/equinor/radix-job-scheduler v1.13.1/go.mod h1:E60FUY/ANZsDr2PeknZAblwzqW36VA2Y4XsRCPdfmyY=
-github.com/equinor/radix-operator v1.68.5-0.20250130094332-1fa7e5543f36 h1:eFl2MLQzJ4lKgmKF/HuH81tEkiA/1fOzEgdzJkFIpVc=
-github.com/equinor/radix-operator v1.68.5-0.20250130094332-1fa7e5543f36/go.mod h1:R845z0CeqWqMShAU00FWBOGyM04xQXEJ9FP/BH8fAp4=
-github.com/equinor/radix-operator v1.68.5-0.20250130152143-44ffce6b82f4 h1:Tz3B/Hjspy3mLOOcCdLu8Q9nUBo+HcEPAj2UdcmLbvo=
-github.com/equinor/radix-operator v1.68.5-0.20250130152143-44ffce6b82f4/go.mod h1:R845z0CeqWqMShAU00FWBOGyM04xQXEJ9FP/BH8fAp4=
-github.com/equinor/radix-operator v1.68.5-0.20250130153530-60a3c370f4d3 h1:P2+0eu75uMddLNUQ/F6qwUR13Se2V4fl9amdq6vfimg=
-github.com/equinor/radix-operator v1.68.5-0.20250130153530-60a3c370f4d3/go.mod h1:R845z0CeqWqMShAU00FWBOGyM04xQXEJ9FP/BH8fAp4=
+github.com/equinor/radix-operator v1.69.1-0.20250204141946-407bbb7c47c6 h1:N6YmhRAy5u3lla4yvA9tsDALTKsYS2WlXEHUtKQcbls=
+github.com/equinor/radix-operator v1.69.1-0.20250204141946-407bbb7c47c6/go.mod h1:R845z0CeqWqMShAU00FWBOGyM04xQXEJ9FP/BH8fAp4=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
 github.com/evanphx/json-patch v5.9.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.0 h1:kcBlZQbplgElYIlo/n1hJbls2z/1awpXxpRi0/FOJfg=
