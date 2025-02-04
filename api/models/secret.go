@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/equinor/radix-operator/pkg/apis/volumemount"
+	"fmt"
 	"strings"
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -14,6 +14,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 	corev1 "k8s.io/api/core/v1"
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -162,6 +163,10 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		nameSecretStatus = secretModels.Pending.String()
 	}
 
+	storageAccount := ""
+	if volumeMount.BlobFuse2 != nil {
+		storageAccount = volumeMount.BlobFuse2.StorageAccount
+	}
 	keySecret := &secretModels.Secret{
 		Name:        secretName + accountKeyPartSuffix,
 		DisplayName: "Account Key",
@@ -172,7 +177,7 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		Status:      keySecretStatus,
 	}
 	var nameSecret *secretModels.Secret
-	if volumeMount.BlobFuse2 != nil && len(volumeMount.BlobFuse2.StorageAccount) == 0 {
+	if len(storageAccount) == 0 {
 		nameSecret = &secretModels.Secret{
 			Name:        secretName + accountNamePartSuffix,
 			DisplayName: "Account Name",
@@ -182,6 +187,8 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 			Component:   component.GetName(),
 			Status:      nameSecretStatus,
 		}
+	} else {
+		keySecret.DisplayName = fmt.Sprintf("Account Key for %s", storageAccount)
 	}
 	return keySecret, nameSecret
 }
