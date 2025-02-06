@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
@@ -12,6 +11,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 )
 
 // ComponentBuilder Builds DTOs

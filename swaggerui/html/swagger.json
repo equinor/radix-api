@@ -6669,11 +6669,6 @@
           "type": "string",
           "x-go-name": "BranchMapping"
         },
-        "disableWebhook": {
-          "description": "DisableWebhook Disable webhook for this environment",
-          "type": "boolean",
-          "x-go-name": "DisableWebhook"
-        },
         "name": {
           "description": "Name of the environment",
           "type": "string",

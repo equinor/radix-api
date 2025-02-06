@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 	"strings"
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -14,6 +13,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 	corev1 "k8s.io/api/core/v1"
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
