@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 	"strings"
 
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -9,7 +10,6 @@ import (
 	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	operatordeployment "github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -113,30 +113,15 @@ func getSecretsForVolumeMounts(secretList []corev1.Secret, rd *radixv1.RadixDepl
 func getCredentialSecretsForBlobVolumes(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, volumeMount := range component.GetVolumeMounts() {
-		volumeMountType := operatordeployment.GetCsiAzureVolumeMountType(&volumeMount)
+		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
-		case radixv1.MountTypeBlob:
-			accountKeySecret, accountNameSecret := getBlobFuseSecrets(secretList, component, volumeMount)
-			secrets = append(secrets, accountKeySecret, accountNameSecret)
-		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure, radixv1.MountTypeBlobFuse2NfsCsiAzure, radixv1.MountTypeAzureFileCsiAzure:
+		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			accountKeySecret, accountNameSecret := getCsiAzureSecrets(secretList, component, volumeMount)
 			secrets = append(secrets, accountKeySecret, accountNameSecret)
 		}
 	}
 
 	return secrets
-}
-
-func getBlobFuseSecrets(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, volumeMount radixv1.RadixVolumeMount) (secretModels.Secret, secretModels.Secret) {
-	return getAzureVolumeMountSecrets(secretList, component,
-		defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name),
-		volumeMount.Name,
-		defaults.BlobFuseCredsAccountNamePart,
-		defaults.BlobFuseCredsAccountKeyPart,
-		defaults.BlobFuseCredsAccountNamePartSuffix,
-		defaults.BlobFuseCredsAccountKeyPartSuffix,
-		secretModels.SecretTypeAzureBlobFuseVolume,
-	)
 }
 
 func getCsiAzureSecrets(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, volumeMount radixv1.RadixVolumeMount) (secretModels.Secret, secretModels.Secret) {

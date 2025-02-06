@@ -32,4 +32,9 @@ type EnvironmentSummary struct {
 	//
 	// required: false
 	BranchMapping string `json:"branchMapping,omitempty"`
+
+	// DisableWebhook Disable webhook for this environment
+	//
+	// required: false
+	DisableWebhook bool `json:"disableWebhook,omitempty"`
 }

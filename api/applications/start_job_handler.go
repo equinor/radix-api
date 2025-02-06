@@ -3,6 +3,7 @@ package applications
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -18,6 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const radixGitHubWebhookUserNameRegEx = `^system:serviceaccount:radix-github-webhook-[\w]+:radix-github-webhook$`
+
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
 func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
 	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
@@ -27,7 +30,10 @@ func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface
 		return nil, err
 	}
 
-	job := buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag, pipeline, jobParameters)
+	job, err := buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
 	return createPipelineJob(ctx, radixClient, appName, job)
 }
 
@@ -53,7 +59,7 @@ func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, er
 	return radixRegistration.Spec.RadixConfigFullName, nil
 }
 
-func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
 	jobName, imageTag := jobController.GetUniqueJobName()
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -97,6 +103,10 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 		}
 	}
 
+	triggeredFromWebhook, err := getTriggeredFromWebhook(ctx)
+	if err != nil {
+		return nil, err
+	}
 	job := v1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
@@ -108,27 +118,36 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:             appName,
-			CloneURL:            cloneURL,
-			TektonImage:         tektonImageTag,
-			PipeLineType:        pipeline.Type,
-			PipelineImage:       pipelineImageTag,
-			Build:               buildSpec,
-			Promote:             promoteSpec,
-			Deploy:              deploySpec,
-			ApplyConfig:         applyConfigSpec,
-			TriggeredBy:         getTriggeredBy(ctx, jobSpec.TriggeredBy),
-			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
+			AppName:              appName,
+			CloneURL:             cloneURL,
+			TektonImage:          tektonImageTag,
+			PipeLineType:         pipeline.Type,
+			PipelineImage:        pipelineImageTag,
+			Build:                buildSpec,
+			Promote:              promoteSpec,
+			Deploy:               deploySpec,
+			ApplyConfig:          applyConfigSpec,
+			TriggeredFromWebhook: triggeredFromWebhook,
+			TriggeredBy:          getTriggeredBy(ctx, jobSpec.TriggeredBy),
+			RadixConfigFullName:  fmt.Sprintf("/workspace/%s", radixConfigFullName),
 		},
 	}
 
-	return &job
+	return &job, nil
+}
+
+func getTriggeredFromWebhook(ctx context.Context) (bool, error) {
+	re, err := regexp.Compile(radixGitHubWebhookUserNameRegEx)
+	if err != nil {
+		return false, err
+	}
+	userIdGithubWebhookSa := re.Match([]byte(auth.GetOriginator(ctx)))
+	return userIdGithubWebhookSa, nil
 }
 
 func getTriggeredBy(ctx context.Context, triggeredBy string) string {
 	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy
 	}
-
 	return auth.GetOriginator(ctx)
 }

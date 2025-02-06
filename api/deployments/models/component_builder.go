@@ -2,13 +2,13 @@ package models
 
 import (
 	"errors"
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
@@ -119,13 +119,9 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	b.secrets = component.GetSecrets()
 
 	for _, volumeMount := range component.GetVolumeMounts() {
-		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
+		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
-		case radixv1.MountTypeBlob:
-			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
-			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
-		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure, radixv1.MountTypeBlobFuse2NfsCsiAzure, radixv1.MountTypeAzureFileCsiAzure:
+		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
