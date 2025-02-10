@@ -120,6 +120,9 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	b.secrets = component.GetSecrets()
 
 	for _, volumeMount := range component.GetVolumeMounts() {
+		if volumeMount.HasEmptyDir() || volumeMount.UseAzureIdentity() {
+			continue
+		}
 		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
 		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
