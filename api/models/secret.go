@@ -142,7 +142,7 @@ func getCsiAzureSecrets(secretList []corev1.Secret, component radixv1.RadixCommo
 }
 
 func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, secretName string, volumeMount radixv1.RadixVolumeMount, accountNamePart, accountKeyPart, accountNamePartSuffix, accountKeyPartSuffix string, secretType secretModels.SecretType) (*secretModels.Secret, *secretModels.Secret) {
-	if volumemount.UseAzureIdentityForVolumeMount(&volumeMount) {
+	if volumeMount.UseAzureIdentity() {
 		return nil, nil
 	}
 	keySecretStatus := secretModels.Consistent.String()
