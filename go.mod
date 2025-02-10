@@ -24,7 +24,7 @@ require (
 	github.com/prometheus/common v0.55.0
 	github.com/rs/xid v1.5.0
 	github.com/rs/zerolog v1.33.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/urfave/negroni/v3 v3.1.0
 	golang.org/x/sync v0.10.0

@@ -208,7 +208,7 @@ func (eh EnvironmentHandler) DeleteBatch(ctx context.Context, appName, envName, 
 	if err != nil {
 		return err
 	}
-	return jobschedulerbatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(radixBatch.Namespace).Delete(ctx, radixBatch.Name, metav1.DeleteOptions{})
 }
 
 // DeleteJob Delete a job by name
@@ -221,7 +221,7 @@ func (eh EnvironmentHandler) DeleteJob(ctx context.Context, appName, envName, jo
 	if err != nil {
 		return err
 	}
-	return jobschedulerbatch.DeleteRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return eh.accounts.UserAccount.RadixClient.RadixV1().RadixBatches(radixBatch.Namespace).Delete(ctx, radixBatch.Name, metav1.DeleteOptions{})
 }
 
 // GetJobPayload Gets job payload
