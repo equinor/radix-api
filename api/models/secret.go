@@ -8,6 +8,7 @@ import (
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-api/api/utils/secret"
+	volumemountUtils "github.com/equinor/radix-api/api/utils/volumemount"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
@@ -163,10 +164,6 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		nameSecretStatus = secretModels.Pending.String()
 	}
 
-	storageAccount := ""
-	if volumeMount.BlobFuse2 != nil {
-		storageAccount = volumeMount.BlobFuse2.StorageAccount
-	}
 	keySecret := &secretModels.Secret{
 		Name:        secretName + accountKeyPartSuffix,
 		DisplayName: "Account Key",
@@ -177,6 +174,7 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		Status:      keySecretStatus,
 	}
 	var nameSecret *secretModels.Secret
+	storageAccount := volumemountUtils.GetBlobFuse2VolumeMountStorageAccount(volumeMount)
 	if len(storageAccount) == 0 {
 		nameSecret = &secretModels.Secret{
 			Name:        secretName + accountNamePartSuffix,

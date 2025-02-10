@@ -5,6 +5,7 @@ import (
 
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
+	volumemountUtils "github.com/equinor/radix-api/api/utils/volumemount"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -124,7 +125,9 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
+			if len(volumemountUtils.GetBlobFuse2VolumeMountStorageAccount(volumeMount)) == 0 {
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
+			}
 		}
 	}
 
