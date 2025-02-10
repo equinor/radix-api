@@ -628,10 +628,11 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 				WithPublicPort("http").
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename",
-						Container: "some-container",
-						Path:      "some-path",
+						Name: "somevolumename",
+						Path: "some-path",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "some-container",
+						},
 					},
 				)))
 	require.NoError(t, err)
@@ -644,8 +645,8 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 	err = controllertest.GetResponseBody(response, &environment)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyComponentName)))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyComponentName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-csiazurecreds-accountkey", anyComponentName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-csiazurecreds-accountname", anyComponentName)))
 
 	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
@@ -667,10 +668,11 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 				WithName(anyJobName).
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename",
-						Container: "some-container",
-						Path:      "some-path",
+						Name: "somevolumename",
+						Path: "some-path",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "some-container",
+						},
 					},
 				)))
 	require.NoError(t, err)
@@ -683,8 +685,8 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &environment)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(environment.Secrets))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountkey", anyJobName)))
-	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-blobfusecreds-accountname", anyJobName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-csiazurecreds-accountkey", anyJobName)))
+	assert.True(t, contains(environment.Secrets, fmt.Sprintf("%v-somevolumename-csiazurecreds-accountname", anyJobName)))
 
 	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
