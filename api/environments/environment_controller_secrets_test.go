@@ -142,9 +142,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: componentName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
-							Name:    "volume1",
-							Storage: "container1",
+							Name: "volume1",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container: "container1",
+							},
 						},
 					},
 				},
@@ -154,9 +155,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					Name: jobName1,
 					VolumeMounts: []v1.RadixVolumeMount{
 						{
-							Type:    v1.MountTypeBlobFuse2FuseCsiAzure,
-							Name:    "volume2",
-							Storage: "container2",
+							Name: "volume2",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container: "container2",
+							},
 						},
 					},
 				},
@@ -199,6 +201,95 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					ID:          secretModels.SecretIdAccountName,
 				},
 			},
+		},
+		{
+			name: "Azure BlobFuse2 volumes credential secrets with predefined StorageAccount",
+			components: []v1.RadixDeployComponent{
+				{
+					Name: componentName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Name: "volume1",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container:      "container1",
+								StorageAccount: "storageaccount1",
+							},
+						},
+					},
+				},
+			},
+			jobs: []v1.RadixDeployJobComponent{
+				{
+					Name: jobName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Name: "volume2",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container:      "container2",
+								StorageAccount: "storageaccount1",
+							},
+						},
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{
+				{
+					Name:        "component1-volume1-csiazurecreds-accountkey",
+					DisplayName: "Account Key for storageaccount1",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume1",
+					Component:   componentName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdAccountKey,
+				},
+				{
+					Name:        "job1-volume2-csiazurecreds-accountkey",
+					DisplayName: "Account Key for storageaccount1",
+					Type:        secretModels.SecretTypeCsiAzureBlobVolume,
+					Resource:    "volume2",
+					Component:   jobName1,
+					Status:      secretModels.Pending.String(),
+					ID:          secretModels.SecretIdAccountKey,
+				},
+			},
+		},
+		{
+			name: "Azure Blob volumes doe not use credential secrets when UseAzureIdentity is set to true",
+			components: []v1.RadixDeployComponent{
+				{
+					Name: componentName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Name: "volume1",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container:        "container1",
+								UseAzureIdentity: pointers.Ptr(true),
+								StorageAccount:   "storageaccount1",
+								ResourceGroup:    "resource-group1",
+								SubscriptionId:   "subscription-id1",
+							},
+						},
+					},
+				},
+			},
+			jobs: []v1.RadixDeployJobComponent{
+				{
+					Name: jobName1,
+					VolumeMounts: []v1.RadixVolumeMount{
+						{
+							Name: "volume2",
+							BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+								Container:        "container2",
+								UseAzureIdentity: pointers.Ptr(true),
+								StorageAccount:   "storageaccount1",
+								ResourceGroup:    "resource-group1",
+								SubscriptionId:   "subscription-id1",
+							},
+						},
+					},
+				},
+			},
+			expectedSecrets: []secretModels.Secret{},
 		},
 		{
 			name: "Azure Blob volumes credential secrets with existing secrets",
@@ -896,6 +987,7 @@ func testGetRadixComponents(components []v1.RadixDeployComponent, envName string
 	for _, radixDeployComponent := range components {
 		radixComponents = append(radixComponents, v1.RadixComponent{
 			Name:       radixDeployComponent.Name,
+			Identity:   &v1.Identity{Azure: &v1.AzureIdentity{ClientId: "some-client-id"}},
 			Variables:  radixDeployComponent.GetEnvironmentVariables(),
 			Secrets:    radixDeployComponent.Secrets,
 			SecretRefs: radixDeployComponent.SecretRefs,
@@ -913,6 +1005,7 @@ func testGetRadixJobComponents(jobComponents []v1.RadixDeployJobComponent, envNa
 	for _, radixDeployJobComponent := range jobComponents {
 		radixComponents = append(radixComponents, v1.RadixJobComponent{
 			Name:       radixDeployJobComponent.Name,
+			Identity:   &v1.Identity{Azure: &v1.AzureIdentity{ClientId: "some-client-id"}},
 			Variables:  radixDeployJobComponent.GetEnvironmentVariables(),
 			Secrets:    radixDeployJobComponent.Secrets,
 			SecretRefs: radixDeployJobComponent.SecretRefs,

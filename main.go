@@ -13,32 +13,28 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/equinor/radix-api/api/metrics"
-	"github.com/equinor/radix-api/api/metrics/prometheus"
-	"github.com/equinor/radix-api/api/secrets"
-	"github.com/equinor/radix-api/api/utils/tlsvalidation"
-	token "github.com/equinor/radix-api/api/utils/token"
-	"github.com/equinor/radix-api/internal/config"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
-	"github.com/equinor/radix-api/api/environmentvariables"
-
-	"github.com/equinor/radix-api/api/buildstatus"
-
-	// Controllers
 	"github.com/equinor/radix-api/api/alerting"
 	"github.com/equinor/radix-api/api/applications"
 	"github.com/equinor/radix-api/api/buildsecrets"
-	build_models "github.com/equinor/radix-api/api/buildstatus/models"
+	"github.com/equinor/radix-api/api/buildstatus"
+	buildModels "github.com/equinor/radix-api/api/buildstatus/models"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
+	"github.com/equinor/radix-api/api/environmentvariables"
 	"github.com/equinor/radix-api/api/jobs"
+	"github.com/equinor/radix-api/api/metrics"
+	"github.com/equinor/radix-api/api/metrics/prometheus"
 	"github.com/equinor/radix-api/api/privateimagehubs"
 	"github.com/equinor/radix-api/api/router"
+	"github.com/equinor/radix-api/api/secrets"
 	"github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils/tlsvalidation"
+	token "github.com/equinor/radix-api/api/utils/token"
 	_ "github.com/equinor/radix-api/docs"
+	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 //go:generate swagger generate spec
@@ -159,15 +155,15 @@ func setupLogger(logLevelStr string, prettyPrint bool) {
 }
 
 func getControllers(config config.Config) ([]models.Controller, error) {
-	buildStatus := build_models.NewPipelineBadge()
-	applicatinoFactory := applications.NewApplicationHandlerFactory(config)
+	buildStatus := buildModels.NewPipelineBadge()
+	applicationFactory := applications.NewApplicationHandlerFactory(config)
 	prometheusClient, err := prometheus.NewPrometheusClient(config.PrometheusUrl)
 	if err != nil {
 		return nil, err
 	}
 	metricsHandler := metrics.NewHandler(prometheusClient)
 	return []models.Controller{
-		applications.NewApplicationController(nil, applicatinoFactory, metricsHandler),
+		applications.NewApplicationController(nil, applicationFactory, metricsHandler),
 		deployments.NewDeploymentController(),
 		jobs.NewJobController(),
 		environments.NewEnvironmentController(environments.NewEnvironmentHandlerFactory()),

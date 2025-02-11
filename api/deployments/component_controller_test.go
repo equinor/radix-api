@@ -119,10 +119,11 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 				WithName("job").
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "jobvol",
-						Container: "jobcont",
-						Path:      "jobpath",
+						Name: "jobvol",
+						Path: "jobpath",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "jobcont",
+						},
 					},
 				),
 		).
@@ -133,10 +134,11 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 				WithPublicPort("http").
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename",
-						Container: "some-container",
-						Path:      "some-path",
+						Name: "somevolumename",
+						Path: "some-path",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "some-container",
+						},
 					},
 				)))
 	require.NoError(t, err)
@@ -156,14 +158,14 @@ func TestGetComponents_WithVolumeMount_ContainsVolumeMountSecrets(t *testing.T) 
 	frontend := getComponentByName("frontend", components)
 	secrets := frontend.Secrets
 	assert.Equal(t, 2, len(secrets))
-	assert.Contains(t, secrets, "frontend-somevolumename-blobfusecreds-accountkey")
-	assert.Contains(t, secrets, "frontend-somevolumename-blobfusecreds-accountname")
+	assert.Contains(t, secrets, "frontend-somevolumename-csiazurecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename-csiazurecreds-accountname")
 
 	job := getComponentByName("job", components)
 	secrets = job.Secrets
 	assert.Equal(t, 2, len(secrets))
-	assert.Contains(t, secrets, "job-jobvol-blobfusecreds-accountkey")
-	assert.Contains(t, secrets, "job-jobvol-blobfusecreds-accountname")
+	assert.Contains(t, secrets, "job-jobvol-csiazurecreds-accountkey")
+	assert.Contains(t, secrets, "job-jobvol-csiazurecreds-accountname")
 }
 
 func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *testing.T) {
@@ -181,16 +183,18 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 				WithPublicPort("http").
 				WithVolumeMounts(
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename1",
-						Container: "some-container1",
-						Path:      "some-path1",
+						Name: "somevolumename1",
+						Path: "some-path1",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "some-container1",
+						},
 					},
 					v1.RadixVolumeMount{
-						Type:      v1.MountTypeBlob,
-						Name:      "somevolumename2",
-						Container: "some-container2",
-						Path:      "some-path2",
+						Name: "somevolumename2",
+						Path: "some-path2",
+						BlobFuse2: &v1.RadixBlobFuse2VolumeMount{
+							Container: "some-container2",
+						},
 					},
 				)))
 	require.NoError(t, err)
@@ -209,10 +213,10 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 
 	secrets := components[0].Secrets
 	assert.Equal(t, 4, len(secrets))
-	assert.Contains(t, secrets, "frontend-somevolumename1-blobfusecreds-accountkey")
-	assert.Contains(t, secrets, "frontend-somevolumename1-blobfusecreds-accountname")
-	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountkey")
-	assert.Contains(t, secrets, "frontend-somevolumename2-blobfusecreds-accountname")
+	assert.Contains(t, secrets, "frontend-somevolumename1-csiazurecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename1-csiazurecreds-accountname")
+	assert.Contains(t, secrets, "frontend-somevolumename2-csiazurecreds-accountkey")
+	assert.Contains(t, secrets, "frontend-somevolumename2-csiazurecreds-accountname")
 }
 
 func TestGetComponents_OAuth2(t *testing.T) {

@@ -5,13 +5,14 @@ import (
 
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
+	volumemountUtils "github.com/equinor/radix-api/api/utils/volumemount"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/deployment"
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 )
 
 // ComponentBuilder Builds DTOs
@@ -119,16 +120,17 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	b.secrets = component.GetSecrets()
 
 	for _, volumeMount := range component.GetVolumeMounts() {
-		volumeMountType := deployment.GetCsiAzureVolumeMountType(&volumeMount)
+		if volumeMount.HasEmptyDir() || volumeMount.UseAzureIdentity() {
+			continue
+		}
+		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
-		case radixv1.MountTypeBlob:
-			secretName := defaults.GetBlobFuseCredsSecretName(component.GetName(), volumeMount.Name)
-			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountKeyPartSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.BlobFuseCredsAccountNamePartSuffix)
-		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure, radixv1.MountTypeBlobFuse2NfsCsiAzure, radixv1.MountTypeAzureFileCsiAzure:
+		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
 			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountKeyPartSuffix)
-			b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
+			if len(volumemountUtils.GetBlobFuse2VolumeMountStorageAccount(volumeMount)) == 0 {
+				b.secrets = append(b.secrets, secretName+defaults.CsiAzureCredsAccountNamePartSuffix)
+			}
 		}
 	}
 
@@ -183,10 +185,10 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 	if network := component.GetNetwork(); network != nil {
 		b.network = &Network{}
 
-		if ingress := network.Ingress; ingress != nil {
+		if ing := network.Ingress; ing != nil {
 			b.network.Ingress = &Ingress{}
 
-			if publicIngress := ingress.Public; publicIngress != nil {
+			if publicIngress := ing.Public; publicIngress != nil {
 				b.network.Ingress.Public = &IngressPublic{}
 
 				if allow := publicIngress.Allow; allow != nil {
