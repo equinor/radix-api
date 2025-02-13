@@ -149,9 +149,9 @@ func (eh *SecretHandler) getOAuth2ClientSecretProps(ctx context.Context, appName
 	if !rdExists {
 		return "", "", radixhttp.NotFoundError(fmt.Sprintf("No active deployment found for the application %s in the environment %s", appName, envName))
 	}
-	component, err := getCommonDeployComponentByName(activeRd, componentName)
-	if err != nil {
-		return "", "", err
+	component, componentExists := slice.FindFirst(activeRd.Spec.Components, func(component radixv1.RadixDeployComponent) bool { return component.GetName() == componentName })
+	if !componentExists {
+		return "", "", radixhttp.NotFoundError(fmt.Sprintf("component %s not found", componentName))
 	}
 	if component.GetAuthentication().GetOAuth2().GetUseAzureIdentity() {
 		return "", "", radixhttp.ValidationError("Secret", "OAuth2 client is authorised by Workload Identity")
@@ -159,16 +159,6 @@ func (eh *SecretHandler) getOAuth2ClientSecretProps(ctx context.Context, appName
 	return operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix),
 		defaults.OAuthClientSecretKeyName,
 		nil
-}
-
-func getCommonDeployComponentByName(radixDeployment *radixv1.RadixDeployment, name string) (radixv1.RadixCommonDeployComponent, error) {
-	if component, ok := slice.FindFirst(radixDeployment.Spec.Components, func(component radixv1.RadixDeployComponent) bool { return component.GetName() == name }); ok {
-		return &component, nil
-	}
-	if jobComponent, ok := slice.FindFirst(radixDeployment.Spec.Jobs, func(jobComponent radixv1.RadixDeployJobComponent) bool { return jobComponent.GetName() == name }); ok {
-		return &jobComponent, nil
-	}
-	return nil, radixhttp.NotFoundError(fmt.Sprintf("component %s not found", name))
 }
 
 func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string, skipValidation bool) error {

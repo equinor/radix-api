@@ -553,23 +553,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			oauth2UseAzureIdentity: pointers.Ptr(true),
 		},
 		{
-			name: "Change OAuth2 client secret key in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
-			secretDataKey:               defaults.OAuthClientSecretKeyName,
-			secretValue:                 "currentClientSecretKey",
-			secretExists:                true,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newClientSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: false,
-		},
-		{
 			name: "Failed change of not existing OAuth2 client secret key in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -577,20 +560,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newClientSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: true,
-		},
-		{
-			name: "Failed change of not existing OAuth2 client secret key in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretExists:                false,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
 				Type:        secretModels.SecretTypeOAuth2Proxy,
@@ -615,23 +584,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name: "Change OAuth2 cookie secret in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
-			secretDataKey:               defaults.OAuthCookieSecretKeyName,
-			secretValue:                 "currentCookieSecretKey",
-			secretExists:                true,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newCookieSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: false,
-		},
-		{
 			name: "Failed change of not existing OAuth2 cookie secret in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -639,20 +591,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newCookieSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: true,
-		},
-		{
-			name: "Failed change of not existing OAuth2 cookie secret in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretExists:                false,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newCookieSecretKey",
 				Type:        secretModels.SecretTypeOAuth2Proxy,
@@ -677,23 +615,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
-			name: "Change OAuth2 Redis password in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
-			secretDataKey:               defaults.OAuthRedisPasswordKeyName,
-			secretValue:                 "currentRedisPassword",
-			secretExists:                true,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newRedisPassword",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: false,
-		},
-		{
 			name: "Failed change of not existing OAuth2 Redis password in the component",
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
@@ -701,20 +622,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
-			changingSecretParams: secretModels.SecretParameters{
-				SecretValue: "newRedisPassword",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
-			},
-			expectedError: true,
-		},
-		{
-			name: "Failed change of not existing OAuth2 Redis password in the job",
-			jobs: []v1.RadixDeployJobComponent{{
-				Name: jobName1,
-			}},
-			secretExists:                false,
-			changingSecretComponentName: jobName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(jobName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newRedisPassword",
 				Type:        secretModels.SecretTypeOAuth2Proxy,
@@ -770,7 +677,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.secretValue)},
 				}, metav1.CreateOptions{})
 			}
-			_, err := radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), createActiveRadixDeployment(componentName1, scenario.oauth2UseAzureIdentity), metav1.CreateOptions{})
+			_, err := radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), createActiveRadixDeployment(envName, componentName1, scenario.oauth2UseAzureIdentity), metav1.CreateOptions{})
 			s.NoError(err, "Failed to create RadixDeployment")
 
 			err = secretHandler.ChangeComponentSecret(context.Background(), appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
@@ -785,9 +692,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	}
 }
 
-func createActiveRadixDeployment(componentName string, oauth2UseAzureIdentity *bool) *v1.RadixDeployment {
-	deploymentName, envName, jobName, activeFrom :=
-		"deployment-name", "env-name", "job-name", time.Now().Truncate(24*time.Hour)
+func createActiveRadixDeployment(envName, componentName string, oauth2UseAzureIdentity *bool) *v1.RadixDeployment {
 	deployComponent := v1.RadixDeployComponent{Name: componentName, Image: "comp_image1"}
 	if oauth2UseAzureIdentity != nil {
 		deployComponent.Authentication = &v1.Authentication{
@@ -796,21 +701,13 @@ func createActiveRadixDeployment(componentName string, oauth2UseAzureIdentity *b
 		deployComponent.Identity = &v1.Identity{Azure: &v1.AzureIdentity{ClientId: "some-client-id"}}
 	}
 	return &v1.RadixDeployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   deploymentName,
-			Labels: map[string]string{kube.RadixJobNameLabel: jobName},
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: "deployment-name"},
 		Spec: v1.RadixDeploymentSpec{
 			Environment: envName,
-			Components: []v1.RadixDeployComponent{
-				deployComponent,
-			},
-			Jobs: []v1.RadixDeployJobComponent{
-				{Name: "job1", Image: "job_image1"},
-			},
+			Components:  []v1.RadixDeployComponent{deployComponent},
 		},
 		Status: v1.RadixDeployStatus{
-			ActiveFrom: metav1.NewTime(activeFrom),
+			ActiveFrom: metav1.NewTime(time.Now().Truncate(24 * time.Hour)),
 			Condition:  v1.DeploymentActive,
 		},
 	}
