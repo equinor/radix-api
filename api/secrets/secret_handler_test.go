@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -11,6 +12,7 @@ import (
 	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -62,6 +64,7 @@ type testChangeSecretScenario struct {
 	changingSecretName          string
 	expectedError               bool
 	changingSecretParams        secretModels.SecretParameters
+	oauth2UseAzureIdentity      *bool
 }
 
 type testSecretProviderClassAndSecret struct {
@@ -532,6 +535,24 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			expectedError: false,
 		},
 		{
+			name: "Failed to change OAuth2 client secret key in the component with OAuth2 using identity",
+			components: []v1.RadixDeployComponent{{
+				Name: componentName1,
+			}},
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretDataKey:               defaults.OAuthClientSecretKeyName,
+			secretValue:                 "currentClientSecretKey",
+			secretExists:                true,
+			changingSecretComponentName: componentName1,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretParams: secretModels.SecretParameters{
+				SecretValue: "newClientSecretKey",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+			},
+			expectedError:          true,
+			oauth2UseAzureIdentity: pointers.Ptr(true),
+		},
+		{
 			name: "Change OAuth2 client secret key in the job",
 			jobs: []v1.RadixDeployJobComponent{{
 				Name: jobName1,
@@ -737,7 +758,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 		s.Run(fmt.Sprintf("test GetSecrets: %s", scenario.name), func() {
 			appName := anyAppName
 			envName := anyEnvironment
-			userAccount, serviceAccount, kubeClient, _ := s.getUtils()
+			userAccount, serviceAccount, kubeClient, radixClient := s.getUtils()
 			secretHandler := SecretHandler{
 				userAccount:    *userAccount,
 				serviceAccount: *serviceAccount,
@@ -749,8 +770,10 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.secretValue)},
 				}, metav1.CreateOptions{})
 			}
+			_, err := radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), createActiveRadixDeployment(componentName1, scenario.oauth2UseAzureIdentity), metav1.CreateOptions{})
+			s.NoError(err, "Failed to create RadixDeployment")
 
-			err := secretHandler.ChangeComponentSecret(context.Background(), appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
+			err = secretHandler.ChangeComponentSecret(context.Background(), appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
 
 			s.Equal(scenario.expectedError, err != nil, testGetErrorMessage(err))
 			if scenario.secretExists && err == nil {
@@ -759,6 +782,37 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				s.Equal(scenario.changingSecretParams.SecretValue, string(changedSecret.Data[scenario.secretDataKey]))
 			}
 		})
+	}
+}
+
+func createActiveRadixDeployment(componentName string, oauth2UseAzureIdentity *bool) *v1.RadixDeployment {
+	deploymentName, envName, jobName, activeFrom :=
+		"deployment-name", "env-name", "job-name", time.Now().Truncate(24*time.Hour)
+	deployComponent := v1.RadixDeployComponent{Name: componentName, Image: "comp_image1"}
+	if oauth2UseAzureIdentity != nil {
+		deployComponent.Authentication = &v1.Authentication{
+			OAuth2: &v1.OAuth2{UseAzureIdentity: pointers.Ptr(*oauth2UseAzureIdentity)},
+		}
+		deployComponent.Identity = &v1.Identity{Azure: &v1.AzureIdentity{ClientId: "some-client-id"}}
+	}
+	return &v1.RadixDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   deploymentName,
+			Labels: map[string]string{kube.RadixJobNameLabel: jobName},
+		},
+		Spec: v1.RadixDeploymentSpec{
+			Environment: envName,
+			Components: []v1.RadixDeployComponent{
+				deployComponent,
+			},
+			Jobs: []v1.RadixDeployJobComponent{
+				{Name: "job1", Image: "job_image1"},
+			},
+		},
+		Status: v1.RadixDeployStatus{
+			ActiveFrom: metav1.NewTime(activeFrom),
+			Condition:  v1.DeploymentActive,
+		},
 	}
 }
 
