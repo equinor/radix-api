@@ -169,12 +169,7 @@ func (eh EnvironmentHandler) StopBatch(ctx context.Context, appName, envName, jo
 
 // StopAllBatches Stop all batches
 func (eh EnvironmentHandler) StopAllBatches(ctx context.Context, appName, envName, jobComponentName string) error {
-	radixBatch, err := kubequery.GetRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchName, kube.RadixBatchTypeBatch)
-	if err != nil {
-		return err
-	}
-	//TODO
-	return jobSchedulerBatch.StopRadixBatch(ctx, eh.accounts.UserAccount.RadixClient, radixBatch)
+	return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, operatorUtils.GetEnvironmentNamespace(appName, envName), jobComponentName, kube.RadixBatchTypeBatch)
 }
 
 // StopJob Stop job by name
@@ -191,12 +186,7 @@ func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobC
 
 // StopAllJobs Stop all jobs
 func (eh EnvironmentHandler) StopAllJobs(ctx context.Context, appName, envName, jobComponentName string) error {
-	radixBatches, err := kubequery.GetRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeJob)
-	if err != nil {
-		return nil, err
-	}
-	//TODO
-	return jobSchedulerBatch.StopRadixBatchJob(ctx, eh.accounts.UserAccount.RadixClient, radixBatch, batchJobName)
+	return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, operatorUtils.GetEnvironmentNamespace(appName, envName), jobComponentName, kube.RadixBatchTypeJob)
 }
 
 // DeleteBatch Delete batch by name
