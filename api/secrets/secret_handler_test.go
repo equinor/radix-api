@@ -12,7 +12,6 @@ import (
 	"github.com/equinor/radix-api/api/utils/secret"
 	"github.com/equinor/radix-api/models"
 	"github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -64,7 +63,7 @@ type testChangeSecretScenario struct {
 	changingSecretName          string
 	expectedError               bool
 	changingSecretParams        secretModels.SecretParameters
-	oauth2UseAzureIdentity      *bool
+	credentialsType             v1.CredentialsType
 }
 
 type testSecretProviderClassAndSecret struct {
@@ -549,8 +548,8 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				SecretValue: "newClientSecretKey",
 				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
-			expectedError:          true,
-			oauth2UseAzureIdentity: pointers.Ptr(true),
+			expectedError:   true,
+			credentialsType: v1.AzureWorkloadIdentity,
 		},
 		{
 			name: "Failed change of not existing OAuth2 client secret key in the component",
@@ -677,7 +676,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 					Data:       map[string][]byte{scenario.secretDataKey: []byte(scenario.secretValue)},
 				}, metav1.CreateOptions{})
 			}
-			_, err := radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), createActiveRadixDeployment(envName, componentName1, scenario.oauth2UseAzureIdentity), metav1.CreateOptions{})
+			_, err := radixClient.RadixV1().RadixDeployments(appEnvNamespace).Create(context.Background(), createActiveRadixDeployment(envName, componentName1, scenario.credentialsType), metav1.CreateOptions{})
 			s.NoError(err, "Failed to create RadixDeployment")
 
 			err = secretHandler.ChangeComponentSecret(context.Background(), appName, envName, scenario.changingSecretComponentName, scenario.changingSecretName, scenario.changingSecretParams)
@@ -692,11 +691,11 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 	}
 }
 
-func createActiveRadixDeployment(envName, componentName string, oauth2UseAzureIdentity *bool) *v1.RadixDeployment {
+func createActiveRadixDeployment(envName, componentName string, credentialsType v1.CredentialsType) *v1.RadixDeployment {
 	deployComponent := v1.RadixDeployComponent{Name: componentName, Image: "comp_image1"}
-	if oauth2UseAzureIdentity != nil {
+	if credentialsType != "" {
 		deployComponent.Authentication = &v1.Authentication{
-			OAuth2: &v1.OAuth2{UseAzureIdentity: pointers.Ptr(*oauth2UseAzureIdentity)},
+			OAuth2: &v1.OAuth2{Credentials: credentialsType},
 		}
 		deployComponent.Identity = &v1.Identity{Azure: &v1.AzureIdentity{ClientId: "some-client-id"}}
 	}

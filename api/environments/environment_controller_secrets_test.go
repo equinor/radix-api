@@ -579,7 +579,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				{
 					Name:           "comp7",
 					PublicPort:     "http",
-					Authentication: &v1.Authentication{OAuth2: &v1.OAuth2{UseAzureIdentity: pointers.Ptr(true)}},
+					Authentication: &v1.Authentication{OAuth2: &v1.OAuth2{Credentials: v1.AzureWorkloadIdentity}},
 				},
 			},
 			expectedSecrets: []secretModels.Secret{

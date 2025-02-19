@@ -28,7 +28,7 @@ func getOAuth2AuxiliaryResource(rd *radixv1.RadixDeployment, component radixv1.R
 		auxiliaryResource.Identity = &deploymentModels.Identity{
 			Azure: &deploymentModels.AzureIdentity{
 				ClientId:           oauth2.ClientID,
-				ServiceAccountName: utils.GetAuxOAuthServiceAccountName(component.GetName()),
+				ServiceAccountName: utils.GetOAuthProxyServiceAccountName(component.GetName()),
 			},
 		}
 	}
