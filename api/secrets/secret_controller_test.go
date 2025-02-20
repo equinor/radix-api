@@ -361,7 +361,7 @@ func (s *externalDNSSecretTestSuite) Test_RadixDeploymentNotActive() {
 	s.Equal(404, response.Code)
 	var status radixhttp.Error
 	s.Require().NoError(controllertest.GetResponseBody(response, &status))
-	s.Equal(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName), status.Message)
+	s.Equal("Failed to get an active deployment from the deployment list", status.Message)
 }
 
 func (s *externalDNSSecretTestSuite) Test_NonExistingComponent() {

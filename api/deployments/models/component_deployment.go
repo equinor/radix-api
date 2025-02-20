@@ -237,6 +237,11 @@ type OAuth2AuxiliaryResource struct {
 	//
 	// required: true
 	Deployment AuxiliaryResourceDeployment `json:"deployment,omitempty"`
+
+	// External identity information
+	//
+	// required: false
+	Identity *Identity `json:"identity,omitempty"`
 }
 
 // AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment
