@@ -243,6 +243,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 		if err != nil {
 			panic(err)
 		}
+		useAzureIdentity := component.GetAuthentication().GetOAuth2().GetUseAzureIdentity()
 
 		clientSecretStatus := secretModels.Consistent.String()
 		cookieSecretStatus := secretModels.Consistent.String()
@@ -250,8 +251,10 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 
 		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
 		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
-			if secretValue, found := secr.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
-				clientSecretStatus = secretModels.Pending.String()
+			if !useAzureIdentity {
+				if secretValue, found := secr.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
+					clientSecretStatus = secretModels.Pending.String()
+				}
 			}
 			if secretValue, found := secr.Data[defaults.OAuthCookieSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 				cookieSecretStatus = secretModels.Pending.String()
@@ -260,18 +263,22 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 				redisPasswordStatus = secretModels.Pending.String()
 			}
 		} else {
-			clientSecretStatus = secretModels.Pending.String()
+			if !useAzureIdentity {
+				clientSecretStatus = secretModels.Pending.String()
+			}
 			cookieSecretStatus = secretModels.Pending.String()
 			redisPasswordStatus = secretModels.Pending.String()
 		}
 
-		secrets = append(secrets, secretModels.Secret{
-			Name:        component.GetName() + suffix.OAuth2ClientSecret,
-			DisplayName: "Client Secret",
-			Type:        secretModels.SecretTypeOAuth2Proxy,
-			Component:   component.GetName(),
-			Status:      clientSecretStatus,
-		})
+		if !useAzureIdentity {
+			secrets = append(secrets, secretModels.Secret{
+				Name:        component.GetName() + suffix.OAuth2ClientSecret,
+				DisplayName: "Client Secret",
+				Type:        secretModels.SecretTypeOAuth2Proxy,
+				Component:   component.GetName(),
+				Status:      clientSecretStatus,
+			})
+		}
 		secrets = append(secrets, secretModels.Secret{
 			Name:        component.GetName() + suffix.OAuth2CookieSecret,
 			DisplayName: "Cookie Secret",

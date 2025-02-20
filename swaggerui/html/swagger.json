@@ -7458,6 +7458,9 @@
       "properties": {
         "deployment": {
           "$ref": "#/definitions/AuxiliaryResourceDeployment"
+        },
+        "identity": {
+          "$ref": "#/definitions/Identity"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"

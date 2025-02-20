@@ -576,6 +576,11 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 					PublicPort:     "http",
 					Authentication: &v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}},
 				},
+				{
+					Name:           "comp7",
+					PublicPort:     "http",
+					Authentication: &v1.Authentication{OAuth2: &v1.OAuth2{Credentials: v1.AzureWorkloadIdentity}},
+				},
 			},
 			expectedSecrets: []secretModels.Secret{
 				{Name: "comp1" + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: "comp1", Status: secretModels.Pending.String()},
@@ -588,6 +593,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 				{Name: "comp6" + suffix.OAuth2ClientSecret, DisplayName: "Client Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: "comp6", Status: secretModels.Pending.String()},
 				{Name: "comp6" + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: "comp6", Status: secretModels.Consistent.String()},
 				{Name: "comp6" + suffix.OAuth2RedisPassword, DisplayName: "Redis Password", Type: secretModels.SecretTypeOAuth2Proxy, Component: "comp6", Status: secretModels.Consistent.String()},
+				{Name: "comp7" + suffix.OAuth2CookieSecret, DisplayName: "Cookie Secret", Type: secretModels.SecretTypeOAuth2Proxy, Component: "comp7", Status: secretModels.Pending.String()},
 			},
 			existingSecrets: []testSecretDescription{
 				{
