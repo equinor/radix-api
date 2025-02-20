@@ -157,7 +157,9 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 			if err != nil {
 				b.errors = append(b.errors, err)
 			}
-			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2ClientSecret)
+			if !auth.OAuth2.GetUseAzureIdentity() {
+				b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2ClientSecret)
+			}
 			b.secrets = append(b.secrets, component.GetName()+suffix.OAuth2CookieSecret)
 
 			if oauth2.SessionStoreType == radixv1.SessionStoreRedis {

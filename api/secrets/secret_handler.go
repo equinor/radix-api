@@ -121,8 +121,10 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 		partName = "ca.crt"
 
 	} else if strings.HasSuffix(secretName, suffix.OAuth2ClientSecret) {
-		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
-		partName = defaults.OAuthClientSecretKeyName
+		var err error
+		if secretObjName, partName, err = eh.getOAuth2ClientSecretProps(ctx, appName, envName, componentName); err != nil {
+			return err
+		}
 	} else if strings.HasSuffix(secretName, suffix.OAuth2CookieSecret) {
 		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
 		partName = defaults.OAuthCookieSecretKeyName
@@ -139,13 +141,31 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 	return eh.setSecretKeyValue(ctx, ns, secretObjName, map[string][]byte{partName: []byte(newSecretValue)})
 }
 
-func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string, skipValidation bool) error {
-	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
+func (eh *SecretHandler) getOAuth2ClientSecretProps(ctx context.Context, appName string, envName string, componentName string) (string, string, error) {
+	activeRd, rdExists, err := eh.getActiveRadixDeploymentForEnvironment(ctx, appName, envName)
 	if err != nil {
-		return radixhttp.UnexpectedError("Failed to get deployments", err)
+		return "", "", err
 	}
+	if !rdExists {
+		return "", "", radixhttp.NotFoundError(fmt.Sprintf("No active deployment found for the application %s in the environment %s", appName, envName))
+	}
+	component, componentExists := slice.FindFirst(activeRd.Spec.Components, func(component radixv1.RadixDeployComponent) bool { return component.GetName() == componentName })
+	if !componentExists {
+		return "", "", radixhttp.NotFoundError(fmt.Sprintf("component %s not found", componentName))
+	}
+	if component.GetAuthentication().GetOAuth2().GetUseAzureIdentity() {
+		return "", "", radixhttp.ValidationError("Secret", "OAuth2 client is authorised by Workload Identity")
+	}
+	return operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix),
+		defaults.OAuthClientSecretKeyName,
+		nil
+}
 
-	activeRd, found := slice.FindFirst(rdList, func(rd radixv1.RadixDeployment) bool { return predicate.IsActiveRadixDeployment(rd) })
+func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Context, appName, envName, componentName, fqdn string, certificate, privateKey string, skipValidation bool) error {
+	activeRd, found, err := eh.getActiveRadixDeploymentForEnvironment(ctx, appName, envName)
+	if err != nil {
+		return err
+	}
 	if !found {
 		return radixhttp.NotFoundError(fmt.Sprintf("No active deployment found for application %q in environment %q", appName, envName))
 	}
@@ -180,6 +200,17 @@ func (eh *SecretHandler) UpdateComponentExternalDNSSecretData(ctx context.Contex
 	}
 
 	return nil
+}
+
+func (eh *SecretHandler) getActiveRadixDeploymentForEnvironment(ctx context.Context, appName string, envName string) (*radixv1.RadixDeployment, bool, error) {
+	rdList, err := kubequery.GetRadixDeploymentsForEnvironment(ctx, eh.userAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, false, radixhttp.UnexpectedError("Failed to get deployments", err)
+	}
+	if activeRd, found := slice.FindFirst(rdList, func(rd radixv1.RadixDeployment) bool { return predicate.IsActiveRadixDeployment(rd) }); found {
+		return &activeRd, true, nil
+	}
+	return nil, false, radixhttp.NotFoundError("Failed to get an active deployment from the deployment list")
 }
 
 func (eh *SecretHandler) getTLSValidatorOrDefault() tlsvalidation.Validator {
