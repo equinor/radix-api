@@ -18,6 +18,10 @@ CX_ARCHS	= amd64
 .PHONY: build
 build: $(BINS)
 
+.PHONY: tidy
+tidy:
+	go mod tidy
+
 .PHONY: mocks
 mocks: bootstrap
 	mockgen -source ./api/buildstatus/models/buildstatus.go -destination ./api/test/mock/buildstatus_mock.go -package mock
@@ -72,7 +76,7 @@ docker-push: $(addsuffix -push,$(IMAGES))
 deploy: $(addsuffix -image,$(IMAGES)) $(addsuffix -push,$(IMAGES))
 
 .PHONY: generate
-generate: mocks swagger
+generate: tidy mocks swagger
 
 .PHONY: verify-generate
 verify-generate: generate
@@ -87,7 +91,7 @@ ifndef HAS_SWAGGER
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
 endif
 ifndef HAS_GOLANGCI_LINT
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.3
 endif
 ifndef HAS_MOCKGEN
 	go install github.com/golang/mock/mockgen@v1.6.0
