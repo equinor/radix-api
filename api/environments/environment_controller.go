@@ -239,6 +239,11 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.StopAllBatches,
 		},
 		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopAllBatchesAndJobsForJobComponent,
+		},
+		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/batches/stop",
 			Method:      http.MethodPost,
 			HandlerFunc: c.StopAllBatchesForEnvironment,
@@ -2262,6 +2267,63 @@ func (c *environmentController) StopAllBatchesForEnvironment(accounts models.Acc
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopAllBatchesForEnvironment(r.Context(), appName, envName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// StopAllBatchesAndJobsForJobComponent Stop all scheduled batches in the job-component
+func (c *environmentController) StopAllBatchesAndJobsForJobComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/stop job stopAllBatchesAndJobsForJobComponent
+	// ---
+	// summary: Stop all scheduled batches for the job-component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllBatchesAndJobsForJobComponent(r.Context(), appName, envName, jobComponentName)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return

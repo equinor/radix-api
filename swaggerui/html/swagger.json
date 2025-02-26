@@ -4068,6 +4068,67 @@
         }
       }
     },
+    "/applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/stop": {
+      "post": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Stop all scheduled batches for the job-component",
+        "operationId": "stopAllBatchesAndJobsForJobComponent",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of environment",
+            "name": "envName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of job-component",
+            "name": "jobComponentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid batch"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/environments/{envName}/reset-scale": {
       "post": {
         "tags": [

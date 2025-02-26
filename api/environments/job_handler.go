@@ -166,6 +166,17 @@ func (eh EnvironmentHandler) StopAllBatches(ctx context.Context, appName, envNam
 	return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
 }
 
+// StopAllBatchesAndJobsForJobComponent Stop all scheduled batches in the job-component
+func (eh EnvironmentHandler) StopAllBatchesAndJobsForJobComponent(ctx context.Context, appName, envName, jobComponentName string) error {
+	errs := slice.Map([]kube.RadixBatchType{kube.RadixBatchTypeBatch, kube.RadixBatchTypeJob}, func(batchType kube.RadixBatchType) error {
+		return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchType)
+	})
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
 // StopAllBatchesForEnvironment Stop all batches for the environment
 func (eh EnvironmentHandler) StopAllBatchesForEnvironment(ctx context.Context, appName, envName string) error {
 	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)

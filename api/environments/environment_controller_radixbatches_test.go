@@ -1591,7 +1591,7 @@ func Test_DeleteBatch(t *testing.T) {
 	}
 }
 
-func Test_StopAllJobs(t *testing.T) {
+func Test_StopAllJobComponentJobs(t *testing.T) {
 	const (
 		envName1      = "qa"
 		envName2      = "dev"
@@ -1615,7 +1615,7 @@ func Test_StopAllJobs(t *testing.T) {
 	addRadixBatchWithStatus(radixClient, "test-batch4-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeActive)
 	addRadixBatch(radixClient, "test-batch5-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1)
 	addRadixBatchWithStatus(radixClient, "test-batch6-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeWaiting)
-	addRadixBatch(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace2)
+	addRadixBatch(radixClient, "test-batch7-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace2)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/stop", anyAppName, envName1, jobComponent1))
 	response := <-responseChannel
@@ -1624,39 +1624,51 @@ func Test_StopAllJobs(t *testing.T) {
 
 	batchList, err := radixClient.RadixV1().RadixBatches(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	assert.NoError(t, err)
+
 	rb1, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace1
 	})
-	assert.True(t, ok, "test-batch2 should be found")
+	assert.True(t, ok, "test-batch1 should be found")
 	assert.Nil(t, rb1.Spec.Jobs[0].Stop, "test-batch1 job should not be stopped")
+
 	rb2, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch2" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch2 should be found")
 	assert.Equal(t, pointers.Ptr(true), rb2.Spec.Jobs[0].Stop, "test-batch2 job should be stopped")
+
 	rb3, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
 	})
 	assert.True(t, ok, "test-batch3 should be found")
 	assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+
 	rb4, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch4 should be found")
 	assert.Nil(t, rb4.Spec.Jobs[0].Stop, "test-batch4 single job should not be stopped")
+
 	rb5, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch5" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch5 should be found")
 	assert.Equal(t, pointers.Ptr(true), rb5.Spec.Jobs[0].Stop, "test-batch5 job should be stopped")
+
 	rb6, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
-		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace2
+		return batch.GetName() == "test-batch6" && batch.GetNamespace() == envNamespace1
 	})
-	assert.True(t, ok, "test-batch1 should be found")
-	assert.Nil(t, rb6.Spec.Jobs[0].Stop, "test-batch6 job should not be stopped")
+	assert.True(t, ok, "test-batch6 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb6.Spec.Jobs[0].Stop, "test-batch6 job should be stopped")
+
+	rb7, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch7" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch7 should be found")
+	assert.Nil(t, rb7.Spec.Jobs[0].Stop, "test-batch7 job should not be stopped")
 }
 
-func Test_StopAllBatches(t *testing.T) {
+func Test_StopAllJobComponentBatches(t *testing.T) {
 	const (
 		envName1      = "qa"
 		envName2      = "dev"
@@ -1680,7 +1692,7 @@ func Test_StopAllBatches(t *testing.T) {
 	addRadixBatchWithStatus(radixClient, "test-batch4-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeActive)
 	addRadixBatch(radixClient, "test-batch5-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1)
 	addRadixBatchWithStatus(radixClient, "test-batch6-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeWaiting)
-	addRadixBatch(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace2)
+	addRadixBatch(radixClient, "test-batch7-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace2)
 
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/batches/stop", anyAppName, envName1, jobComponent1))
 	response := <-responseChannel
@@ -1689,37 +1701,280 @@ func Test_StopAllBatches(t *testing.T) {
 
 	batchList, err := radixClient.RadixV1().RadixBatches(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	assert.NoError(t, err)
+
 	rb1, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace1
 	})
-	assert.True(t, ok, "test-batch2 should be found")
+	assert.True(t, ok, "test-batch1 should be found")
 	assert.Nil(t, rb1.Spec.Jobs[0].Stop, "test-batch1 job should not be stopped")
+
 	rb2, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch2" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch2 should be found")
 	assert.Equal(t, pointers.Ptr(true), rb2.Spec.Jobs[0].Stop, "test-batch2 job should be stopped")
+
 	rb3, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
 	})
 	assert.True(t, ok, "test-batch3 should be found")
 	assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+
 	rb4, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch4 should be found")
 	assert.Nil(t, rb4.Spec.Jobs[0].Stop, "test-batch4 single job should not be stopped")
+
 	rb5, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch5" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch5 should be found")
 	assert.Equal(t, pointers.Ptr(true), rb5.Spec.Jobs[0].Stop, "test-batch5 job should be stopped")
+
 	rb6, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
-		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace2
+		return batch.GetName() == "test-batch6" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch6 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb6.Spec.Jobs[0].Stop, "test-batch6 job should not be stopped")
+
+	rb7, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch7" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch7 should be found")
+	assert.Nil(t, rb7.Spec.Jobs[0].Stop, "test-batch7 job should not be stopped")
+}
+
+func Test_StopAllJobComponentBatchesAndJobs(t *testing.T) {
+	const (
+		envName1      = "qa"
+		envName2      = "dev"
+		jobComponent1 = "compute1"
+		jobComponent2 = "compute2"
+	)
+
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, nil)
+	_, err := commonTestUtils.ApplyRegistration(utils.NewRegistrationBuilder().
+		WithName(anyAppName))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyApplication(utils.NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyDeployment(context.Background(), utils.NewDeploymentBuilder().
+		WithAppName(anyAppName).WithEnvironment(envName1).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(pointers.Ptr[int32](8001))).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(pointers.Ptr[int32](8002))))
+	require.NoError(t, err)
+
+	envNamespace1 := utils.GetEnvironmentNamespace(anyAppName, envName1)
+	envNamespace2 := utils.GetEnvironmentNamespace(anyAppName, envName2)
+	addRadixBatchWithStatus(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeCompleted)
+	addRadixBatchWithStatus(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeActive) //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch3-job1", jobComponent2, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeActive)
+	addRadixBatchWithStatus(radixClient, "test-batch4-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeCompleted)
+	addRadixBatchWithStatus(radixClient, "test-batch5-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeActive) //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch6-job1", jobComponent2, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeActive)
+	addRadixBatch(radixClient, "test-batch7-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1)                                         //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch8-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeWaiting) //to be stopped
+	addRadixBatch(radixClient, "test-batch9-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace2)
+	addRadixBatch(radixClient, "test-batch10-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1)                                         //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch11-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeWaiting) //to be stopped
+	addRadixBatch(radixClient, "test-batch12-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace2)
+
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/stop", anyAppName, envName1, jobComponent1))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+	assert.Empty(t, response.Body.Bytes())
+	batchList, err := radixClient.RadixV1().RadixBatches(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	assert.NoError(t, err)
+
+	rb1, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace1
 	})
 	assert.True(t, ok, "test-batch1 should be found")
+	assert.Nil(t, rb1.Spec.Jobs[0].Stop, "test-batch1 job should not be stopped")
+
+	rb2, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch2" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch2 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb2.Spec.Jobs[0].Stop, "test-batch2 job should be stopped")
+
+	rb3, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
+	})
+	assert.True(t, ok, "test-batch3 should be found")
+	assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+
+	rb4, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch4 should be found")
+	assert.Nil(t, rb4.Spec.Jobs[0].Stop, "test-batch4 single job should not be stopped")
+
+	rb5, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch5" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch5 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb5.Spec.Jobs[0].Stop, "test-batch5 job should be stopped")
+
+	rb6, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch6" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch6 should be found")
 	assert.Nil(t, rb6.Spec.Jobs[0].Stop, "test-batch6 job should not be stopped")
 
+	rb7, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch7" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch7 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb7.Spec.Jobs[0].Stop, "test-batch7 job should be stopped")
+
+	rb8, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch8" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch8 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb8.Spec.Jobs[0].Stop, "test-batch8 job should be stopped")
+
+	rb9, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch9" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch9 should be found")
+	assert.Nil(t, rb9.Spec.Jobs[0].Stop, "test-batch9 job should not be stopped")
+
+	rb10, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch10" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch10 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb10.Spec.Jobs[0].Stop, "test-batch10 job should be stopped")
+
+	rb11, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch11" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch11 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb11.Spec.Jobs[0].Stop, "test-batch11 job should be stopped")
+
+	rb12, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch12" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch12 should be found")
+	assert.Nil(t, rb12.Spec.Jobs[0].Stop, "test-batch12 job should not be stopped")
+}
+
+func Test_StopAllEnvironmentBatchesAndJobs(t *testing.T) {
+	const (
+		envName1      = "qa"
+		envName2      = "dev"
+		jobComponent1 = "compute1"
+		jobComponent2 = "compute2"
+	)
+
+	commonTestUtils, environmentControllerTestUtils, _, _, radixClient, _, _, _, _ := setupTest(t, nil)
+	_, err := commonTestUtils.ApplyRegistration(utils.NewRegistrationBuilder().
+		WithName(anyAppName))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyApplication(utils.NewRadixApplicationBuilder().
+		WithAppName(anyAppName))
+	require.NoError(t, err)
+	_, err = commonTestUtils.ApplyDeployment(context.Background(), utils.NewDeploymentBuilder().
+		WithAppName(anyAppName).WithEnvironment(envName1).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(pointers.Ptr[int32](8001))).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(pointers.Ptr[int32](8002))))
+	require.NoError(t, err)
+
+	envNamespace1 := utils.GetEnvironmentNamespace(anyAppName, envName1)
+	envNamespace2 := utils.GetEnvironmentNamespace(anyAppName, envName2)
+	addRadixBatchWithStatus(radixClient, "test-batch1-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeCompleted)
+	addRadixBatchWithStatus(radixClient, "test-batch2-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeActive) //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch3-job1", jobComponent2, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeActive)
+	addRadixBatchWithStatus(radixClient, "test-batch4-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeCompleted)
+	addRadixBatchWithStatus(radixClient, "test-batch5-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeActive) //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch6-job1", jobComponent2, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeActive)
+	addRadixBatch(radixClient, "test-batch7-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1)                                         //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch8-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace1, v1.BatchConditionTypeWaiting) //to be stopped
+	addRadixBatch(radixClient, "test-batch9-job1", jobComponent1, kube.RadixBatchTypeBatch, envNamespace2)
+	addRadixBatch(radixClient, "test-batch10-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1)                                         //to be stopped
+	addRadixBatchWithStatus(radixClient, "test-batch11-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace1, v1.BatchConditionTypeWaiting) //to be stopped
+	addRadixBatch(radixClient, "test-batch12-job1", jobComponent1, kube.RadixBatchTypeJob, envNamespace2)
+
+	responseChannel := environmentControllerTestUtils.ExecuteRequest("POST", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/stop", anyAppName, envName1))
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+	assert.Empty(t, response.Body.Bytes())
+	batchList, err := radixClient.RadixV1().RadixBatches(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	assert.NoError(t, err)
+
+	rb1, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch1" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch1 should be found")
+	assert.Nil(t, rb1.Spec.Jobs[0].Stop, "test-batch1 job should not be stopped")
+
+	rb2, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch2" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch2 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb2.Spec.Jobs[0].Stop, "test-batch2 job should be stopped")
+
+	rb3, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
+	})
+	assert.True(t, ok, "test-batch3 should be found")
+	assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+
+	rb4, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch4 should be found")
+	assert.Nil(t, rb4.Spec.Jobs[0].Stop, "test-batch4 single job should not be stopped")
+
+	rb5, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch5" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch5 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb5.Spec.Jobs[0].Stop, "test-batch5 job should be stopped")
+
+	rb6, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch6" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch6 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb6.Spec.Jobs[0].Stop, "test-batch6 job should be stopped")
+
+	rb7, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch7" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch7 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb7.Spec.Jobs[0].Stop, "test-batch7 job should be stopped")
+
+	rb8, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch8" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch8 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb8.Spec.Jobs[0].Stop, "test-batch8 job should be stopped")
+
+	rb9, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch9" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch9 should be found")
+	assert.Nil(t, rb9.Spec.Jobs[0].Stop, "test-batch9 job should not be stopped")
+
+	rb10, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch10" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch10 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb10.Spec.Jobs[0].Stop, "test-batch10 job should be stopped")
+
+	rb11, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch11" && batch.GetNamespace() == envNamespace1
+	})
+	assert.True(t, ok, "test-batch11 should be found")
+	assert.Equal(t, pointers.Ptr(true), rb11.Spec.Jobs[0].Stop, "test-batch11 job should be stopped")
+
+	rb12, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
+		return batch.GetName() == "test-batch12" && batch.GetNamespace() == envNamespace2
+	})
+	assert.True(t, ok, "test-batch12 should be found")
+	assert.Nil(t, rb12.Spec.Jobs[0].Stop, "test-batch12 job should not be stopped")
 }
 
 func assertBatchDeleted(t *testing.T, rc radixclient.Interface, ns, batchName string, deletableBatches []string) {
