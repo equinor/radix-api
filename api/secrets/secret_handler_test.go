@@ -7,6 +7,7 @@ import (
 	"time"
 
 	deployMock "github.com/equinor/radix-api/api/deployments/mock"
+	"github.com/equinor/radix-api/api/kubequery"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/secret"
@@ -18,6 +19,7 @@ import (
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -686,6 +688,9 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				changedSecret, _ := kubeClient.CoreV1().Secrets(appEnvNamespace).Get(context.Background(), scenario.secretName, metav1.GetOptions{})
 				s.NotNil(changedSecret)
 				s.Equal(scenario.changingSecretParams.SecretValue, string(changedSecret.Data[scenario.secretDataKey]))
+				secretUpdatedAt := kubequery.GetSecretKeyUpdatedAtFromAnnotation(scenario.changingSecretName, changedSecret)
+				require.NotNil(s.T(), secretUpdatedAt)
+				s.WithinDuration(time.Now(), *secretUpdatedAt, 1*time.Second)
 			}
 		})
 	}

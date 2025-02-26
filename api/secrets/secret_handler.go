@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/kubequery"
@@ -230,8 +231,15 @@ func (eh *SecretHandler) setSecretKeyValue(ctx context.Context, namespace, secre
 		secret.Data = make(map[string][]byte)
 	}
 
+	if secret.Annotations == nil { 
+		secret.Annotations = make(map[string]string)
+	}
+
 	for k, v := range keyValue {
 		secret.Data[k] = v
+
+		annotation := kubequery.GetSecretUpdatedAtAnnotationName(k)
+		secret.Annotations[annotation] = time.Now().Format(time.RFC3339)
 	}
 
 	_, err = eh.userAccount.Client.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
