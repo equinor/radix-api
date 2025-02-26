@@ -169,16 +169,6 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetJob,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopJob,
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopAllJobs,
-		},
-		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart",
 			Method:      "POST",
 			HandlerFunc: c.RestartJob,
@@ -209,16 +199,6 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetBatch,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopBatch,
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopAllBatches,
-		},
-		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart",
 			Method:      "POST",
 			HandlerFunc: c.RestartBatch,
@@ -237,6 +217,41 @@ func (c *environmentController) GetRoutes() models.Routes {
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/scale/{replicas}",
 			Method:      "POST",
 			HandlerFunc: c.ScaleComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopJob,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopAllJobs,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopAllBatches,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/batches/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopAllBatchesForEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/jobs/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopAllJobsForEnvironment,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/stop",
+			Method:      "POST",
+			HandlerFunc: c.StopAllBatchesAndJobsForEnvironment,
 		},
 	}
 
@@ -1793,6 +1808,57 @@ func (c *environmentController) StopAllJobs(accounts models.Accounts, w http.Res
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// StopAllJobsForEnvironment Stop all scheduled jobs in the environment
+func (c *environmentController) StopAllJobsForEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/jobs/stop job stopAllJobsForEnvironment
+	// ---
+	// summary: Stop all scheduled jobs for the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid job"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllJobsForEnvironment(r.Context(), appName, envName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // RestartJob Start a running or stopped scheduled job
 func (c *environmentController) RestartJob(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart job restartJob
@@ -2145,6 +2211,108 @@ func (c *environmentController) StopAllBatches(accounts models.Accounts, w http.
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopAllBatches(r.Context(), appName, envName, jobComponentName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// StopAllBatchesForEnvironment Stop all scheduled batches in the environment
+func (c *environmentController) StopAllBatchesForEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/batches/stop job stopAllBatchesForEnvironment
+	// ---
+	// summary: Stop all scheduled batches in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllBatchesForEnvironment(r.Context(), appName, envName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// StopAllBatchesAndJobsForEnvironment Stop all scheduled batches and jobs in the environment
+func (c *environmentController) StopAllBatchesAndJobsForEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/stop job stopAllBatchesAndJobsForEnvironment
+	// ---
+	// summary: Stop all scheduled batches and jobs in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllBatchesAndJobsForEnvironment(r.Context(), appName, envName)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return

@@ -3,6 +3,7 @@ package environments
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -165,6 +166,43 @@ func (eh EnvironmentHandler) StopAllBatches(ctx context.Context, appName, envNam
 	return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch)
 }
 
+// StopAllBatchesForEnvironment Stop all batches for the environment
+func (eh EnvironmentHandler) StopAllBatchesForEnvironment(ctx context.Context, appName, envName string) error {
+	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
+	if err != nil {
+		return err
+	}
+	return eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeBatch)
+}
+
+// StopAllJobsForEnvironment Stop all single jobs for the environment
+func (eh EnvironmentHandler) StopAllJobsForEnvironment(ctx context.Context, appName, envName string) error {
+	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
+	if err != nil {
+		return err
+	}
+	return eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeJob)
+}
+
+// StopAllBatchesAndJobsForEnvironment Stop all batches and single jobs for the environment
+func (eh EnvironmentHandler) StopAllBatchesAndJobsForEnvironment(ctx context.Context, appName, envName string) error {
+	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	if err = eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeBatch); err != nil {
+		errs = append(errs, err)
+	}
+	if err = eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeJob); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
 // StopJob Stop job by name
 func (eh EnvironmentHandler) StopJob(ctx context.Context, appName, envName, jobComponentName, jobName string) error {
 	radixBatch, batchJobName, err := eh.getBatchJob(ctx, appName, envName, jobComponentName, jobName)
@@ -311,4 +349,29 @@ func (eh EnvironmentHandler) getDeploymentMapAndActiveDeployJobComponent(ctx con
 		return nil, nil, err
 	}
 	return radixDeploymentsMap, activeRadixDeployJobComponent, nil
+}
+
+func (eh EnvironmentHandler) getActiveRadixDeploymentJobComponents(ctx context.Context, appName string, envName string) (*radixv1.RadixDeployment, error) {
+	radixDeploymentsMap, err := kubequery.GetRadixDeploymentsMapForEnvironment(ctx, eh.accounts.UserAccount.RadixClient, appName, envName)
+	if err != nil {
+		return nil, err
+	}
+	activeRd, err := getActiveRadixDeployment(appName, envName, radixDeploymentsMap)
+	if err != nil {
+		return nil, err
+	}
+	return activeRd, nil
+}
+
+func (eh EnvironmentHandler) stopAllRadixBatches(ctx context.Context, appName string, envName string, jobComponents []radixv1.RadixDeployJobComponent, batchType kube.RadixBatchType) error {
+	var errs []error
+	for _, jobComponent := range jobComponents {
+		if err := jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponent.Name, batchType); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
