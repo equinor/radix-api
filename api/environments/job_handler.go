@@ -177,24 +177,6 @@ func (eh EnvironmentHandler) StopAllBatchesAndJobsForJobComponent(ctx context.Co
 	return nil
 }
 
-// StopAllBatchesForEnvironment Stop all batches for the environment
-func (eh EnvironmentHandler) StopAllBatchesForEnvironment(ctx context.Context, appName, envName string) error {
-	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
-	if err != nil {
-		return err
-	}
-	return eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeBatch)
-}
-
-// StopAllJobsForEnvironment Stop all single jobs for the environment
-func (eh EnvironmentHandler) StopAllJobsForEnvironment(ctx context.Context, appName, envName string) error {
-	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
-	if err != nil {
-		return err
-	}
-	return eh.stopAllRadixBatches(ctx, appName, envName, activeRd.Spec.Jobs, kube.RadixBatchTypeJob)
-}
-
 // StopAllBatchesAndJobsForEnvironment Stop all batches and single jobs for the environment
 func (eh EnvironmentHandler) StopAllBatchesAndJobsForEnvironment(ctx context.Context, appName, envName string) error {
 	activeRd, err := eh.getActiveRadixDeploymentJobComponents(ctx, appName, envName)
