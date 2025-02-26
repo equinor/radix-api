@@ -1920,7 +1920,7 @@ func Test_StopAllEnvironmentBatchesAndJobs(t *testing.T) {
 		return batch.GetName() == "test-batch3" && batch.GetNamespace() == envNamespace1 && batch.GetLabels()[kube.RadixComponentLabel] == jobComponent2
 	})
 	assert.True(t, ok, "test-batch3 should be found")
-	assert.Nil(t, rb3.Spec.Jobs[0].Stop, "test-batch3 job should not be stopped")
+	assert.Equal(t, pointers.Ptr(true), rb3.Spec.Jobs[0].Stop, "test-batch3 job should be stopped")
 
 	rb4, ok := slice.FindFirst(batchList.Items, func(batch v1.RadixBatch) bool {
 		return batch.GetName() == "test-batch4" && batch.GetNamespace() == envNamespace1
