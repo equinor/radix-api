@@ -168,9 +168,15 @@ func (eh EnvironmentHandler) StopAllBatches(ctx context.Context, appName, envNam
 
 // StopAllBatchesAndJobsForJobComponent Stop all scheduled batches in the job-component
 func (eh EnvironmentHandler) StopAllBatchesAndJobsForJobComponent(ctx context.Context, appName, envName, jobComponentName string) error {
-	errs := slice.Map([]kube.RadixBatchType{kube.RadixBatchTypeBatch, kube.RadixBatchTypeJob}, func(batchType kube.RadixBatchType) error {
-		return jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, batchType)
-	})
+	var errs []error
+
+	if err := jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeBatch); err != nil {
+		errs = append(errs, err)
+	}
+	if err := jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeJob); err != nil {
+		errs = append(errs, err)
+	}
+	
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
