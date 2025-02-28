@@ -2,6 +2,7 @@ package kubequery
 
 import (
 	"context"
+	"time"
 
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -21,4 +22,26 @@ func GetSecretsForEnvironment(ctx context.Context, client kubernetes.Interface, 
 	}
 
 	return secrets.Items, nil
+}
+
+func GetSecretUpdatedAtAnnotationName(key string) string {
+	return "radix.equinor.com/secret-updated/" + key
+}
+func GetSecretKeyUpdatedAtFromAnnotation(key string, secret *corev1.Secret) *time.Time {
+	if secret == nil {
+		return nil
+	}
+
+	annotationName := GetSecretUpdatedAtAnnotationName(key)
+	updated, ok := secret.Annotations[annotationName]
+	if !ok {
+		return nil
+	}
+
+	t, err := time.Parse(time.RFC3339, updated)
+	if err != nil {
+		return nil
+	}
+
+	return &t
 }
