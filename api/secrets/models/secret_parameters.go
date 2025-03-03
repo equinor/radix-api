@@ -8,10 +8,4 @@ type SecretParameters struct {
 	// required: true
 	// example: p4$sW0rDz
 	SecretValue string `json:"secretValue"`
-
-	// Type of the secret
-	//
-	// required: false
-	// example: azure-blob-fuse-volume
-	Type SecretType `json:"type,omitempty"`
 }
