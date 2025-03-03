@@ -3,24 +3,27 @@ package internal
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // UpdatePrivateImageHubsSecretsPassword update secret password
 func UpdatePrivateImageHubsSecretsPassword(ctx context.Context, kubeUtil *kube.Kube, appName, server, password string) error {
 	namespace := operatorutils.GetAppNamespace(appName)
-	secret, _ := kubeUtil.GetSecret(ctx, namespace, defaults.PrivateImageHubSecretName)
-	if secret == nil {
+	original, _ := kubeUtil.GetSecret(ctx, namespace, defaults.PrivateImageHubSecretName)
+	if original == nil {
 		return fmt.Errorf("private image hub secret does not exist for app %s", appName)
 	}
 
-	imageHubs, err := applicationconfig.GetImageHubSecretValue(secret.Data[corev1.DockerConfigJsonKey])
+	modified := original.DeepCopy()
+
+	imageHubs, err := applicationconfig.GetImageHubSecretValue(modified.Data[corev1.DockerConfigJsonKey])
 	if err != nil {
 		return err
 	}
@@ -32,20 +35,22 @@ func UpdatePrivateImageHubsSecretsPassword(ctx context.Context, kubeUtil *kube.K
 		if err != nil {
 			return err
 		}
-		return applicationconfig.ApplyPrivateImageHubSecret(ctx, kubeUtil, namespace, appName, secretValue)
+
+		modified.Data[corev1.DockerConfigJsonKey] = secretValue
+
+		if err = kubequery.PatchSecretMetadata(modified, server, time.Now()); err != nil {
+			return err
+		}
+
+		_, err = kubeUtil.UpdateSecret(ctx, original, modified)
+		return err
 	}
 	return fmt.Errorf("private image hub secret does not contain config for server %s", server)
 }
 
 // GetPendingPrivateImageHubSecrets returns a list of private image hubs where secret value is not set
-func GetPendingPrivateImageHubSecrets(ctx context.Context, kubeUtil *kube.Kube, appName string) ([]string, error) {
-	pendingSecrets := []string{}
-	ns := operatorutils.GetAppNamespace(appName)
-	secret, err := kubeUtil.GetSecret(ctx, ns, defaults.PrivateImageHubSecretName)
-	if err != nil && !errors.IsNotFound(err) {
-		return nil, err
-	}
-
+func GetPendingPrivateImageHubSecrets(secret *corev1.Secret) ([]string, error) {
+	var pendingSecrets []string
 	imageHubs, err := applicationconfig.GetImageHubSecretValue(secret.Data[corev1.DockerConfigJsonKey])
 	if err != nil {
 		return nil, err
