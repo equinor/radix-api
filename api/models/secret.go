@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/equinor/radix-api/api/kubequery"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	"github.com/equinor/radix-api/api/secrets/suffix"
 	"github.com/equinor/radix-api/api/utils/predicate"
@@ -23,17 +25,17 @@ import (
 const secretDefaultData = "xx"
 
 // BuildSecrets builds a list of Secret models.
-func BuildSecrets(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment) []secretModels.Secret {
+func BuildSecrets(ctx context.Context, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment) []secretModels.Secret {
 	var secrets []secretModels.Secret
-	secrets = append(secrets, getSecretsForDeployment(secretList, rd)...)
-	secrets = append(secrets, getSecretsForVolumeMounts(secretList, rd)...)
-	secrets = append(secrets, getSecretsForAuthentication(secretList, rd)...)
-	secrets = append(secrets, getSecretsForSecretRefs(secretList, secretProviderClassList, rd)...)
+	secrets = append(secrets, getSecretsForDeployment(ctx, secretList, rd)...)
+	secrets = append(secrets, getSecretsForVolumeMounts(ctx, secretList, rd)...)
+	secrets = append(secrets, getSecretsForAuthentication(ctx, secretList, rd)...)
+	secrets = append(secrets, getSecretsForSecretRefs(ctx, secretList, secretProviderClassList, rd)...)
 
 	return secrets
 }
 
-func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeployment) []secretModels.Secret {
+func getSecretsForDeployment(ctx context.Context, secretList []corev1.Secret, rd *radixv1.RadixDeployment) []secretModels.Secret {
 	getSecretsForComponent := func(component radixv1.RadixCommonDeployComponent) map[string]bool {
 		if len(component.GetSecrets()) <= 0 {
 			return nil
@@ -75,11 +77,13 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 					Type:        secretModels.SecretTypeGeneric,
 					Component:   componentName,
 					Status:      secretModels.Pending.String(),
+					UpdatedAt:   nil,
 				})
 			}
 			continue
 		}
 
+		metadata := kubequery.GetSecretMetadata(ctx, &secr)
 		clusterSecretEntriesMap := secr.Data
 		for secretName := range secretNamesMap {
 			status := secretModels.Consistent.String()
@@ -93,6 +97,7 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 				Type:        secretModels.SecretTypeGeneric,
 				Component:   componentName,
 				Status:      status,
+				UpdatedAt:   metadata.GetUpdatedAt(secretName),
 			})
 		}
 	}
@@ -100,24 +105,24 @@ func getSecretsForDeployment(secretList []corev1.Secret, rd *radixv1.RadixDeploy
 	return secretDTOsMap
 }
 
-func getSecretsForVolumeMounts(secretList []corev1.Secret, rd *radixv1.RadixDeployment) []secretModels.Secret {
+func getSecretsForVolumeMounts(ctx context.Context, secretList []corev1.Secret, rd *radixv1.RadixDeployment) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, component := range rd.Spec.Components {
-		secrets = append(secrets, getCredentialSecretsForBlobVolumes(secretList, &component)...)
+		secrets = append(secrets, getCredentialSecretsForBlobVolumes(ctx, secretList, &component)...)
 	}
 	for _, job := range rd.Spec.Jobs {
-		secrets = append(secrets, getCredentialSecretsForBlobVolumes(secretList, &job)...)
+		secrets = append(secrets, getCredentialSecretsForBlobVolumes(ctx, secretList, &job)...)
 	}
 	return secrets
 }
 
-func getCredentialSecretsForBlobVolumes(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
+func getCredentialSecretsForBlobVolumes(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, volumeMount := range component.GetVolumeMounts() {
 		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
 		switch volumeMountType {
 		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
-			accountKeySecret, accountNameSecret := getCsiAzureSecrets(secretList, component, volumeMount)
+			accountKeySecret, accountNameSecret := getCsiAzureSecrets(ctx, secretList, component, volumeMount)
 			if accountKeySecret != nil {
 				secrets = append(secrets, *accountKeySecret)
 			}
@@ -129,27 +134,21 @@ func getCredentialSecretsForBlobVolumes(secretList []corev1.Secret, component ra
 	return secrets
 }
 
-func getCsiAzureSecrets(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, volumeMount radixv1.RadixVolumeMount) (*secretModels.Secret, *secretModels.Secret) {
+func getCsiAzureSecrets(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, volumeMount radixv1.RadixVolumeMount) (*secretModels.Secret, *secretModels.Secret) {
 	volumeMountCredsSecretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)
-	return getAzureVolumeMountSecrets(secretList, component,
-		volumeMountCredsSecretName,
-		volumeMount,
-		defaults.CsiAzureCredsAccountNamePart,
-		defaults.CsiAzureCredsAccountKeyPart,
-		defaults.CsiAzureCredsAccountNamePartSuffix,
-		defaults.CsiAzureCredsAccountKeyPartSuffix,
-		secretModels.SecretTypeCsiAzureBlobVolume,
-	)
+	return getAzureVolumeMountSecrets(ctx, secretList, component, volumeMountCredsSecretName, volumeMount, defaults.CsiAzureCredsAccountNamePart, defaults.CsiAzureCredsAccountKeyPart, defaults.CsiAzureCredsAccountNamePartSuffix, defaults.CsiAzureCredsAccountKeyPartSuffix, secretModels.SecretTypeCsiAzureBlobVolume)
 }
 
-func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, secretName string, volumeMount radixv1.RadixVolumeMount, accountNamePart, accountKeyPart, accountNamePartSuffix, accountKeyPartSuffix string, secretType secretModels.SecretType) (*secretModels.Secret, *secretModels.Secret) {
+func getAzureVolumeMountSecrets(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent, secretName string, volumeMount radixv1.RadixVolumeMount, accountNamePart, accountKeyPart, accountNamePartSuffix, accountKeyPartSuffix string, secretType secretModels.SecretType) (*secretModels.Secret, *secretModels.Secret) {
 	if volumeMount.HasEmptyDir() || volumeMount.UseAzureIdentity() {
 		return nil, nil
 	}
 	keySecretStatus := secretModels.Consistent.String()
 	nameSecretStatus := secretModels.Consistent.String()
+	var metadata *kubequery.SecretMetadata
 
 	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+		metadata = kubequery.GetSecretMetadata(ctx, &secretValue)
 		accountKeyValue := strings.TrimSpace(string(secretValue.Data[accountKeyPart]))
 		if strings.EqualFold(accountKeyValue, secretDefaultData) {
 			keySecretStatus = secretModels.Pending.String()
@@ -172,6 +171,7 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 		ID:          secretModels.SecretIdAccountKey,
 		Component:   component.GetName(),
 		Status:      keySecretStatus,
+		UpdatedAt:   metadata.GetUpdatedAt(secretName + accountKeyPartSuffix),
 	}
 	var nameSecret *secretModels.Secret
 	storageAccount := volumemountUtils.GetBlobFuse2VolumeMountStorageAccount(volumeMount)
@@ -184,6 +184,7 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 			ID:          secretModels.SecretIdAccountName,
 			Component:   component.GetName(),
 			Status:      nameSecretStatus,
+			UpdatedAt:   metadata.GetUpdatedAt(secretName + accountNamePartSuffix),
 		}
 	} else {
 		keySecret.DisplayName = fmt.Sprintf("Account Key for %s", storageAccount)
@@ -191,31 +192,33 @@ func getAzureVolumeMountSecrets(secretList []corev1.Secret, component radixv1.Ra
 	return keySecret, nameSecret
 }
 
-func getSecretsForAuthentication(secretList []corev1.Secret, activeDeployment *radixv1.RadixDeployment) []secretModels.Secret {
+func getSecretsForAuthentication(ctx context.Context, secretList []corev1.Secret, activeDeployment *radixv1.RadixDeployment) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, component := range activeDeployment.Spec.Components {
-		authSecrets := getSecretsForComponentAuthentication(secretList, &component)
+		authSecrets := getSecretsForComponentAuthentication(ctx, secretList, &component)
 		secrets = append(secrets, authSecrets...)
 	}
 
 	return secrets
 }
 
-func getSecretsForComponentAuthentication(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
+func getSecretsForComponentAuthentication(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
-	secrets = append(secrets, getSecretsForComponentAuthenticationClientCertificate(secretList, component)...)
-	secrets = append(secrets, getSecretsForComponentAuthenticationOAuth2(secretList, component)...)
+	secrets = append(secrets, getSecretsForComponentAuthenticationClientCertificate(ctx, secretList, component)...)
+	secrets = append(secrets, getSecretsForComponentAuthenticationOAuth2(ctx, secretList, component)...)
 
 	return secrets
 }
 
-func getSecretsForComponentAuthenticationClientCertificate(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
+func getSecretsForComponentAuthenticationClientCertificate(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	if auth := component.GetAuthentication(); auth != nil && component.IsPublic() && ingress.IsSecretRequiredForClientCertificate(auth.ClientCertificate) {
 		secretName := operatorutils.GetComponentClientCertificateSecretName(component.GetName())
 		secretStatus := secretModels.Consistent.String()
+		var metadata *kubequery.SecretMetadata
 
 		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+			metadata = kubequery.GetSecretMetadata(ctx, &secr)
 			secretValue := strings.TrimSpace(string(secr.Data["ca.crt"]))
 			if strings.EqualFold(secretValue, secretDefaultData) {
 				secretStatus = secretModels.Pending.String()
@@ -230,13 +233,14 @@ func getSecretsForComponentAuthenticationClientCertificate(secretList []corev1.S
 			Type:        secretModels.SecretTypeClientCertificateAuth,
 			Component:   component.GetName(),
 			Status:      secretStatus,
+			UpdatedAt:   metadata.GetUpdatedAt(secretName),
 		})
 	}
 
 	return secrets
 }
 
-func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
+func getSecretsForComponentAuthenticationOAuth2(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
 		oauth2, err := defaults.NewOAuth2Config(defaults.WithOAuth2Defaults()).MergeWith(auth.OAuth2)
@@ -248,9 +252,11 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 		clientSecretStatus := secretModels.Consistent.String()
 		cookieSecretStatus := secretModels.Consistent.String()
 		redisPasswordStatus := secretModels.Consistent.String()
+		var metadata *kubequery.SecretMetadata
 
 		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
 		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+			metadata = kubequery.GetSecretMetadata(ctx, &secr)
 			if !useAzureIdentity {
 				if secretValue, found := secr.Data[defaults.OAuthClientSecretKeyName]; !found || len(strings.TrimSpace(string(secretValue))) == 0 {
 					clientSecretStatus = secretModels.Pending.String()
@@ -277,6 +283,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 				Type:        secretModels.SecretTypeOAuth2Proxy,
 				Component:   component.GetName(),
 				Status:      clientSecretStatus,
+				UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2ClientSecret),
 			})
 		}
 		secrets = append(secrets, secretModels.Secret{
@@ -285,6 +292,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 			Type:        secretModels.SecretTypeOAuth2Proxy,
 			Component:   component.GetName(),
 			Status:      cookieSecretStatus,
+			UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2CookieSecret),
 		})
 
 		if oauth2.SessionStoreType == radixv1.SessionStoreRedis {
@@ -294,6 +302,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 				Type:        secretModels.SecretTypeOAuth2Proxy,
 				Component:   component.GetName(),
 				Status:      redisPasswordStatus,
+				UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2RedisPassword),
 			})
 		}
 	}
@@ -301,7 +310,7 @@ func getSecretsForComponentAuthenticationOAuth2(secretList []corev1.Secret, comp
 	return secrets
 }
 
-func getSecretsForSecretRefs(secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment) []secretModels.Secret {
+func getSecretsForSecretRefs(ctx context.Context, secretList []corev1.Secret, secretProviderClassList []secretsstorev1.SecretProviderClass, rd *radixv1.RadixDeployment) []secretModels.Secret {
 	secretProviderClassMapForDeployment := slice.Reduce(
 		slice.FindAll(secretProviderClassList, predicate.IsSecretProviderClassForDeployment(rd.Name)),
 		map[string]secretsstorev1.SecretProviderClass{},
@@ -323,24 +332,23 @@ func getSecretsForSecretRefs(secretList []corev1.Secret, secretProviderClassList
 	var secrets []secretModels.Secret
 	for _, component := range rd.Spec.Components {
 		secretRefs := component.GetSecretRefs()
-		componentSecrets := getComponentSecretRefsSecrets(secretList, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
+		componentSecrets := getComponentSecretRefsSecrets(ctx, secretList, component.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		secrets = append(secrets, componentSecrets...)
 	}
 	for _, jobComponent := range rd.Spec.Jobs {
 		secretRefs := jobComponent.GetSecretRefs()
-		jobComponentSecrets := getComponentSecretRefsSecrets(secretList, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
+		jobComponentSecrets := getComponentSecretRefsSecrets(ctx, secretList, jobComponent.GetName(), &secretRefs, secretProviderClassMapForDeployment, csiSecretStoreSecretMap)
 		secrets = append(secrets, jobComponentSecrets...)
 	}
 
 	return secrets
 }
 
-func getComponentSecretRefsSecrets(secretList []corev1.Secret, componentName string, secretRefs *radixv1.RadixSecretRefs,
-	secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) []secretModels.Secret {
+func getComponentSecretRefsSecrets(ctx context.Context, secretList []corev1.Secret, componentName string, secretRefs *radixv1.RadixSecretRefs, secretProviderClassMap map[string]secretsstorev1.SecretProviderClass, csiSecretStoreSecretMap map[string]corev1.Secret) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, azureKeyVault := range secretRefs.AzureKeyVaults {
 		if azureKeyVault.UseAzureIdentity == nil || !*azureKeyVault.UseAzureIdentity {
-			credSecrets := getCredentialSecretsForSecretRefsAzureKeyVault(secretList, componentName, azureKeyVault.Name)
+			credSecrets := getCredentialSecretsForSecretRefsAzureKeyVault(ctx, secretList, componentName, azureKeyVault.Name)
 			secrets = append(secrets, credSecrets...)
 		}
 
@@ -354,6 +362,7 @@ func getComponentSecretRefsSecrets(secretList []corev1.Secret, componentName str
 				ID:          secret.GetSecretIdForAzureKeyVaultItem(&item),
 				Component:   componentName,
 				Status:      secretStatus,
+				UpdatedAt:   nil, // We dont have this information
 			})
 		}
 	}
@@ -389,13 +398,15 @@ func getComponentSecretProviderClassMapForAzureKeyVault(componentName string, co
 	return nil
 }
 
-func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, componentName, azureKeyVaultName string) []secretModels.Secret {
+func getCredentialSecretsForSecretRefsAzureKeyVault(ctx context.Context, secretList []corev1.Secret, componentName, azureKeyVaultName string) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	secretName := defaults.GetCsiAzureKeyVaultCredsSecretName(componentName, azureKeyVaultName)
 	clientIdStatus := secretModels.Consistent.String()
 	clientSecretStatus := secretModels.Consistent.String()
+	var metadata *kubequery.SecretMetadata
 
 	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
+		metadata = kubequery.GetSecretMetadata(ctx, &secretValue)
 		clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
 		if strings.EqualFold(clientIdValue, secretDefaultData) {
 			clientIdStatus = secretModels.Pending.String()
@@ -418,6 +429,7 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, 
 		ID:          secretModels.SecretIdClientId,
 		Component:   componentName,
 		Status:      clientIdStatus,
+		UpdatedAt:   metadata.GetUpdatedAt(secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix),
 	})
 	secrets = append(secrets, secretModels.Secret{
 		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
@@ -427,6 +439,7 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(secretList []corev1.Secret, 
 		ID:          secretModels.SecretIdClientSecret,
 		Component:   componentName,
 		Status:      clientSecretStatus,
+		UpdatedAt:   metadata.GetUpdatedAt(secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix),
 	})
 
 	return secrets
