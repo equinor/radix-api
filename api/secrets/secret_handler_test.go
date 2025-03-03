@@ -688,7 +688,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 				changedSecret, _ := kubeClient.CoreV1().Secrets(appEnvNamespace).Get(context.Background(), scenario.secretName, metav1.GetOptions{})
 				s.NotNil(changedSecret)
 				s.Equal(scenario.changingSecretParams.SecretValue, string(changedSecret.Data[scenario.secretDataKey]))
-				secretUpdatedAt := kubequery.GetSecretKeyUpdatedAtFromAnnotation(scenario.secretDataKey, changedSecret)
+				secretUpdatedAt := kubequery.GetSecretMetadata(context.Background(), changedSecret).GetUpdatedAt(scenario.secretDataKey)
 				require.NotNil(s.T(), secretUpdatedAt)
 				s.WithinDuration(time.Now(), *secretUpdatedAt, 1*time.Second)
 			}

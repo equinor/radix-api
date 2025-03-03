@@ -2,14 +2,23 @@ package kubequery
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
+
+const RadixMetadataAnnotation = "radix.equinor.com/secret-metadata"
+
+type SecretMetadata map[string]SecretMetadataItem
+type SecretMetadataItem struct {
+	UpdatedAt *time.Time `json:"updatedAt"`
+}
 
 // GetSecretsForEnvironment returns all Secrets for the specified application and environment.
 func GetSecretsForEnvironment(ctx context.Context, client kubernetes.Interface, appName, envName string, req ...labels.Requirement) ([]corev1.Secret, error) {
@@ -24,24 +33,57 @@ func GetSecretsForEnvironment(ctx context.Context, client kubernetes.Interface, 
 	return secrets.Items, nil
 }
 
-func GetSecretUpdatedAtAnnotationName(key string) string {
-	return "radix.equinor.com/secret-updated/" + key
+func PatchSecretMetadata(secret *corev1.Secret, key string, updatedAt time.Time) error {
+	metadata := make(SecretMetadata)
+	annotations := secret.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	if metadataJson, ok := annotations[RadixMetadataAnnotation]; ok {
+		if err := json.Unmarshal([]byte(metadataJson), &metadata); err != nil {
+			return err
+		}
+	}
+
+	metadata[key] = SecretMetadataItem{
+		UpdatedAt: &updatedAt,
+	}
+
+	metadataJsonBytes, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+
+	annotations["radix.equinor.com/secret-metadata"] = string(metadataJsonBytes)
+	secret.SetAnnotations(annotations)
+
+	return nil
 }
-func GetSecretKeyUpdatedAtFromAnnotation(key string, secret *corev1.Secret) *time.Time {
-	if secret == nil {
+
+func GetSecretMetadata(ctx context.Context, secret *corev1.Secret) *SecretMetadata {
+	metadataJson, ok := secret.GetAnnotations()[RadixMetadataAnnotation]
+	if !ok {
+		return nil
+	}
+	metadata := make(SecretMetadata)
+	if err := json.Unmarshal([]byte(metadataJson), &metadata); err != nil {
+		log.Ctx(ctx).Warn().Err(err).Str("namespace", secret.GetNamespace()).Str("secret", secret.GetName()).Msg("Failed to unmarshal radix metadata")
 		return nil
 	}
 
-	annotationName := GetSecretUpdatedAtAnnotationName(key)
-	updated, ok := secret.Annotations[annotationName]
+	return &metadata
+}
+
+func (m *SecretMetadata) GetUpdatedAt(key string) *time.Time {
+	if m == nil {
+		return nil
+	}
+
+	item, ok := (*m)[key]
 	if !ok {
 		return nil
 	}
 
-	t, err := time.Parse(time.RFC3339, updated)
-	if err != nil {
-		return nil
-	}
-
-	return &t
+	return item.UpdatedAt
 }

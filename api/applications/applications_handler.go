@@ -692,6 +692,9 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 		}
 		newSecret := existingSecret.DeepCopy()
 		newSecret.Data[defaults.GitPrivateKeySecretKey] = []byte(regenerateDeployKeyAndSecretData.PrivateKey)
+		if err := kubequery.PatchSecretMetadata(newSecret, defaults.GitPrivateKeySecretKey, time.Now()); err != nil {
+			return err
+		}
 		_, err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
 		return err
 	})
