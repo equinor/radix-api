@@ -283,7 +283,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: false,
 		},
@@ -300,7 +299,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: false,
 		},
@@ -314,7 +312,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: true,
 		},
@@ -328,7 +325,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountNamePartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountName",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: true,
 		},
@@ -345,7 +341,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: false,
 		},
@@ -362,7 +357,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: false,
 		},
@@ -376,7 +370,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(componentName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: true,
 		},
@@ -390,7 +383,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureVolumeMountCredsSecretName(jobName1, volumeName1) + defaults.CsiAzureCredsAccountKeyPartSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newAccountKey",
-				Type:        secretModels.SecretTypeCsiAzureBlobVolume,
 			},
 			expectedError: true,
 		},
@@ -407,7 +399,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: false,
 		},
@@ -424,7 +415,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: false,
 		},
@@ -438,7 +428,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: true,
 		},
@@ -452,7 +441,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientIdSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: true,
 		},
@@ -469,7 +457,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: false,
 		},
@@ -486,7 +473,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecret",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: false,
 		},
@@ -500,7 +486,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(componentName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientId",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: true,
 		},
@@ -514,7 +499,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          defaults.GetCsiAzureKeyVaultCredsSecretName(jobName1, azureKeyVaultName1) + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecret",
-				Type:        secretModels.SecretTypeCsiAzureKeyVaultCreds,
 			},
 			expectedError: true,
 		},
@@ -531,7 +515,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: false,
 		},
@@ -548,7 +531,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError:   true,
 			credentialsType: v1.AzureWorkloadIdentity,
@@ -563,7 +545,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: true,
 		},
@@ -580,7 +561,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newCookieSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: false,
 		},
@@ -594,7 +574,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newCookieSecretKey",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: true,
 		},
@@ -611,7 +590,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newRedisPassword",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: false,
 		},
@@ -625,7 +603,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newRedisPassword",
-				Type:        secretModels.SecretTypeOAuth2Proxy,
 			},
 			expectedError: true,
 		},
@@ -642,7 +619,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new client certificate\nline2\nline3",
-				Type:        secretModels.SecretTypeClientCertificateAuth,
 			},
 			expectedError: false,
 		},
@@ -656,7 +632,6 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			changingSecretName:          "client-certificate1" + suffix.ClientCertificate,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "new client certificate\nline2\nline3",
-				Type:        secretModels.SecretTypeClientCertificateAuth,
 			},
 			expectedError: true,
 		},

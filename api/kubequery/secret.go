@@ -64,6 +64,7 @@ func PatchSecretMetadata(secret *corev1.Secret, key string, updatedAt time.Time)
 func GetSecretMetadata(ctx context.Context, secret *corev1.Secret) *SecretMetadata {
 	metadataJson, ok := secret.GetAnnotations()[RadixMetadataAnnotation]
 	if !ok {
+		log.Ctx(ctx).Debug().Str("namespace", secret.GetNamespace()).Str("secret", secret.GetName()).Msg("No metadata annotation found")
 		return nil
 	}
 	metadata := make(SecretMetadata)

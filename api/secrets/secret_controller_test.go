@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
+	"github.com/equinor/radix-api/api/kubequery"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils/tlsvalidation"
 	tlsvalidationmock "github.com/equinor/radix-api/api/utils/tlsvalidation/mock"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -332,6 +335,10 @@ func (s *externalDNSSecretTestSuite) Test_UpdateSuccess() {
 	secret, err := s.kubeClient.CoreV1().Secrets(ns).Get(context.Background(), fqdn, metav1.GetOptions{})
 	s.Require().NoError(err)
 	s.Equal(expectedSecretData, secret.Data)
+
+	metadata := kubequery.GetSecretMetadata(context.TODO(), secret)
+	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdatedAt(corev1.TLSCertKey)), 1*time.Second)
+	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdatedAt(corev1.TLSPrivateKeyKey)), 1*time.Second)
 }
 
 func (s *externalDNSSecretTestSuite) Test_SkipValidationDoesNotCallValidator() {

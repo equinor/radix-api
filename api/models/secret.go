@@ -171,7 +171,7 @@ func getAzureVolumeMountSecrets(ctx context.Context, secretList []corev1.Secret,
 		ID:          secretModels.SecretIdAccountKey,
 		Component:   component.GetName(),
 		Status:      keySecretStatus,
-		UpdatedAt:   metadata.GetUpdatedAt(secretName + accountKeyPartSuffix),
+		UpdatedAt:   metadata.GetUpdatedAt(accountKeyPart),
 	}
 	var nameSecret *secretModels.Secret
 	storageAccount := volumemountUtils.GetBlobFuse2VolumeMountStorageAccount(volumeMount)
@@ -184,7 +184,7 @@ func getAzureVolumeMountSecrets(ctx context.Context, secretList []corev1.Secret,
 			ID:          secretModels.SecretIdAccountName,
 			Component:   component.GetName(),
 			Status:      nameSecretStatus,
-			UpdatedAt:   metadata.GetUpdatedAt(secretName + accountNamePartSuffix),
+			UpdatedAt:   metadata.GetUpdatedAt(accountNamePart),
 		}
 	} else {
 		keySecret.DisplayName = fmt.Sprintf("Account Key for %s", storageAccount)
@@ -233,7 +233,7 @@ func getSecretsForComponentAuthenticationClientCertificate(ctx context.Context, 
 			Type:        secretModels.SecretTypeClientCertificateAuth,
 			Component:   component.GetName(),
 			Status:      secretStatus,
-			UpdatedAt:   metadata.GetUpdatedAt(secretName),
+			UpdatedAt:   metadata.GetUpdatedAt("ca.crt"),
 		})
 	}
 
@@ -283,7 +283,7 @@ func getSecretsForComponentAuthenticationOAuth2(ctx context.Context, secretList 
 				Type:        secretModels.SecretTypeOAuth2Proxy,
 				Component:   component.GetName(),
 				Status:      clientSecretStatus,
-				UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2ClientSecret),
+				UpdatedAt:   metadata.GetUpdatedAt(defaults.OAuthClientSecretKeyName),
 			})
 		}
 		secrets = append(secrets, secretModels.Secret{
@@ -292,7 +292,7 @@ func getSecretsForComponentAuthenticationOAuth2(ctx context.Context, secretList 
 			Type:        secretModels.SecretTypeOAuth2Proxy,
 			Component:   component.GetName(),
 			Status:      cookieSecretStatus,
-			UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2CookieSecret),
+			UpdatedAt:   metadata.GetUpdatedAt(defaults.OAuthCookieSecretKeyName),
 		})
 
 		if oauth2.SessionStoreType == radixv1.SessionStoreRedis {
@@ -302,7 +302,7 @@ func getSecretsForComponentAuthenticationOAuth2(ctx context.Context, secretList 
 				Type:        secretModels.SecretTypeOAuth2Proxy,
 				Component:   component.GetName(),
 				Status:      redisPasswordStatus,
-				UpdatedAt:   metadata.GetUpdatedAt(component.GetName() + suffix.OAuth2RedisPassword),
+				UpdatedAt:   metadata.GetUpdatedAt(defaults.OAuthRedisPasswordKeyName),
 			})
 		}
 	}
@@ -429,7 +429,7 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(ctx context.Context, secretL
 		ID:          secretModels.SecretIdClientId,
 		Component:   componentName,
 		Status:      clientIdStatus,
-		UpdatedAt:   metadata.GetUpdatedAt(secretName + defaults.CsiAzureKeyVaultCredsClientIdSuffix),
+		UpdatedAt:   metadata.GetUpdatedAt(defaults.CsiAzureKeyVaultCredsClientIdSuffix),
 	})
 	secrets = append(secrets, secretModels.Secret{
 		Name:        secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix,
@@ -439,7 +439,7 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(ctx context.Context, secretL
 		ID:          secretModels.SecretIdClientSecret,
 		Component:   componentName,
 		Status:      clientSecretStatus,
-		UpdatedAt:   metadata.GetUpdatedAt(secretName + defaults.CsiAzureKeyVaultCredsClientSecretSuffix),
+		UpdatedAt:   metadata.GetUpdatedAt(defaults.CsiAzureKeyVaultCredsClientSecretSuffix),
 	})
 
 	return secrets
