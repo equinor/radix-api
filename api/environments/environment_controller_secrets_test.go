@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	secretModels "github.com/equinor/radix-api/api/secrets/models"
@@ -873,6 +874,12 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 		s.Equal(expectedSecret.DisplayName, secret.DisplayName, "Not expected secret Component for %s", expectedSecret.String())
 		s.Equal(expectedSecret.Status, secret.Status, "Not expected secret Status for %s", expectedSecret.String())
 		s.Equal(expectedSecret.Resource, secret.Resource, "Not expected secret Resource for %s", expectedSecret.String())
+
+		if expectedSecret.UpdatedAt == nil {
+			s.NotNil(expectedSecret.UpdatedAt)
+		} else {
+			s.WithinDuration(time.Now(), *expectedSecret.UpdatedAt, 1*time.Second, "Updated timestamp for %s", expectedSecret.Name)
+		}
 	}
 }
 
