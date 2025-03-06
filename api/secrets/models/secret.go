@@ -55,6 +55,8 @@ type Secret struct {
 	Status string `json:"status,omitempty"`
 
 	// Updated timestamp of the last change
+	//
+	// required: false
 	Updated *time.Time `json:"updated,omitempty"`
 }
 
