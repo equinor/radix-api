@@ -33,5 +33,5 @@ type ImageHubSecret struct {
 	Status string `json:"status"`
 
 	// Updated when the secret was last changed
-	Updated *time.Time `json:"updated"`
+	Updated *time.Time `json:"updated,omitempty"`
 }

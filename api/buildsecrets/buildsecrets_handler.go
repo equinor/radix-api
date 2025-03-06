@@ -82,9 +82,9 @@ func (sh Handler) GetBuildSecrets(ctx context.Context, appName string) ([]buildS
 			}
 
 			buildSecrets = append(buildSecrets, buildSecretsModels.BuildSecret{
-				Name:      secretName,
-				Status:    secretStatus,
-				UpdatedAt: metadata.GetUpdated(secretName),
+				Name:    secretName,
+				Status:  secretStatus,
+				Updated: metadata.GetUpdated(secretName),
 			})
 		}
 	}

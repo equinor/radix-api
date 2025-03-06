@@ -20,6 +20,6 @@ type BuildSecret struct {
 	// example: Consistent
 	Status string `json:"status"`
 
-	// UpdatedAt when the secret was last changed
-	UpdatedAt *time.Time `json:"updatedAt"`
+	// Updated when the secret was last changed
+	Updated *time.Time `json:"updated,omitempty"`
 }

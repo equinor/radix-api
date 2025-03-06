@@ -33,6 +33,7 @@ func GetSecretsForEnvironment(ctx context.Context, client kubernetes.Interface, 
 	return secrets.Items, nil
 }
 
+// PatchSecretMetadata sets the updatedAt in a metadata annotation on the secret
 func PatchSecretMetadata(secret *corev1.Secret, key string, updatedAt time.Time) error {
 	metadata := make(SecretMetadata)
 	annotations := secret.GetAnnotations()
@@ -61,6 +62,7 @@ func PatchSecretMetadata(secret *corev1.Secret, key string, updatedAt time.Time)
 	return nil
 }
 
+// GetSecretMetadata returns a nullsafe SecretMetadata that reads metadata from the secret
 func GetSecretMetadata(ctx context.Context, secret *corev1.Secret) *SecretMetadata {
 	metadataJson, ok := secret.GetAnnotations()[RadixMetadataAnnotation]
 	if !ok {
@@ -76,6 +78,7 @@ func GetSecretMetadata(ctx context.Context, secret *corev1.Secret) *SecretMetada
 	return &metadata
 }
 
+// GetUpdated reads the updated time from the secret
 func (m *SecretMetadata) GetUpdated(key string) *time.Time {
 	if m == nil {
 		return nil

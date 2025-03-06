@@ -151,5 +151,5 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	assert.Equal(t, 1, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, models.Consistent.String(), buildSecrets[0].Status)
-	assert.WithinDuration(t, time.Now(), pointers.Val(buildSecrets[0].UpdatedAt), 1*time.Second)
+	assert.WithinDuration(t, time.Now(), pointers.Val(buildSecrets[0].Updated), 1*time.Second)
 }
