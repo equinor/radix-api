@@ -17,7 +17,7 @@ const RadixMetadataAnnotation = "radix.equinor.com/secret-metadata"
 
 type SecretMetadata map[string]SecretMetadataItem
 type SecretMetadataItem struct {
-	UpdatedAt *time.Time `json:"updatedAt"`
+	Updated *time.Time `json:"updated"`
 }
 
 // GetSecretsForEnvironment returns all Secrets for the specified application and environment.
@@ -47,7 +47,7 @@ func PatchSecretMetadata(secret *corev1.Secret, key string, updatedAt time.Time)
 	}
 
 	metadata[key] = SecretMetadataItem{
-		UpdatedAt: &updatedAt,
+		Updated: &updatedAt,
 	}
 
 	metadataJsonBytes, err := json.Marshal(metadata)
@@ -76,7 +76,7 @@ func GetSecretMetadata(ctx context.Context, secret *corev1.Secret) *SecretMetada
 	return &metadata
 }
 
-func (m *SecretMetadata) GetUpdatedAt(key string) *time.Time {
+func (m *SecretMetadata) GetUpdated(key string) *time.Time {
 	if m == nil {
 		return nil
 	}
@@ -86,5 +86,5 @@ func (m *SecretMetadata) GetUpdatedAt(key string) *time.Time {
 		return nil
 	}
 
-	return item.UpdatedAt
+	return item.Updated
 }

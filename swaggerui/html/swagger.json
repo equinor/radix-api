@@ -7177,9 +7177,9 @@
           "x-go-name": "Status",
           "example": "Consistent"
         },
-        "updatedAt": {
-          "description": "UpdatedAt when the secret was last changed",
-          "x-go-name": "UpdatedAt"
+        "updated": {
+          "description": "Updated when the secret was last changed",
+          "x-go-name": "Updated"
         },
         "username": {
           "description": "Username for connecting to private image hub",

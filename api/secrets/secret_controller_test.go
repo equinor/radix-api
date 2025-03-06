@@ -337,8 +337,8 @@ func (s *externalDNSSecretTestSuite) Test_UpdateSuccess() {
 	s.Equal(expectedSecretData, secret.Data)
 
 	metadata := kubequery.GetSecretMetadata(context.TODO(), secret)
-	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdatedAt(corev1.TLSCertKey)), 1*time.Second)
-	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdatedAt(corev1.TLSPrivateKeyKey)), 1*time.Second)
+	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdated(corev1.TLSCertKey)), 1*time.Second)
+	assert.WithinDuration(s.T(), time.Now(), pointers.Val(metadata.GetUpdated(corev1.TLSPrivateKeyKey)), 1*time.Second)
 }
 
 func (s *externalDNSSecretTestSuite) Test_SkipValidationDoesNotCallValidator() {

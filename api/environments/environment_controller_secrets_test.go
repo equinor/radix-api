@@ -875,10 +875,10 @@ func (s *secretHandlerTestSuite) assertSecrets(scenario *getSecretScenario, secr
 		s.Equal(expectedSecret.Status, secret.Status, "Not expected secret Status for %s", expectedSecret.String())
 		s.Equal(expectedSecret.Resource, secret.Resource, "Not expected secret Resource for %s", expectedSecret.String())
 
-		if expectedSecret.UpdatedAt == nil {
-			s.Nil(secret.UpdatedAt)
+		if expectedSecret.Updated == nil {
+			s.Nil(secret.Updated)
 		} else {
-			s.WithinDuration(time.Now(), *expectedSecret.UpdatedAt, 1*time.Second, "Updated timestamp for %s", expectedSecret.Name)
+			s.WithinDuration(time.Now(), *expectedSecret.Updated, 1*time.Second, "Updated timestamp for %s", expectedSecret.Name)
 		}
 	}
 }

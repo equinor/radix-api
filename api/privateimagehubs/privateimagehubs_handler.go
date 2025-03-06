@@ -54,11 +54,11 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 	radixApp := application.GetRadixApplicationConfig()
 	for server, config := range radixApp.Spec.PrivateImageHubs {
 		imageHubSecrets = append(imageHubSecrets, models.ImageHubSecret{
-			Server:    server,
-			Username:  config.Username,
-			Email:     config.Email,
-			Status:    getImageHubSecretStatus(pendingImageHubSecrets, server).String(),
-			UpdatedAt: metadata.GetUpdatedAt(server),
+			Server:   server,
+			Username: config.Username,
+			Email:    config.Email,
+			Status:   getImageHubSecretStatus(pendingImageHubSecrets, server).String(),
+			Updated:  metadata.GetUpdated(server),
 		})
 	}
 

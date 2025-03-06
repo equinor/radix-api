@@ -661,12 +661,12 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 		return secret.ID == secretModels.SecretIdAccountKey
 	})
 	assert.True(t, ok)
-	assert.WithinDuration(t, time.Now(), pointers.Val(accountKeySecret.UpdatedAt), 1*time.Second)
+	assert.WithinDuration(t, time.Now(), pointers.Val(accountKeySecret.Updated), 1*time.Second)
 	accountNameSecret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
 		return secret.ID == secretModels.SecretIdAccountName
 	})
 	assert.True(t, ok)
-	assert.Nil(t, accountNameSecret.UpdatedAt)
+	assert.Nil(t, accountNameSecret.Updated)
 }
 
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
@@ -721,13 +721,13 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 		return secret.ID == secretModels.SecretIdAccountKey
 	})
 	assert.True(t, ok)
-	assert.WithinDuration(t, time.Now(), pointers.Val(secret.UpdatedAt), 1*time.Second)
+	assert.WithinDuration(t, time.Now(), pointers.Val(secret.Updated), 1*time.Second)
 
 	secret, ok = slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
 		return secret.ID == secretModels.SecretIdAccountName
 	})
 	assert.True(t, ok)
-	assert.Nil(t, secret.UpdatedAt)
+	assert.Nil(t, secret.Updated)
 }
 
 func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {

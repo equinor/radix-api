@@ -54,8 +54,8 @@ type Secret struct {
 	// example: Consistent
 	Status string `json:"status,omitempty"`
 
-	// UpdatedAt timestamp of the last change
-	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	// Updated timestamp of the last change
+	Updated *time.Time `json:"updated,omitempty"`
 }
 
 // swagger:enum SecretType
