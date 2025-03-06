@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // ImageHubSecret holds general information about image hubs
 // swagger:model ImageHubSecret
 type ImageHubSecret struct {
@@ -29,4 +31,7 @@ type ImageHubSecret struct {
 	// enum: Pending,Consistent
 	// example: Consistent
 	Status string `json:"status"`
+
+	// Updated when the secret was last changed
+	Updated *time.Time `json:"updated,omitempty"`
 }

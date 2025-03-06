@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Secret holds general information about secret
 // swagger:model Secret
@@ -50,6 +53,11 @@ type Secret struct {
 	// enum: Pending,Consistent,NotAvailable
 	// example: Consistent
 	Status string `json:"status,omitempty"`
+
+	// Updated timestamp of the last change
+	//
+	// required: false
+	Updated *time.Time `json:"updated,omitempty"`
 }
 
 // swagger:enum SecretType
