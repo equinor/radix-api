@@ -50,7 +50,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 		return nil, err
 	}
 
-	metadata := kubequery.GetSecretMetadata(nil, secret)
+	metadata := kubequery.GetSecretMetadata(ctx, secret)
 	radixApp := application.GetRadixApplicationConfig()
 	for server, config := range radixApp.Spec.PrivateImageHubs {
 		imageHubSecrets = append(imageHubSecrets, models.ImageHubSecret{

@@ -655,14 +655,15 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 	assert.Equal(t, http.StatusOK, response.Code)
 	environment = environmentModels.Environment{}
 	err = controllertest.GetResponseBody(response, &environment)
+	require.NoError(t, err)
 
 	accountKeySecret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
-		return secret.ID == "accountKey"
+		return secret.ID == secretModels.SecretIdAccountKey
 	})
 	assert.True(t, ok)
 	assert.WithinDuration(t, time.Now(), pointers.Val(accountKeySecret.UpdatedAt), 1*time.Second)
 	accountNameSecret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
-		return secret.ID == "accountName"
+		return secret.ID == secretModels.SecretIdAccountName
 	})
 	assert.True(t, ok)
 	assert.Nil(t, accountNameSecret.UpdatedAt)
@@ -694,6 +695,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
+	require.Equal(t, http.StatusOK, response.Code)
 
 	environment := environmentModels.Environment{}
 	err = controllertest.GetResponseBody(response, &environment)
@@ -705,15 +707,27 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
 
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
 	environment = environmentModels.Environment{}
 	err = controllertest.GetResponseBody(response, &environment)
+	require.NoError(t, err)
+	require.NotNil(t, environment.Secrets)
 
-	assert.WithinDuration(t, time.Now(), pointers.Val(environment.Secrets[0].UpdatedAt), 1*time.Second)
+	secret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountKey
+	})
+	assert.True(t, ok)
+	assert.WithinDuration(t, time.Now(), pointers.Val(secret.UpdatedAt), 1*time.Second)
+
+	secret, ok = slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountName
+	})
+	assert.True(t, ok)
+	assert.Nil(t, secret.UpdatedAt)
 }
 
 func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
