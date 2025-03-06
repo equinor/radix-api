@@ -35,211 +35,220 @@ func (c *environmentController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/deployments",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetApplicationEnvironmentDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/environments",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetEnvironmentSummary,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.CreateEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}",
-			Method:      "DELETE",
+			Method:      http.MethodDelete,
 			HandlerFunc: c.DeleteEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/events",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetEnvironmentEvents,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/events/components/{componentName}",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetComponentEvents,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/events/components/{componentName}/replicas/{podName}",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetPodEvents,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/stop",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.StopComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/start",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetScaledComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/reset-scale",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetScaledComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartComponent,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartOAuthAuxiliaryResource,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/stop",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.StopEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/start",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetManuallyStoppedComponentsInEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/reset-scale",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetManuallyStoppedComponentsInEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartEnvironment,
 		},
 		models.Route{
 			Path:        rootPath + "/stop",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.StopApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/start",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetManuallyScaledComponentsInApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/reset-scale",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ResetManuallyScaledComponentsInApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartApplication,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/replicas/{podName}/logs",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetPodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/scheduledjobs/{scheduledJobName}/logs",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetScheduledJobLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/deployments",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetJobComponentDeployments,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetJobs,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetJob,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopJob,
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopAllJobs,
-		},
-		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/copy",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.CopyJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}",
-			Method:      "DELETE",
+			Method:      http.MethodDelete,
 			HandlerFunc: c.DeleteJob,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/payload",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetJobPayload,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetBatches,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			HandlerFunc: c.GetBatch,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopBatch,
-		},
-		models.Route{
-			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/stop",
-			Method:      "POST",
-			HandlerFunc: c.StopAllBatches,
-		},
-		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/restart",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.RestartBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/copy",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.CopyBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}",
-			Method:      "DELETE",
+			Method:      http.MethodDelete,
 			HandlerFunc: c.DeleteBatch,
 		},
 		models.Route{
 			Path:        rootPath + "/environments/{envName}/components/{componentName}/scale/{replicas}",
-			Method:      "POST",
+			Method:      http.MethodPost,
 			HandlerFunc: c.ScaleComponent,
 		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/{jobName}/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopJob,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/jobs/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopAllJobs,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/{batchName}/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopBatch,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/batches/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopAllBatches,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/{jobComponentName}/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopAllBatchesAndJobsForJobComponent,
+		},
+		models.Route{
+			Path:        rootPath + "/environments/{envName}/jobcomponents/stop",
+			Method:      http.MethodPost,
+			HandlerFunc: c.StopAllBatchesAndJobsForEnvironment,
+		},
 	}
-
 	return routes
 }
 
@@ -2145,6 +2154,114 @@ func (c *environmentController) StopAllBatches(accounts models.Accounts, w http.
 
 	eh := c.environmentHandlerFactory(accounts)
 	err := eh.StopAllBatches(r.Context(), appName, envName, jobComponentName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// StopAllBatchesAndJobsForJobComponent Stop all scheduled batches in the job-component
+func (c *environmentController) StopAllBatchesAndJobsForJobComponent(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/{jobComponentName}/stop job stopAllBatchesAndJobsForJobComponent
+	// ---
+	// summary: Stop all scheduled batches for the job-component
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: jobComponentName
+	//   in: path
+	//   description: Name of job-component
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+	jobComponentName := mux.Vars(r)["jobComponentName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllBatchesAndJobsForJobComponent(r.Context(), appName, envName, jobComponentName)
+	if err != nil {
+		c.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// StopAllBatchesAndJobsForEnvironment Stop all scheduled batches and jobs in the environment
+func (c *environmentController) StopAllBatchesAndJobsForEnvironment(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/environments/{envName}/jobcomponents/stop job stopAllBatchesAndJobsForEnvironment
+	// ---
+	// summary: Stop all scheduled batches and jobs in the environment
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: Name of application
+	//   type: string
+	//   required: true
+	// - name: envName
+	//   in: path
+	//   description: Name of environment
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: "Success"
+	//   "400":
+	//     description: "Invalid batch"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "403":
+	//     description: "Forbidden"
+	//   "404":
+	//     description: "Not found"
+
+	appName := mux.Vars(r)["appName"]
+	envName := mux.Vars(r)["envName"]
+
+	eh := c.environmentHandlerFactory(accounts)
+	err := eh.StopAllBatchesAndJobsForEnvironment(r.Context(), appName, envName)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
