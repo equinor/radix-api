@@ -6192,9 +6192,9 @@
           "x-go-name": "Status",
           "example": "Consistent"
         },
-        "updatedAt": {
-          "description": "UpdatedAt when the secret was last changed",
-          "x-go-name": "UpdatedAt"
+        "updated": {
+          "description": "Updated when the secret was last changed",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/buildsecrets/models"
@@ -8624,9 +8624,9 @@
           "x-go-name": "Type",
           "example": "client-cert"
         },
-        "updatedAt": {
-          "description": "UpdatedAt timestamp of the last change",
-          "x-go-name": "UpdatedAt"
+        "updated": {
+          "description": "Updated timestamp of the last change",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
