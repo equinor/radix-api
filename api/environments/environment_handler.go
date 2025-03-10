@@ -202,7 +202,7 @@ func (eh EnvironmentHandler) GetEnvironment(ctx context.Context, appName, envNam
 		return nil, err
 	}
 
-	env := apimodels.BuildEnvironment(rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator, scaledObjects)
+	env := apimodels.BuildEnvironment(ctx, rr, ra, re, rdList, rjList, deploymentList, componentPodList, hpaList, secretList, secretProviderClassList, eventList, certs, certRequests, eh.tlsValidator, scaledObjects)
 	return env, nil
 }
 

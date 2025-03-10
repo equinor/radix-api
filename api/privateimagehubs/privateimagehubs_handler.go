@@ -3,11 +3,15 @@ package privateimagehubs
 import (
 	"context"
 
+	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/privateimagehubs/internal"
 	"github.com/equinor/radix-api/api/privateimagehubs/models"
 	"github.com/equinor/radix-api/api/utils"
 	sharedModels "github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
+	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // PrivateImageHubHandler Instance variables
@@ -34,11 +38,19 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 	if err != nil {
 		return []models.ImageHubSecret{}, nil
 	}
-	pendingImageHubSecrets, err := internal.GetPendingPrivateImageHubSecrets(ctx, ph.kubeUtil, appName)
+
+	ns := operatorutils.GetAppNamespace(appName)
+	secret, err := ph.kubeUtil.GetSecret(ctx, ns, defaults.PrivateImageHubSecretName)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+
+	pendingImageHubSecrets, err := internal.GetPendingPrivateImageHubSecrets(secret)
 	if err != nil {
 		return nil, err
 	}
 
+	metadata := kubequery.GetSecretMetadata(ctx, secret)
 	radixApp := application.GetRadixApplicationConfig()
 	for server, config := range radixApp.Spec.PrivateImageHubs {
 		imageHubSecrets = append(imageHubSecrets, models.ImageHubSecret{
@@ -46,6 +58,7 @@ func (ph PrivateImageHubHandler) GetPrivateImageHubs(ctx context.Context, appNam
 			Username: config.Username,
 			Email:    config.Email,
 			Status:   getImageHubSecretStatus(pendingImageHubSecrets, server).String(),
+			Updated:  metadata.GetUpdated(server),
 		})
 	}
 

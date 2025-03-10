@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/golang/mock/gomock"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
@@ -149,4 +151,5 @@ func TestUpdateBuildSecret_UpdatedOk(t *testing.T) {
 	assert.Equal(t, 1, len(buildSecrets))
 	assert.Equal(t, anyBuildSecret1, buildSecrets[0].Name)
 	assert.Equal(t, models.Consistent.String(), buildSecrets[0].Status)
+	assert.WithinDuration(t, time.Now(), pointers.Val(buildSecrets[0].Updated), 1*time.Second)
 }

@@ -20,6 +20,7 @@ import (
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-common/utils/slice"
 	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -648,6 +649,24 @@ func TestUpdateSecret_AccountSecretForComponentVolumeMount_UpdatedOk(t *testing.
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyComponentName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
+
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	environment = environmentModels.Environment{}
+	err = controllertest.GetResponseBody(response, &environment)
+	require.NoError(t, err)
+
+	accountKeySecret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountKey
+	})
+	assert.True(t, ok)
+	assert.WithinDuration(t, time.Now(), pointers.Val(accountKeySecret.Updated), 1*time.Second)
+	accountNameSecret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountName
+	})
+	assert.True(t, ok)
+	assert.Nil(t, accountNameSecret.Updated)
 }
 
 func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
@@ -676,6 +695,7 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	// Test
 	responseChannel := environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
 	response := <-responseChannel
+	require.Equal(t, http.StatusOK, response.Code)
 
 	environment := environmentModels.Environment{}
 	err = controllertest.GetResponseBody(response, &environment)
@@ -687,7 +707,27 @@ func TestUpdateSecret_AccountSecretForJobVolumeMount_UpdatedOk(t *testing.T) {
 	parameters := secretModels.SecretParameters{SecretValue: "anyValue"}
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/environments/%s/components/%s/secrets/%s", anyAppName, anyEnvironment, anyJobName, environment.Secrets[0].Name), parameters)
 	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, http.StatusOK, response.Code)
+
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s", anyAppName, anyEnvironment))
+	response = <-responseChannel
+	require.Equal(t, http.StatusOK, response.Code)
+	environment = environmentModels.Environment{}
+	err = controllertest.GetResponseBody(response, &environment)
+	require.NoError(t, err)
+	require.NotNil(t, environment.Secrets)
+
+	secret, ok := slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountKey
+	})
+	assert.True(t, ok)
+	assert.WithinDuration(t, time.Now(), pointers.Val(secret.Updated), 1*time.Second)
+
+	secret, ok = slice.FindFirst(environment.Secrets, func(secret secretModels.Secret) bool {
+		return secret.ID == secretModels.SecretIdAccountName
+	})
+	assert.True(t, ok)
+	assert.Nil(t, secret.Updated)
 }
 
 func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {

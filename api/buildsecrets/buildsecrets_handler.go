@@ -3,8 +3,10 @@ package buildsecrets
 import (
 	"context"
 	"strings"
+	"time"
 
 	buildSecretsModels "github.com/equinor/radix-api/api/buildsecrets/models"
+	"github.com/equinor/radix-api/api/kubequery"
 	sharedModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
@@ -46,6 +48,10 @@ func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, se
 		secretObject.Data = make(map[string][]byte)
 	}
 
+	if err = kubequery.PatchSecretMetadata(secretObject, secretName, time.Now()); err != nil {
+		return err
+	}
+
 	secretObject.Data[secretName] = []byte(secretValue)
 	_, err = sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Update(ctx, secretObject, metav1.UpdateOptions{})
 	if err != nil {
@@ -66,6 +72,8 @@ func (sh Handler) GetBuildSecrets(ctx context.Context, appName string) ([]buildS
 	buildSecrets := make([]buildSecretsModels.BuildSecret, 0)
 	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, defaults.BuildSecretsName, metav1.GetOptions{})
 	if err == nil && secretObject != nil && ra.Spec.Build != nil {
+		metadata := kubequery.GetSecretMetadata(ctx, secretObject)
+
 		for _, secretName := range ra.Spec.Build.Secrets {
 			secretStatus := buildSecretsModels.Pending.String()
 			secretValue := strings.TrimSpace(string(secretObject.Data[secretName]))
@@ -74,8 +82,9 @@ func (sh Handler) GetBuildSecrets(ctx context.Context, appName string) ([]buildS
 			}
 
 			buildSecrets = append(buildSecrets, buildSecretsModels.BuildSecret{
-				Name:   secretName,
-				Status: secretStatus,
+				Name:    secretName,
+				Status:  secretStatus,
+				Updated: metadata.GetUpdated(secretName),
 			})
 		}
 	}

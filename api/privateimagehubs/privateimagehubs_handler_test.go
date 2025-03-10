@@ -28,11 +28,11 @@ const (
 )
 
 func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
-	client, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{})
+	_, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{})
 	require.NoError(t, err)
-	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
-
-	secret, _ := client.CoreV1().Secrets("any-app-app").Get(context.TODO(), defaults.PrivateImageHubSecretName, metav1.GetOptions{})
+	secret, err := kubeUtil.GetSecret(context.TODO(), "any-app-app", defaults.PrivateImageHubSecretName)
+	require.NoError(t, err)
+	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(secret)
 
 	assert.NotNil(t, secret)
 	assert.Equal(t,
@@ -43,22 +43,26 @@ func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
 }
 
 func Test_WithPrivateImageHubSet_SecretsCorrectly_SetPassword(t *testing.T) {
-	client, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{
+	_, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{
 		"privaterepodeleteme.azurecr.io": &radixv1.RadixPrivateImageHubCredential{
 			Username: "814607e6-3d71-44a7-8476-50e8b281abbc",
 			Email:    "radix@equinor.com",
 		},
 	})
 	require.NoError(t, err)
-	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
+
+	secret, err := kubeUtil.GetSecret(context.Background(), "any-app-app", defaults.PrivateImageHubSecretName)
+	require.NoError(t, err)
+	pendingSecrets, _ := internal.GetPendingPrivateImageHubSecrets(secret)
 
 	assert.Equal(t, "privaterepodeleteme.azurecr.io", pendingSecrets[0])
 
 	if err := internal.UpdatePrivateImageHubsSecretsPassword(context.Background(), kubeUtil, "any-app", "privaterepodeleteme.azurecr.io", "a-password"); err != nil {
 		require.NoError(t, err)
 	}
-	secret, _ := client.CoreV1().Secrets("any-app-app").Get(context.TODO(), defaults.PrivateImageHubSecretName, metav1.GetOptions{})
-	pendingSecrets, _ = internal.GetPendingPrivateImageHubSecrets(context.Background(), kubeUtil, "any-app")
+	secret, err = kubeUtil.GetSecret(context.Background(), "any-app-app", defaults.PrivateImageHubSecretName)
+	require.NoError(t, err)
+	pendingSecrets, _ = internal.GetPendingPrivateImageHubSecrets(secret)
 
 	assert.Equal(t,
 		"{\"auths\":{\"privaterepodeleteme.azurecr.io\":{\"username\":\"814607e6-3d71-44a7-8476-50e8b281abbc\",\"password\":\"a-password\",\"email\":\"radix@equinor.com\",\"auth\":\"ODE0NjA3ZTYtM2Q3MS00NGE3LTg0NzYtNTBlOGIyODFhYmJjOmEtcGFzc3dvcmQ=\"}}}",
