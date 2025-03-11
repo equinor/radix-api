@@ -17,7 +17,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 	corev1 "k8s.io/api/core/v1"
 	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -119,7 +118,7 @@ func getSecretsForVolumeMounts(ctx context.Context, secretList []corev1.Secret, 
 func getCredentialSecretsForBlobVolumes(ctx context.Context, secretList []corev1.Secret, component radixv1.RadixCommonDeployComponent) []secretModels.Secret {
 	var secrets []secretModels.Secret
 	for _, volumeMount := range component.GetVolumeMounts() {
-		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
+		volumeMountType := volumeMount.GetVolumeMountType()
 		switch volumeMountType {
 		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			accountKeySecret, accountNameSecret := getCsiAzureSecrets(ctx, secretList, component, volumeMount)
@@ -254,7 +253,7 @@ func getSecretsForComponentAuthenticationOAuth2(ctx context.Context, secretList 
 		redisPasswordStatus := secretModels.Consistent.String()
 		var metadata *kubequery.SecretMetadata
 
-		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), defaults.OAuthProxyAuxiliaryComponentSuffix)
+		secretName := operatorutils.GetAuxiliaryComponentSecretName(component.GetName(), radixv1.OAuthProxyAuxiliaryComponentSuffix)
 		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 			metadata = kubequery.GetSecretMetadata(ctx, &secr)
 			if !useAzureIdentity {

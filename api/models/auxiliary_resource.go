@@ -4,9 +4,7 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
-	operatordefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -21,14 +19,14 @@ func getAuxiliaryResources(rd *radixv1.RadixDeployment, component radixv1.RadixC
 
 func getOAuth2AuxiliaryResource(rd *radixv1.RadixDeployment, component radixv1.RadixCommonDeployComponent, deploymentList []appsv1.Deployment, podList []corev1.Pod, eventWarnings map[string]string) *deploymentModels.OAuth2AuxiliaryResource {
 	auxiliaryResource := deploymentModels.OAuth2AuxiliaryResource{
-		Deployment: getAuxiliaryResourceDeployment(rd, component, operatordefaults.OAuthProxyAuxiliaryComponentType, deploymentList, podList, eventWarnings),
+		Deployment: getAuxiliaryResourceDeployment(rd, component, radixv1.OAuthProxyAuxiliaryComponentType, deploymentList, podList, eventWarnings),
 	}
 	oauth2 := component.GetAuthentication().GetOAuth2()
 	if oauth2.GetUseAzureIdentity() {
 		auxiliaryResource.Identity = &deploymentModels.Identity{
 			Azure: &deploymentModels.AzureIdentity{
 				ClientId:           oauth2.ClientID,
-				ServiceAccountName: utils.GetOAuthProxyServiceAccountName(component.GetName()),
+				ServiceAccountName: oauth2.GetServiceAccountName(component.GetName()),
 			},
 		}
 	}

@@ -127,10 +127,10 @@ func (eh *SecretHandler) ChangeComponentSecret(ctx context.Context, appName, env
 			return err
 		}
 	} else if strings.HasSuffix(secretName, suffix.OAuth2CookieSecret) {
-		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
+		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, radixv1.OAuthProxyAuxiliaryComponentSuffix)
 		partName = defaults.OAuthCookieSecretKeyName
 	} else if strings.HasSuffix(secretName, suffix.OAuth2RedisPassword) {
-		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix)
+		secretObjName = operatorutils.GetAuxiliaryComponentSecretName(componentName, radixv1.OAuthProxyAuxiliaryComponentSuffix)
 		partName = defaults.OAuthRedisPasswordKeyName
 	} else {
 		// This is a regular secret
@@ -157,7 +157,7 @@ func (eh *SecretHandler) getOAuth2ClientSecretProps(ctx context.Context, appName
 	if component.GetAuthentication().GetOAuth2().GetUseAzureIdentity() {
 		return "", "", radixhttp.ValidationError("Secret", "OAuth2 client is authorised by Workload Identity")
 	}
-	return operatorutils.GetAuxiliaryComponentSecretName(componentName, defaults.OAuthProxyAuxiliaryComponentSuffix),
+	return operatorutils.GetAuxiliaryComponentSecretName(componentName, radixv1.OAuthProxyAuxiliaryComponentSuffix),
 		defaults.OAuthClientSecretKeyName,
 		nil
 }
