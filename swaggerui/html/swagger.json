@@ -6191,6 +6191,10 @@
           ],
           "x-go-name": "Status",
           "example": "Consistent"
+        },
+        "updated": {
+          "description": "Updated when the secret was last changed",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/buildsecrets/models"
@@ -7172,6 +7176,10 @@
           ],
           "x-go-name": "Status",
           "example": "Consistent"
+        },
+        "updated": {
+          "description": "Updated when the secret was last changed",
+          "x-go-name": "Updated"
         },
         "username": {
           "description": "Username for connecting to private image hub",
@@ -8615,6 +8623,10 @@
           "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
           "example": "client-cert"
+        },
+        "updated": {
+          "description": "Updated timestamp of the last change",
+          "x-go-name": "Updated"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"
@@ -8631,22 +8643,6 @@
           "type": "string",
           "x-go-name": "SecretValue",
           "example": "p4$sW0rDz"
-        },
-        "type": {
-          "description": "Type of the secret\ngeneric SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
-          "type": "string",
-          "enum": [
-            "generic",
-            "azure-blob-fuse-volume",
-            "csi-azure-blob-volume",
-            "csi-azure-key-vault-creds",
-            "csi-azure-key-vault-item",
-            "client-cert-auth",
-            "oauth2-proxy"
-          ],
-          "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
-          "x-go-name": "Type",
-          "example": "azure-blob-fuse-volume"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/secrets/models"

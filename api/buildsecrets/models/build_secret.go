@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // BuildSecret holds general information about image hubs
 // swagger:model BuildSecret
 type BuildSecret struct {
@@ -17,4 +19,7 @@ type BuildSecret struct {
 	// enum: Pending,Consistent
 	// example: Consistent
 	Status string `json:"status"`
+
+	// Updated when the secret was last changed
+	Updated *time.Time `json:"updated,omitempty"`
 }
