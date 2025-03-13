@@ -9,7 +9,6 @@ import (
 	"github.com/equinor/radix-api/api/utils/event"
 	"github.com/equinor/radix-api/api/utils/predicate"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
@@ -165,7 +164,7 @@ func getAuxiliaryResources(podList []corev1.Pod, deploymentList []appsv1.Deploym
 
 func getOAuth2AuxiliaryResource(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (*deploymentModels.OAuth2AuxiliaryResource, error) {
 	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
-	oauthDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, defaults.OAuthProxyAuxiliaryComponentType)
+	oauthDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, v1.OAuthProxyAuxiliaryComponentType)
 	if err != nil {
 		return nil, err
 	}

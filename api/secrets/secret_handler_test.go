@@ -507,12 +507,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix),
 			secretDataKey:               defaults.OAuthClientSecretKeyName,
 			secretValue:                 "currentClientSecretKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
 			},
@@ -523,12 +523,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix),
 			secretDataKey:               defaults.OAuthClientSecretKeyName,
 			secretValue:                 "currentClientSecretKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
 			},
@@ -542,7 +542,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2ClientSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newClientSecretKey",
 			},
@@ -553,12 +553,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix),
 			secretDataKey:               defaults.OAuthCookieSecretKeyName,
 			secretValue:                 "currentCookieSecretKey",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newCookieSecretKey",
 			},
@@ -571,7 +571,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2CookieSecret,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newCookieSecretKey",
 			},
@@ -582,12 +582,12 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			components: []v1.RadixDeployComponent{{
 				Name: componentName1,
 			}},
-			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix),
+			secretName:                  operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix),
 			secretDataKey:               defaults.OAuthRedisPasswordKeyName,
 			secretValue:                 "currentRedisPassword",
 			secretExists:                true,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newRedisPassword",
 			},
@@ -600,7 +600,7 @@ func (s *secretHandlerTestSuite) TestSecretHandler_ChangeSecrets() {
 			}},
 			secretExists:                false,
 			changingSecretComponentName: componentName1,
-			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, defaults.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
+			changingSecretName:          operatorUtils.GetAuxiliaryComponentSecretName(componentName1, v1.OAuthProxyAuxiliaryComponentSuffix) + suffix.OAuth2RedisPassword,
 			changingSecretParams: secretModels.SecretParameters{
 				SecretValue: "newRedisPassword",
 			},

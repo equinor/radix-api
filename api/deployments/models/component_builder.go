@@ -12,7 +12,6 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/ingress"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	"github.com/equinor/radix-operator/pkg/apis/volumemount"
 )
 
 // ComponentBuilder Builds DTOs
@@ -123,7 +122,7 @@ func (b *componentBuilder) WithComponent(component radixv1.RadixCommonDeployComp
 		if volumeMount.HasEmptyDir() || volumeMount.UseAzureIdentity() {
 			continue
 		}
-		volumeMountType := volumemount.GetCsiAzureVolumeMountType(&volumeMount)
+		volumeMountType := volumeMount.GetVolumeMountType()
 		switch volumeMountType {
 		case radixv1.MountTypeBlobFuse2FuseCsiAzure, radixv1.MountTypeBlobFuse2Fuse2CsiAzure:
 			secretName := defaults.GetCsiAzureVolumeMountCredsSecretName(component.GetName(), volumeMount.Name)

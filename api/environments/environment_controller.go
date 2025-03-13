@@ -12,7 +12,7 @@ import (
 	environmentsModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
 )
 
@@ -1314,7 +1314,7 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	componentName := mux.Vars(r)["componentName"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType)
+	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, v1.OAuthProxyAuxiliaryComponentType)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -2627,7 +2627,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, defaults.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
+	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, v1.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
