@@ -9,7 +9,7 @@ require (
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/equinor/radix-common v1.10.0
 	github.com/equinor/radix-job-scheduler v1.14.0
-	github.com/equinor/radix-operator v1.74.0
+	github.com/equinor/radix-operator v1.75.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -121,5 +121,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/equinor/radix-operator => /home/nst/go/src/github.com/equinor/radix-operator
