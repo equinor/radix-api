@@ -2,8 +2,6 @@ package applications
 
 import (
 	"context"
-	"fmt"
-
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/middleware/auth"
@@ -20,7 +18,10 @@ import (
 
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
 func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	radixRegistration, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
 	if err != nil {
@@ -108,17 +109,13 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:             appName,
-			CloneURL:            cloneURL,
-			TektonImage:         tektonImageTag,
-			PipeLineType:        pipeline.Type,
-			PipelineImage:       pipelineImageTag,
-			Build:               buildSpec,
-			Promote:             promoteSpec,
-			Deploy:              deploySpec,
-			ApplyConfig:         applyConfigSpec,
-			TriggeredBy:         getTriggeredBy(ctx, jobSpec.TriggeredBy),
-			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
+			AppName:      appName,
+			PipeLineType: pipeline.Type,
+			Build:        buildSpec,
+			Promote:      promoteSpec,
+			Deploy:       deploySpec,
+			ApplyConfig:  applyConfigSpec,
+			TriggeredBy:  getTriggeredBy(ctx, jobSpec.TriggeredBy),
 		},
 	}
 
