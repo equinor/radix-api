@@ -112,6 +112,12 @@ type JobSummary struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// TriggeredFromWebhook indicates if the job was triggered from a webhook
+	//
+	// required: false
+	// example: true
+	TriggeredFromWebhook bool `json:"triggeredFromWebhook,omitempty"`
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
@@ -132,15 +138,16 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	}
 
 	pipelineJob := &JobSummary{
-		Name:         job.Name,
-		AppName:      job.Spec.AppName,
-		Status:       GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
-		Created:      created,
-		Started:      started,
-		Ended:        ended,
-		Pipeline:     string(job.Spec.PipeLineType),
-		Environments: job.Status.TargetEnvs,
-		TriggeredBy:  job.Spec.TriggeredBy,
+		Name:                 job.Name,
+		AppName:              job.Spec.AppName,
+		Status:               GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
+		Created:              created,
+		Started:              started,
+		Ended:                ended,
+		Pipeline:             string(job.Spec.PipeLineType),
+		Environments:         job.Status.TargetEnvs,
+		TriggeredFromWebhook: job.Spec.TriggeredFromWebhook,
+		TriggeredBy:          job.Spec.TriggeredBy,
 	}
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
