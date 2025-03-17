@@ -764,7 +764,7 @@ func TestUpdateSecret_OAuth2_UpdatedOk(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.Code)
 
 	// Update client secret when k8s secret exists should set Data
-	secretName := operatorutils.GetAuxiliaryComponentSecretName(anyComponentName, operatordefaults.OAuthProxyAuxiliaryComponentSuffix)
+	secretName := operatorutils.GetAuxiliaryComponentSecretName(anyComponentName, v1.OAuthProxyAuxiliaryComponentSuffix)
 	_, err = client.CoreV1().Secrets(envNs).Create(context.Background(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName}}, metav1.CreateOptions{})
 	require.NoError(t, err)
 

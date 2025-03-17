@@ -598,11 +598,11 @@ func (s *secretHandlerTestSuite) TestSecretHandler_GetSecrets() {
 			},
 			existingSecrets: []testSecretDescription{
 				{
-					secretName: operatorutils.GetAuxiliaryComponentSecretName("comp5", operatordefaults.OAuthProxyAuxiliaryComponentSuffix),
+					secretName: operatorutils.GetAuxiliaryComponentSecretName("comp5", v1.OAuthProxyAuxiliaryComponentSuffix),
 					secretData: map[string][]byte{operatordefaults.OAuthClientSecretKeyName: []byte("any data")},
 				},
 				{
-					secretName: operatorutils.GetAuxiliaryComponentSecretName("comp6", operatordefaults.OAuthProxyAuxiliaryComponentSuffix),
+					secretName: operatorutils.GetAuxiliaryComponentSecretName("comp6", v1.OAuthProxyAuxiliaryComponentSuffix),
 					secretData: map[string][]byte{operatordefaults.OAuthCookieSecretKeyName: []byte("any data"), operatordefaults.OAuthRedisPasswordKeyName: []byte("any data")},
 				},
 			},
