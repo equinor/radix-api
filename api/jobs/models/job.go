@@ -147,6 +147,12 @@ type Job struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// TriggeredFromWebhook indicates if the job was triggered from a webhook
+	//
+	// required: false
+	// example: true
+	TriggeredFromWebhook bool `json:"triggeredFromWebhook,omitempty"`
 }
 
 // GetJobFromRadixJob Gets job from a radix job
@@ -166,17 +172,18 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	}
 
 	jobModel := Job{
-		Name:         job.GetName(),
-		Created:      created,
-		Started:      radixutils.FormatTime(job.Status.Started),
-		Ended:        radixutils.FormatTime(job.Status.Ended),
-		Status:       GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
-		Pipeline:     string(job.Spec.PipeLineType),
-		Steps:        steps,
-		Deployments:  jobDeployments,
-		Components:   jobComponents,
-		TriggeredBy:  job.Spec.TriggeredBy,
-		RerunFromJob: job.Annotations[RadixPipelineJobRerunAnnotation],
+		Name:                 job.GetName(),
+		Created:              created,
+		Started:              radixutils.FormatTime(job.Status.Started),
+		Ended:                radixutils.FormatTime(job.Status.Ended),
+		Status:               GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
+		Pipeline:             string(job.Spec.PipeLineType),
+		Steps:                steps,
+		Deployments:          jobDeployments,
+		Components:           jobComponents,
+		TriggeredBy:          job.Spec.TriggeredBy,
+		TriggeredFromWebhook: job.Spec.TriggeredFromWebhook,
+		RerunFromJob:         job.Annotations[RadixPipelineJobRerunAnnotation],
 	}
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
