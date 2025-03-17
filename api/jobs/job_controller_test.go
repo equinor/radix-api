@@ -81,9 +81,7 @@ func TestGetApplicationJob(t *testing.T) {
 	}
 
 	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	anyPipelineTagName := "latestPipelineImageTag"
-	anyTektonTagName := "latestTektonImageTag"
-	jobSummary, _ := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipelineTagName, anyTektonTagName, anyPipeline, jobParameters)
+	jobSummary, _ := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipeline, jobParameters)
 	_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 	require.NoError(t, err)
 
