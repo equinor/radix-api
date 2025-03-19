@@ -1,13 +1,19 @@
 package models
 
 import (
+	"github.com/equinor/radix-common/utils/slice"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 	"sort"
 	"strings"
+	"time"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
+	pipelineTypes "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -156,8 +162,8 @@ type Job struct {
 }
 
 // GetJobFromRadixJob Gets job from a radix job
-func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
-	steps := GetJobStepsFromRadixJob(job)
+func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, runSubPipeline bool, subPipelineRuns []pipelinev1.PipelineRun) *Job {
+	steps := getJobStepsFromRadixJob(job, runSubPipeline, subPipelineRuns)
 
 	created := radixutils.FormatTime(&job.CreationTimestamp)
 	if job.Status.Created != nil {
@@ -206,8 +212,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	return &jobModel
 }
 
-// GetJobStepsFromRadixJob Gets the steps from a Radix job
-func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
+func getJobStepsFromRadixJob(job *radixv1.RadixJob, runSubPipeline bool, subPipelineRuns []pipelinev1.PipelineRun) []Step {
 	var steps []Step
 	var buildSteps []Step
 
@@ -230,6 +235,51 @@ func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
 			steps = append(steps, step)
 		}
 	}
+	if runSubPipeline {
+		steps = append(steps, getSubPipelineRunsStep(subPipelineRuns))
+	}
 	sort.Slice(buildSteps, func(i, j int) bool { return buildSteps[i].Name < buildSteps[j].Name })
 	return append(steps, buildSteps...)
+}
+
+func getSubPipelineRunsStep(subPipelineRuns []pipelinev1.PipelineRun) Step {
+	var running, failed, succeeded bool
+	var started, ended *metav1.Time
+	for _, subPipelineRun := range subPipelineRuns {
+		runStatus := subPipelineRun.Status.PipelineRunStatusFields
+		if runStatus.StartTime != nil && (started == nil || runStatus.StartTime.Before(started)) {
+			started = runStatus.StartTime
+		}
+		if runStatus.CompletionTime != nil && (ended == nil || runStatus.CompletionTime.After(ended.Time)) {
+			ended = runStatus.CompletionTime
+		}
+		if runStatus.CompletionTime != nil {
+			succeeded = true
+		} else if runStatus.StartTime != nil {
+			running = true
+		} else if slice.Any(subPipelineRun.Status.Conditions, func(condition apis.Condition) bool { return condition.Reason == string(PipelineRunReasonFailed) }) {
+			failed = true
+		}
+	}
+	status := radixv1.JobWaiting
+	if failed {
+		status = radixv1.JobFailed
+	} else if running {
+		status = radixv1.JobRunning
+	} else if succeeded {
+		status = radixv1.JobSucceeded
+	}
+	var startedTime, endedTime *time.Time
+	if started != nil {
+		startedTime = &started.Time
+	}
+	if ended != nil {
+		endedTime = &ended.Time
+	}
+	return Step{
+		Name:    pipelineTypes.RunPipelinesStep,
+		Status:  string(status),
+		Started: startedTime,
+		Ended:   endedTime,
+	}
 }

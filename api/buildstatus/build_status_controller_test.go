@@ -104,7 +104,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewBuildStatusController(fakeBuildStatus))
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
 
@@ -125,7 +125,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
@@ -143,7 +143,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=deploy")
 		response := <-responseChannel
@@ -161,7 +161,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus?pipeline=promote")
 		response := <-responseChannel
@@ -183,7 +183,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 		mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 		mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewBuildStatusController(fakeBuildStatus))
+		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewBuildStatusController(fakeBuildStatus))
 
 		responseChannel := controllerTestUtils.ExecuteUnAuthorizedRequest("GET", "/api/v1/applications/my-app/environments/test/buildstatus")
 		response := <-responseChannel
