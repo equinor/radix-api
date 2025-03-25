@@ -41,4 +41,46 @@ type Step struct {
 	//
 	// required: false
 	Components []string `json:"components,omitempty"`
+
+	// SubPipelineTaskStep sub pipeline task step
+	//
+	// required: false
+	SubPipelineTaskStep *SubPipelineTaskStep `json:"subPipelineTaskStep,omitempty"`
+}
+
+// SubPipelineTaskStep holds general information about subpipeline task step
+// swagger:model SubPipelineTaskStep
+type SubPipelineTaskStep struct {
+	// Name of the step
+	//
+	// required: true
+	// example: step-abc
+	Name string `json:"name"`
+
+	// PipelineName of the task
+	//
+	// required: true
+	PipelineName string `json:"pipelineName"`
+
+	// Environment of the pipeline run
+	//
+	// required: true
+	Environment string `json:"environment"`
+
+	// PipelineRunName of the task
+	//
+	// required: true
+	PipelineRunName string `json:"pipelineRunName"`
+
+	// TaskName of the task
+	//
+	// required: true
+	// example: task-abc
+	TaskName string `json:"taskName"`
+
+	// RealName Name of the pipeline run in the namespace
+	//
+	// required: true
+	// example: radix-tekton-task-dev-2022-05-09-abcde
+	RealName string `json:"realName"`
 }
