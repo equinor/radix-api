@@ -11,7 +11,6 @@ import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
-	pipelineTypes "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
@@ -162,8 +161,8 @@ type Job struct {
 }
 
 // GetJobFromRadixJob Gets job from a radix job
-func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, runSubPipeline bool, subPipelineRuns []pipelinev1.PipelineRun) *Job {
-	steps := getJobStepsFromRadixJob(job, runSubPipeline, subPipelineRuns)
+func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, runSubPipeline bool, subPipelineTaskRuns []pipelinev1.TaskRun) *Job {
+	steps := getJobStepsFromRadixJob(job, runSubPipeline, subPipelineTaskRuns)
 
 	created := radixutils.FormatTime(&job.CreationTimestamp)
 	if job.Status.Created != nil {
@@ -212,7 +211,7 @@ func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModel
 	return &jobModel
 }
 
-func getJobStepsFromRadixJob(job *radixv1.RadixJob, runSubPipeline bool, subPipelineRuns []pipelinev1.PipelineRun) []Step {
+func getJobStepsFromRadixJob(job *radixv1.RadixJob, runSubPipeline bool, subPipelineTaskRuns []pipelinev1.TaskRun) []Step {
 	var steps []Step
 	var buildSteps []Step
 
@@ -236,17 +235,18 @@ func getJobStepsFromRadixJob(job *radixv1.RadixJob, runSubPipeline bool, subPipe
 		}
 	}
 	if runSubPipeline {
-		steps = append(steps, getSubPipelineRunsStep(subPipelineRuns))
+		steps = append(steps, getSubPipelineTasksSteps(subPipelineTaskRuns)...)
 	}
 	sort.Slice(buildSteps, func(i, j int) bool { return buildSteps[i].Name < buildSteps[j].Name })
 	return append(steps, buildSteps...)
 }
 
-func getSubPipelineRunsStep(subPipelineRuns []pipelinev1.PipelineRun) Step {
-	var running, failed, succeeded bool
-	var started, ended *metav1.Time
-	for _, subPipelineRun := range subPipelineRuns {
-		runStatus := subPipelineRun.Status.PipelineRunStatusFields
+func getSubPipelineTasksSteps(subPipelineTaskRuns []pipelinev1.TaskRun) []Step {
+	var steps []Step
+	for _, run := range subPipelineTaskRuns {
+		var running, failed, succeeded bool
+		var started, ended *metav1.Time
+		runStatus := run.Status
 		if runStatus.StartTime != nil && (started == nil || runStatus.StartTime.Before(started)) {
 			started = runStatus.StartTime
 		}
@@ -257,29 +257,32 @@ func getSubPipelineRunsStep(subPipelineRuns []pipelinev1.PipelineRun) Step {
 			succeeded = true
 		} else if runStatus.StartTime != nil {
 			running = true
-		} else if slice.Any(subPipelineRun.Status.Conditions, func(condition apis.Condition) bool { return condition.Reason == string(PipelineRunReasonFailed) }) {
+		} else if slice.Any(run.Status.Conditions, func(condition apis.Condition) bool { return condition.Reason == string(PipelineRunReasonFailed) }) {
 			failed = true
 		}
+		status := radixv1.JobWaiting
+		if failed {
+			status = radixv1.JobFailed
+		} else if running {
+			status = radixv1.JobRunning
+		} else if succeeded {
+			status = radixv1.JobSucceeded
+		}
+		var startedTime, endedTime *time.Time
+		if started != nil {
+			startedTime = &started.Time
+		}
+		if ended != nil {
+			endedTime = &ended.Time
+		}
+		steps = append(steps, Step{
+			Name:       run.Name,
+			Status:     string(status),
+			Started:    startedTime,
+			Ended:      endedTime,
+			PodName:    run.Status.PodName,
+			Components: nil,
+		})
 	}
-	status := radixv1.JobWaiting
-	if failed {
-		status = radixv1.JobFailed
-	} else if running {
-		status = radixv1.JobRunning
-	} else if succeeded {
-		status = radixv1.JobSucceeded
-	}
-	var startedTime, endedTime *time.Time
-	if started != nil {
-		startedTime = &started.Time
-	}
-	if ended != nil {
-		endedTime = &ended.Time
-	}
-	return Step{
-		Name:    pipelineTypes.RunPipelinesStep,
-		Status:  string(status),
-		Started: startedTime,
-		Ended:   endedTime,
-	}
+	return steps
 }

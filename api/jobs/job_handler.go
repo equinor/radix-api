@@ -75,25 +75,25 @@ func (jh JobHandler) GetApplicationJob(ctx context.Context, appName, jobName str
 		return nil, err
 	}
 
-	runSubPipeline, subPipelineRuns, err := jh.getSubPipelinesInfo(ctx, appName, jobName, err)
+	runSubPipeline, subPipelineTaskRuns, err := jh.getSubPipelinesInfo(ctx, appName, jobName, err)
 	if err != nil {
 		return nil, err
 	}
-	return jobModels.GetJobFromRadixJob(job, jobDeployments, runSubPipeline, subPipelineRuns.Items), nil
+	return jobModels.GetJobFromRadixJob(job, jobDeployments, runSubPipeline, subPipelineTaskRuns.Items), nil
 }
 
-func (jh JobHandler) getSubPipelinesInfo(ctx context.Context, appName string, jobName string, err error) (bool, *pipelinev1.PipelineRunList, error) {
+func (jh JobHandler) getSubPipelinesInfo(ctx context.Context, appName string, jobName string, err error) (bool, *pipelinev1.TaskRunList, error) {
 	labelSelectorByJobName := labels.Set{kube.RadixJobNameLabel: jobName}.String()
 	subPipelines, err := jh.userAccount.TektonClient.TektonV1().Pipelines(crdUtils.GetAppNamespace(appName)).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorByJobName})
 	if err != nil {
 		return false, nil, err
 	}
 	runSubPipeline := len(subPipelines.Items) > 0
-	subPipelineRuns, err := jh.userAccount.TektonClient.TektonV1().PipelineRuns(crdUtils.GetAppNamespace(appName)).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorByJobName})
+	subPipelineTaskRuns, err := jh.userAccount.TektonClient.TektonV1().TaskRuns(crdUtils.GetAppNamespace(appName)).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorByJobName})
 	if err != nil {
 		return false, nil, err
 	}
-	return runSubPipeline, subPipelineRuns, nil
+	return runSubPipeline, subPipelineTaskRuns, nil
 }
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
