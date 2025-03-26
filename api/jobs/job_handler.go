@@ -3,33 +3,36 @@ package jobs
 import (
 	"context"
 	"fmt"
-	models2 "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-common/utils/pointers"
-	"k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"strings"
 
 	"github.com/equinor/radix-api/api/deployments"
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
+	operatorDefaults "github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 const (
-	WorkerImage              = "radix-pipeline"
-	tektonRealNameAnnotation = "radix.equinor.com/tekton-pipeline-name"
+	WorkerImage           = "radix-pipeline"
+	tektonPipelineRunName = "tekton.dev/pipelineRun"
+	tektonTaskRunName     = "tekton.dev/pipelineTask"
+	tektonTaskRealName    = "tekton.dev/task"
 )
 
 // JobHandler Instance variables
@@ -206,7 +209,7 @@ func (jh JobHandler) getPipelineRunAndTaskRun(ctx context.Context, appName strin
 
 func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.PipelineRun {
 	pipelineRunModel := jobModels.PipelineRun{
-		Name:     pipelineRun.ObjectMeta.Annotations[tektonRealNameAnnotation],
+		Name:     pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation],
 		Env:      pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
 		RealName: pipelineRun.GetName(),
 		Started:  radixutils.FormatTime(pipelineRun.Status.StartTime),
@@ -235,7 +238,7 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 		Name:           taskRun.ObjectMeta.Labels["tekton.dev/pipelineTask"],
 		RealName:       taskRun.Spec.TaskRef.Name,
 		PipelineRunEnv: pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
-		PipelineName:   pipelineRun.ObjectMeta.Annotations[tektonRealNameAnnotation],
+		PipelineName:   pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation],
 	}
 	pipelineTaskModel.Started = radixutils.FormatTime(taskRun.Status.StartTime)
 	pipelineTaskModel.Ended = radixutils.FormatTime(taskRun.Status.CompletionTime)
@@ -323,7 +326,7 @@ func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.
 	}), nil
 }
 
-func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, jobDeployments []*models2.DeploymentSummary, appName, jobName string) (*jobModels.Job, error) {
+func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary, appName, jobName string) (*jobModels.Job, error) {
 	steps, err := jh.getJobStepsFromRadixJob(ctx, job, appName, jobName)
 	if err != nil {
 		return nil, err
@@ -336,7 +339,7 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 		created = radixutils.FormatTime(job.Status.Created)
 	}
 
-	var jobComponents []*models2.ComponentSummary
+	var jobComponents []*deploymentModels.ComponentSummary
 	if len(jobDeployments) > 0 {
 		jobComponents = jobDeployments[0].Components
 	}
@@ -418,11 +421,12 @@ func (jh JobHandler) getSubPipelineTasksSteps(ctx context.Context, appName, jobN
 	var steps []jobModels.Step
 	for _, taskRun := range subPipelineTaskRuns {
 		envName := taskRun.GetLabels()[kube.RadixEnvLabel]
-		pipelineRunName := taskRun.GetLabels()["tekton.dev/pipelineRun"]
-		taskName := taskRun.GetLabels()["tekton.dev/pipelineTask"]
-		taskRealName := taskRun.GetLabels()["tekton.dev/task"]
+		pipelineRunName := taskRun.GetLabels()[tektonPipelineRunName]
+		taskName := taskRun.GetLabels()[tektonTaskRunName]
+		taskRealName := taskRun.GetLabels()[tektonTaskRealName]
+		pipelineName := taskRun.GetAnnotations()[operatorDefaults.PipelineNameAnnotation]
 		for _, taskStep := range taskRun.Status.TaskRunStatusFields.Steps {
-			stepModel := jh.getTaskRunStepModel(envName, "pipeline", pipelineRunName, taskName, taskRealName, taskStep)
+			stepModel := jh.getTaskRunStepModel(envName, pipelineName, pipelineRunName, taskName, taskRealName, taskStep)
 			steps = append(steps, stepModel)
 		}
 	}
