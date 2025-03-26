@@ -78,9 +78,9 @@ type SubPipelineTaskStep struct {
 	// example: task-abc
 	TaskName string `json:"taskName"`
 
-	// RealName Name of the pipeline run in the namespace
+	// KubeName Name of the pipeline run in the namespace
 	//
 	// required: true
 	// example: radix-tekton-task-dev-2022-05-09-abcde
-	RealName string `json:"realName"`
+	KubeName string `json:"kubeName"`
 }

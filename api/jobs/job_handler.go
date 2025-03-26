@@ -3,6 +3,8 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/jobs/defaults"
+	"github.com/equinor/radix-api/api/jobs/internal"
 	"sort"
 	"strings"
 
@@ -11,7 +13,6 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils"
-	"github.com/equinor/radix-api/api/utils/tekton"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -29,10 +30,7 @@ import (
 )
 
 const (
-	WorkerImage           = "radix-pipeline"
-	tektonPipelineRunName = "tekton.dev/pipelineRun"
-	tektonTaskRunName     = "tekton.dev/pipelineTask"
-	tektonTaskRealName    = "tekton.dev/task"
+	WorkerImage = "radix-pipeline"
 )
 
 // JobHandler Instance variables
@@ -94,7 +92,7 @@ func (jh JobHandler) getSubPipelinesInfo(ctx context.Context, appName string, jo
 
 // GetTektonPipelineRuns Get the Tekton pipeline runs
 func (jh JobHandler) GetTektonPipelineRuns(ctx context.Context, appName, jobName string) ([]jobModels.PipelineRun, error) {
-	pipelineRuns, err := tekton.GetTektonPipelineRuns(ctx, jh.userAccount.TektonClient, appName, jobName)
+	pipelineRuns, err := internal.GetTektonPipelineRuns(ctx, jh.userAccount.TektonClient, appName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +106,7 @@ func (jh JobHandler) GetTektonPipelineRuns(ctx context.Context, appName, jobName
 
 // GetTektonPipelineRun Get the Tekton pipeline run
 func (jh JobHandler) GetTektonPipelineRun(ctx context.Context, appName, jobName, pipelineRunName string) (*jobModels.PipelineRun, error) {
-	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	pipelineRun, err := internal.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +128,7 @@ func (jh JobHandler) getPipelineRunWithTasks(ctx context.Context, appName string
 	if err != nil {
 		return nil, nil, err
 	}
-	taskRunsMap, err := tekton.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	taskRunsMap, err := internal.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -139,7 +137,7 @@ func (jh JobHandler) getPipelineRunWithTasks(ctx context.Context, appName string
 }
 
 func (jh JobHandler) getPipelineRunWithRef(ctx context.Context, appName string, jobName string, pipelineRunName string) (*pipelinev1.PipelineRun, error) {
-	pipelineRun, err := tekton.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	pipelineRun, err := internal.GetPipelineRun(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +188,7 @@ func (jh JobHandler) GetTektonPipelineRunTaskStep(ctx context.Context, appName, 
 		return nil, fmt.Errorf("step %s not found in the task %s", stepName, taskRealName)
 	}
 	envName := taskRun.GetLabels()[kube.RadixEnvLabel]
-	taskName := taskRun.GetLabels()["tekton.dev/pipelineTask"]
+	taskName := taskRun.GetLabels()[defaults.TektonTaskName]
 	stepModel := jh.getTaskRunStepModel(envName, "pipeline", pipelineRunName, taskName, taskRealName, taskStep)
 	return &stepModel, nil
 }
@@ -200,7 +198,7 @@ func (jh JobHandler) getPipelineRunAndTaskRun(ctx context.Context, appName strin
 	if err != nil {
 		return nil, nil, err
 	}
-	taskRun, err := tekton.GetTektonPipelineTaskRunByTaskName(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName, taskName)
+	taskRun, err := internal.GetTektonPipelineTaskRunByTaskName(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName, taskName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -211,7 +209,7 @@ func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.Pipelin
 	pipelineRunModel := jobModels.PipelineRun{
 		Name:     pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation],
 		Env:      pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
-		RealName: pipelineRun.GetName(),
+		KubeName: pipelineRun.GetName(),
 		Started:  radixutils.FormatTime(pipelineRun.Status.StartTime),
 		Ended:    radixutils.FormatTime(pipelineRun.Status.CompletionTime),
 	}
@@ -235,8 +233,8 @@ func getPipelineRunTaskModels(pipelineRun *pipelinev1.PipelineRun, taskNameToTas
 
 func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, taskRun *pipelinev1.TaskRun) *jobModels.PipelineRunTask {
 	pipelineTaskModel := jobModels.PipelineRunTask{
-		Name:           taskRun.ObjectMeta.Labels["tekton.dev/pipelineTask"],
-		RealName:       taskRun.Spec.TaskRef.Name,
+		Name:           taskRun.ObjectMeta.Labels[defaults.TektonTaskName],
+		KubeName:       taskRun.Spec.TaskRef.Name,
 		PipelineRunEnv: pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],
 		PipelineName:   pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation],
 	}
@@ -421,9 +419,9 @@ func (jh JobHandler) getSubPipelineTasksSteps(ctx context.Context, appName, jobN
 	var steps []jobModels.Step
 	for _, taskRun := range subPipelineTaskRuns {
 		envName := taskRun.GetLabels()[kube.RadixEnvLabel]
-		pipelineRunName := taskRun.GetLabels()[tektonPipelineRunName]
-		taskName := taskRun.GetLabels()[tektonTaskRunName]
-		taskRealName := taskRun.GetLabels()[tektonTaskRealName]
+		pipelineRunName := taskRun.GetLabels()[defaults.TektonPipelineRunName]
+		taskName := taskRun.GetLabels()[defaults.TektonTaskName]
+		taskRealName := taskRun.GetLabels()[defaults.TektonTaskKubeName]
 		pipelineName := taskRun.GetAnnotations()[operatorDefaults.PipelineNameAnnotation]
 		for _, taskStep := range taskRun.Status.TaskRunStatusFields.Steps {
 			stepModel := jh.getTaskRunStepModel(envName, pipelineName, pipelineRunName, taskName, taskRealName, taskStep)
@@ -442,7 +440,7 @@ func (jh JobHandler) getTaskRunStepModel(envName, pipelineName, pipelineRunName,
 			Environment:     envName,
 			PipelineRunName: pipelineRunName,
 			TaskName:        taskName,
-			RealName:        taskRealName,
+			KubeName:        taskRealName,
 		},
 	}
 	if taskStep.Terminated != nil {

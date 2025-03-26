@@ -7855,7 +7855,7 @@
       "required": [
         "name",
         "env",
-        "realName"
+        "kubeName"
       ],
       "properties": {
         "ended": {
@@ -7870,17 +7870,17 @@
           "x-go-name": "Env",
           "example": "prod"
         },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-pipelinerun-dev-2022-05-09-abcde"
+        },
         "name": {
           "description": "Name Original name of the pipeline run",
           "type": "string",
           "x-go-name": "Name",
           "example": "build-pipeline"
-        },
-        "realName": {
-          "description": "RealName Name of the pipeline run in the namespace",
-          "type": "string",
-          "x-go-name": "RealName",
-          "example": "radix-tekton-pipelinerun-dev-2022-05-09-abcde"
         },
         "started": {
           "description": "Started timestamp",
@@ -7925,7 +7925,7 @@
       "type": "object",
       "required": [
         "name",
-        "realName",
+        "kubeName",
         "pipelineRunEnv",
         "pipelineName"
       ],
@@ -7935,6 +7935,12 @@
           "type": "string",
           "x-go-name": "Ended",
           "example": "2006-01-02T15:04:05Z"
+        },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "name": {
           "description": "Name of the task",
@@ -7953,12 +7959,6 @@
           "type": "string",
           "x-go-name": "PipelineRunEnv",
           "example": "prod"
-        },
-        "realName": {
-          "description": "RealName Name of the pipeline run in the namespace",
-          "type": "string",
-          "x-go-name": "RealName",
-          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "started": {
           "description": "Started timestamp",
@@ -8818,13 +8818,19 @@
         "environment",
         "pipelineRunName",
         "taskName",
-        "realName"
+        "kubeName"
       ],
       "properties": {
         "environment": {
           "description": "Environment of the pipeline run",
           "type": "string",
           "x-go-name": "Environment"
+        },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "name": {
           "description": "Name of the step",
@@ -8841,12 +8847,6 @@
           "description": "PipelineRunName of the task",
           "type": "string",
           "x-go-name": "PipelineRunName"
-        },
-        "realName": {
-          "description": "RealName Name of the pipeline run in the namespace",
-          "type": "string",
-          "x-go-name": "RealName",
-          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "taskName": {
           "description": "TaskName of the task",
