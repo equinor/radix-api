@@ -1,8 +1,9 @@
-package tekton
+package internal
 
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/jobs/defaults"
 
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -31,8 +32,8 @@ func getTaskRuns(ctx context.Context, tektonClient tektonclient.Interface, appNa
 	namespace := crdUtils.GetAppNamespace(appName)
 	return tektonClient.TektonV1().TaskRuns(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: kubeLabels.Set{
-			kube.RadixJobNameLabel:   jobName,
-			"tekton.dev/pipelineRun": pipelineRunName,
+			kube.RadixJobNameLabel:         jobName,
+			defaults.TektonPipelineRunName: pipelineRunName,
 		}.String(),
 	})
 }
@@ -45,8 +46,8 @@ func GetTektonPipelineTaskRunByTaskName(ctx context.Context, tektonClient tekton
 	}
 	if taskRun, ok := slice.FindFirst(taskRunList.Items, func(taskRun pipelinev1.TaskRun) bool {
 		return taskRun.GetLabels()[kube.RadixJobNameLabel] == jobName &&
-			taskRun.GetLabels()["tekton.dev/pipelineRun"] == pipelineRunName &&
-			taskRun.GetLabels()["tekton.dev/task"] == taskName
+			taskRun.GetLabels()[defaults.TektonPipelineRunName] == pipelineRunName &&
+			taskRun.GetLabels()[defaults.TektonTaskName] == taskName
 	}); ok {
 		return &taskRun, nil
 	}

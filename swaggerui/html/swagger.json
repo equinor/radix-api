@@ -4773,6 +4773,78 @@
         }
       }
     },
+    "/applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/step/{stepName}": {
+      "get": {
+        "tags": [
+          "pipeline-job"
+        ],
+        "summary": "Gets a step for a pipeline run task of a pipeline-job",
+        "operationId": "getTektonPipelineRunTaskStep",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of Radix application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of pipeline job",
+            "name": "jobName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of pipeline run",
+            "name": "pipelineRunName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of pipeline run task",
+            "name": "taskName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Name of pipeline run task step",
+            "name": "stepName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of Pipeline Run Task Steps",
+            "schema": {
+              "$ref": "#/definitions/Step"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/steps": {
       "get": {
         "tags": [
@@ -7771,7 +7843,7 @@
       "required": [
         "name",
         "env",
-        "realName"
+        "kubeName"
       ],
       "properties": {
         "ended": {
@@ -7786,17 +7858,17 @@
           "x-go-name": "Env",
           "example": "prod"
         },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-pipelinerun-dev-2022-05-09-abcde"
+        },
         "name": {
           "description": "Name Original name of the pipeline run",
           "type": "string",
           "x-go-name": "Name",
           "example": "build-pipeline"
-        },
-        "realName": {
-          "description": "RealName Name of the pipeline run in the namespace",
-          "type": "string",
-          "x-go-name": "RealName",
-          "example": "radix-tekton-pipelinerun-dev-2022-05-09-abcde"
         },
         "started": {
           "description": "Started timestamp",
@@ -7841,7 +7913,7 @@
       "type": "object",
       "required": [
         "name",
-        "realName",
+        "kubeName",
         "pipelineRunEnv",
         "pipelineName"
       ],
@@ -7851,6 +7923,12 @@
           "type": "string",
           "x-go-name": "Ended",
           "example": "2006-01-02T15:04:05Z"
+        },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "name": {
           "description": "Name of the task",
@@ -7869,12 +7947,6 @@
           "type": "string",
           "x-go-name": "PipelineRunEnv",
           "example": "prod"
-        },
-        "realName": {
-          "description": "RealName Name of the pipeline run in the namespace",
-          "type": "string",
-          "x-go-name": "RealName",
-          "example": "radix-tekton-task-dev-2022-05-09-abcde"
         },
         "started": {
           "description": "Started timestamp",
@@ -8718,6 +8790,57 @@
           ],
           "x-go-name": "Status",
           "example": "Waiting"
+        },
+        "subPipelineTaskStep": {
+          "$ref": "#/definitions/SubPipelineTaskStep"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
+    },
+    "SubPipelineTaskStep": {
+      "description": "SubPipelineTaskStep holds general information about subpipeline task step",
+      "type": "object",
+      "required": [
+        "name",
+        "pipelineName",
+        "environment",
+        "pipelineRunName",
+        "taskName",
+        "kubeName"
+      ],
+      "properties": {
+        "environment": {
+          "description": "Environment of the pipeline run",
+          "type": "string",
+          "x-go-name": "Environment"
+        },
+        "kubeName": {
+          "description": "KubeName Name of the pipeline run in the namespace",
+          "type": "string",
+          "x-go-name": "KubeName",
+          "example": "radix-tekton-task-dev-2022-05-09-abcde"
+        },
+        "name": {
+          "description": "Name of the step",
+          "type": "string",
+          "x-go-name": "Name",
+          "example": "step-abc"
+        },
+        "pipelineName": {
+          "description": "PipelineName of the task",
+          "type": "string",
+          "x-go-name": "PipelineName"
+        },
+        "pipelineRunName": {
+          "description": "PipelineRunName of the task",
+          "type": "string",
+          "x-go-name": "PipelineRunName"
+        },
+        "taskName": {
+          "description": "TaskName of the task",
+          "type": "string",
+          "x-go-name": "TaskName",
+          "example": "task-abc"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"

@@ -19,6 +19,7 @@ import (
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -33,6 +34,7 @@ type JobHandlerTestSuite struct {
 	secretProviderClient *secretproviderfake.Clientset
 	certClient           *certclientfake.Clientset
 	kedaClient           *kedafake.Clientset
+	tektonClient         *tektonclientfake.Clientset
 }
 
 type jobCreatedScenario struct {
@@ -73,18 +75,19 @@ func (s *JobHandlerTestSuite) SetupTest() {
 }
 
 func (s *JobHandlerTestSuite) setupTest() {
-	s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.certClient = s.getUtils()
-	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient, s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, nil, s.certClient)
+	s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.certClient, s.tektonClient = s.getUtils()
+	accounts := models.NewAccounts(s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.tektonClient, s.certClient, s.kubeClient, s.radixClient, s.kedaClient, s.secretProviderClient, s.tektonClient, s.certClient)
 	s.accounts = accounts
 }
 
-func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset) {
+func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset, *tektonclientfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
 	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
+	tektonClient := tektonclientfake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
-	return kubeClient, radixClient, kedaClient, secretProviderClient, certClient
+	return kubeClient, radixClient, kedaClient, secretProviderClient, certClient, tektonClient
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {

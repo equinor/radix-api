@@ -71,6 +71,11 @@ func (jc *jobController) GetRoutes() models.Routes {
 			HandlerFunc: jc.GetTektonPipelineRunTaskSteps,
 		},
 		models.Route{
+			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/step/{stepName}",
+			Method:      "GET",
+			HandlerFunc: jc.GetTektonPipelineRunTaskStep,
+		},
+		models.Route{
 			Path:        rootPath + "/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/logs/{stepName}",
 			Method:      "GET",
 			HandlerFunc: jc.GetTektonPipelineRunTaskStepLogs,
@@ -557,6 +562,73 @@ func (jc *jobController) GetTektonPipelineRunTaskSteps(accounts models.Accounts,
 	}
 
 	jc.JSONResponse(w, r, tektonTaskSteps)
+}
+
+// GetTektonPipelineRunTaskStep Get the Tekton task step of a pipeline run
+func (jc *jobController) GetTektonPipelineRunTaskStep(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /applications/{appName}/jobs/{jobName}/pipelineruns/{pipelineRunName}/tasks/{taskName}/step/{stepName} pipeline-job getTektonPipelineRunTaskStep
+	// ---
+	// summary: Gets a step for a pipeline run task of a pipeline-job
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of Radix application
+	//   type: string
+	//   required: true
+	// - name: jobName
+	//   in: path
+	//   description: Name of pipeline job
+	//   type: string
+	//   required: true
+	// - name: pipelineRunName
+	//   in: path
+	//   description: Name of pipeline run
+	//   type: string
+	//   required: true
+	// - name: taskName
+	//   in: path
+	//   description: Name of pipeline run task
+	//   type: string
+	//   required: true
+	// - name: stepName
+	//   in: path
+	//   description: Name of pipeline run task step
+	//   type: string
+	//   required: true
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "200":
+	//     description: "List of Pipeline Run Task Steps"
+	//     schema:
+	//        "$ref": "#/definitions/Step"
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	appName := mux.Vars(r)["appName"]
+	jobName := mux.Vars(r)["jobName"]
+	pipelineRunName := mux.Vars(r)["pipelineRunName"]
+	taskName := mux.Vars(r)["taskName"]
+	stepName := mux.Vars(r)["stepName"]
+
+	handler := Init(accounts, deployments.Init(accounts))
+	taskStep, err := handler.GetTektonPipelineRunTaskStep(r.Context(), appName, jobName, pipelineRunName, taskName, stepName)
+
+	if err != nil {
+		jc.ErrorResponse(w, r, err)
+		return
+	}
+
+	jc.JSONResponse(w, r, taskStep)
 }
 
 // GetTektonPipelineRunTaskStepLogs Get step logs of a pipeline run task for a pipeline job

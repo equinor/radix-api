@@ -2,16 +2,13 @@ package applications
 
 import (
 	"context"
-	"fmt"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/middleware/auth"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
@@ -19,15 +16,15 @@ import (
 )
 
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
-func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
-
-	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
-	if err != nil {
+func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
+	if _, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{}); err != nil {
 		return nil, err
 	}
 
-	job := buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag, pipeline, jobParameters)
+	job, err := buildPipelineJob(ctx, appName, pipeline, jobParameters)
+	if err != nil {
+		return nil, err
+	}
 	return createPipelineJob(ctx, radixClient, appName, job)
 }
 
@@ -43,17 +40,7 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, error) {
-	if len(radixRegistration.Spec.RadixConfigFullName) == 0 {
-		return defaults.DefaultRadixConfigFileName, nil
-	}
-	if err := radixvalidators.ValidateRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName); err != nil {
-		return "", err
-	}
-	return radixRegistration.Spec.RadixConfigFullName, nil
-}
-
-func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName, pipelineImageTag, tektonImageTag string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) *v1.RadixJob {
+func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
 	jobName, imageTag := jobController.GetUniqueJobName()
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -63,9 +50,6 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 	var promoteSpec v1.RadixPromoteSpec
 	var deploySpec v1.RadixDeploySpec
 	var applyConfigSpec v1.RadixApplyConfigSpec
-
-	log.Ctx(ctx).Info().Msgf("Using %s pipeline image tag", pipelineImageTag)
-	log.Ctx(ctx).Info().Msgf("Using %s as tekton image tag", tektonImageTag)
 
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
@@ -108,21 +92,17 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:             appName,
-			CloneURL:            cloneURL,
-			TektonImage:         tektonImageTag,
-			PipeLineType:        pipeline.Type,
-			PipelineImage:       pipelineImageTag,
-			Build:               buildSpec,
-			Promote:             promoteSpec,
-			Deploy:              deploySpec,
-			ApplyConfig:         applyConfigSpec,
-			TriggeredBy:         getTriggeredBy(ctx, jobSpec.TriggeredBy),
-			RadixConfigFullName: fmt.Sprintf("/workspace/%s", radixConfigFullName),
+			AppName:      appName,
+			PipeLineType: pipeline.Type,
+			Build:        buildSpec,
+			Promote:      promoteSpec,
+			Deploy:       deploySpec,
+			ApplyConfig:  applyConfigSpec,
+			TriggeredBy:  getTriggeredBy(ctx, jobSpec.TriggeredBy),
 		},
 	}
 
-	return &job
+	return &job, nil
 }
 
 func getTriggeredBy(ctx context.Context, triggeredBy string) string {
