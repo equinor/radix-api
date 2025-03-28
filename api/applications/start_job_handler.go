@@ -2,7 +2,6 @@ package applications
 
 import (
 	"context"
-	"regexp"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -15,8 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const radixGitHubWebhookUserNameRegEx = `^system:serviceaccount:radix-github-webhook-[\w]+:radix-github-webhook$`
 
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
 func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
@@ -83,10 +80,6 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 			DeployExternalDNS: jobSpec.DeployExternalDNS != nil && *jobSpec.DeployExternalDNS,
 		}
 	}
-	triggeredFromWebhook, err := getTriggeredFromWebhook(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	job := v1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,27 +92,17 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:              appName,
-			PipeLineType:         pipeline.Type,
-			Build:                buildSpec,
-			Promote:              promoteSpec,
-			Deploy:               deploySpec,
-			ApplyConfig:          applyConfigSpec,
-			TriggeredFromWebhook: triggeredFromWebhook,
-			TriggeredBy:          getTriggeredBy(ctx, jobSpec.TriggeredBy),
+			AppName:      appName,
+			PipeLineType: pipeline.Type,
+			Build:        buildSpec,
+			Promote:      promoteSpec,
+			Deploy:       deploySpec,
+			ApplyConfig:  applyConfigSpec,
+			TriggeredBy:  getTriggeredBy(ctx, jobSpec.TriggeredBy),
 		},
 	}
 
 	return &job, nil
-}
-
-func getTriggeredFromWebhook(ctx context.Context) (bool, error) {
-	re, err := regexp.Compile(radixGitHubWebhookUserNameRegEx)
-	if err != nil {
-		return false, err
-	}
-	userIdGithubWebhookSa := re.Match([]byte(auth.GetOriginator(ctx)))
-	return userIdGithubWebhookSa, nil
 }
 
 func getTriggeredBy(ctx context.Context, triggeredBy string) string {
