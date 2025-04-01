@@ -11,11 +11,11 @@ type PipelineRunTask struct {
 	// example: build
 	Name string `json:"name"`
 
-	// RealName Name of the pipeline run in the namespace
+	// KubeName Name of the pipeline run in the namespace
 	//
 	// required: true
 	// example: radix-tekton-task-dev-2022-05-09-abcde
-	RealName string `json:"realName"`
+	KubeName string `json:"kubeName"`
 
 	// PipelineRunEnv Environment of the pipeline run
 	//
@@ -55,6 +55,7 @@ type PipelineRunTask struct {
 // PipelineRunReason copies the fields from github.com/tektoncd/pipeline so go-swagger can map the enums
 // swagger:enum PipelineRunReason
 type PipelineRunReason tektonv1.PipelineRunReason
+
 const (
 	// PipelineRunReasonStarted is the reason set when the PipelineRun has just started
 	PipelineRunReasonStarted PipelineRunReason = "Started"
