@@ -344,17 +344,18 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 	}
 
 	jobModel := jobModels.Job{
-		Name:         job.GetName(),
-		Created:      created,
-		Started:      radixutils.FormatTime(job.Status.Started),
-		Ended:        radixutils.FormatTime(job.Status.Ended),
-		Status:       jobModels.GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
-		Pipeline:     string(job.Spec.PipeLineType),
-		Steps:        steps,
-		Deployments:  jobDeployments,
-		Components:   jobComponents,
-		TriggeredBy:  job.Spec.TriggeredBy,
-		RerunFromJob: job.Annotations[jobModels.RadixPipelineJobRerunAnnotation],
+		Name:                 job.GetName(),
+		Created:              created,
+		Started:              radixutils.FormatTime(job.Status.Started),
+		Ended:                radixutils.FormatTime(job.Status.Ended),
+		Status:               jobModels.GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
+		Pipeline:             string(job.Spec.PipeLineType),
+		Steps:                steps,
+		Deployments:          jobDeployments,
+		Components:           jobComponents,
+		TriggeredFromWebhook: job.Spec.TriggeredFromWebhook,
+		TriggeredBy:          job.Spec.TriggeredBy,
+		RerunFromJob:         job.Annotations[jobModels.RadixPipelineJobRerunAnnotation],
 	}
 	switch job.Spec.PipeLineType {
 	case v1.Build, v1.BuildDeploy:

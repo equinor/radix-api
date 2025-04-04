@@ -44,4 +44,9 @@ type Environment struct {
 	// required: false
 	// example: master
 	BranchMapping string `json:"branchMapping,omitempty"`
+
+	// WebhookEnabled Enabled webhook for this environment. Default true
+	//
+	// required: false
+	WebhookEnabled bool `json:"webhookEnabled,omitempty"`
 }

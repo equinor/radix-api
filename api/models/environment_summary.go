@@ -30,6 +30,7 @@ func BuildEnvironmentSummaryList(rr *radixv1.RadixRegistration, ra *radixv1.Radi
 		env := &environmentModels.EnvironmentSummary{
 			Name:             e.Name,
 			BranchMapping:    buildFromBranch,
+			WebhookEnabled:   e.Build.WebhookEnabled == nil || *e.Build.WebhookEnabled,
 			ActiveDeployment: deploymentSummary,
 			Status:           getEnvironmentConfigurationStatus(re).String(),
 		}

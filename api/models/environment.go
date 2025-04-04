@@ -26,9 +26,11 @@ func BuildEnvironment(ctx context.Context, rr *radixv1.RadixRegistration, ra *ra
 	var buildFromBranch string
 	var activeDeployment *deploymentModels.Deployment
 	var secrets []secretModels.Secret
+	webhookEnabled := true
 
 	if raEnv := getRadixApplicationEnvironment(ra, re.Spec.EnvName); raEnv != nil {
 		buildFromBranch = raEnv.Build.From
+		webhookEnabled = raEnv.Build.WebhookEnabled == nil || *raEnv.Build.WebhookEnabled
 	}
 
 	if activeRd, ok := slice.FindFirst(rdList, isActiveDeploymentForAppAndEnv(ra.Name, re.Spec.EnvName)); ok {
@@ -46,6 +48,7 @@ func BuildEnvironment(ctx context.Context, rr *radixv1.RadixRegistration, ra *ra
 		Deployments:      BuildDeploymentSummaryList(rr, rdList, rjList),
 		ActiveDeployment: activeDeployment,
 		Secrets:          secrets,
+		WebhookEnabled:   webhookEnabled,
 	}
 }
 
