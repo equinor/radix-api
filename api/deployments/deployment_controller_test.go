@@ -44,7 +44,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, mockValidator, NewDeploymentController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewDeploymentController())
 	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {

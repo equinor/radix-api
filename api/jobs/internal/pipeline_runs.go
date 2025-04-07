@@ -1,4 +1,4 @@
-package tekton
+package internal
 
 import (
 	"context"

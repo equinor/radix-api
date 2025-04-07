@@ -59,8 +59,6 @@ spec:
               cpu: "200m"
               memory: "400Mi"
           variables:
-            PIPELINE_IMG_TAG: "master-latest"
-            TEKTON_IMG_TAG: "main-latest"
             GOMAXPROCS: "1"
         - environment: prod
           replicas: 2
@@ -72,6 +70,4 @@ spec:
               cpu: "500m"
               memory: "500M"
           variables:
-            PIPELINE_IMG_TAG: "release-latest"
-            TEKTON_IMG_TAG: "release-latest"
             GOMAXPROCS: "2"

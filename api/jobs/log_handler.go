@@ -3,13 +3,13 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"github.com/equinor/radix-api/api/jobs/internal"
 	"io"
 	"strings"
 	"time"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
-	"github.com/equinor/radix-api/api/utils/tekton"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/rs/zerolog/log"
@@ -20,7 +20,7 @@ import (
 
 // GetTektonPipelineRunTaskStepLogs Get logs of a pipeline run task for a pipeline job
 func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
-	taskRunsMap, err := tekton.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
+	taskRunsMap, err := internal.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
 	}

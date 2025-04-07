@@ -12,8 +12,6 @@
             "program": "${workspaceFolder}/main.go",
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
-                "PIPELINE_IMG_TAG": "master-latest",
-                "TEKTON_IMG_TAG": "main-latest",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",
                 "REQUIRE_APP_CONFIGURATION_ITEM": "true",
                 "REQUIRE_APP_AD_GROUPS": "true",

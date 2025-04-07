@@ -55,8 +55,6 @@ type ApplicationHandler struct {
 	accounts                models.Accounts
 	config                  config.Config
 	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
-	tektonImageTag          string
-	pipelineImageTag        string
 }
 
 // NewApplicationHandler Constructor
@@ -66,8 +64,6 @@ func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAc
 		accounts:                accounts,
 		config:                  config,
 		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
-		tektonImageTag:          config.TektonImageTag,
-		pipelineImageTag:        config.PipelineImageTag,
 	}
 }
 
@@ -446,7 +442,7 @@ func (ah *ApplicationHandler) TriggerPipelinePromote(ctx context.Context, appNam
 
 	jobParameters := pipelineParameters.MapPipelineParametersPromoteToJobParameter()
 	jobParameters.CommitID = radixDeployment.GetLabels()[kube.RadixCommitLabel]
-	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -495,7 +491,7 @@ func (ah *ApplicationHandler) TriggerPipelineDeploy(ctx context.Context, appName
 
 	jobParameters := pipelineParameters.MapPipelineParametersDeployToJobParameter()
 
-	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +515,7 @@ func (ah *ApplicationHandler) TriggerPipelineApplyConfig(ctx context.Context, ap
 
 	jobParameters := pipelineParameters.MapPipelineParametersApplyConfigToJobParameter()
 
-	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +571,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s%s", appName, branch, commitID,
 		radixutils.TernaryString(len(envName) > 0, fmt.Sprintf(", for environment %s", envName), ""))
 
-	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, ah.pipelineImageTag, ah.tektonImageTag, pipeline, jobParameters)
+	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}

@@ -15,11 +15,11 @@ type PipelineRun struct {
 	// example: prod
 	Env string `json:"env"`
 
-	// RealName Name of the pipeline run in the namespace
+	// KubeName Name of the pipeline run in the namespace
 	//
 	// required: true
 	// example: radix-tekton-pipelinerun-dev-2022-05-09-abcde
-	RealName string `json:"realName"`
+	KubeName string `json:"kubeName"`
 
 	// Status of the step
 	//
