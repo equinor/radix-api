@@ -9,7 +9,7 @@ require (
 	github.com/cert-manager/cert-manager v1.17.1
 	github.com/equinor/radix-common v1.10.0
 	github.com/equinor/radix-job-scheduler v1.14.1
-	github.com/equinor/radix-operator v1.76.3-0.20250411122710-dd5d0e57044f
+	github.com/equinor/radix-operator v1.77.1-0.20250414124902-99e82b022464
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -59,7 +59,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.24.1 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -117,4 +116,10 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+replace (
+	github.com/equinor/radix-operator => /Users/sergey.smolnikov/dev/github.com/equinor/radix-operator
+	github.com/kedacore/keda/v2 => /Users/sergey.smolnikov/dev/github.com/keda
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
