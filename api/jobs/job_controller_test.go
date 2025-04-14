@@ -3,36 +3,35 @@ package jobs_test
 import (
 	"context"
 	"fmt"
+	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	"net/http"
 	"testing"
 
-	"github.com/equinor/radix-api/api/applications"
-	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
-	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/golang/mock/gomock"
-	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
-	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	"github.com/stretchr/testify/require"
-	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
-	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
-
-	"github.com/equinor/radix-operator/pkg/apis/pipeline"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/utils/git"
-
-	"github.com/stretchr/testify/assert"
-
 	certclientfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
-	. "github.com/equinor/radix-api/api/jobs"
+	"github.com/equinor/radix-api/api/applications"
+	"github.com/equinor/radix-api/api/jobs"
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
+	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
+	"github.com/equinor/radix-common/utils/pointers"
+	"github.com/equinor/radix-operator/pkg/apis/git"
+	"github.com/equinor/radix-operator/pkg/apis/pipeline"
+	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	"github.com/golang/mock/gomock"
+	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -51,6 +50,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 	kedaClient := kedafake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
+	tektonClient := tektonclientfake.NewSimpleClientset()
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
@@ -58,7 +58,7 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, mockValidator, NewJobController())
+	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, tektonClient, mockValidator, jobs.NewJobController())
 
 	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, secretproviderclient, certClient
 }
@@ -80,16 +80,17 @@ func TestGetApplicationJob(t *testing.T) {
 		OverrideUseBuildCache: pointers.Ptr(true),
 	}
 
-	anyPipeline, _ := pipeline.GetPipelineFromName(anyPipelineName)
-	anyPipelineTagName := "latestPipelineImageTag"
-	anyTektonTagName := "latestTektonImageTag"
-	jobSummary, _ := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipelineTagName, anyTektonTagName, anyPipeline, jobParameters)
+	anyPipeline, err := pipeline.GetPipelineFromName(anyPipelineName)
+	require.NoError(t, err, "Failed to get pipeline")
+	jobSummary, err := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipeline, jobParameters)
+	require.NoError(t, err, "failed to start a pipeline job")
 	_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to create a pipeline pod")
 
 	// Test
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 	response := <-responseChannel
+	require.Equal(t, http.StatusOK, response.Code, "Expected status OK")
 
 	job := jobmodels.Job{}
 	err = controllertest.GetResponseBody(response, &job)

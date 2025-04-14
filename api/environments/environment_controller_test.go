@@ -76,9 +76,9 @@ func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commo
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
 	// secretControllerTestUtils is used for issuing HTTP request and processing responses
-	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, mockValidator, secrets.NewSecretController(nil))
+	secretControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, nil, mockValidator, secrets.NewSecretController(nil))
 	// controllerTestUtils is used for issuing HTTP request and processing responses
-	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, mockValidator, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
+	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
 	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixClient, kedaClient, prometheusclient, secretproviderclient, certClient
 }

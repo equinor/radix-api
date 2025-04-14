@@ -1,13 +1,7 @@
 package models
 
 import (
-	"sort"
-	"strings"
-
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	radixutils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 const (
@@ -147,82 +141,4 @@ type Job struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
-}
-
-// GetJobFromRadixJob Gets job from a radix job
-func GetJobFromRadixJob(job *radixv1.RadixJob, jobDeployments []*deploymentModels.DeploymentSummary) *Job {
-	steps := GetJobStepsFromRadixJob(job)
-
-	created := radixutils.FormatTime(&job.CreationTimestamp)
-	if job.Status.Created != nil {
-		// Use this instead, because in a migration this may be more correct
-		// as migrated jobs will have the same creation timestamp in the new cluster
-		created = radixutils.FormatTime(job.Status.Created)
-	}
-
-	var jobComponents []*deploymentModels.ComponentSummary
-	if len(jobDeployments) > 0 {
-		jobComponents = jobDeployments[0].Components
-	}
-
-	jobModel := Job{
-		Name:         job.GetName(),
-		Created:      created,
-		Started:      radixutils.FormatTime(job.Status.Started),
-		Ended:        radixutils.FormatTime(job.Status.Ended),
-		Status:       GetStatusFromRadixJobStatus(job.Status, job.Spec.Stop),
-		Pipeline:     string(job.Spec.PipeLineType),
-		Steps:        steps,
-		Deployments:  jobDeployments,
-		Components:   jobComponents,
-		TriggeredBy:  job.Spec.TriggeredBy,
-		RerunFromJob: job.Annotations[RadixPipelineJobRerunAnnotation],
-	}
-	switch job.Spec.PipeLineType {
-	case radixv1.Build, radixv1.BuildDeploy:
-		jobModel.Branch = job.Spec.Build.Branch
-		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
-		jobModel.CommitID = job.Spec.Build.CommitID
-		jobModel.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
-	case radixv1.Deploy:
-		jobModel.ImageTagNames = job.Spec.Deploy.ImageTagNames
-		jobModel.DeployedToEnvironment = job.Spec.Deploy.ToEnvironment
-		jobModel.CommitID = job.Spec.Deploy.CommitID
-	case radixv1.Promote:
-		jobModel.PromotedFromDeployment = job.Spec.Promote.DeploymentName
-		jobModel.PromotedFromEnvironment = job.Spec.Promote.FromEnvironment
-		jobModel.PromotedToEnvironment = job.Spec.Promote.ToEnvironment
-		jobModel.CommitID = job.Spec.Promote.CommitID
-	case radixv1.ApplyConfig:
-		jobModel.DeployExternalDNS = pointers.Ptr(job.Spec.ApplyConfig.DeployExternalDNS)
-	}
-	return &jobModel
-}
-
-// GetJobStepsFromRadixJob Gets the steps from a Radix job
-func GetJobStepsFromRadixJob(job *radixv1.RadixJob) []Step {
-	var steps []Step
-	var buildSteps []Step
-
-	for _, jobStep := range job.Status.Steps {
-		step := Step{
-			Name:       jobStep.Name,
-			Status:     string(jobStep.Condition),
-			PodName:    jobStep.PodName,
-			Components: jobStep.Components,
-		}
-		if jobStep.Started != nil {
-			step.Started = &jobStep.Started.Time
-		}
-		if jobStep.Ended != nil {
-			step.Ended = &jobStep.Ended.Time
-		}
-		if strings.HasPrefix(step.Name, "build-") {
-			buildSteps = append(buildSteps, step)
-		} else {
-			steps = append(steps, step)
-		}
-	}
-	sort.Slice(buildSteps, func(i, j int) bool { return buildSteps[i].Name < buildSteps[j].Name })
-	return append(steps, buildSteps...)
 }
