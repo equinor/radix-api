@@ -141,4 +141,9 @@ type Job struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// TriggeredFromWebhook If true, the job was triggered from a webhook
+	//
+	// required: false
+	TriggeredFromWebhook bool `json:"triggeredFromWebhook,omitempty"`
 }

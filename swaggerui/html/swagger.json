@@ -7466,6 +7466,11 @@
           "type": "string",
           "x-go-name": "TriggeredBy",
           "example": "a_user@equinor.com"
+        },
+        "triggeredFromWebhook": {
+          "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
+          "type": "boolean",
+          "x-go-name": "TriggeredFromWebhook"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
@@ -7602,6 +7607,11 @@
           "type": "string",
           "x-go-name": "TriggeredBy",
           "example": "a_user@equinor.com"
+        },
+        "triggeredFromWebhook": {
+          "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
+          "type": "boolean",
+          "x-go-name": "TriggeredFromWebhook"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
