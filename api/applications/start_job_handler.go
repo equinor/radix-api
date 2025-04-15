@@ -100,7 +100,7 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 		}
 	}
 
-	triggeredFromWebhook, err := GetTriggeredFromWebhook(ctx)
+	triggeredFromWebhook, err := getTriggeredFromWebhook(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +131,7 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 	return &job, nil
 }
 
-// GetTriggeredFromWebhook checks if the job was triggered from a webhook
-func GetTriggeredFromWebhook(ctx context.Context) (bool, error) {
+func getTriggeredFromWebhook(ctx context.Context) (bool, error) {
 	re, err := regexp.Compile(radixGitHubWebhookUserNameRegEx)
 	if err != nil {
 		return false, err
