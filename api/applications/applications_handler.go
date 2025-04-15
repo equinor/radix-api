@@ -551,7 +551,14 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		if err != nil {
 			return nil, err
 		}
-		targetEnvironments := applicationconfig.GetTargetEnvironments(branch, ra)
+		triggeredFromWebhook, err := GetTriggeredFromWebhook(ctx)
+		if err != nil {
+			return nil, err
+		}
+		targetEnvironments, ignoredForWebhookEnvs := applicationconfig.GetTargetEnvironments(branch, ra, triggeredFromWebhook)
+		if len(ignoredForWebhookEnvs) > 0 {
+			log.Ctx(ctx).Info().Msgf("Following environment(s) are ignored for the webhook: %s.", strings.Join(ignoredForWebhookEnvs, ", "))
+		}
 		if len(targetEnvironments) == 0 {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}

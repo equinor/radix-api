@@ -2,26 +2,35 @@ package applications
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/middleware/auth"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const radixGitHubWebhookUserNameRegEx = `^system:serviceaccount:radix-github-webhook-[\w]+:radix-github-webhook$`
+
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
 func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	if _, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{}); err != nil {
+	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+
+	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
+	if err != nil {
 		return nil, err
 	}
 
-	job, err := buildPipelineJob(ctx, appName, pipeline, jobParameters)
+	job, err := buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +49,17 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
+func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, error) {
+	if len(radixRegistration.Spec.RadixConfigFullName) == 0 {
+		return defaults.DefaultRadixConfigFileName, nil
+	}
+	if err := radixvalidators.ValidateRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName); err != nil {
+		return "", err
+	}
+	return radixRegistration.Spec.RadixConfigFullName, nil
+}
+
+func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
 	jobName, imageTag := jobController.GetUniqueJobName()
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -81,6 +100,10 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 		}
 	}
 
+	triggeredFromWebhook, err := GetTriggeredFromWebhook(ctx)
+	if err != nil {
+		return nil, err
+	}
 	job := v1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,
@@ -92,23 +115,35 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 			},
 		},
 		Spec: v1.RadixJobSpec{
-			AppName:      appName,
-			PipeLineType: pipeline.Type,
-			Build:        buildSpec,
-			Promote:      promoteSpec,
-			Deploy:       deploySpec,
-			ApplyConfig:  applyConfigSpec,
-			TriggeredBy:  getTriggeredBy(ctx, jobSpec.TriggeredBy),
+			AppName:              appName,
+			CloneURL:             cloneURL,
+			PipeLineType:         pipeline.Type,
+			Build:                buildSpec,
+			Promote:              promoteSpec,
+			Deploy:               deploySpec,
+			ApplyConfig:          applyConfigSpec,
+			TriggeredFromWebhook: triggeredFromWebhook,
+			TriggeredBy:          getTriggeredBy(ctx, jobSpec.TriggeredBy),
+			RadixConfigFullName:  fmt.Sprintf("/workspace/%s", radixConfigFullName),
 		},
 	}
 
 	return &job, nil
 }
 
+// GetTriggeredFromWebhook checks if the job was triggered from a webhook
+func GetTriggeredFromWebhook(ctx context.Context) (bool, error) {
+	re, err := regexp.Compile(radixGitHubWebhookUserNameRegEx)
+	if err != nil {
+		return false, err
+	}
+	userIdGithubWebhookSa := re.Match([]byte(auth.GetOriginator(ctx)))
+	return userIdGithubWebhookSa, nil
+}
+
 func getTriggeredBy(ctx context.Context, triggeredBy string) string {
 	if triggeredBy != "" && triggeredBy != "<nil>" {
 		return triggeredBy
 	}
-
 	return auth.GetOriginator(ctx)
 }
