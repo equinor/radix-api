@@ -551,7 +551,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		if err != nil {
 			return nil, err
 		}
-		targetEnvironments := applicationconfig.GetTargetEnvironments(branch, ra)
+		targetEnvironments, _ := applicationconfig.GetTargetEnvironments(branch, ra, false) // do not use an argument triggeredFromWebhook due to it can be outdated RadixApplication
 		if len(targetEnvironments) == 0 {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
