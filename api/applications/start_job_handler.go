@@ -2,17 +2,14 @@ package applications
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 
 	jobController "github.com/equinor/radix-api/api/jobs"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/middleware/auth"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	pipelineJob "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
@@ -23,14 +20,11 @@ const radixGitHubWebhookUserNameRegEx = `^system:serviceaccount:radix-github-web
 
 // HandleStartPipelineJob Handles the creation of a pipeline jobController for an application
 func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface, appName string, pipeline *pipelineJob.Definition, jobParameters *jobModels.JobParameters) (*jobModels.JobSummary, error) {
-	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
-
-	radixConfigFullName, err := getRadixConfigFullName(radixRegistration)
-	if err != nil {
+	if _, err := radixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{}); err != nil {
 		return nil, err
 	}
 
-	job, err := buildPipelineJob(ctx, appName, radixRegistration.Spec.CloneURL, radixConfigFullName, pipeline, jobParameters)
+	job, err := buildPipelineJob(ctx, appName, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -49,17 +43,7 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func getRadixConfigFullName(radixRegistration *v1.RadixRegistration) (string, error) {
-	if len(radixRegistration.Spec.RadixConfigFullName) == 0 {
-		return defaults.DefaultRadixConfigFileName, nil
-	}
-	if err := radixvalidators.ValidateRadixConfigFullName(radixRegistration.Spec.RadixConfigFullName); err != nil {
-		return "", err
-	}
-	return radixRegistration.Spec.RadixConfigFullName, nil
-}
-
-func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
+func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
 	jobName, imageTag := jobController.GetUniqueJobName()
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -116,7 +100,6 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 		},
 		Spec: v1.RadixJobSpec{
 			AppName:              appName,
-			CloneURL:             cloneURL,
 			PipeLineType:         pipeline.Type,
 			Build:                buildSpec,
 			Promote:              promoteSpec,
@@ -124,7 +107,6 @@ func buildPipelineJob(ctx context.Context, appName, cloneURL, radixConfigFullNam
 			ApplyConfig:          applyConfigSpec,
 			TriggeredFromWebhook: triggeredFromWebhook,
 			TriggeredBy:          getTriggeredBy(ctx, jobSpec.TriggeredBy),
-			RadixConfigFullName:  fmt.Sprintf("/workspace/%s", radixConfigFullName),
 		},
 	}
 
