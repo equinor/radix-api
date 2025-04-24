@@ -551,7 +551,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		if err != nil {
 			return nil, err
 		}
-		targetEnvironments := applicationconfig.GetTargetEnvironments(branch, ra)
+		targetEnvironments := applicationconfig.GetAllTargetEnvironments(branch, ra)
 		if len(targetEnvironments) == 0 {
 			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
 		}
