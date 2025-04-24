@@ -7321,6 +7321,9 @@
     "Job": {
       "description": "Job holds general information about job",
       "type": "object",
+      "required": [
+        "triggeredFromWebhook"
+      ],
       "properties": {
         "branch": {
           "description": "Branch to build from",
@@ -7466,6 +7469,11 @@
           "type": "string",
           "x-go-name": "TriggeredBy",
           "example": "a_user@equinor.com"
+        },
+        "triggeredFromWebhook": {
+          "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
+          "type": "boolean",
+          "x-go-name": "TriggeredFromWebhook"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
@@ -7475,7 +7483,8 @@
       "type": "object",
       "required": [
         "name",
-        "created"
+        "created",
+        "triggeredFromWebhook"
       ],
       "properties": {
         "appName": {
@@ -7602,6 +7611,11 @@
           "type": "string",
           "x-go-name": "TriggeredBy",
           "example": "a_user@equinor.com"
+        },
+        "triggeredFromWebhook": {
+          "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
+          "type": "boolean",
+          "x-go-name": "TriggeredFromWebhook"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
