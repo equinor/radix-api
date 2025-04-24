@@ -114,6 +114,8 @@ type JobSummary struct {
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 
 	// TriggeredFromWebhook If true, the job was triggered from a webhook
+	//
+	// required: true
 	TriggeredFromWebhook bool `json:"triggeredFromWebhook"`
 }
 

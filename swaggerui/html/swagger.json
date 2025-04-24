@@ -7321,6 +7321,9 @@
     "Job": {
       "description": "Job holds general information about job",
       "type": "object",
+      "required": [
+        "triggeredFromWebhook"
+      ],
       "properties": {
         "branch": {
           "description": "Branch to build from",
@@ -7480,7 +7483,8 @@
       "type": "object",
       "required": [
         "name",
-        "created"
+        "created",
+        "triggeredFromWebhook"
       ],
       "properties": {
         "appName": {
