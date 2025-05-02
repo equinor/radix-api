@@ -149,12 +149,12 @@ func getAzureVolumeMountSecrets(ctx context.Context, secretList []corev1.Secret,
 	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 		metadata = kubequery.GetSecretMetadata(ctx, &secretValue)
 		accountKeyValue := strings.TrimSpace(string(secretValue.Data[accountKeyPart]))
-		if strings.EqualFold(accountKeyValue, secretDefaultData) {
+		if len(accountKeyValue) == 0 || strings.EqualFold(accountKeyValue, secretDefaultData) {
 			keySecretStatus = secretModels.Pending.String()
 		}
 
 		accountNameValue := strings.TrimSpace(string(secretValue.Data[accountNamePart]))
-		if strings.EqualFold(accountNameValue, secretDefaultData) {
+		if len(accountNameValue) == 0 || strings.EqualFold(accountNameValue, secretDefaultData) {
 			nameSecretStatus = secretModels.Pending.String()
 		}
 	} else {
@@ -219,7 +219,7 @@ func getSecretsForComponentAuthenticationClientCertificate(ctx context.Context, 
 		if secr, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 			metadata = kubequery.GetSecretMetadata(ctx, &secr)
 			secretValue := strings.TrimSpace(string(secr.Data["ca.crt"]))
-			if strings.EqualFold(secretValue, secretDefaultData) {
+			if len(secretValue) == 0 || strings.EqualFold(secretValue, secretDefaultData) {
 				secretStatus = secretModels.Pending.String()
 			}
 		} else {
@@ -407,12 +407,12 @@ func getCredentialSecretsForSecretRefsAzureKeyVault(ctx context.Context, secretL
 	if secretValue, ok := slice.FindFirst(secretList, isSecretWithName(secretName)); ok {
 		metadata = kubequery.GetSecretMetadata(ctx, &secretValue)
 		clientIdValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientIdPart]))
-		if strings.EqualFold(clientIdValue, secretDefaultData) {
+		if len(clientIdValue) == 0 || strings.EqualFold(clientIdValue, secretDefaultData) {
 			clientIdStatus = secretModels.Pending.String()
 		}
 
 		clientSecretValue := strings.TrimSpace(string(secretValue.Data[defaults.CsiAzureKeyVaultCredsClientSecretPart]))
-		if strings.EqualFold(clientSecretValue, secretDefaultData) {
+		if len(clientSecretValue) == 0 || strings.EqualFold(clientSecretValue, secretDefaultData) {
 			clientSecretStatus = secretModels.Pending.String()
 		}
 	} else {
