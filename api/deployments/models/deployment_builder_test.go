@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	"github.com/equinor/radix-operator/pkg/apis/utils"
-
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -215,7 +215,12 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 			{Name: "comp1"},
 			{Name: "comp2"},
 			{Name: "job1"},
-			{Name: "job2"},
+			{Name: "job2", Runtime: &Runtime{
+				Architecture: "arm64",
+			}},
+			{Name: "job3", Runtime: &Runtime{
+				NodeType: "some-node-type1",
+			}},
 		}).WithRadixDeployment(
 			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -231,7 +236,12 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 					},
 					Jobs: []radixv1.RadixDeployJobComponent{
 						{Name: "job1"},
-						{Name: "job2"},
+						{Name: "job2", Runtime: &radixv1.Runtime{
+							Architecture: radixv1.RuntimeArchitectureArm64,
+						}},
+						{Name: "job3", Runtime: &radixv1.Runtime{
+							NodeType: pointers.Ptr("some-node-type1"),
+						}},
 					},
 				},
 				Status: radixv1.RadixDeployStatus{
@@ -254,7 +264,14 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		assert.True(t, actual.Components[1].SkipDeployment)
 		assert.Equal(t, "job1", actual.Components[2].Name)
 		assert.False(t, actual.Components[2].SkipDeployment)
+		assert.Nil(t, actual.Components[2].Runtime, "job1 should not have runtime")
 		assert.Equal(t, "job2", actual.Components[3].Name)
-		assert.True(t, actual.Components[3].SkipDeployment)
+		assert.NotNil(t, actual.Components[3].Runtime, "job2 should have runtime")
+		assert.Equal(t, "arm64", actual.Components[3].Runtime.Architecture, "job2 should have arm64 architecture")
+		assert.Empty(t, actual.Components[3].Runtime.NodeType, "job2 should not have node type")
+		assert.True(t, actual.Components[3].SkipDeployment, "job2 should skip deployment")
+		assert.Equal(t, "job3", actual.Components[4].Name, "job3 should be the 4th component")
+		assert.NotNil(t, actual.Components[4].Runtime, "job3 should have runtime")
+		assert.Equal(t, "some-node-type1", actual.Components[4].Runtime.NodeType, "job3 should have node type")
 	})
 }

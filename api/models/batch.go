@@ -12,7 +12,6 @@ import (
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 // GetScheduledBatchSummaryList Get scheduled batch summary list
@@ -110,12 +109,10 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		JobId:          radixBatchJob.JobId,
 		ReplicaList:    getReplicaSummaryListForJob(radixBatch, *radixBatchJob),
 		Status:         radixv1.RadixBatchJobApiStatusWaiting,
+		Runtime:        deploymentModels.NewRuntime(radixBatchJob.Runtime),
 	}
 
 	if radixDeployJobComponent != nil {
-		summary.Runtime = &models.Runtime{
-			Architecture: operatorUtils.GetArchitectureFromRuntime(radixDeployJobComponent.GetRuntime()),
-		}
 		summary.TimeLimitSeconds = radixDeployJobComponent.TimeLimitSeconds
 		if radixBatchJob.TimeLimitSeconds != nil {
 			summary.TimeLimitSeconds = radixBatchJob.TimeLimitSeconds

@@ -529,7 +529,10 @@ func Test_GetJob_AllProps(t *testing.T) {
 				WithNodeGpu("gpu1").
 				WithNodeGpuCount("2").
 				WithRuntime(&v1.Runtime{Architecture: v1.RuntimeArchitectureArm64}).
-				WithResource(map[string]string{"cpu": "50Mi", "memory": "250M"}, map[string]string{"cpu": "100Mi", "memory": "500M"})).
+				WithResource(map[string]string{"cpu": "50Mi", "memory": "250M"}, map[string]string{"cpu": "100Mi", "memory": "500M"}),
+				utils.NewDeployJobComponentBuilder().
+					WithName(anyJobName2).
+					WithRuntime(&v1.Runtime{NodeType: pointers.Ptr(nodeType1)})).
 			WithActiveFrom(time.Now()))
 	require.NoError(t, err)
 
@@ -578,6 +581,51 @@ func Test_GetJob_AllProps(t *testing.T) {
 				JobStatuses: []v1.RadixBatchJobStatus{
 					{
 						Name:         "job1",
+						Phase:        v1.BatchJobPhaseSucceeded,
+						Message:      "anymessage",
+						CreationTime: &creationTime,
+						StartTime:    &startTime,
+						EndTime:      &endTime,
+						RadixBatchJobPodStatuses: []v1.RadixBatchJobPodStatus{{
+							CreationTime: &podCreationTime,
+							Phase:        v1.PodSucceeded,
+						}},
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "job3-batch1",
+				Labels: labels.Merge(labels.ForApplicationName(anyAppName), labels.ForComponentName(anyJobName2), labels.ForBatchType(kube.RadixBatchTypeJob)),
+			},
+			Spec: v1.RadixBatchSpec{
+				Jobs: []v1.RadixBatchJob{
+					{
+						Name: "job6",
+					},
+					{
+						Name:             "job7",
+						JobId:            "anyjobid2",
+						BackoffLimit:     numbers.Int32Ptr(5),
+						TimeLimitSeconds: numbers.Int64Ptr(999),
+						Runtime: &v1.Runtime{
+							NodeType: pointers.Ptr(nodeType1),
+						},
+					},
+				},
+				RadixDeploymentJobRef: v1.RadixDeploymentJobComponentSelector{
+					Job:                  anyJobName2,
+					LocalObjectReference: v1.LocalObjectReference{Name: anyDeployment},
+				},
+			},
+			Status: v1.RadixBatchStatus{
+				Condition: v1.RadixBatchCondition{
+					Type: v1.BatchConditionTypeCompleted,
+				},
+				JobStatuses: []v1.RadixBatchJobStatus{
+					{
+						Name:         "job7",
 						Phase:        v1.BatchJobPhaseSucceeded,
 						Message:      "anymessage",
 						CreationTime: &creationTime,
@@ -648,6 +696,31 @@ func Test_GetJob_AllProps(t *testing.T) {
 		DeploymentName: anyDeployment,
 		Runtime: &models.Runtime{
 			Architecture: string(v1.RuntimeArchitectureArm64),
+		},
+	}, actual)
+	// Test job3 props
+	responseChannel = environmentControllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/environments/%s/jobcomponents/%s/jobs/%s", anyAppName, anyEnvironment, anyJobName2, "job3-batch1-job7"))
+	response = <-responseChannel
+	actual = models.ScheduledJobSummary{}
+	err = test.GetResponseBody(response, &actual)
+	require.NoError(t, err)
+	assert.Equal(t, models.ScheduledJobSummary{
+		Created:          &creationTime.Time,
+		Started:          &startTime.Time,
+		Ended:            &endTime.Time,
+		Name:             "job3-batch1-job7",
+		JobId:            "anyjobid2",
+		Message:          "anymessage",
+		Status:           models.ScheduledBatchJobStatusSucceeded,
+		BackoffLimit:     5,
+		TimeLimitSeconds: numbers.Int64Ptr(999),
+		DeploymentName:   anyDeployment,
+		ReplicaList: []models.ReplicaSummary{{
+			Created: podCreationTime.Time,
+			Status:  models.ReplicaStatus{Status: models.Succeeded},
+		}},
+		Runtime: &models.Runtime{
+			NodeType: nodeType1,
 		},
 	}, actual)
 }

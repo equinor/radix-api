@@ -8419,6 +8419,12 @@
           "type": "string",
           "x-go-name": "Architecture",
           "example": "amd64"
+        },
+        "nodeType": {
+          "description": "NodeType is the node type of the component",
+          "type": "string",
+          "x-go-name": "NodeType",
+          "example": "memory-optimized-v1"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
