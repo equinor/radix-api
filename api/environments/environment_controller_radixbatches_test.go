@@ -671,7 +671,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 			Status:  models.ReplicaStatus{Status: models.Succeeded},
 		}},
 		Runtime: &models.Runtime{
-			Architecture: string(v1.RuntimeArchitectureArm64),
+			Architecture: "amd64",
 		},
 	}, actual)
 
@@ -695,7 +695,7 @@ func Test_GetJob_AllProps(t *testing.T) {
 		Node:           &models.Node{Gpu: "gpu2", GpuCount: "3"},
 		DeploymentName: anyDeployment,
 		Runtime: &models.Runtime{
-			Architecture: string(v1.RuntimeArchitectureArm64),
+			Architecture: "amd64",
 		},
 	}, actual)
 	// Test job3 props
@@ -720,7 +720,8 @@ func Test_GetJob_AllProps(t *testing.T) {
 			Status:  models.ReplicaStatus{Status: models.Succeeded},
 		}},
 		Runtime: &models.Runtime{
-			NodeType: nodeType1,
+			Architecture: "amd64",
+			NodeType:     nodeType1,
 		},
 	}, actual)
 }

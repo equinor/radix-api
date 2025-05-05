@@ -124,11 +124,11 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 			summary.BackoffLimit = *radixBatchJob.BackoffLimit
 		}
 
-		if radixDeployJobComponent.Node != (radixv1.RadixNode{}) {
-			summary.Node = (*models.Node)(&radixDeployJobComponent.Node)
+		if radixDeployJobComponent.Node != (radixv1.RadixNode{}) { // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			summary.Node = (*models.Node)(&radixDeployJobComponent.Node) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 		}
-		if radixBatchJob.Node != nil {
-			summary.Node = (*models.Node)(radixBatchJob.Node)
+		if radixBatchJob.Node != nil { // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			summary.Node = (*models.Node)(radixBatchJob.Node) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 		}
 
 		if radixBatchJob.Resources != nil {

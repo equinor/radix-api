@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	runtimeUtils "github.com/equinor/radix-operator/pkg/apis/runtime"
 	"sort"
@@ -636,13 +637,13 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 
 // NewRuntime creates an API runtime model by the Radix runtime
 func NewRuntime(radixRuntime *radixv1.Runtime) *Runtime {
-	runtimeModel := &Runtime{}
+	runtimeModel := &Runtime{
+		Architecture: string(defaults.DefaultNodeSelectorArchitecture),
+	}
 	if radixRuntime == nil {
 		return runtimeModel
 	}
-	if architecture, ok := runtimeUtils.GetArchitectureFromRuntime(radixRuntime); ok {
-		runtimeModel.Architecture = architecture
-	}
+	runtimeModel.Architecture, _ = runtimeUtils.GetArchitectureFromRuntime(radixRuntime)
 	if nodeType := radixRuntime.GetNodeType(); nodeType != nil && len(*nodeType) > 0 {
 		runtimeModel.NodeType = *nodeType
 	}
