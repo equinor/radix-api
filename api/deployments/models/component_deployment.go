@@ -643,7 +643,7 @@ func NewRuntime(radixRuntime *radixv1.Runtime) *Runtime {
 	if radixRuntime == nil {
 		return runtimeModel
 	}
-	runtimeModel.Architecture, _ = runtimeUtils.GetArchitectureFromRuntime(radixRuntime)
+	runtimeModel.Architecture = runtimeUtils.GetArchitectureFromRuntimeOrDefault(radixRuntime)
 	if nodeType := radixRuntime.GetNodeType(); nodeType != nil && len(*nodeType) > 0 {
 		runtimeModel.NodeType = *nodeType
 	}
