@@ -5875,12 +5875,6 @@
           "type": "string",
           "x-go-name": "Creator"
         },
-        "id": {
-          "description": "ID the unique ID of the application",
-          "type": "string",
-          "x-go-name": "ID",
-          "example": "78G65Z755AFWAKHE12NY0CQ7FH"
-        },
         "name": {
           "description": "Name the unique name of the Radix application",
           "type": "string",
