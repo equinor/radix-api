@@ -106,6 +106,13 @@ type JobSummary struct {
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 
+	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
+
 	// DeployExternalDNS deploy external DNS
 	//
 	// required: false
@@ -153,6 +160,7 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 		pipelineJob.Branch = job.Spec.Build.Branch
 		pipelineJob.CommitID = job.Spec.Build.CommitID
 		pipelineJob.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
+		pipelineJob.RefreshBuildCache = job.Spec.Build.RefreshBuildCache
 	case radixv1.Deploy:
 		pipelineJob.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		pipelineJob.CommitID = job.Spec.Deploy.CommitID

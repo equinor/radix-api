@@ -63,6 +63,7 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 			CommitID:              jobSpec.CommitID,
 			PushImage:             jobSpec.PushImage,
 			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,
+			RefreshBuildCache:     jobSpec.RefreshBuildCache,
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{

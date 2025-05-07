@@ -78,6 +78,7 @@ func TestGetApplicationJob(t *testing.T) {
 		PushImage:             true,
 		TriggeredBy:           anyUser,
 		OverrideUseBuildCache: pointers.Ptr(true),
+		RefreshBuildCache:     pointers.Ptr(true),
 	}
 
 	anyPipeline, err := pipeline.GetPipelineFromName(anyPipelineName)
@@ -125,6 +126,8 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.NotNil(t, jobSummary.OverrideUseBuildCache)
 	assert.True(t, *jobSummary.OverrideUseBuildCache)
+	assert.NotNil(t, jobSummary.RefreshBuildCache)
+	assert.True(t, *jobSummary.RefreshBuildCache)
 }
 
 func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {

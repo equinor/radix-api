@@ -5875,6 +5875,12 @@
           "type": "string",
           "x-go-name": "Creator"
         },
+        "id": {
+          "description": "ID the unique ID of the application",
+          "type": "string",
+          "x-go-name": "ID",
+          "example": "78G65Z755AFWAKHE12NY0CQ7FH"
+        },
         "name": {
           "description": "Name the unique name of the Radix application",
           "type": "string",
@@ -7584,6 +7590,12 @@
           "type": "string",
           "x-go-name": "PromotedToEnvironment"
         },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
         "started": {
           "description": "Started timestamp",
           "type": "string",
@@ -7762,6 +7774,12 @@
           "type": "string",
           "x-go-name": "PushImage",
           "example": "true"
+        },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
         },
         "toEnvironment": {
           "description": "Name of environment to build for",

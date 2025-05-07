@@ -9,6 +9,12 @@ type ApplicationRegistration struct {
 	// example: radix-canary-golang
 	Name string `json:"name"`
 
+	// ID the unique ID of the application
+	//
+	// required: false
+	// example: 78G65Z755AFWAKHE12NY0CQ7FH
+	ID string `json:"id"`
+
 	// Repository the github repository
 	//
 	// required: true
