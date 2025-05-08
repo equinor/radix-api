@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"github.com/equinor/radix-common/utils/pointers"
 	"testing"
 	"time"
 
@@ -103,8 +104,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		},
 		Spec: radixv1.RadixJobSpec{
 			Build: radixv1.RadixBuildSpec{
-				Branch:   branch,
-				CommitID: commitId,
+				Branch:                branch,
+				CommitID:              commitId,
+				OverrideUseBuildCache: pointers.Ptr(true),
+				RefreshBuildCache:     pointers.Ptr(true),
 			},
 			PipeLineType: pipeline,
 			TriggeredBy:  triggeredBy,
@@ -175,6 +178,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		s.Equal(jobName, actualJob.Name)
 		s.Equal(branch, actualJob.Branch)
 		s.Equal(commitId, actualJob.CommitID)
+		s.NotNil(actualJob.OverrideUseBuildCache)
+		s.True(*actualJob.OverrideUseBuildCache)
+		s.NotNil(actualJob.RefreshBuildCache)
+		s.True(*actualJob.RefreshBuildCache)
 		s.Equal(triggeredBy, actualJob.TriggeredBy)
 		s.Equal(radixutils.FormatTime(&started), actualJob.Started)
 		s.Equal(radixutils.FormatTime(&ended), actualJob.Ended)

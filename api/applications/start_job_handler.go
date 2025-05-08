@@ -13,6 +13,7 @@ import (
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"github.com/rs/zerolog/log"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,7 +25,12 @@ func HandleStartPipelineJob(ctx context.Context, radixClient versioned.Interface
 		return nil, err
 	}
 
-	job, err := buildPipelineJob(ctx, appName, pipeline, jobParameters)
+	ra, err := radixClient.RadixV1().RadixApplications(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	job, err := buildPipelineJob(ctx, appName, ra, pipeline, jobParameters)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +49,7 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	return jobModels.GetSummaryFromRadixJob(job), nil
 }
 
-func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
+func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplication, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
 	jobName, imageTag := jobController.GetUniqueJobName()
 	if len(jobSpec.ImageTag) > 0 {
 		imageTag = jobSpec.ImageTag
@@ -62,6 +68,8 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 			ToEnvironment:         jobSpec.ToEnvironment,
 			CommitID:              jobSpec.CommitID,
 			PushImage:             jobSpec.PushImage,
+			UseBuildKit:           getUseBuildKit(ra),
+			UseBuildCache:         getUseBuildCache(ra),
 			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,
 			RefreshBuildCache:     jobSpec.RefreshBuildCache,
 		}
@@ -112,6 +120,20 @@ func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob
 	}
 
 	return &job, nil
+}
+
+func getUseBuildKit(ra *v1.RadixApplication) *bool {
+	if ra != nil && ra.Spec.Build != nil {
+		return ra.Spec.Build.UseBuildKit
+	}
+	return nil
+}
+
+func getUseBuildCache(ra *v1.RadixApplication) *bool {
+	if ra != nil && ra.Spec.Build != nil {
+		return ra.Spec.Build.UseBuildCache
+	}
+	return nil
 }
 
 func getTriggeredFromWebhook(ctx context.Context) (bool, error) {

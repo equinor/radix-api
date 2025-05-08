@@ -72,12 +72,20 @@ func TestGetApplicationJob(t *testing.T) {
 		WithCloneURL(anyCloneURL))
 	require.NoError(t, err)
 
+	_, err = commonTestUtils.ApplyApplication(builders.
+		NewRadixApplicationBuilder().
+		WithAppName(anyAppName).
+		WithEnvironment("dev", "master").
+		WithBuildKit(pointers.Ptr(true)).
+		WithBuildCache(pointers.Ptr(true)))
+	require.NoError(t, err)
+
 	jobParameters := &jobmodels.JobParameters{
 		Branch:                anyBranch,
 		CommitID:              anyPushCommitID,
 		PushImage:             true,
 		TriggeredBy:           anyUser,
-		OverrideUseBuildCache: pointers.Ptr(true),
+		OverrideUseBuildCache: pointers.Ptr(false),
 		RefreshBuildCache:     pointers.Ptr(true),
 	}
 
@@ -124,8 +132,12 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyPushCommitID, job.CommitID)
 	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
+	assert.NotNil(t, jobSummary.UseBuildKit)
+	assert.True(t, *jobSummary.UseBuildKit)
+	assert.NotNil(t, jobSummary.UseBuildCache)
+	assert.True(t, *jobSummary.UseBuildCache)
 	assert.NotNil(t, jobSummary.OverrideUseBuildCache)
-	assert.True(t, *jobSummary.OverrideUseBuildCache)
+	assert.False(t, *jobSummary.OverrideUseBuildCache)
 	assert.NotNil(t, jobSummary.RefreshBuildCache)
 	assert.True(t, *jobSummary.RefreshBuildCache)
 }
