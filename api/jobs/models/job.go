@@ -133,7 +133,7 @@ type Job struct {
 	// required: false
 	// Extensions:
 	// x-nullable: true
-	UseBuildKit *bool `json:"useBuildKit,omitempty"`
+	UseBuildKit bool `json:"useBuildKit,omitempty"`
 
 	// Defaults to true and requires useBuildKit to have an effect.
 	//

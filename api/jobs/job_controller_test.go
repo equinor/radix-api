@@ -133,7 +133,7 @@ func TestGetApplicationJob(t *testing.T) {
 	assert.Equal(t, anyUser, job.TriggeredBy)
 	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 	assert.NotNil(t, jobSummary.UseBuildKit)
-	assert.True(t, *jobSummary.UseBuildKit)
+	assert.True(t, jobSummary.UseBuildKit)
 	assert.NotNil(t, jobSummary.UseBuildCache)
 	assert.True(t, *jobSummary.UseBuildCache)
 	assert.NotNil(t, jobSummary.OverrideUseBuildCache)

@@ -104,7 +104,7 @@ type JobSummary struct {
 	// required: false
 	// Extensions:
 	// x-nullable: true
-	UseBuildKit *bool `json:"useBuildKit,omitempty"`
+	UseBuildKit bool `json:"useBuildKit,omitempty"`
 
 	// Defaults to true and requires useBuildKit to have an effect.
 	//
@@ -173,7 +173,7 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	case radixv1.Build, radixv1.BuildDeploy:
 		pipelineJob.Branch = job.Spec.Build.Branch
 		pipelineJob.CommitID = job.Spec.Build.CommitID
-		pipelineJob.UseBuildKit = job.Spec.Build.UseBuildKit
+		pipelineJob.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
 		pipelineJob.UseBuildCache = job.Spec.Build.UseBuildCache
 		pipelineJob.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 		pipelineJob.RefreshBuildCache = job.Spec.Build.RefreshBuildCache
