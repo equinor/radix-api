@@ -33,8 +33,8 @@ func useBuildKit(ra *radixv1.RadixApplication) bool {
 }
 
 func useBuildCache(ra *radixv1.RadixApplication) bool {
-	if ra == nil || ra.Spec.Build == nil || ra.Spec.Build.UseBuildCache == nil {
+	if ra == nil || ra.Spec.Build == nil || !useBuildKit(ra) {
 		return false
 	}
-	return *ra.Spec.Build.UseBuildCache
+	return ra.Spec.Build.UseBuildCache == nil || *ra.Spec.Build.UseBuildCache
 }
