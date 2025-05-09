@@ -567,7 +567,7 @@ type Runtime struct {
 
 	// NodeType is the node type of the component
 	//
-	// example: memory-optimized-v1
+	// example:memory-optimized-2-v1
 	NodeType string `json:"nodeType,omitempty"`
 }
 
