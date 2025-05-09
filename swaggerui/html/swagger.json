@@ -8424,7 +8424,7 @@
           "description": "NodeType is the node type of the component",
           "type": "string",
           "x-go-name": "NodeType",
-          "example": "memory-optimized-v1"
+          "example": "memory-optimized-2-v1"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
