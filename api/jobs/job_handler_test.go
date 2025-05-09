@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"github.com/equinor/radix-common/utils/pointers"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"

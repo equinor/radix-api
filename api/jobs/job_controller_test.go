@@ -3,7 +3,6 @@ package jobs_test
 import (
 	"context"
 	"fmt"
-	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"net/http"
 	"testing"
 
@@ -13,6 +12,7 @@ import (
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
+	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/git"
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
@@ -26,6 +26,7 @@ import (
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -64,82 +65,196 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 }
 
 func TestGetApplicationJob(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, _, _, _ := setupTest(t)
-
-	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName(anyAppName).
-		WithCloneURL(anyCloneURL))
-	require.NoError(t, err)
-
-	_, err = commonTestUtils.ApplyApplication(builders.
-		NewRadixApplicationBuilder().
-		WithAppName(anyAppName).
-		WithEnvironment("dev", "master").
-		WithBuildKit(pointers.Ptr(true)).
-		WithBuildCache(pointers.Ptr(true)))
-	require.NoError(t, err)
-
-	jobParameters := &jobmodels.JobParameters{
-		Branch:                anyBranch,
-		CommitID:              anyPushCommitID,
-		PushImage:             true,
-		TriggeredBy:           anyUser,
-		OverrideUseBuildCache: pointers.Ptr(false),
-		RefreshBuildCache:     pointers.Ptr(true),
+	scenarios := map[string]struct {
+		useBuildKit        *bool
+		useBuildCache      *bool
+		overrideBuildCache *bool
+		refreshBuildCache  *bool
+	}{
+		"UseBuildKitEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(false),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"UseBuildKitDisabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"OverrideBuildCacheEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(true),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"OverrideBuildCacheDisabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"RefreshBuildCacheEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(true),
+		},
+		"RefreshBuildCacheDisabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"AllEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(true),
+			refreshBuildCache:  pointers.Ptr(true),
+		},
+		"AllDisabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(false),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"BuildKitEnabledCacheDisabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(false),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"BuildKitDisabledCacheEnabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"BuildKitEnabledOverrideEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(true),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"BuildKitDisabledOverrideEnabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(true),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"BuildKitEnabledRefreshEnabled": {
+			useBuildKit:        pointers.Ptr(true),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(true),
+		},
+		"BuildKitDisabledRefreshEnabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(true),
+		},
+		"CacheEnabledOverrideDisabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(true),
+			overrideBuildCache: pointers.Ptr(false),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
+		"CacheDisabledOverrideEnabled": {
+			useBuildKit:        pointers.Ptr(false),
+			useBuildCache:      pointers.Ptr(false),
+			overrideBuildCache: pointers.Ptr(true),
+			refreshBuildCache:  pointers.Ptr(false),
+		},
 	}
 
-	anyPipeline, err := pipeline.GetPipelineFromName(anyPipelineName)
-	require.NoError(t, err, "Failed to get pipeline")
-	jobSummary, err := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipeline, jobParameters)
-	require.NoError(t, err, "failed to start a pipeline job")
-	_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
-	require.NoError(t, err, "failed to create a pipeline pod")
+	for name, ts := range scenarios {
+		t.Run(name, func(t *testing.T) {
+			// Setup
+			commonTestUtils, controllerTestUtils, client, radixclient, _, _, _ := setupTest(t)
 
-	// Test
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
-	response := <-responseChannel
-	require.Equal(t, http.StatusOK, response.Code, "Expected status OK")
+			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+				WithName(anyAppName).
+				WithCloneURL(anyCloneURL))
+			require.NoError(t, err)
 
-	job := jobmodels.Job{}
-	err = controllertest.GetResponseBody(response, &job)
-	require.NoError(t, err)
-	assert.Equal(t, jobSummary.Name, job.Name)
-	assert.Equal(t, anyBranch, job.Branch)
-	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyUser, job.TriggeredBy)
-	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
-	assert.Empty(t, job.Steps)
+			_, err = commonTestUtils.ApplyApplication(builders.
+				NewRadixApplicationBuilder().
+				WithAppName(anyAppName).
+				WithEnvironment("dev", "master").
+				WithBuildKit(ts.useBuildKit).
+				WithBuildCache(ts.useBuildCache))
+			require.NoError(t, err)
 
-	internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
-	cloneStep := corev1.ContainerStatus{Name: git.CloneContainerName, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
-	pipelineStep := corev1.ContainerStatus{Name: "radix-pipeline", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+			jobParameters := &jobmodels.JobParameters{
+				Branch:                anyBranch,
+				CommitID:              anyPushCommitID,
+				PushImage:             true,
+				TriggeredBy:           anyUser,
+				OverrideUseBuildCache: ts.overrideBuildCache,
+				RefreshBuildCache:     ts.refreshBuildCache,
+			}
 
-	// Emulate a running job with two steps
-	_, err = addInitStepsToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, internalStep, cloneStep)
-	require.NoError(t, err)
-	_, err = addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
-	require.NoError(t, err)
+			anyPipeline, err := pipeline.GetPipelineFromName(anyPipelineName)
+			require.NoError(t, err, "Failed to get pipeline")
+			jobSummary, err := applications.HandleStartPipelineJob(context.Background(), radixclient, anyAppName, anyPipeline, jobParameters)
+			require.NoError(t, err, "failed to start a pipeline job")
+			_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
+			require.NoError(t, err, "failed to create a pipeline pod")
 
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
-	response = <-responseChannel
+			// Test
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
+			response := <-responseChannel
+			require.Equal(t, http.StatusOK, response.Code, "Expected status OK")
 
-	job = jobmodels.Job{}
-	err = controllertest.GetResponseBody(response, &job)
-	require.NoError(t, err)
-	assert.Equal(t, jobSummary.Name, job.Name)
-	assert.Equal(t, anyBranch, job.Branch)
-	assert.Equal(t, anyPushCommitID, job.CommitID)
-	assert.Equal(t, anyUser, job.TriggeredBy)
-	assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
-	assert.NotNil(t, jobSummary.UseBuildKit)
-	assert.True(t, jobSummary.UseBuildKit)
-	assert.NotNil(t, jobSummary.UseBuildCache)
-	assert.True(t, *jobSummary.UseBuildCache)
-	assert.NotNil(t, jobSummary.OverrideUseBuildCache)
-	assert.False(t, *jobSummary.OverrideUseBuildCache)
-	assert.NotNil(t, jobSummary.RefreshBuildCache)
-	assert.True(t, *jobSummary.RefreshBuildCache)
+			job := jobmodels.Job{}
+			err = controllertest.GetResponseBody(response, &job)
+			require.NoError(t, err)
+			assert.Equal(t, jobSummary.Name, job.Name)
+			assert.Equal(t, anyBranch, job.Branch)
+			assert.Equal(t, anyPushCommitID, job.CommitID)
+			assert.Equal(t, anyUser, job.TriggeredBy)
+			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
+			assert.Empty(t, job.Steps)
+
+			internalStep := corev1.ContainerStatus{Name: fmt.Sprintf("%sAnyStep", git.InternalContainerPrefix), State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+			cloneStep := corev1.ContainerStatus{Name: git.CloneContainerName, State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+			pipelineStep := corev1.ContainerStatus{Name: "radix-pipeline", State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}}}
+
+			// Emulate a running job with two steps
+			_, err = addInitStepsToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, internalStep, cloneStep)
+			require.NoError(t, err)
+			_, err = addStepToPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name, pipelineStep)
+			require.NoError(t, err)
+
+			responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
+			response = <-responseChannel
+
+			job = jobmodels.Job{}
+			err = controllertest.GetResponseBody(response, &job)
+			require.NoError(t, err)
+			assert.Equal(t, jobSummary.Name, job.Name)
+			assert.Equal(t, anyBranch, job.Branch)
+			assert.Equal(t, anyPushCommitID, job.CommitID)
+			assert.Equal(t, anyUser, job.TriggeredBy)
+			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
+			assert.Equal(t, ts.useBuildKit != nil && *ts.useBuildKit, jobSummary.UseBuildKit, "Invalid UseBuildKit")
+			assertNillableBool(t, ts.useBuildCache, jobSummary.UseBuildCache, "Invalid UseBuildCache")
+			assertNillableBool(t, ts.overrideBuildCache, jobSummary.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
+			assertNillableBool(t, ts.refreshBuildCache, jobSummary.RefreshBuildCache, "Invalid RefreshBuildCache")
+		})
+	}
+}
+
+func assertNillableBool(t *testing.T, expected *bool, actual *bool, message string) bool {
+	if commonUtils.IsNil(actual) != commonUtils.IsNil(expected) {
+		return false
+	}
+	if commonUtils.IsNil(actual) {
+		return true
+	}
+	return assert.Equal(t, *expected, *actual, message)
 }
 
 func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
