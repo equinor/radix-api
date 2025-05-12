@@ -2,6 +2,9 @@ package models
 
 import (
 	"fmt"
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	runtimeUtils "github.com/equinor/radix-operator/pkg/apis/runtime"
 	"sort"
 	"strings"
 	"time"
@@ -560,7 +563,12 @@ type Runtime struct {
 	// CPU architecture
 	//
 	// example: amd64
-	Architecture string `json:"architecture"`
+	Architecture string `json:"architecture,omitempty"`
+
+	// NodeType is the node type of the component
+	//
+	// example:memory-optimized-2-v1
+	NodeType string `json:"nodeType,omitempty"`
 }
 
 func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
@@ -625,6 +633,21 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 		replicaSummary.StatusMessage = lastEventWarning
 	}
 	return replicaSummary
+}
+
+// NewRuntime creates an API runtime model by the Radix runtime
+func NewRuntime(radixRuntime *radixv1.Runtime) *Runtime {
+	runtimeModel := &Runtime{
+		Architecture: string(defaults.DefaultNodeSelectorArchitecture),
+	}
+	if radixRuntime == nil {
+		return runtimeModel
+	}
+	runtimeModel.Architecture = runtimeUtils.GetArchitectureFromRuntimeOrDefault(radixRuntime)
+	if nodeType := radixRuntime.GetNodeType(); nodeType != nil && len(*nodeType) > 0 {
+		runtimeModel.NodeType = *nodeType
+	}
+	return runtimeModel
 }
 
 func getReplicaType(pod corev1.Pod) ReplicaType {
