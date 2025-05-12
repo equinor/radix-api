@@ -12,7 +12,6 @@ import (
 	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v2"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 )
 
 // GetScheduledBatchSummaryList Get scheduled batch summary list
@@ -110,12 +109,10 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		JobId:          radixBatchJob.JobId,
 		ReplicaList:    getReplicaSummaryListForJob(radixBatch, *radixBatchJob),
 		Status:         radixv1.RadixBatchJobApiStatusWaiting,
+		Runtime:        deploymentModels.NewRuntime(radixBatchJob.Runtime),
 	}
 
 	if radixDeployJobComponent != nil {
-		summary.Runtime = &models.Runtime{
-			Architecture: operatorUtils.GetArchitectureFromRuntime(radixDeployJobComponent.GetRuntime()),
-		}
 		summary.TimeLimitSeconds = radixDeployJobComponent.TimeLimitSeconds
 		if radixBatchJob.TimeLimitSeconds != nil {
 			summary.TimeLimitSeconds = radixBatchJob.TimeLimitSeconds
@@ -127,11 +124,11 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 			summary.BackoffLimit = *radixBatchJob.BackoffLimit
 		}
 
-		if radixDeployJobComponent.Node != (radixv1.RadixNode{}) {
-			summary.Node = (*models.Node)(&radixDeployJobComponent.Node)
+		if radixDeployJobComponent.Node != (radixv1.RadixNode{}) { // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			summary.Node = (*models.Node)(&radixDeployJobComponent.Node) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 		}
-		if radixBatchJob.Node != nil {
-			summary.Node = (*models.Node)(radixBatchJob.Node)
+		if radixBatchJob.Node != nil { // nolint:staticcheck // SA1019: Ignore linting deprecated fields
+			summary.Node = (*models.Node)(radixBatchJob.Node) // nolint:staticcheck // SA1019: Ignore linting deprecated fields
 		}
 
 		if radixBatchJob.Resources != nil {

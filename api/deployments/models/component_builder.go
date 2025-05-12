@@ -237,9 +237,7 @@ func (b *componentBuilder) buildError() error {
 }
 
 func (b *componentBuilder) buildRuntimeModel() *Runtime {
-	return &Runtime{
-		Architecture: utils.GetArchitectureFromRuntime(b.runtime),
-	}
+	return NewRuntime(b.runtime)
 }
 
 func (b *componentBuilder) BuildComponentSummary() (*ComponentSummary, error) {

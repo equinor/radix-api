@@ -51,12 +51,14 @@ const (
 	anyAppName       = "any-app"
 	anyComponentName = "component1"
 	anyJobName       = "job1"
+	anyJobName2      = "job2"
 	anyBatchName     = "batch1"
 	anyDeployment    = "deployment1"
 	anyEnvironment   = "dev1"
 	anySecretName    = "TEST_SECRET"
 	egressIps        = "0.0.0.0"
 	subscriptionId   = "12347718-c8f8-4995-bfbb-02655ff1f89c"
+	nodeType1        = "some-node-type1"
 )
 
 func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, *kubefake.Clientset, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
