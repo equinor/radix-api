@@ -6686,11 +6686,29 @@
           "x-go-name": "Namespace",
           "example": "radix-canary-golang-dev"
         },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
         "repository": {
           "description": "Repository the GitHub repository that the deployment was built from",
           "type": "string",
           "x-go-name": "Repository",
           "example": "https://github.com/equinor/radix-canary-golang"
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -6818,6 +6836,24 @@
           "type": "string",
           "x-go-name": "PromotedFromEnvironment",
           "example": "qa"
+        },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
