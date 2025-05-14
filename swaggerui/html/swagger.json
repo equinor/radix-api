@@ -5743,7 +5743,9 @@
       "required": [
         "name",
         "registration",
-        "userIsAdmin"
+        "userIsAdmin",
+        "useBuildKit",
+        "useBuildCache"
       ],
       "properties": {
         "appAlias": {

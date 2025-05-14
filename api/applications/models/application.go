@@ -51,11 +51,11 @@ type Application struct {
 
 	// UseBuildKit if buildkit is used for building the application
 	//
-	// required: false
+	// required: true
 	UseBuildKit bool `json:"useBuildKit"`
 
 	// UseBuildCache if build cache is used for building the application. Applicable when UseBuildKit is true. Default is true.
 	//
-	// required: false
+	// required: true
 	UseBuildCache bool `json:"useBuildCache"`
 }
