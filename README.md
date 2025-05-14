@@ -43,8 +43,6 @@ make mocks
 The following env vars are needed. Useful default values in brackets.
 
 - `RADIX_CONTAINER_REGISTRY` - (`radixdev.azurecr.io`)
-- `PIPELINE_IMG_TAG` - (`master-latest`)
-- `TEKTON_IMG_TAG` - (`release-latest`)
 - `PROMETHEUS_URL` - `http://localhost:9091` use this to get Prometheus metrics running the following command (the local port 9090 is used by the API server `/metrics` endpoint, in-cluster URL is http://prometheus-operator-prometheus.monitor.svc.cluster.local:9090): 
   ```
   kubectl -n monitor port-forward svc/prometheus-operator-prometheus 9091:9090
