@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"net/http"
 	"net/url"
 	"strings"
@@ -46,6 +45,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tektonclientfake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -920,6 +920,82 @@ func TestGetApplication_WithJobs(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &application)
 	require.NoError(t, err)
 	assert.Equal(t, 3, len(application.Jobs))
+}
+
+func TestGetApplication_BuildKitOptions(t *testing.T) {
+	scenarios := map[string]struct {
+		useBuildKit           *bool
+		useBuildCache         *bool
+		expectedUseBuildKit   bool
+		expectedUseBuildCache bool
+	}{
+		"no buildkit or buildcache": {
+			useBuildKit:           nil,
+			useBuildCache:         nil,
+			expectedUseBuildKit:   false,
+			expectedUseBuildCache: false,
+		},
+		"buildkit and buildcache": {
+			useBuildKit:           pointers.Ptr(true),
+			useBuildCache:         pointers.Ptr(true),
+			expectedUseBuildKit:   true,
+			expectedUseBuildCache: true,
+		},
+		"buildkit only": {
+			useBuildKit:           pointers.Ptr(true),
+			useBuildCache:         nil,
+			expectedUseBuildKit:   true,
+			expectedUseBuildCache: true,
+		},
+		"buildcache only": {
+			useBuildKit:           nil,
+			useBuildCache:         pointers.Ptr(true),
+			expectedUseBuildKit:   false,
+			expectedUseBuildCache: false,
+		},
+		"buildkit and buildcache false": {
+			useBuildKit:           pointers.Ptr(false),
+			useBuildCache:         pointers.Ptr(false),
+			expectedUseBuildKit:   false,
+			expectedUseBuildCache: false,
+		},
+		"buildkit false and buildcache true": {
+			useBuildKit:           pointers.Ptr(false),
+			useBuildCache:         pointers.Ptr(true),
+			expectedUseBuildKit:   false,
+			expectedUseBuildCache: false,
+		},
+		"buildkit true and buildcache false": {
+			useBuildKit:           pointers.Ptr(true),
+			useBuildCache:         pointers.Ptr(false),
+			expectedUseBuildKit:   true,
+			expectedUseBuildCache: false,
+		},
+	}
+	for name, ts := range scenarios {
+		t.Run(name, func(t *testing.T) {
+			// Setup
+			commonTestUtils, controllerTestUtils, kubeclient, _, _, _, _, _, _ := setupTest(t, true, true)
+			_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
+				WithName("any-name"))
+			require.NoError(t, err)
+			_, err = commonTestUtils.ApplyApplication(builders.ARadixApplication().
+				WithAppName("any-name").WithBuildKit(ts.useBuildKit).WithBuildCache(ts.useBuildCache))
+			require.NoError(t, err)
+
+			commontest.CreateAppNamespace(kubeclient, "any-name")
+
+			// Test
+			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
+			response := <-responseChannel
+
+			application := applicationModels.Application{}
+			err = controllertest.GetResponseBody(response, &application)
+			require.NoError(t, err)
+			assert.Equal(t, ts.expectedUseBuildKit, application.UseBuildKit, "Invalid UseBuildKit")
+			assert.Equal(t, ts.expectedUseBuildCache, application.UseBuildCache, "Invalid UseBuildCache")
+		})
+	}
 }
 
 func TestGetApplication_WithEnvironments(t *testing.T) {

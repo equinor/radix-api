@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"github.com/equinor/radix-common/utils/pointers"
 	"time"
 
 	"github.com/equinor/radix-common/utils/slice"
@@ -36,6 +37,9 @@ type deploymentBuilder struct {
 	gitCommitHash      string
 	gitTags            string
 	repository         string
+	useBuildKit        *bool
+	useBuildCache      *bool
+	refreshBuildCache  *bool
 }
 
 // NewDeploymentBuilder Constructor for application deploymentBuilder
@@ -57,6 +61,9 @@ func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) Deployme
 		withActiveFrom(rd.Status.ActiveFrom.Time).
 		withJobName(jobName).
 		withActiveTo(activeTo).
+		withUseBuildKit(rd.Annotations[kube.RadixUseBuildKit]).
+		withUseBuildCache(rd.Annotations[kube.RadixUseBuildCache]).
+		withRefreshBuildCache(rd.Annotations[kube.RadixRefreshBuildCache]).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation])
 
@@ -113,6 +120,27 @@ func (b *deploymentBuilder) withActiveTo(activeTo *time.Time) *deploymentBuilder
 	return b
 }
 
+func (b *deploymentBuilder) withUseBuildKit(value string) *deploymentBuilder {
+	if len(value) > 0 {
+		b.useBuildKit = pointers.Ptr(value == "true")
+	}
+	return b
+}
+
+func (b *deploymentBuilder) withUseBuildCache(value string) *deploymentBuilder {
+	if len(value) > 0 {
+		b.useBuildCache = pointers.Ptr(value == "true")
+	}
+	return b
+}
+
+func (b *deploymentBuilder) withRefreshBuildCache(value string) *deploymentBuilder {
+	if len(value) > 0 {
+		b.refreshBuildCache = pointers.Ptr(value == "true")
+	}
+	return b
+}
+
 func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) *deploymentBuilder {
 	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Jobs))
 	for _, component := range rd.Spec.Components {
@@ -164,6 +192,9 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
 		GitCommitHash:                    b.gitCommitHash,
 		GitTags:                          b.gitTags,
+		UseBuildKit:                      b.useBuildKit,
+		UseBuildCache:                    b.useBuildCache,
+		RefreshBuildCache:                b.refreshBuildCache,
 	}, b.buildError()
 }
 
@@ -205,16 +236,19 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 	b.setSkipDeploymentForComponents()
 	deployment := Deployment{
-		Name:          b.name,
-		Namespace:     b.namespace,
-		Environment:   b.environment,
-		ActiveFrom:    b.activeFrom,
-		ActiveTo:      b.activeTo,
-		Components:    b.components,
-		CreatedByJob:  b.jobName,
-		GitCommitHash: b.gitCommitHash,
-		GitTags:       b.gitTags,
-		Repository:    b.repository,
+		Name:              b.name,
+		Namespace:         b.namespace,
+		Environment:       b.environment,
+		ActiveFrom:        b.activeFrom,
+		ActiveTo:          b.activeTo,
+		Components:        b.components,
+		CreatedByJob:      b.jobName,
+		GitCommitHash:     b.gitCommitHash,
+		GitTags:           b.gitTags,
+		Repository:        b.repository,
+		UseBuildKit:       b.useBuildKit,
+		UseBuildCache:     b.useBuildCache,
+		RefreshBuildCache: b.refreshBuildCache,
 	}
 	if b.pipelineJob != nil {
 		deployment.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch
