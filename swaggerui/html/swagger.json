@@ -5743,7 +5743,9 @@
       "required": [
         "name",
         "registration",
-        "userIsAdmin"
+        "userIsAdmin",
+        "useBuildKit",
+        "useBuildCache"
       ],
       "properties": {
         "appAlias": {
@@ -5789,6 +5791,16 @@
         },
         "registration": {
           "$ref": "#/definitions/ApplicationRegistration"
+        },
+        "useBuildCache": {
+          "description": "UseBuildCache if build cache is used for building the application. Applicable when UseBuildKit is true. Default is true.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache"
+        },
+        "useBuildKit": {
+          "description": "UseBuildKit if buildkit is used for building the application",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit"
         },
         "userIsAdmin": {
           "description": "UserIsAdmin if user is member of application's admin groups",
@@ -6676,11 +6688,29 @@
           "x-go-name": "Namespace",
           "example": "radix-canary-golang-dev"
         },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
         "repository": {
           "description": "Repository the GitHub repository that the deployment was built from",
           "type": "string",
           "x-go-name": "Repository",
           "example": "https://github.com/equinor/radix-canary-golang"
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -6808,6 +6838,24 @@
           "type": "string",
           "x-go-name": "PromotedFromEnvironment",
           "example": "qa"
+        },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -7428,6 +7476,12 @@
           "x-go-name": "PromotedToEnvironment",
           "example": "qa"
         },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
         "rerunFromJob": {
           "description": "RerunFromJob The source name of the job if this job was restarted from it",
           "type": "string",
@@ -7474,6 +7528,18 @@
           "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
           "type": "boolean",
           "x-go-name": "TriggeredFromWebhook"
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
@@ -7584,6 +7650,12 @@
           "type": "string",
           "x-go-name": "PromotedToEnvironment"
         },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
+        },
         "started": {
           "description": "Started timestamp",
           "type": "string",
@@ -7616,6 +7688,18 @@
           "description": "TriggeredFromWebhook If true, the job was triggered from a webhook",
           "type": "boolean",
           "x-go-name": "TriggeredFromWebhook"
+        },
+        "useBuildCache": {
+          "description": "Defaults to true and requires useBuildKit to have an effect.",
+          "type": "boolean",
+          "x-go-name": "UseBuildCache",
+          "x-nullable": true
+        },
+        "useBuildKit": {
+          "description": "Enables BuildKit when building Dockerfile.",
+          "type": "boolean",
+          "x-go-name": "UseBuildKit",
+          "x-nullable": true
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/jobs/models"
@@ -7762,6 +7846,12 @@
           "type": "string",
           "x-go-name": "PushImage",
           "example": "true"
+        },
+        "refreshBuildCache": {
+          "description": "RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true",
+          "type": "boolean",
+          "x-go-name": "RefreshBuildCache",
+          "x-nullable": true
         },
         "toEnvironment": {
           "description": "Name of environment to build for",

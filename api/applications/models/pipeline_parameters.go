@@ -93,6 +93,13 @@ type PipelineParametersBuild struct {
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 
+	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
+
 	// DeployExternalDNS deploy external DNS
 	//
 	// required: false
@@ -113,6 +120,7 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 		ImageName:             buildParam.ImageName,
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
+		RefreshBuildCache:     buildParam.RefreshBuildCache,
 	}
 }
 

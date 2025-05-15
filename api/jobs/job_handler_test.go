@@ -11,6 +11,7 @@ import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/models"
 	radixutils "github.com/equinor/radix-common/utils"
+	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
@@ -103,8 +104,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		},
 		Spec: radixv1.RadixJobSpec{
 			Build: radixv1.RadixBuildSpec{
-				Branch:   branch,
-				CommitID: commitId,
+				Branch:                branch,
+				CommitID:              commitId,
+				OverrideUseBuildCache: pointers.Ptr(true),
+				RefreshBuildCache:     pointers.Ptr(true),
 			},
 			PipeLineType: pipeline,
 			TriggeredBy:  triggeredBy,
@@ -175,6 +178,10 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		s.Equal(jobName, actualJob.Name)
 		s.Equal(branch, actualJob.Branch)
 		s.Equal(commitId, actualJob.CommitID)
+		s.NotNil(actualJob.OverrideUseBuildCache)
+		s.True(*actualJob.OverrideUseBuildCache)
+		s.NotNil(actualJob.RefreshBuildCache)
+		s.True(*actualJob.RefreshBuildCache)
 		s.Equal(triggeredBy, actualJob.TriggeredBy)
 		s.Equal(radixutils.FormatTime(&started), actualJob.Started)
 		s.Equal(radixutils.FormatTime(&ended), actualJob.Ended)
