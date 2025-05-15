@@ -80,6 +80,27 @@ type DeploymentSummary struct {
 	// required: false
 	// example: "v1.22.1 v1.22.3"
 	GitTags string `json:"gitTags,omitempty"`
+
+	// Enables BuildKit when building Dockerfile.
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	UseBuildKit *bool `json:"useBuildKit,omitempty"`
+
+	// Defaults to true and requires useBuildKit to have an effect.
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	UseBuildCache *bool `json:"useBuildCache,omitempty"`
+
+	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
 }
 
 // DeploymentItem describe a deployment short info

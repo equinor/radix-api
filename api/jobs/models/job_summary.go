@@ -99,12 +99,33 @@ type JobSummary struct {
 	// required: false
 	PromotedToEnvironment string `json:"promotedToEnvironment,omitempty"`
 
+	// Enables BuildKit when building Dockerfile.
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	UseBuildKit bool `json:"useBuildKit,omitempty"`
+
+	// Defaults to true and requires useBuildKit to have an effect.
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	UseBuildCache *bool `json:"useBuildCache,omitempty"`
+
 	// OverrideUseBuildCache override default or configured build cache option
 	//
 	// required: false
 	// Extensions:
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
+
+	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
 
 	// DeployExternalDNS deploy external DNS
 	//
@@ -152,7 +173,10 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	case radixv1.Build, radixv1.BuildDeploy:
 		pipelineJob.Branch = job.Spec.Build.Branch
 		pipelineJob.CommitID = job.Spec.Build.CommitID
+		pipelineJob.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
+		pipelineJob.UseBuildCache = job.Spec.Build.UseBuildCache
 		pipelineJob.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
+		pipelineJob.RefreshBuildCache = job.Spec.Build.RefreshBuildCache
 	case radixv1.Deploy:
 		pipelineJob.ImageTagNames = job.Spec.Deploy.ImageTagNames
 		pipelineJob.CommitID = job.Spec.Deploy.CommitID

@@ -28,7 +28,7 @@ const (
 )
 
 func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
-	_, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{})
+	kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{})
 	require.NoError(t, err)
 	secret, err := kubeUtil.GetSecret(context.TODO(), "any-app-app", defaults.PrivateImageHubSecretName)
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func Test_WithPrivateImageHubSet_SecretsCorrectly_NoImageHubs(t *testing.T) {
 }
 
 func Test_WithPrivateImageHubSet_SecretsCorrectly_SetPassword(t *testing.T) {
-	_, _, kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{
+	kubeUtil, err := applyRadixAppWithPrivateImageHub(radixv1.PrivateImageHubEntries{
 		"privaterepodeleteme.azurecr.io": &radixv1.RadixPrivateImageHubCredential{
 			Username: "814607e6-3d71-44a7-8476-50e8b281abbc",
 			Email:    "radix@equinor.com",
@@ -70,10 +70,10 @@ func Test_WithPrivateImageHubSet_SecretsCorrectly_SetPassword(t *testing.T) {
 	assert.Equal(t, 0, len(pendingSecrets))
 }
 
-func applyRadixAppWithPrivateImageHub(privateImageHubs radixv1.PrivateImageHubEntries) (kubernetes.Interface, *applicationconfig.ApplicationConfig, *kube.Kube, error) {
+func applyRadixAppWithPrivateImageHub(privateImageHubs radixv1.PrivateImageHubEntries) (*kube.Kube, error) {
 	tu, client, kubeUtil, radixClient, err := setupTest()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	appBuilder := utils.ARadixApplication().
 		WithAppName("any-app").
@@ -82,11 +82,10 @@ func applyRadixAppWithPrivateImageHub(privateImageHubs radixv1.PrivateImageHubEn
 		appBuilder.WithPrivateImageRegistry(key, config.Username, config.Email)
 	}
 
-	if err := applyApplicationWithSync(tu, client, kubeUtil, radixClient, appBuilder); err != nil {
-		return nil, nil, nil, err
+	if err = applyApplicationWithSync(tu, client, kubeUtil, radixClient, appBuilder); err != nil {
+		return nil, err
 	}
-	appConfig := getAppConfig(client, kubeUtil, radixClient, appBuilder)
-	return client, appConfig, kubeUtil, nil
+	return kubeUtil, nil
 }
 
 func setupTest() (*test.Utils, kubernetes.Interface, *kube.Kube, radixclient.Interface, error) {
@@ -123,11 +122,4 @@ func applyApplicationWithSync(tu *test.Utils, client kubernetes.Interface, kubeU
 	}
 
 	return nil
-}
-
-func getAppConfig(client kubernetes.Interface, kubeUtil *kube.Kube, radixClient radixclient.Interface, applicationBuilder utils.ApplicationBuilder) *applicationconfig.ApplicationConfig {
-	ra := applicationBuilder.BuildRA()
-	radixRegistration, _ := radixClient.RadixV1().RadixRegistrations().Get(context.TODO(), ra.Name, metav1.GetOptions{})
-
-	return applicationconfig.NewApplicationConfig(client, kubeUtil, radixClient, radixRegistration, ra, nil)
 }

@@ -51,6 +51,13 @@ type JobParameters struct {
 	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 
+	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
+	//
+	// required: false
+	// Extensions:
+	// x-nullable: true
+	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
+
 	// DeployExternalDNS deploy external DNS
 	//
 	// required: false
