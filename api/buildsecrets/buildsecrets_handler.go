@@ -2,6 +2,7 @@ package buildsecrets
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	sharedModels "github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	k8sObjectUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +37,15 @@ func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, se
 		return radixhttp.ValidationError("Secret", "New secret value is empty")
 	}
 
-	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Get(ctx, defaults.BuildSecretsName, metav1.GetOptions{})
+	namespace := k8sObjectUtils.GetAppNamespace(appName)
+	ra, err := sh.userAccount.RadixClient.RadixV1().RadixApplications(namespace).Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return radixhttp.UnexpectedError("Failed getting Radix application", err)
+	}
+	if ra.Spec.Build == nil || !slice.Any(ra.Spec.Build.Secrets, func(s string) bool { return strings.EqualFold(s, secretName) }) {
+		return radixhttp.NotFoundError(fmt.Sprintf("Build secret %s is not defined in the application", secretName))
+	}
+	secretObject, err := sh.userAccount.Client.CoreV1().Secrets(namespace).Get(ctx, defaults.BuildSecretsName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		return radixhttp.TypeMissingError("Build secrets object does not exist", err)
 	}
@@ -53,12 +63,8 @@ func (sh Handler) ChangeBuildSecret(ctx context.Context, appName, secretName, se
 	}
 
 	secretObject.Data[secretName] = []byte(secretValue)
-	_, err = sh.userAccount.Client.CoreV1().Secrets(k8sObjectUtils.GetAppNamespace(appName)).Update(ctx, secretObject, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = sh.userAccount.Client.CoreV1().Secrets(namespace).Update(ctx, secretObject, metav1.UpdateOptions{})
+	return err
 }
 
 // GetBuildSecrets Lists build secrets for application

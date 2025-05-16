@@ -162,7 +162,7 @@ func TestUpdateBuildSecret_UpdateFailedForNotExistingSecrets(t *testing.T) {
 
 	err := utils.ApplyApplicationWithSync(client, radixclient, kedaClient, commonTestUtils,
 		builders.ARadixApplication().
-			WithAppName(anyAppName))
+			WithAppName(anyAppName).WithBuildSecrets("secret1"))
 	require.NoError(t, err)
 
 	// Test
@@ -173,7 +173,7 @@ func TestUpdateBuildSecret_UpdateFailedForNotExistingSecrets(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &buildSecrets)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(buildSecrets))
-	assert.Equal(t, notExistingBuildSecret1, buildSecrets[0].Name)
+	assert.Equal(t, "secret1", buildSecrets[0].Name)
 	assert.Equal(t, models.Pending.String(), buildSecrets[0].Status)
 
 	parameters := environmentModels.SecretParameters{
@@ -182,12 +182,5 @@ func TestUpdateBuildSecret_UpdateFailedForNotExistingSecrets(t *testing.T) {
 
 	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s/buildsecrets/%s", anyAppName, notExistingBuildSecret1), parameters)
 	response = <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/buildsecrets", anyAppName))
-	response = <-responseChannel
-
-	buildSecrets = make([]models.BuildSecret, 0)
-	err = controllertest.GetResponseBody(response, &buildSecrets)
-	require.Error(t, err)
+	assert.Equal(t, http.StatusNotFound, response.Code)
 }
