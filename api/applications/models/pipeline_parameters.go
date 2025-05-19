@@ -106,21 +106,28 @@ type PipelineParametersBuild struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// GitEventRefsType A target of the git event when the pipeline job is triggered by a GitHub event
+	// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
+	//
+	// required: false
+	GitEventRefsType string `json:"gitEventRefsType, omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
 		Branch:                buildParam.Branch,
-		ToEnvironment:         buildParam.ToEnvironment,
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
+		ToEnvironment:         buildParam.ToEnvironment,
 		ImageRepository:       buildParam.ImageRepository,
 		ImageName:             buildParam.ImageName,
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
+		GitEventRefsType:      buildParam.GitEventRefsType,
 	}
 }
 

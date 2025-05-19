@@ -60,6 +60,11 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 	var deploySpec v1.RadixDeploySpec
 	var applyConfigSpec v1.RadixApplyConfigSpec
 
+	triggeredFromWebhook, err := getTriggeredFromWebhook(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	switch pipeline.Type {
 	case v1.BuildDeploy, v1.Build:
 		buildSpec = v1.RadixBuildSpec{
@@ -72,6 +77,9 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 			UseBuildCache:         getUseBuildCache(ra),
 			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,
 			RefreshBuildCache:     jobSpec.RefreshBuildCache,
+		}
+		if triggeredFromWebhook {
+			buildSpec.GitEventRefsType = v1.GitEventRefsType(jobSpec.GitEventRefsType)
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
@@ -93,10 +101,6 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 		}
 	}
 
-	triggeredFromWebhook, err := getTriggeredFromWebhook(ctx)
-	if err != nil {
-		return nil, err
-	}
 	job := v1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: jobName,

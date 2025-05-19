@@ -1,5 +1,17 @@
 package models
 
+// GitEventRefsType A target of the git event when the pipeline job is triggered by a GitHub event
+// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
+// Read more about Git refs https://git-scm.com/book/en/v2/Git-Internals-Git-References
+type GitEventRefsType string
+
+const (
+	// GitEventRefBranch event sent when a commit is made to a branch
+	GitEventRefBranch GitEventRefsType = "branch"
+	// GitEventRefTag event sent when a tag is created
+	GitEventRefTag GitEventRefsType = "tag"
+)
+
 // JobParameters parameters to create a pipeline job
 // Not exposed in the API
 type JobParameters struct {
@@ -64,6 +76,12 @@ type JobParameters struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// GitEventRefsType Holds a target of the git event when the pipeline job is triggered by a GitHub event
+	// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
+	//
+	// required: false
+	GitEventRefsType string `json:"gitEventRefsType, omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

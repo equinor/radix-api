@@ -7817,6 +7817,11 @@
           "x-go-name": "DeployExternalDNS",
           "x-nullable": true
         },
+        "gitEventRefsType": {
+          "description": "GitEventRefsType A target of the git event when the pipeline job is triggered by a GitHub event\nvia the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty",
+          "type": "string",
+          "x-go-name": "GitEventRefsType"
+        },
         "imageName": {
           "description": "ImageName of the component, without repository name and image-tag",
           "type": "string",
