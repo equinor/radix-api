@@ -79,7 +79,7 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 			RefreshBuildCache:     jobSpec.RefreshBuildCache,
 		}
 		if triggeredFromWebhook {
-			buildSpec.GitEventRefsType = v1.GitEventRefsType(jobSpec.GitEventRefsType)
+			buildSpec.GitRefsType = v1.GitRefsType(jobSpec.GitRefsType)
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
