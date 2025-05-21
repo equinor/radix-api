@@ -189,6 +189,7 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
 		pipelineJob.Branch = job.Spec.Build.Branch //nolint:staticcheck
+		pipelineJob.GitRef = job.Spec.Build.GitRef
 		pipelineJob.GitRefType = string(job.Spec.Build.GitRefType)
 		pipelineJob.CommitID = job.Spec.Build.CommitID
 		pipelineJob.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
