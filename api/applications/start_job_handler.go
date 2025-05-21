@@ -69,7 +69,7 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 	case v1.BuildDeploy, v1.Build:
 		buildSpec = v1.RadixBuildSpec{
 			ImageTag:              imageTag,
-			Branch:                jobSpec.Branch,
+			Branch:                jobSpec.Branch, //nolint:staticcheck
 			ToEnvironment:         jobSpec.ToEnvironment,
 			CommitID:              jobSpec.CommitID,
 			PushImage:             jobSpec.PushImage,
@@ -77,9 +77,8 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 			UseBuildCache:         getUseBuildCache(ra),
 			OverrideUseBuildCache: jobSpec.OverrideUseBuildCache,
 			RefreshBuildCache:     jobSpec.RefreshBuildCache,
-		}
-		if triggeredFromWebhook {
-			buildSpec.GitRefsType = v1.GitRefsType(jobSpec.GitRefsType)
+			GitRef:                jobSpec.GitRef,
+			GitRefType:            v1.GitRefType(jobSpec.GitRefType),
 		}
 	case v1.Promote:
 		promoteSpec = v1.RadixPromoteSpec{
@@ -108,7 +107,7 @@ func buildPipelineJob(ctx context.Context, appName string, ra *v1.RadixApplicati
 				kube.RadixAppLabel: appName,
 			},
 			Annotations: map[string]string{
-				kube.RadixBranchAnnotation: jobSpec.Branch,
+				kube.RadixBranchAnnotation: jobSpec.Branch, //nolint:staticcheck
 			},
 		},
 		Spec: v1.RadixJobSpec{

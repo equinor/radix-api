@@ -1,20 +1,9 @@
 package models
 
-// GitRefsType A target of the git event when the pipeline job is triggered by a GitHub event
-// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
-// Read more about Git refs https://git-scm.com/book/en/v2/Git-Internals-Git-References
-type GitRefsType string
-
-const (
-	// GitEventRefBranch event sent when a commit is made to a branch
-	GitEventRefBranch GitRefsType = "branch"
-	// GitEventRefTag event sent when a tag is created
-	GitEventRefTag GitRefsType = "tag"
-)
-
 // JobParameters parameters to create a pipeline job
 // Not exposed in the API
 type JobParameters struct {
+	// Deprecated: use GitRef instead
 	// For build pipeline: Name of the branch
 	Branch string `json:"branch"`
 
@@ -77,11 +66,21 @@ type JobParameters struct {
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 
-	// GitRefsType Holds a target of the git event when the pipeline job is triggered by a GitHub event
-	// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
+	// GitRef Branch or tag to build from
 	//
 	// required: false
-	GitRefsType string `json:"gitRefsType, omitempty"`
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

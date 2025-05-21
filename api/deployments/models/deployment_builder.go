@@ -226,7 +226,7 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 	if b.pipelineJob != nil {
 		jobInfo.CommitID = b.pipelineJob.Spec.Build.CommitID
 		jobInfo.PipelineJobType = string(b.pipelineJob.Spec.PipeLineType)
-		jobInfo.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch
+		jobInfo.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch //nolint:staticcheck
 		jobInfo.PromotedFromEnvironment = b.pipelineJob.Spec.Promote.FromEnvironment
 	}
 
@@ -251,7 +251,7 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		RefreshBuildCache: b.refreshBuildCache,
 	}
 	if b.pipelineJob != nil {
-		deployment.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch
+		deployment.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch //nolint:staticcheck
 	}
 	return &deployment, b.buildError()
 }

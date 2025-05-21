@@ -7560,7 +7560,7 @@
           "example": "radix-pipeline-20181029135644-algpv-6hznh"
         },
         "branch": {
-          "description": "Branch to build from",
+          "description": "Deprecated: use GitRef instead\nBranch to build from",
           "type": "string",
           "x-go-name": "Branch",
           "example": "master"
@@ -7600,6 +7600,23 @@
             "dev",
             "qa"
           ]
+        },
+        "gitRef": {
+          "description": "GitRef Branch or tag to build from",
+          "type": "string",
+          "x-go-name": "GitRef",
+          "example": "master"
+        },
+        "gitRefType": {
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "type": "string",
+          "enum": [
+            "branch",
+            "tag",
+            "\"\""
+          ],
+          "x-go-name": "GitRefType",
+          "example": "\"branch\""
         },
         "imageTagNames": {
           "description": "Image tags names for components - if empty will use default logic",
@@ -7800,7 +7817,7 @@
       "type": "object",
       "properties": {
         "branch": {
-          "description": "Branch the branch to build\nREQUIRED for \"build\" and \"build-deploy\" pipelines",
+          "description": "Deprecated: use GitRef instead\nBranch the branch to build\nREQUIRED for \"build\" and \"build-deploy\" pipelines",
           "type": "string",
           "x-go-name": "Branch",
           "example": "master"
@@ -7817,10 +7834,22 @@
           "x-go-name": "DeployExternalDNS",
           "x-nullable": true
         },
-        "gitEventRefsType": {
-          "description": "GitEventRefsType A target of the git event when the pipeline job is triggered by a GitHub event\nvia the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty",
+        "gitRef": {
+          "description": "GitRef Branch or tag to build from\nREQUIRED for \"build\" and \"build-deploy\" pipelines",
           "type": "string",
-          "x-go-name": "GitEventRefsType"
+          "x-go-name": "GitRef",
+          "example": "master"
+        },
+        "gitRefType": {
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "type": "string",
+          "enum": [
+            "branch",
+            "tag",
+            "\"\""
+          ],
+          "x-go-name": "GitRefType",
+          "example": "\"branch\""
         },
         "imageName": {
           "description": "ImageName of the component, without repository name and image-tag",

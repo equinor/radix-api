@@ -44,6 +44,7 @@ func (promoteParam PipelineParametersPromote) MapPipelineParametersPromoteToJobP
 // PipelineParametersBuild describe branch to build and its commit ID
 // swagger:model PipelineParametersBuild
 type PipelineParametersBuild struct {
+	// Deprecated: use GitRef instead
 	// Branch the branch to build
 	// REQUIRED for "build" and "build-deploy" pipelines
 	//
@@ -107,17 +108,28 @@ type PipelineParametersBuild struct {
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 
-	// GitRefsType A target of the git event when the pipeline job is triggered by a GitHub event
-	// via the Radix GitHUb webhook: branch or tag (for refs/heads) or tag (for refs/tags), otherwise it is empty
+	// GitRef Branch or tag to build from
+	// REQUIRED for "build" and "build-deploy" pipelines
 	//
 	// required: false
-	GitRefsType string `json:"gitRefsType, omitempty"`
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		Branch:                buildParam.Branch,
+		Branch:                buildParam.Branch, //nolint:staticcheck
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
@@ -127,7 +139,7 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
-		GitRefsType:           buildParam.GitRefsType,
+		GitRefType:            buildParam.GitRefType,
 	}
 }
 
