@@ -530,7 +530,6 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
 	}
-
 	gitRef := pipelineParameters.Branch //nolint:staticcheck
 	if pipelineParameters.GitRef != "" {
 		gitRef = pipelineParameters.GitRef

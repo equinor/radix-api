@@ -6670,6 +6670,23 @@
           "x-go-name": "GitCommitHash",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
         },
+        "gitRef": {
+          "description": "GitRef Branch or tag to build from",
+          "type": "string",
+          "x-go-name": "GitRef",
+          "example": "master"
+        },
+        "gitRefType": {
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "type": "string",
+          "enum": [
+            "branch",
+            "tag",
+            "\"\""
+          ],
+          "x-go-name": "GitRefType",
+          "example": "\"branch\""
+        },
         "gitTags": {
           "description": "GitTags the git tags that the git commit hash points to",
           "type": "string",
@@ -6807,6 +6824,23 @@
           "type": "string",
           "x-go-name": "GitCommitHash",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
+        },
+        "gitRef": {
+          "description": "GitRef Branch or tag to build from",
+          "type": "string",
+          "x-go-name": "GitRef",
+          "example": "master"
+        },
+        "gitRefType": {
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "type": "string",
+          "enum": [
+            "branch",
+            "tag",
+            "\"\""
+          ],
+          "x-go-name": "GitRefType",
+          "example": "\"branch\""
         },
         "gitTags": {
           "description": "GitTags the git tags that the git commit hash points to",

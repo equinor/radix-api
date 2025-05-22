@@ -139,6 +139,7 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
+		GitRef:                buildParam.GitRef,
 		GitRefType:            buildParam.GitRefType,
 	}
 }
