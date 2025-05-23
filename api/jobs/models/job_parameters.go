@@ -3,6 +3,7 @@ package models
 // JobParameters parameters to create a pipeline job
 // Not exposed in the API
 type JobParameters struct {
+	// Deprecated: use GitRef instead
 	// For build pipeline: Name of the branch
 	Branch string `json:"branch"`
 
@@ -64,6 +65,22 @@ type JobParameters struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// GitRef Branch or tag to build from
+	//
+	// required: false
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // GetPushImageTag Represents boolean as 1 or 0

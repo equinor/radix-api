@@ -44,6 +44,7 @@ func (promoteParam PipelineParametersPromote) MapPipelineParametersPromoteToJobP
 // PipelineParametersBuild describe branch to build and its commit ID
 // swagger:model PipelineParametersBuild
 type PipelineParametersBuild struct {
+	// Deprecated: use GitRef instead
 	// Branch the branch to build
 	// REQUIRED for "build" and "build-deploy" pipelines
 	//
@@ -106,21 +107,40 @@ type PipelineParametersBuild struct {
 	// Extensions:
 	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
+
+	// GitRef Branch or tag to build from
+	// REQUIRED for "build" and "build-deploy" pipelines
+	//
+	// required: false
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
 	return &jobModels.JobParameters{
-		Branch:                buildParam.Branch,
-		ToEnvironment:         buildParam.ToEnvironment,
+		Branch:                buildParam.Branch, //nolint:staticcheck
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
+		ToEnvironment:         buildParam.ToEnvironment,
 		ImageRepository:       buildParam.ImageRepository,
 		ImageName:             buildParam.ImageName,
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
+		GitRef:                buildParam.GitRef,
+		GitRefType:            buildParam.GitRefType,
 	}
 }
 

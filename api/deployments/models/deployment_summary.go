@@ -101,6 +101,22 @@ type DeploymentSummary struct {
 	// Extensions:
 	// x-nullable: true
 	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
+
+	// GitRef Branch or tag to build from
+	//
+	// required: false
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // DeploymentItem describe a deployment short info
