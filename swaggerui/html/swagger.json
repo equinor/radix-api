@@ -6914,6 +6914,23 @@
           "type": "string",
           "x-go-name": "CreatedByJob"
         },
+        "gitRef": {
+          "description": "GitRef Branch or tag to build from",
+          "type": "string",
+          "x-go-name": "GitRef",
+          "example": "master"
+        },
+        "gitRefType": {
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "type": "string",
+          "enum": [
+            "branch",
+            "tag",
+            "\"\""
+          ],
+          "x-go-name": "GitRefType",
+          "example": "\"branch\""
+        },
         "pipelineJobType": {
           "description": "Type of pipeline job",
           "type": "string",

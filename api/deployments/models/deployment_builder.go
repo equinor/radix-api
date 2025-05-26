@@ -40,8 +40,6 @@ type deploymentBuilder struct {
 	useBuildKit        *bool
 	useBuildCache      *bool
 	refreshBuildCache  *bool
-	gitRef             string
-	gitRefType         string
 }
 
 // NewDeploymentBuilder Constructor for application deploymentBuilder
@@ -66,8 +64,6 @@ func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) Deployme
 		withUseBuildKit(rd.Annotations[kube.RadixUseBuildKit]).
 		withUseBuildCache(rd.Annotations[kube.RadixUseBuildCache]).
 		withRefreshBuildCache(rd.Annotations[kube.RadixRefreshBuildCache]).
-		withGitRef(rd.Annotations[kube.RadixBranchAnnotation], rd.Annotations[kube.RadixGitRefAnnotation]).
-		withGitRefTypo(rd.Annotations[kube.RadixGitRefTypeAnnotation]).
 		WithGitCommitHash(rd.Annotations[kube.RadixCommitAnnotation]).
 		WithGitTags(rd.Annotations[kube.RadixGitTagsAnnotation])
 
@@ -145,19 +141,6 @@ func (b *deploymentBuilder) withRefreshBuildCache(value string) *deploymentBuild
 	return b
 }
 
-func (b *deploymentBuilder) withGitRef(branch, gitRef string) *deploymentBuilder {
-	b.gitRef = branch
-	if len(gitRef) > 0 {
-		b.gitRef = gitRef
-	}
-	return b
-}
-
-func (b *deploymentBuilder) withGitRefTypo(gitRefType string) *deploymentBuilder {
-	b.gitRefType = gitRefType
-	return b
-}
-
 func (b *deploymentBuilder) withComponentSummariesFromRadixDeployment(rd *v1.RadixDeployment) *deploymentBuilder {
 	components := make([]*ComponentSummary, 0, len(rd.Spec.Components)+len(rd.Spec.Jobs))
 	for _, component := range rd.Spec.Components {
@@ -212,8 +195,6 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		UseBuildKit:                      b.useBuildKit,
 		UseBuildCache:                    b.useBuildCache,
 		RefreshBuildCache:                b.refreshBuildCache,
-		GitRef:                           b.gitRef,
-		GitRefType:                       b.gitRefType,
 	}, b.buildError()
 }
 
@@ -246,6 +227,8 @@ func (b *deploymentBuilder) buildDeploySummaryPipelineJobInfo() DeploymentSummar
 		jobInfo.CommitID = b.pipelineJob.Spec.Build.CommitID
 		jobInfo.PipelineJobType = string(b.pipelineJob.Spec.PipeLineType)
 		jobInfo.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch //nolint:staticcheck
+		jobInfo.GitRef = b.pipelineJob.Spec.Build.GitRef
+		jobInfo.GitRefType = string(b.pipelineJob.Spec.Build.GitRefType)
 		jobInfo.PromotedFromEnvironment = b.pipelineJob.Spec.Promote.FromEnvironment
 	}
 
@@ -268,11 +251,11 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		UseBuildKit:       b.useBuildKit,
 		UseBuildCache:     b.useBuildCache,
 		RefreshBuildCache: b.refreshBuildCache,
-		GitRef:            b.gitRef,
-		GitRefType:        b.gitRefType,
 	}
 	if b.pipelineJob != nil {
 		deployment.BuiltFromBranch = b.pipelineJob.Spec.Build.Branch //nolint:staticcheck
+		deployment.GitRef = b.pipelineJob.Spec.Build.GitRef
+		deployment.GitRefType = string(b.pipelineJob.Spec.Build.GitRefType)
 	}
 	return &deployment, b.buildError()
 }
