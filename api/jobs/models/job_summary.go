@@ -22,6 +22,7 @@ type JobSummary struct {
 	// example: radix-pipeline-20181029135644-algpv-6hznh
 	AppName string `json:"appName"`
 
+	// Deprecated: use GitRef instead
 	// Branch to build from
 	//
 	// required: false
@@ -138,6 +139,22 @@ type JobSummary struct {
 	//
 	// required: true
 	TriggeredFromWebhook bool `json:"triggeredFromWebhook"`
+
+	// GitRef Branch or tag to build from
+	//
+	// required: false
+	// example: master
+	GitRef string `json:"gitRef,omitempty"`
+
+	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
+	// - branch
+	// - tag
+	// - <empty> - either branch or tag
+	//
+	// required false
+	// enum: branch,tag,""
+	// example: "branch"
+	GitRefType string `json:"gitRefType,omitempty"`
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
@@ -171,7 +188,9 @@ func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	}
 	switch job.Spec.PipeLineType {
 	case radixv1.Build, radixv1.BuildDeploy:
-		pipelineJob.Branch = job.Spec.Build.Branch
+		pipelineJob.Branch = job.Spec.Build.Branch //nolint:staticcheck
+		pipelineJob.GitRef = job.Spec.Build.GitRef
+		pipelineJob.GitRefType = string(job.Spec.Build.GitRefType)
 		pipelineJob.CommitID = job.Spec.Build.CommitID
 		pipelineJob.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
 		pipelineJob.UseBuildCache = job.Spec.Build.UseBuildCache

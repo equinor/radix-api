@@ -188,7 +188,7 @@ func TestGetApplicationJob(t *testing.T) {
 			require.NoError(t, err)
 
 			jobParameters := &jobmodels.JobParameters{
-				Branch:                anyBranch,
+				Branch:                anyBranch, //nolint:staticcheck
 				CommitID:              anyPushCommitID,
 				PushImage:             true,
 				TriggeredBy:           anyUser,
@@ -273,7 +273,7 @@ func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
 	err := controllertest.GetResponseBody(response, &jobSummary)
 	require.NoError(t, err)
 	assert.Equal(t, job.Name, jobSummary.Name)
-	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch)
+	assert.Equal(t, job.Spec.Build.Branch, jobSummary.Branch) //nolint:staticcheck
 	assert.Equal(t, string(job.Spec.PipeLineType), jobSummary.Pipeline)
 	assert.Equal(t, len(job.Status.Steps), len(jobSummary.Steps))
 
