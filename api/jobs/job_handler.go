@@ -359,7 +359,9 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 	}
 	switch job.Spec.PipeLineType {
 	case v1.Build, v1.BuildDeploy:
-		jobModel.Branch = job.Spec.Build.Branch
+		jobModel.Branch = job.Spec.Build.Branch //nolint:staticcheck
+		jobModel.GitRef = job.Spec.Build.GitRef
+		jobModel.GitRefType = string(job.Spec.Build.GitRefType)
 		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
 		jobModel.CommitID = job.Spec.Build.CommitID
 		jobModel.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit

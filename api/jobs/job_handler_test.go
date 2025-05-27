@@ -92,7 +92,7 @@ func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Client
 }
 
 func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
-	jobName, appName, branch, commitId, pipeline, triggeredBy := "a_job", "an_app", "a_branch", "a_commitid", radixv1.BuildDeploy, "a_user"
+	jobName, appName, someTag, commitId, pipeline, triggeredBy := "a_job", "an_app", "a_tag", "a_commitid", radixv1.BuildDeploy, "a_user"
 	started, ended := metav1.NewTime(time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local)), metav1.NewTime(time.Date(2020, 1, 2, 0, 0, 0, 0, time.Local))
 	step1Name, step1Pod, step1Condition, step1Started, step1Ended, step1Components := "step1_name", "step1_pod", radixv1.JobRunning, metav1.Now(), metav1.NewTime(time.Now().Add(1*time.Hour)), []string{"step1_comp1", "step1_comp2"}
 	step2Name := "step2_name"
@@ -104,7 +104,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		},
 		Spec: radixv1.RadixJobSpec{
 			Build: radixv1.RadixBuildSpec{
-				Branch:                branch,
+				GitRef:                someTag,
+				GitRefType:            radixv1.GitRefTag,
 				CommitID:              commitId,
 				OverrideUseBuildCache: pointers.Ptr(true),
 				RefreshBuildCache:     pointers.Ptr(true),
@@ -176,7 +177,8 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 		actualJob, actualErr := h.GetApplicationJob(context.Background(), appName, jobName)
 		s.NoError(actualErr)
 		s.Equal(jobName, actualJob.Name)
-		s.Equal(branch, actualJob.Branch)
+		s.Equal(someTag, actualJob.GitRef)
+		s.Equal(string(radixv1.GitRefTag), actualJob.GitRefType)
 		s.Equal(commitId, actualJob.CommitID)
 		s.NotNil(actualJob.OverrideUseBuildCache)
 		s.True(*actualJob.OverrideUseBuildCache)

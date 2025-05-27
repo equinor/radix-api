@@ -530,34 +530,41 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	if err := json.NewDecoder(r.Body).Decode(&pipelineParameters); err != nil {
 		return nil, err
 	}
-
-	branch := pipelineParameters.Branch
+	gitRef := pipelineParameters.Branch //nolint:staticcheck
+	if pipelineParameters.GitRef != "" {
+		gitRef = pipelineParameters.GitRef
+	}
+	gitRefTypeOrDefault := "branch"
+	if pipelineParameters.GitRefType != "" {
+		gitRefTypeOrDefault = pipelineParameters.GitRefType
+	}
+	gitRefType := pipelineParameters.GitRefType
 	envName := pipelineParameters.ToEnvironment
 	commitID := pipelineParameters.CommitID
 
-	if strings.TrimSpace(appName) == "" || strings.TrimSpace(branch) == "" {
+	if strings.TrimSpace(appName) == "" || strings.TrimSpace(gitRef) == "" {
 		return nil, applicationModels.AppNameAndBranchAreRequiredForStartingPipeline()
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating build pipeline jobController for %s on branch %s for commit %s", appName, branch, commitID)
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline jobController for %s on %s %s for commit %s", appName, gitRefTypeOrDefault, gitRef, commitID)
 	radixRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if branch is mapped
-	if !applicationconfig.IsConfigBranch(branch, radixRegistration) {
+	if !applicationconfig.IsConfigBranch(gitRef, radixRegistration) {
 		ra, err := userAccount.RadixClient.RadixV1().RadixApplications(operatorUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		targetEnvironments := applicationconfig.GetAllTargetEnvironments(branch, ra)
+		targetEnvironments := applicationconfig.GetAllTargetEnvironments(gitRef, gitRefType, ra)
 		if len(targetEnvironments) == 0 {
-			return nil, applicationModels.UnmatchedBranchToEnvironment(branch)
+			return nil, applicationModels.UnmatchedBranchToEnvironment(gitRef)
 		}
 
 		if len(envName) > 0 && !slice.Any(targetEnvironments, func(targetEnvName string) bool { return targetEnvName == envName }) {
-			return nil, applicationModels.EnvironmentNotMappedToBranch(envName, branch)
+			return nil, applicationModels.EnvironmentNotMappedToBranch(envName, gitRef)
 		}
 	}
 
@@ -568,7 +575,7 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on branch %s for commit %s%s", appName, branch, commitID,
+	log.Ctx(ctx).Info().Msgf("Creating build pipeline job for %s on %s %s for commit %s%s", appName, gitRefTypeOrDefault, gitRef, commitID,
 		radixutils.TernaryString(len(envName) > 0, fmt.Sprintf(", for environment %s", envName), ""))
 
 	jobSummary, err := HandleStartPipelineJob(ctx, ah.accounts.UserAccount.RadixClient, appName, pipeline, jobParameters)
