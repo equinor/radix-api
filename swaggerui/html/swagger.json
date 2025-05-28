@@ -8446,11 +8446,6 @@
           "description": "PrivateKey of the deploy key",
           "type": "string",
           "x-go-name": "PrivateKey"
-        },
-        "sharedSecret": {
-          "description": "Deprecated: use RegenerateSharedSecretData instead\nSharedSecret of the shared secret",
-          "type": "string",
-          "x-go-name": "SharedSecret"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
