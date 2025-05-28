@@ -83,4 +83,11 @@ type SubPipelineTaskStep struct {
 	// required: true
 	// example: radix-tekton-task-dev-2022-05-09-abcde
 	KubeName string `json:"kubeName"`
+
+	// Status of the step
+	//
+	// required: false
+	// enum: Starting,Started,Running,Succeeded,Failed,Waiting,ToBeRetried,TaskRunCancelled,TaskRunTimeout,ResolvingTaskRef,ResolvingStepActionRef,TaskRunImagePullFailed,TaskRunResultLargerThanAllowedLimit,TaskRunStopSidecarFailed,InvalidParamValue,TaskRunResolutionFailed,TaskRunValidationFailedTaskValidationFailed,ResourceVerificationFailed,FailureIgnored,Error
+	// example: Waiting
+	Status string `json:"status"`
 }

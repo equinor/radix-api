@@ -9048,6 +9048,34 @@
           "type": "string",
           "x-go-name": "PipelineRunName"
         },
+        "status": {
+          "description": "Status of the step",
+          "type": "string",
+          "enum": [
+            "Starting",
+            "Started",
+            "Running",
+            "Succeeded",
+            "Failed",
+            "Waiting",
+            "ToBeRetried",
+            "TaskRunCancelled",
+            "TaskRunTimeout",
+            "ResolvingTaskRef",
+            "ResolvingStepActionRef",
+            "TaskRunImagePullFailed",
+            "TaskRunResultLargerThanAllowedLimit",
+            "TaskRunStopSidecarFailed",
+            "InvalidParamValue",
+            "TaskRunResolutionFailed",
+            "TaskRunValidationFailedTaskValidationFailed",
+            "ResourceVerificationFailed",
+            "FailureIgnored",
+            "Error"
+          ],
+          "x-go-name": "Status",
+          "example": "Waiting"
+        },
         "taskName": {
           "description": "TaskName of the task",
           "type": "string",
