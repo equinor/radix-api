@@ -1713,7 +1713,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	err := controllertest.GetResponseBody(response, &jobSummary)
 	require.NoError(t, err)
 	assert.Equal(t, "any-app", jobSummary.AppName)
-	assert.Equal(t, "maincfg", jobSummary.Branch) //nolint:staticcheck
+	assert.Equal(t, "maincfg", jobSummary.GitRef)
+	assert.Equal(t, "branch", jobSummary.GitRefType)
 	assert.Equal(t, pushCommitID, jobSummary.CommitID)
 }
 
