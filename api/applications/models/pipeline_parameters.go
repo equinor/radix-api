@@ -2,6 +2,7 @@ package models
 
 import (
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // PipelineParametersPromote identify deployment to promote and a target environment
@@ -128,8 +129,14 @@ type PipelineParametersBuild struct {
 
 // MapPipelineParametersBuildToJobParameter maps to JobParameter
 func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParameter() *jobModels.JobParameters {
+	gitRef, gitRefType := buildParam.Branch, string(radixv1.GitRefBranch)
+	if len(buildParam.GitRef) > 0 {
+		gitRef = buildParam.GitRef
+	}
+	if len(buildParam.GitRefType) > 0 {
+		gitRefType = buildParam.GitRefType
+	}
 	return &jobModels.JobParameters{
-		Branch:                buildParam.Branch, //nolint:staticcheck
 		CommitID:              buildParam.CommitID,
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
@@ -139,8 +146,8 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
-		GitRef:                buildParam.GitRef,
-		GitRefType:            buildParam.GitRefType,
+		GitRef:                gitRef,
+		GitRefType:            gitRefType,
 	}
 }
 
