@@ -29,6 +29,7 @@ import (
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -678,6 +679,12 @@ func (ah *ApplicationHandler) RegenerateSharedSecret(ctx context.Context, appNam
 		updatedRegistration := currentRegistration.DeepCopy()
 		if len(sharedKey) != 0 {
 			updatedRegistration.Spec.SharedSecret = sharedKey
+		} else {
+			newShareKey, err := uuid.NewUUID()
+			if err != nil {
+				return fmt.Errorf("failed to generate new shared secret: %v", err)
+			}
+			updatedRegistration.Spec.SharedSecret = newShareKey.String()
 		}
 		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
 		if reflect.DeepEqual(updatedRegistration, currentRegistration) {

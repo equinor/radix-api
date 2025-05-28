@@ -1997,6 +1997,47 @@ func TestRegenerateDeployKey_UpdatesSharedSecret(t *testing.T) {
 	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
 }
 
+func TestRegenerateDeployKey_CreateSharedSecret(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _, _ := setupTest(t, true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
+
+	// Test
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	regenerateParameters := &applicationModels.RegenerateSharedSecretData{}
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-shared-secret", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+
+	radixRegistration, err := radixClient.RadixV1().RadixRegistrations().Get(context.Background(), appName, metav1.GetOptions{})
+	require.NoError(t, err)
+	newSharedSecret := radixRegistration.Spec.SharedSecret
+	assert.NotEmpty(t, newSharedSecret)
+
+	deployKeyAndSecret := &applicationModels.DeployKeyAndSecret{}
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("GET", fmt.Sprintf("/api/v1/applications/%s/deploy-key-and-secret", appName), regenerateParameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	err = controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	require.NoError(t, err)
+	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
+}
+
 func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _, _ := setupTest(t, true, true)
