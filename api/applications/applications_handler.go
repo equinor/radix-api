@@ -633,34 +633,7 @@ func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(cur
 }
 
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
-func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyAndSecretData) error {
-	sharedKey := strings.TrimSpace(regenerateDeployKeyAndSecretData.SharedSecret)
-	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// Make check that this is an existing application and that the user has access to it
-		currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		updatedRegistration := currentRegistration.DeepCopy()
-		if len(sharedKey) != 0 {
-			updatedRegistration.Spec.SharedSecret = sharedKey
-		}
-		// Deleting SSH keys from RRs where these deprecated fields are populated
-		updatedRegistration.Spec.DeployKeyPublic = ""
-		updatedRegistration.Spec.DeployKey = ""
-		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
-		if reflect.DeepEqual(updatedRegistration, currentRegistration) {
-			return nil
-		}
-		if err := ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration); err != nil {
-			return err
-		}
-		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
-		return err
-	}); err != nil {
-		return err
-	}
-
+func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyData) error {
 	if regenerateDeployKeyAndSecretData.PrivateKey == "" {
 		// Deleting the secret with the private key. This triggers the RR to be reconciled and the new key to be generated
 		err := ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Delete(ctx, defaults.GitPrivateKeySecretName, metav1.DeleteOptions{})
@@ -699,6 +672,31 @@ func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName s
 			return err
 		}
 		_, err = ah.getUserAccount().Client.CoreV1().Secrets(operatorUtils.GetAppNamespace(appName)).Update(ctx, newSecret, metav1.UpdateOptions{})
+		return err
+	})
+}
+
+// RegenerateSharedSecret Regenerates the GitHub webhook secret for an application.
+func (ah *ApplicationHandler) RegenerateSharedSecret(ctx context.Context, appName string, regenerateWebhookSecretData applicationModels.RegenerateSharedSecretData) error {
+	sharedKey := strings.TrimSpace(regenerateWebhookSecretData.SharedSecret)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Make check that this is an existing application and that the user has access to it
+		currentRegistration, err := ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Get(ctx, appName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		updatedRegistration := currentRegistration.DeepCopy()
+		if len(sharedKey) != 0 {
+			updatedRegistration.Spec.SharedSecret = sharedKey
+		}
+		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+		if reflect.DeepEqual(updatedRegistration, currentRegistration) {
+			return nil
+		}
+		if err := ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration); err != nil {
+			return err
+		}
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
 		return err
 	})
 }

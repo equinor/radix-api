@@ -137,6 +137,11 @@ func (ac *applicationController) GetRoutes() models.Routes {
 			HandlerFunc: ac.RegenerateDeployKeyHandler,
 		},
 		models.Route{
+			Path:        appPath + "/regenerate-shared-secret",
+			Method:      "POST",
+			HandlerFunc: ac.RegenerateSharedSecretHandler,
+		},
+		models.Route{
 			Path:        appPath + "/utilization",
 			Method:      "GET",
 			HandlerFunc: ac.GetApplicationResourcesUtilization,
@@ -449,7 +454,7 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//   description: Regenerate deploy key and secret data
 	//   required: true
 	//   schema:
-	//       "$ref": "#/definitions/RegenerateDeployKeyAndSecretData"
+	//       "$ref": "#/definitions/RegenerateDeployKeyData"
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -471,12 +476,65 @@ func (ac *applicationController) RegenerateDeployKeyHandler(accounts models.Acco
 	//     description: "Conflict"
 	appName := mux.Vars(r)["appName"]
 	handler := ac.applicationHandlerFactory.Create(accounts)
-	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyAndSecretData
+	var sharedSecretAndPrivateKey applicationModels.RegenerateDeployKeyData
 	if err := json.NewDecoder(r.Body).Decode(&sharedSecretAndPrivateKey); err != nil {
 		ac.ErrorResponse(w, r, err)
 		return
 	}
 	err := handler.RegenerateDeployKey(r.Context(), appName, sharedSecretAndPrivateKey)
+
+	if err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RegenerateSharedSecretHandler Regenerates shared secret
+func (ac *applicationController) RegenerateSharedSecretHandler(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /applications/{appName}/regenerate-shared-secret application regenerateSharedSecret
+	// ---
+	// summary: Regenerates shared secret
+	// parameters:
+	// - name: appName
+	//   in: path
+	//   description: name of application
+	//   type: string
+	//   required: true
+	// - name: regenerateRegenerateSharedSecretData
+	//   in: body
+	//   description: Regenerate shared secret and secret data
+	//   required: true
+	//   schema:
+	//       "$ref": "#/definitions/RegenerateSharedSecretData"
+	// - name: Impersonate-User
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
+	//   type: string
+	//   required: false
+	// - name: Impersonate-Group
+	//   in: header
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   type: string
+	//   required: false
+	// responses:
+	//   "204":
+	//     description: Successfully regenerated and set shared secret
+	//   "401":
+	//     description: "Unauthorized"
+	//   "404":
+	//     description: "Not found"
+	//   "409":
+	//     description: "Conflict"
+	appName := mux.Vars(r)["appName"]
+	handler := ac.applicationHandlerFactory.Create(accounts)
+	var sharedSecret applicationModels.RegenerateSharedSecretData
+	if err := json.NewDecoder(r.Body).Decode(&sharedSecret); err != nil {
+		ac.ErrorResponse(w, r, err)
+		return
+	}
+	err := handler.RegenerateSharedSecret(r.Context(), appName, sharedSecret)
 
 	if err != nil {
 		ac.ErrorResponse(w, r, err)

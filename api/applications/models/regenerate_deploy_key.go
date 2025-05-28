@@ -1,8 +1,9 @@
 package models
 
-// RegenerateDeployKeyAndSecretData Holds regenerated shared secret
-// swagger:model RegenerateDeployKeyAndSecretData
-type RegenerateDeployKeyAndSecretData struct {
+// RegenerateDeployKeyData Holds regenerated shared secret
+// swagger:model RegenerateDeployKeyData
+type RegenerateDeployKeyData struct {
+	// Deprecated: use RegenerateSharedSecretData instead
 	// SharedSecret of the shared secret
 	//
 	// required: false
