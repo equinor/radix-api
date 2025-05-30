@@ -5434,7 +5434,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/RegenerateDeployKeyAndSecretData"
+              "$ref": "#/definitions/RegenerateDeployKeyData"
             }
           },
           {
@@ -5453,6 +5453,59 @@
         "responses": {
           "204": {
             "description": "Successfully regenerated deploy key and set shared secret"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/applications/{appName}/regenerate-shared-secret": {
+      "post": {
+        "tags": [
+          "application"
+        ],
+        "summary": "Regenerates shared secret",
+        "operationId": "regenerateSharedSecret",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "name of application",
+            "name": "appName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Regenerate shared secret and secret data",
+            "name": "regenerateRegenerateSharedSecretData",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegenerateSharedSecretData"
+            }
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
+            "name": "Impersonate-User",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
+            "name": "Impersonate-Group",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successfully regenerated and set shared secret"
           },
           "401": {
             "description": "Unauthorized"
@@ -8385,15 +8438,22 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/alerting/models"
     },
-    "RegenerateDeployKeyAndSecretData": {
-      "description": "RegenerateDeployKeyAndSecretData Holds regenerated shared secret",
+    "RegenerateDeployKeyData": {
+      "description": "RegenerateDeployKeyData Holds regenerated shared secret",
       "type": "object",
       "properties": {
         "privateKey": {
           "description": "PrivateKey of the deploy key",
           "type": "string",
           "x-go-name": "PrivateKey"
-        },
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "RegenerateSharedSecretData": {
+      "description": "RegenerateSharedSecretData Holds regenerated shared secret",
+      "type": "object",
+      "properties": {
         "sharedSecret": {
           "description": "SharedSecret of the shared secret",
           "type": "string",
