@@ -1713,7 +1713,8 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	err := controllertest.GetResponseBody(response, &jobSummary)
 	require.NoError(t, err)
 	assert.Equal(t, "any-app", jobSummary.AppName)
-	assert.Equal(t, "maincfg", jobSummary.Branch) //nolint:staticcheck
+	assert.Equal(t, "maincfg", jobSummary.GitRef)
+	assert.Equal(t, "branch", jobSummary.GitRefType)
 	assert.Equal(t, pushCommitID, jobSummary.CommitID)
 }
 
@@ -1947,17 +1948,94 @@ func TestRegenerateDeployKey_WhenApplicationNotExist_Fail(t *testing.T) {
 	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
 	<-appResponseChannel
 
-	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret"}
+	regenerateParameters := &applicationModels.RegenerateSharedSecretData{SharedSecret: "new shared secret"}
 	appName := "any-non-existing-name"
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-shared-secret", appName), regenerateParameters)
 	response := <-responseChannel
 
-	deployKeyAndSecret := applicationModels.DeployKeyAndSecret{}
-	err := controllertest.GetResponseBody(response, &deployKeyAndSecret)
-	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, response.Code)
-	assert.Empty(t, deployKeyAndSecret.PublicDeployKey)
-	assert.Empty(t, deployKeyAndSecret.SharedSecret)
+}
+
+func TestRegenerateDeployKey_UpdatesSharedSecret(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _, _ := setupTest(t, true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
+
+	// Test
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	const newSharedSecret = "new shared secret"
+	regenerateParameters := &applicationModels.RegenerateSharedSecretData{SharedSecret: newSharedSecret}
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-shared-secret", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+
+	radixRegistration, err := radixClient.RadixV1().RadixRegistrations().Get(context.Background(), appName, metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, newSharedSecret, radixRegistration.Spec.SharedSecret)
+
+	deployKeyAndSecret := &applicationModels.DeployKeyAndSecret{}
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("GET", fmt.Sprintf("/api/v1/applications/%s/deploy-key-and-secret", appName), regenerateParameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	err = controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	require.NoError(t, err)
+	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
+}
+
+func TestRegenerateDeployKey_CreateSharedSecret(t *testing.T) {
+	// Setup
+	commonTestUtils, controllerTestUtils, kubeUtil, radixClient, kedaClient, _, _, _, _ := setupTest(t, true, true)
+	appName := "any-name"
+	rrBuilder := builders.ARadixRegistration().WithName(appName).WithCloneURL("git@github.com:Equinor/my-app.git")
+
+	// Creating RR and syncing it
+	err := utils.ApplyRegistrationWithSync(kubeUtil, radixClient, kedaClient, commonTestUtils, rrBuilder)
+	require.NoError(t, err)
+
+	// Test
+	parameters := buildApplicationRegistrationRequest(
+		anApplicationRegistration().
+			WithName("any-name").
+			WithRepository("https://github.com/Equinor/any-repo").
+			Build(),
+		false,
+	)
+
+	appResponseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
+	<-appResponseChannel
+
+	regenerateParameters := &applicationModels.RegenerateSharedSecretData{}
+	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-shared-secret", appName), regenerateParameters)
+	response := <-responseChannel
+	assert.Equal(t, http.StatusNoContent, response.Code)
+
+	radixRegistration, err := radixClient.RadixV1().RadixRegistrations().Get(context.Background(), appName, metav1.GetOptions{})
+	require.NoError(t, err)
+	newSharedSecret := radixRegistration.Spec.SharedSecret
+	assert.NotEmpty(t, newSharedSecret)
+
+	deployKeyAndSecret := &applicationModels.DeployKeyAndSecret{}
+	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("GET", fmt.Sprintf("/api/v1/applications/%s/deploy-key-and-secret", appName), regenerateParameters)
+	response = <-responseChannel
+	assert.Equal(t, http.StatusOK, response.Code)
+	err = controllertest.GetResponseBody(response, &deployKeyAndSecret)
+	require.NoError(t, err)
+	assert.Equal(t, newSharedSecret, deployKeyAndSecret.SharedSecret)
 }
 
 func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
@@ -1976,7 +2054,7 @@ func TestRegenerateDeployKey_NoSecretInParam_SecretIsReCreated(t *testing.T) {
 	assert.GreaterOrEqual(t, len(firstSecret.Data[defaults.GitPrivateKeySecretKey]), 1)
 
 	// calling regenerate-deploy-key in order to delete secret
-	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret"}
+	regenerateParameters := &applicationModels.RegenerateDeployKeyData{}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusNoContent, response.Code)
@@ -2007,7 +2085,7 @@ func TestRegenerateDeployKey_PrivateKeyInParam_SavedPrivateKeyIsEqualToWebParam(
 	assert.NoError(t, err)
 
 	// calling regenerate-deploy-key in order to set secret
-	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret", PrivateKey: deployKey.PrivateKey}
+	regenerateParameters := &applicationModels.RegenerateDeployKeyData{PrivateKey: deployKey.PrivateKey}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusNoContent, response.Code)
@@ -2033,7 +2111,7 @@ func TestRegenerateDeployKey_InvalidKeyInParam_ErrorIsReturned(t *testing.T) {
 	require.NoError(t, err)
 
 	// calling regenerate-deploy-key with invalid private key, expecting error
-	regenerateParameters := &applicationModels.RegenerateDeployKeyAndSecretData{SharedSecret: "new shared secret", PrivateKey: "invalid key"}
+	regenerateParameters := &applicationModels.RegenerateDeployKeyData{PrivateKey: "invalid key"}
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", fmt.Sprintf("/api/v1/applications/%s/regenerate-deploy-key", appName), regenerateParameters)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusBadRequest, response.Code)

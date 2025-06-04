@@ -452,12 +452,35 @@ func (jh JobHandler) getTaskRunStepModel(envName, pipelineName, pipelineRunName,
 	if taskStep.Terminated != nil {
 		stepModel.Started = &taskStep.Terminated.StartedAt.Time
 		stepModel.Ended = &taskStep.Terminated.FinishedAt.Time
-		stepModel.Status = taskStep.Terminated.Reason
+		stepModel.Status = getStepStatusBySubPipelineTaskStepTerminationStatus(taskStep.Terminated.Reason)
+		stepModel.SubPipelineTaskStep.Status = taskStep.Terminated.Reason
 	} else if taskStep.Running != nil {
 		stepModel.Started = &taskStep.Running.StartedAt.Time
-		stepModel.Status = string(jobModels.TaskRunReasonRunning)
+		stepModel.Status = "Running"
+		stepModel.SubPipelineTaskStep.Status = string(pipelinev1.TaskRunReasonRunning)
 	} else if taskStep.Waiting != nil {
-		stepModel.Status = taskStep.Waiting.Reason
+		stepModel.Status = "Waiting"
+		stepModel.SubPipelineTaskStep.Status = getStepStatusBySubPipelineTaskStepWaitingStatus(taskStep.Waiting.Reason)
 	}
 	return stepModel
+}
+
+func getStepStatusBySubPipelineTaskStepWaitingStatus(reason string) string {
+	switch reason {
+	case "PodInitializing":
+		return "Starting"
+	default:
+		return reason
+	}
+}
+
+func getStepStatusBySubPipelineTaskStepTerminationStatus(reason string) string {
+	switch pipelinev1.TaskRunReason(reason) {
+	case pipelinev1.TaskRunReasonStarted, pipelinev1.TaskRunReasonRunning:
+		return ""
+	case pipelinev1.TaskRunReasonSuccessful:
+		return "Succeeded"
+	default:
+		return reason
+	}
 }
