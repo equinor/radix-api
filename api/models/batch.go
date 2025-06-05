@@ -6,17 +6,17 @@ import (
 
 	"github.com/equinor/radix-api/api/deployments/models"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	utils2 "github.com/equinor/radix-api/api/utils"
+	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v2"
+	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 // GetScheduledBatchSummaryList Get scheduled batch summary list
-func GetScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerModels.RadixBatch, radixDeploymentMap map[string]radixv1.RadixDeployment, jobComponentName string) []models.ScheduledBatchSummary {
-	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerModels.RadixBatch), func(acc map[string]*jobSchedulerModels.RadixBatch, radixBatchStatus jobSchedulerModels.RadixBatch) map[string]*jobSchedulerModels.RadixBatch {
+func GetScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerModels.BatchStatus, radixDeploymentMap map[string]radixv1.RadixDeployment, jobComponentName string) []models.ScheduledBatchSummary {
+	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerModels.BatchStatus), func(acc map[string]*jobSchedulerModels.BatchStatus, radixBatchStatus jobSchedulerModels.BatchStatus) map[string]*jobSchedulerModels.BatchStatus {
 		acc[radixBatchStatus.Name] = &radixBatchStatus
 		return acc
 	})
@@ -30,8 +30,8 @@ func GetScheduledBatchSummaryList(radixBatches []*radixv1.RadixBatch, batchStatu
 }
 
 // GetScheduledSingleJobSummaryList Get scheduled single job summary list
-func GetScheduledSingleJobSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerModels.RadixBatch, radixDeploymentMap map[string]radixv1.RadixDeployment, jobComponentName string) []models.ScheduledJobSummary {
-	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerModels.RadixBatch), func(acc map[string]*jobSchedulerModels.RadixBatch, radixBatchStatus jobSchedulerModels.RadixBatch) map[string]*jobSchedulerModels.RadixBatch {
+func GetScheduledSingleJobSummaryList(radixBatches []*radixv1.RadixBatch, batchStatuses []jobSchedulerModels.BatchStatus, radixDeploymentMap map[string]radixv1.RadixDeployment, jobComponentName string) []models.ScheduledJobSummary {
+	batchStatusesMap := slice.Reduce(batchStatuses, make(map[string]*jobSchedulerModels.BatchStatus), func(acc map[string]*jobSchedulerModels.BatchStatus, radixBatchStatus jobSchedulerModels.BatchStatus) map[string]*jobSchedulerModels.BatchStatus {
 		acc[radixBatchStatus.Name] = &radixBatchStatus
 		return acc
 	})
@@ -57,19 +57,19 @@ func GetBatchDeployJobComponent(radixDeploymentName string, jobComponentName str
 }
 
 // GetScheduledBatchSummary Get scheduled batch summary
-func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) models.ScheduledBatchSummary {
+func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, batchStatus *jobSchedulerModels.BatchStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) models.ScheduledBatchSummary {
 	summary := models.ScheduledBatchSummary{
 		Name:           radixBatch.Name,
 		BatchId:        radixBatch.Spec.BatchId,
 		TotalJobCount:  len(radixBatch.Spec.Jobs),
 		DeploymentName: radixBatch.Spec.RadixDeploymentJobRef.Name,
-		JobList:        GetScheduledJobSummaryList(radixBatch, radixBatchStatus, radixDeployJobComponent),
+		JobList:        GetScheduledJobSummaryList(radixBatch, batchStatus, radixDeployJobComponent),
 	}
-	if radixBatchStatus != nil {
-		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(radixBatchStatus.Status)
-		summary.Created = &radixBatchStatus.CreationTime
-		summary.Started = radixBatchStatus.Started
-		summary.Ended = radixBatchStatus.Ended
+	if batchStatus != nil {
+		summary.Status = deploymentModels.ScheduledBatchJobStatus(batchStatus.Status)
+		summary.Created = batchStatus.Created
+		summary.Started = batchStatus.Started
+		summary.Ended = batchStatus.Ended
 	} else {
 		var started, ended *time.Time
 		if radixBatch.Status.Condition.ActiveTime != nil {
@@ -78,7 +78,7 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 		if radixBatch.Status.Condition.CompletionTime != nil {
 			ended = &radixBatch.Status.Condition.CompletionTime.Time
 		}
-		summary.Status = utils2.GetBatchJobStatusByJobApiCondition(radixBatch.Status.Condition.Type)
+		summary.Status = utils.GetBatchJobStatusByJobApiCondition(radixBatch.Status.Condition.Type)
 		summary.Created = pointers.Ptr(radixBatch.GetCreationTimestamp().Time)
 		summary.Started = started
 		summary.Ended = ended
@@ -87,7 +87,7 @@ func GetScheduledBatchSummary(radixBatch *radixv1.RadixBatch, radixBatchStatus *
 }
 
 // GetScheduledJobSummaryList Get scheduled job summaries
-func GetScheduledJobSummaryList(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []models.ScheduledJobSummary {
+func GetScheduledJobSummaryList(radixBatch *radixv1.RadixBatch, radixBatchStatus *jobSchedulerModels.BatchStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) []models.ScheduledJobSummary {
 	var summaries []models.ScheduledJobSummary
 	for _, radixBatchJob := range radixBatch.Spec.Jobs {
 		summaries = append(summaries, GetScheduledJobSummary(radixBatch, &radixBatchJob, radixBatchStatus, radixDeployJobComponent))
@@ -96,7 +96,7 @@ func GetScheduledJobSummaryList(radixBatch *radixv1.RadixBatch, radixBatchStatus
 }
 
 // GetScheduledJobSummary Get scheduled job summary
-func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radixv1.RadixBatchJob, radixBatchStatus *jobSchedulerModels.RadixBatch, radixDeployJobComponent *radixv1.RadixDeployJobComponent) models.ScheduledJobSummary {
+func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radixv1.RadixBatchJob, batchStatus *jobSchedulerModels.BatchStatus, radixDeployJobComponent *radixv1.RadixDeployJobComponent) models.ScheduledJobSummary {
 	var batchName string
 	if radixBatch.GetLabels()[kube.RadixBatchTypeLabel] == string(kube.RadixBatchTypeBatch) {
 		batchName = radixBatch.GetName()
@@ -137,15 +137,15 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 			summary.Resources = models.ConvertRadixResourceRequirements(radixDeployJobComponent.Resources)
 		}
 	}
-	if radixBatchStatus == nil {
+	if batchStatus == nil {
 		return summary
 	}
 	jobName := fmt.Sprintf("%s-%s", radixBatch.GetName(), radixBatchJob.Name)
-	if jobStatus, ok := slice.FindFirst(radixBatchStatus.JobStatuses, func(jobStatus jobSchedulerModels.RadixBatchJobStatus) bool {
+	if jobStatus, ok := slice.FindFirst(batchStatus.JobStatuses, func(jobStatus jobSchedulerModels.JobStatus) bool {
 		return jobStatus.Name == jobName
 	}); ok {
-		summary.Status = utils2.GetBatchJobStatusByJobApiStatus(jobStatus.Status)
-		summary.Created = jobStatus.CreationTime
+		summary.Status = deploymentModels.ScheduledBatchJobStatus(jobStatus.Status)
+		summary.Created = jobStatus.Created
 		summary.Started = jobStatus.Started
 		summary.Ended = jobStatus.Ended
 		summary.Message = jobStatus.Message

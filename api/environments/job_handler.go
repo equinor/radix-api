@@ -72,8 +72,8 @@ func (eh EnvironmentHandler) GetBatch(ctx context.Context, appName, envName, job
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
-	batchSummary := models.GetScheduledBatchSummary(radixBatch, &radixBatchStatus, batchDeployJobComponent)
+	batchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
+	batchSummary := models.GetScheduledBatchSummary(radixBatch, batchStatus, batchDeployJobComponent)
 	return &batchSummary, nil
 }
 
@@ -95,8 +95,8 @@ func (eh EnvironmentHandler) GetJob(ctx context.Context, appName, envName, jobCo
 	if err != nil {
 		return nil, err
 	}
-	radixBatchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
-	return pointers.Ptr(models.GetScheduledJobSummary(radixBatch, radixBatchJob, &radixBatchStatus, batchDeployJobComponent)), nil
+	batchStatus := jobSchedulerBatch.GetRadixBatchStatus(radixBatch, activeDeployJobComponent)
+	return pointers.Ptr(models.GetScheduledJobSummary(radixBatch, radixBatchJob, batchStatus, batchDeployJobComponent)), nil
 }
 
 // RestartBatch Restart a scheduled or stopped batch
@@ -176,7 +176,7 @@ func (eh EnvironmentHandler) StopAllBatchesAndJobsForJobComponent(ctx context.Co
 	if err := jobSchedulerBatch.StopAllRadixBatches(ctx, eh.accounts.UserAccount.RadixClient, appName, envName, jobComponentName, kube.RadixBatchTypeJob); err != nil {
 		errs = append(errs, err)
 	}
-	
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
