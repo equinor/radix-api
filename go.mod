@@ -7,8 +7,8 @@ toolchain go1.24.2
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
 	github.com/cert-manager/cert-manager v1.15.4
-	github.com/equinor/radix-common v1.10.0
-	github.com/equinor/radix-job-scheduler v1.14.2-0.20250606145258-659acda366e3
+	github.com/equinor/radix-common v1.11.0
+	github.com/equinor/radix-job-scheduler v1.15.0
 	github.com/equinor/radix-operator v1.81.2
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/felixge/httpsnoop v1.0.4
@@ -22,14 +22,14 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.76.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
-	github.com/rs/xid v1.5.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/xid v1.6.0
+	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/urfave/negroni/v3 v3.1.0
-	golang.org/x/sync v0.13.0
+	golang.org/x/sync v0.15.0
 	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
+	k8s.io/apimachinery v0.33.1
 	k8s.io/client-go v0.33.0
 	knative.dev/pkg v0.0.0-20250326102644-9f3e60a9244c
 	sigs.k8s.io/secrets-store-csi-driver v1.4.5
@@ -90,13 +90,13 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
-	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/api v0.228.0 // indirect
