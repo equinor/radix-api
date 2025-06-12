@@ -560,7 +560,7 @@ func createIngress(t *testing.T, kubeClient *kubefake.Clientset, props ingressRu
 }
 
 func createKubernetesEvent(t *testing.T, client *kubefake.Clientset, namespace, name, eventType, involvedObjectName, involvedObjectKind, uid string) {
-	_, err := client.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
+	_, err := client.CoreV1().Events(namespace).CreateWithEventNamespaceWithContext(context.Background(), &corev1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
