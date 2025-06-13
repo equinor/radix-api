@@ -164,19 +164,22 @@ func getAuxiliaryResources(podList []corev1.Pod, deploymentList []appsv1.Deploym
 
 func getOAuth2AuxiliaryResource(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (*deploymentModels.OAuth2AuxiliaryResource, error) {
 	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
-	oauthDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, v1.OAuthProxyAuxiliaryComponentType)
-	if err != nil {
-		return nil, err
+	for _, auxComponentType := range []string{v1.OAuthProxyAuxiliaryComponentType, v1.OAuthRedisAuxiliaryComponentType} {
+		resourceDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, auxComponentType)
+		if err != nil {
+			return nil, err
+		}
+		if resourceDeployment != nil {
+			oauth2Resource.Deployments = append(oauth2Resource.Deployments, *resourceDeployment)
+		}
 	}
-	if oauthDeployment != nil {
-		oauth2Resource.Deployment = *oauthDeployment
-	}
-
 	return &oauth2Resource, nil
 }
 
 func getAuxiliaryResourceDeployment(podList []corev1.Pod, deploymentList []appsv1.Deployment, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
-	var auxResourceDeployment deploymentModels.AuxiliaryResourceDeployment
+	auxResourceDeployment := deploymentModels.AuxiliaryResourceDeployment{
+		Type: auxType,
+	}
 
 	kd, ok := slice.FindFirst(deploymentList, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), auxType))
 	if !ok {
