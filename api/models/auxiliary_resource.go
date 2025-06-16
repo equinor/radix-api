@@ -19,9 +19,11 @@ func getAuxiliaryResources(rd *radixv1.RadixDeployment, component radixv1.RadixC
 
 func getOAuth2AuxiliaryResource(rd *radixv1.RadixDeployment, component radixv1.RadixCommonDeployComponent, deploymentList []appsv1.Deployment, podList []corev1.Pod, eventWarnings map[string]string) *deploymentModels.OAuth2AuxiliaryResource {
 	auxiliaryResource := deploymentModels.OAuth2AuxiliaryResource{}
-	for _, auxComponentType := range []string{radixv1.OAuthProxyAuxiliaryComponentType, radixv1.OAuthRedisAuxiliaryComponentType} {
-		deployment := getAuxiliaryResourceDeployment(rd, component, auxComponentType, deploymentList, podList, eventWarnings)
-		auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, deployment)
+	oauthProxyDeployment := getAuxiliaryResourceDeployment(rd, component, radixv1.OAuthProxyAuxiliaryComponentType, deploymentList, podList, eventWarnings)
+	auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, oauthProxyDeployment)
+	if component.GetAuthentication().GetOAuth2().SessionStoreTypeIsSystemManaged() {
+		oauthRedisDeployment := getAuxiliaryResourceDeployment(rd, component, radixv1.OAuthRedisAuxiliaryComponentType, deploymentList, podList, eventWarnings)
+		auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, oauthRedisDeployment)
 	}
 
 	oauth2 := component.GetAuthentication().GetOAuth2()
