@@ -561,7 +561,7 @@ func Test_GetEnvironmentEvents_Controller(t *testing.T) {
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _, _, _ := setupTest(t, nil)
 	createEvent := func(namespace, eventName string) {
-		_, err := kubeClient.CoreV1().Events(namespace).CreateWithEventNamespace(&corev1.Event{
+		_, err := kubeClient.CoreV1().Events(namespace).CreateWithEventNamespaceWithContext(context.Background(), &corev1.Event{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: eventName,
 			},
