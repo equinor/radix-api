@@ -11,7 +11,7 @@ import (
 
 func getAuxiliaryResources(rd *radixv1.RadixDeployment, component radixv1.RadixCommonDeployComponent, deploymentList []appsv1.Deployment, podList []corev1.Pod, eventWarnings map[string]string) deploymentModels.AuxiliaryResource {
 	var auxResource deploymentModels.AuxiliaryResource
-	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
+	if component.IsPublic() && component.GetAuthentication().GetOAuth2() != nil {
 		auxResource.OAuth2 = getOAuth2AuxiliaryResource(rd, component, deploymentList, podList, eventWarnings)
 	}
 	return auxResource
@@ -21,7 +21,7 @@ func getOAuth2AuxiliaryResource(rd *radixv1.RadixDeployment, component radixv1.R
 	auxiliaryResource := deploymentModels.OAuth2AuxiliaryResource{}
 	oauthProxyDeployment := getAuxiliaryResourceDeployment(rd, component, radixv1.OAuthProxyAuxiliaryComponentType, deploymentList, podList, eventWarnings)
 	auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, oauthProxyDeployment)
-	if component.GetAuthentication().GetOAuth2().SessionStoreTypeIsSystemManaged() {
+	if component.GetAuthentication().GetOAuth2().IsSessionStoreTypeSystemManaged() {
 		oauthRedisDeployment := getAuxiliaryResourceDeployment(rd, component, radixv1.OAuthRedisAuxiliaryComponentType, deploymentList, podList, eventWarnings)
 		auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, oauthRedisDeployment)
 	}
