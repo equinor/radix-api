@@ -39,13 +39,9 @@ func (eh EnvironmentHandler) getComponentStateFromSpec(ctx context.Context, rd *
 
 	status := deploymentModels.ConsistentComponent
 
-	if rd.Status.ActiveTo.IsZero() {
+	if rd.Status.ActiveTo.IsZero() && rd.Status.Condition == v1.DeploymentActive {
 		// current active deployment - we get existing pods
-		componentPods, err := getComponentPodsByNamespace(pods, component.GetName())
-		if err != nil {
-			return nil, err
-		}
-
+		componentPods := getComponentPodsByNamespace(pods, component.GetName())
 		componentPodNames = getPodNames(componentPods)
 		environmentVariables = getRadixEnvironmentVariables(componentPods)
 		eventList, err := kubequery.GetEventsForEnvironment(ctx, eh.accounts.UserAccount.Client, rd.Spec.AppName, rd.Spec.Environment)
@@ -54,10 +50,7 @@ func (eh EnvironmentHandler) getComponentStateFromSpec(ctx context.Context, rd *
 		}
 		lastEventWarnings := event.ConvertToEventWarnings(eventList)
 		replicaSummaryList = getReplicaSummaryList(componentPods, lastEventWarnings)
-		auxResource, err = getAuxiliaryResources(pods, deployments, rd, component)
-		if err != nil {
-			return nil, err
-		}
+		auxResource = getAuxiliaryResources(pods, deployments, rd, component)
 
 		kd, _ := slice.FindFirst(deployments, predicate.IsDeploymentForComponent(rd.Spec.AppName, component.GetName()))
 		status = eh.ComponentStatuser(component, &kd, rd)
@@ -95,7 +88,7 @@ func getPodNames(pods []corev1.Pod) []string {
 	return names
 }
 
-func getComponentPodsByNamespace(allPods []corev1.Pod, componentName string) ([]corev1.Pod, error) {
+func getComponentPodsByNamespace(allPods []corev1.Pod, componentName string) []corev1.Pod {
 	var componentPods []corev1.Pod
 
 	selector := getLabelSelectorForComponentPods(componentName)
@@ -120,7 +113,7 @@ func getComponentPodsByNamespace(allPods []corev1.Pod, componentName string) ([]
 		componentPods = append(componentPods, pod)
 	}
 
-	return componentPods, nil
+	return componentPods
 }
 
 func getLabelSelectorForComponentPods(componentName string) labels.Selector {
@@ -151,32 +144,30 @@ func getReplicaSummaryList(pods []corev1.Pod, lastEventWarnings event.LastEventW
 	})
 }
 
-func getAuxiliaryResources(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (auxResource deploymentModels.AuxiliaryResource, err error) {
-	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil && auth.OAuth2 != nil {
-		auxResource.OAuth2, err = getOAuth2AuxiliaryResource(podList, deploymentList, deployment, component)
-		if err != nil {
-			return
-		}
+func getAuxiliaryResources(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) deploymentModels.AuxiliaryResource {
+	var auxResource deploymentModels.AuxiliaryResource
+	if auth := component.GetAuthentication(); component.IsPublic() && auth != nil {
+		auxResource.OAuth2 = getOAuth2AuxiliaryResource(podList, deploymentList, deployment, component, auth.OAuth2)
 	}
-
-	return
+	return auxResource
 }
 
-func getOAuth2AuxiliaryResource(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent) (*deploymentModels.OAuth2AuxiliaryResource, error) {
-	var oauth2Resource deploymentModels.OAuth2AuxiliaryResource
-	for _, auxComponentType := range []string{v1.OAuthProxyAuxiliaryComponentType, v1.OAuthRedisAuxiliaryComponentType} {
-		resourceDeployment, err := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, auxComponentType)
-		if err != nil {
-			return nil, err
-		}
-		if resourceDeployment != nil {
-			oauth2Resource.Deployments = append(oauth2Resource.Deployments, *resourceDeployment)
-		}
+func getOAuth2AuxiliaryResource(podList []corev1.Pod, deploymentList []appsv1.Deployment, deployment *v1.RadixDeployment, component v1.RadixCommonDeployComponent, oauth2 *v1.OAuth2) *deploymentModels.OAuth2AuxiliaryResource {
+	if oauth2 == nil {
+		return nil
 	}
-	return &oauth2Resource, nil
+	oauthProxyDeployment := getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, v1.OAuthProxyAuxiliaryComponentType)
+	auxiliaryResource := deploymentModels.OAuth2AuxiliaryResource{
+		Deployment:  oauthProxyDeployment, // for backward compatibility
+		Deployments: []deploymentModels.AuxiliaryResourceDeployment{oauthProxyDeployment},
+	}
+	if oauth2.IsSessionStoreTypeSystemManaged() {
+		auxiliaryResource.Deployments = append(auxiliaryResource.Deployments, getAuxiliaryResourceDeployment(podList, deploymentList, deployment, component, v1.OAuthRedisAuxiliaryComponentType))
+	}
+	return &auxiliaryResource
 }
 
-func getAuxiliaryResourceDeployment(podList []corev1.Pod, deploymentList []appsv1.Deployment, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, auxType string) (*deploymentModels.AuxiliaryResourceDeployment, error) {
+func getAuxiliaryResourceDeployment(podList []corev1.Pod, deploymentList []appsv1.Deployment, rd *v1.RadixDeployment, component v1.RadixCommonDeployComponent, auxType string) deploymentModels.AuxiliaryResourceDeployment {
 	auxResourceDeployment := deploymentModels.AuxiliaryResourceDeployment{
 		Type: auxType,
 	}
@@ -184,12 +175,12 @@ func getAuxiliaryResourceDeployment(podList []corev1.Pod, deploymentList []appsv
 	kd, ok := slice.FindFirst(deploymentList, predicate.IsDeploymentForAuxComponent(rd.Spec.AppName, component.GetName(), auxType))
 	if !ok {
 		auxResourceDeployment.Status = deploymentModels.ComponentReconciling.String()
-		return &auxResourceDeployment, nil
+		return auxResourceDeployment
 	}
 
 	pods := slice.FindAll(podList, predicate.IsPodForAuxComponent(rd.Spec.AppName, rd.Spec.Environment, auxType))
 
 	auxResourceDeployment.ReplicaList = getReplicaSummaryList(pods, nil)
 	auxResourceDeployment.Status = deploymentModels.ComponentStatusFromDeployment(component, &kd, rd).String()
-	return &auxResourceDeployment, nil
+	return auxResourceDeployment
 }
