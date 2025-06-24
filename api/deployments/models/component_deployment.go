@@ -236,20 +236,38 @@ type AuxiliaryResource struct {
 }
 
 type OAuth2AuxiliaryResource struct {
+	// Deprecated. Use Deployments instead
 	// Deployment describes the underlying Kubernetes deployment for the resource
 	//
 	// required: true
 	Deployment AuxiliaryResourceDeployment `json:"deployment,omitempty"`
 
+	// Deployments describes the underlying Kubernetes deployments for the resource
+	//
+	// required: false
+	Deployments []AuxiliaryResourceDeployment `json:"deployments,omitempty"`
+
 	// External identity information
 	//
 	// required: false
 	Identity *Identity `json:"identity,omitempty"`
+
+	// SessionStoreType type of session store
+	//
+	// enum: cookie,redis,systemManaged,""
+	// required: false
+	SessionStoreType string `json:"sessionStoreType,omitempty"`
 }
 
 // AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment
 // swagger:model AuxiliaryResourceDeployment
 type AuxiliaryResourceDeployment struct {
+	// Name of the auxiliary resource's deployment
+	//
+	// enum: oauth,oauth-redis,""
+	// required: false
+	Type string `json:"type,omitempty"`
+
 	// Status of the auxiliary resource's deployment
 	// required: true
 	// - Consistent: All replicas are running with the desired state
@@ -346,8 +364,10 @@ const (
 	JobManager ReplicaType = iota
 	// JobManagerAux Replica of a Radix job-component scheduler auxiliary
 	JobManagerAux
-	// OAuth2 Replica of a Radix OAuth2 component
+	// OAuth2 Replica of a Radix OAuth2 Proxy component
 	OAuth2
+	// OAuth2Redis Replica of a Radix OAuth2 Redis component
+	OAuth2Redis
 	// Undefined Replica without defined type - to be extended
 	Undefined
 	numReplicaType
@@ -358,7 +378,7 @@ func (p ReplicaType) String() string {
 	if p >= numReplicaType {
 		return "Unsupported"
 	}
-	return [...]string{"JobManager", "JobManagerAux", "OAuth2", "Undefined"}[p]
+	return [...]string{"JobManager", "JobManagerAux", "OAuth2", "OAuth2Redis", "Undefined"}[p]
 }
 
 // ReplicaSummary describes condition of a pod
@@ -379,7 +399,7 @@ type ReplicaSummary struct {
 	// - Undefined = Replica without defined type - to be extended
 	//
 	// required: false
-	// enum: ComponentReplica,ScheduledJobReplica,JobManager,JobManagerAux,OAuth2,Undefined
+	// enum: ComponentReplica,ScheduledJobReplica,JobManager,JobManagerAux,OAuth2,OAuth2Redis,Undefined
 	// example: ComponentReplica
 	Type string `json:"type"`
 
@@ -658,6 +678,8 @@ func getReplicaType(pod corev1.Pod) ReplicaType {
 		return JobManagerAux
 	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == "oauth":
 		return OAuth2
+	case pod.GetLabels()[kube.RadixAuxiliaryComponentTypeLabel] == "oauth-redis":
+		return OAuth2Redis
 	default:
 		return Undefined
 	}

@@ -1606,7 +1606,7 @@
         }
       }
     },
-    "/applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs": {
+    "/applications/{appName}/environments/{envName}/components/{componentName}/aux/{type}/replicas/{podName}/logs": {
       "get": {
         "tags": [
           "component"
@@ -1632,6 +1632,13 @@
             "type": "string",
             "description": "Name of component",
             "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Type of auxiliary resource (oauth|oauth-redis)",
+            "name": "type",
             "in": "path",
             "required": true
           },
@@ -1698,7 +1705,7 @@
         }
       }
     },
-    "/applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart": {
+    "/applications/{appName}/environments/{envName}/components/{componentName}/aux/{type}/restart": {
       "post": {
         "tags": [
           "component"
@@ -1724,6 +1731,13 @@
             "type": "string",
             "description": "Name of component",
             "name": "componentName",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Type of auxiliary resource (oauth|oauth-redis)",
+            "name": "type",
             "in": "path",
             "required": true
           },
@@ -6219,6 +6233,16 @@
           ],
           "x-go-name": "Status",
           "example": "Consistent"
+        },
+        "type": {
+          "description": "Name of the auxiliary resource's deployment",
+          "type": "string",
+          "enum": [
+            "oauth",
+            "oauth-redis",
+            "\"\""
+          ],
+          "x-go-name": "Type"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -7890,8 +7914,27 @@
         "deployment": {
           "$ref": "#/definitions/AuxiliaryResourceDeployment"
         },
+        "deployments": {
+          "description": "Deployments describes the underlying Kubernetes deployments for the resource",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AuxiliaryResourceDeployment"
+          },
+          "x-go-name": "Deployments"
+        },
         "identity": {
           "$ref": "#/definitions/Identity"
+        },
+        "sessionStoreType": {
+          "description": "SessionStoreType type of session store",
+          "type": "string",
+          "enum": [
+            "cookie",
+            "redis",
+            "systemManaged",
+            "\"\""
+          ],
+          "x-go-name": "SessionStoreType"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -8590,6 +8633,7 @@
             "JobManager",
             "JobManagerAux",
             "OAuth2",
+            "OAuth2Redis",
             "Undefined"
           ],
           "x-go-name": "Type",

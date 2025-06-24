@@ -12,7 +12,6 @@ import (
 	environmentsModels "github.com/equinor/radix-api/api/environments/models"
 	"github.com/equinor/radix-api/api/utils/logs"
 	"github.com/equinor/radix-api/models"
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/gorilla/mux"
 )
 
@@ -94,7 +93,7 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.RestartComponent,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/restart",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{type}/restart",
 			Method:      http.MethodPost,
 			HandlerFunc: c.RestartOAuthAuxiliaryResource,
 		},
@@ -149,7 +148,7 @@ func (c *environmentController) GetRoutes() models.Routes {
 			HandlerFunc: c.GetScheduledJobLog,
 		},
 		models.Route{
-			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs",
+			Path:        rootPath + "/environments/{envName}/components/{componentName}/aux/{type}/replicas/{podName}/logs",
 			Method:      http.MethodGet,
 			HandlerFunc: c.GetOAuthAuxiliaryResourcePodLog,
 		},
@@ -1267,7 +1266,7 @@ func (c *environmentController) RestartApplication(accounts models.Accounts, w h
 
 // RestartOAuthAuxiliaryResource Restarts oauth auxiliary resource for a component
 func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/restart component restartOAuthAuxiliaryResource
+	// swagger:operation POST /applications/{appName}/environments/{envName}/components/{componentName}/aux/{type}/restart component restartOAuthAuxiliaryResource
 	// ---
 	// summary: Restarts an auxiliary resource for a component
 	// parameters:
@@ -1284,6 +1283,11 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	// - name: componentName
 	//   in: path
 	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: type
+	//   in: path
+	//   description: Type of auxiliary resource (oauth|oauth-redis)
 	//   type: string
 	//   required: true
 	// - name: Impersonate-User
@@ -1312,9 +1316,10 @@ func (c *environmentController) RestartOAuthAuxiliaryResource(accounts models.Ac
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
 	componentName := mux.Vars(r)["componentName"]
+	auxType := mux.Vars(r)["type"]
 
 	environmentHandler := c.environmentHandlerFactory(accounts)
-	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, v1.OAuthProxyAuxiliaryComponentType)
+	err := environmentHandler.RestartComponentAuxiliaryResource(r.Context(), appName, envName, componentName, auxType)
 
 	if err != nil {
 		c.ErrorResponse(w, r, err)
@@ -2550,7 +2555,7 @@ func (c *environmentController) DeleteBatch(accounts models.Accounts, w http.Res
 
 // GetOAuthAuxiliaryResourcePodLog Get log for a single auxiliary resource pod
 func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/oauth/replicas/{podName}/logs component getOAuthPodLog
+	// swagger:operation GET /applications/{appName}/environments/{envName}/components/{componentName}/aux/{type}/replicas/{podName}/logs component getOAuthPodLog
 	// ---
 	// summary: Get logs for an oauth auxiliary resource pod
 	// parameters:
@@ -2567,6 +2572,11 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	// - name: componentName
 	//   in: path
 	//   description: Name of component
+	//   type: string
+	//   required: true
+	// - name: type
+	//   in: path
+	//   description: Type of auxiliary resource (oauth|oauth-redis)
 	//   type: string
 	//   required: true
 	// - name: podName
@@ -2617,6 +2627,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	//     description: "Internal server error"
 	appName := mux.Vars(r)["appName"]
 	envName := mux.Vars(r)["envName"]
+	auxType := mux.Vars(r)["type"]
 	componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
@@ -2627,7 +2638,7 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, v1.OAuthProxyAuxiliaryComponentType, podName, &since, logLines)
+	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, auxType, podName, &since, logLines)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
