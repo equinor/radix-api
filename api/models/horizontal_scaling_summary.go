@@ -112,6 +112,8 @@ func getExternalMetricStatus(hpa autoscalingv2.HorizontalPodAutoscaler, triggerN
 		target = trigger.Metadata["desiredReplicas"]
 	case "azure-servicebus":
 		target = trigger.Metadata["messageCount"]
+	case "azure-eventhub":
+		target = trigger.Metadata["unprocessedEventThreshold"]
 	}
 
 	status := deploymentModels.HorizontalScalingSummaryTriggerStatus{
