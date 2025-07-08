@@ -1,7 +1,6 @@
 package applications
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,18 +28,17 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	"github.com/equinor/radix-operator/pkg/apis/applicationconfig"
 	"github.com/equinor/radix-operator/pkg/apis/defaults"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
+	"github.com/oklog/ulid/v2"
 	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -61,7 +59,7 @@ const (
 
 func setupTest(t *testing.T, requireAppConfigurationItem, requireAppADGroups bool) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
-		config.Config{RequireAppConfigurationItem: requireAppConfigurationItem, RequireAppADGroups: requireAppADGroups},
+		config.Config{RequireAppADGroups: requireAppADGroups},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 			return true, nil
 		},
@@ -136,7 +134,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
@@ -156,7 +154,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, rr v1.RadixRegistration) (bool, error) {
 				return rr.GetName() == "my-second-app", nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
@@ -176,7 +174,7 @@ func TestGetApplications_HasAccessToSomeRR(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return true, nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
@@ -260,7 +258,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
-		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+		}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 				return true, nil
 			}), prometheusHandlerMock))
@@ -345,7 +343,7 @@ func TestSearchApplicationsPost(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
@@ -444,7 +442,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 		func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 			return true, nil
-		}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+		}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 			func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 				return true, nil
 			}), prometheusHandlerMock))
@@ -519,7 +517,7 @@ func TestSearchApplicationsGet(t *testing.T) {
 		controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewApplicationController(
 			func(_ context.Context, _ kubernetes.Interface, _ v1.RadixRegistration) (bool, error) {
 				return false, nil
-			}, newTestApplicationHandlerFactory(config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+			}, newTestApplicationHandlerFactory(config.Config{RequireAppADGroups: true},
 				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 					return true, nil
 				}), prometheusHandlerMock))
@@ -585,202 +583,7 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 	}
 }
 
-func TestCreateApplication_NoName_ValidationError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().WithName("").Build(),
-		false,
-	)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	assert.Equal(t, "Error: app name is empty: resource name cannot be empty", errorResponse.Message)
-}
-
-func TestCreateApplication_WhenRequiredConfigurationItemIsNotSet_ReturnError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name-2").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithConfigurationItem("").
-			Build(),
-		false)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("configuration item")
-	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
-}
-
-func TestCreateApplication_WhenOptionalConfigurationItemIsNotSet_ReturnSuccess(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, false, true)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name-2").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithConfigurationItem("").
-			Build(),
-		false)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestCreateApplication_WhenRequiredAdGroupsIsNotSet_ReturnError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name-2").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithAdGroups(nil).
-			Build(),
-		false)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("AD groups")
-	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
-}
-
-func TestCreateApplication_WhenOptionalAdGroupsIsNotSet_ReturnSuccess(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, false)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name-2").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithAdGroups(nil).
-			Build(),
-		false,
-	)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestCreateApplication_WhenConfigBranchIsNotSet_ReturnError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	// Test
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithConfigBranch("").
-			Build(),
-		false,
-	)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.ResourceNameCannotBeEmptyErrorWithMessage("branch name")
-	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
-}
-
-func TestCreateApplication_WhenConfigBranchIsInvalid_ReturnError(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	// Test
-	configBranch := "main.."
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			WithConfigBranch(configBranch).
-			Build(),
-		false)
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusBadRequest, response.Code)
-	errorResponse, _ := controllertest.GetErrorResponse(response)
-	expectedError := radixvalidators.InvalidConfigBranchNameWithMessage(configBranch)
-	assert.Equal(t, fmt.Sprintf("Error: %v", expectedError), errorResponse.Message)
-}
-
-func TestCreateApplication_WithRadixConfigFullName(t *testing.T) {
-	scenarios := []struct {
-		radixConfigFullName                   string
-		expectedError                         bool
-		expectedRegisteredRadixConfigFullName string
-	}{
-		{radixConfigFullName: "", expectedError: false, expectedRegisteredRadixConfigFullName: ""},
-		{radixConfigFullName: "radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "radixconfig.yaml"},
-		{radixConfigFullName: "a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "a.yaml"},
-		{radixConfigFullName: "abc/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
-		{radixConfigFullName: "/abc/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
-		{radixConfigFullName: " /abc/a.yaml ", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/a.yaml"},
-		{radixConfigFullName: "/abc/de.f/a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
-		{radixConfigFullName: "abc\\de.f\\a.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/de.f/a.yaml"},
-		{radixConfigFullName: "abc/d-e_f/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/d-e_f/radixconfig.yaml"},
-		{radixConfigFullName: "abc/12.3abc/radixconfig.yaml", expectedError: false, expectedRegisteredRadixConfigFullName: "abc/12.3abc/radixconfig.yaml"},
-		{radixConfigFullName: ".yaml", expectedError: true},
-		{radixConfigFullName: "radixconfig.yml", expectedError: false, expectedRegisteredRadixConfigFullName: "radixconfig.yml"},
-		{radixConfigFullName: "a", expectedError: true},
-		{radixConfigFullName: "#radixconfig.yaml", expectedError: true},
-	}
-	for _, scenario := range scenarios {
-		t.Run(fmt.Sprintf("Test for radixConfigFullName: '%s'", scenario.radixConfigFullName), func(t *testing.T) {
-			// Setup
-			_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-			// Test
-			configBranch := "main"
-			parameters := buildApplicationRegistrationRequest(
-				anApplicationRegistration().
-					WithName("any-name").
-					WithRepository("https://github.com/Equinor/any-repo").
-					WithConfigBranch(configBranch).
-					WithRadixConfigFullName(scenario.radixConfigFullName).
-					Build(),
-				false)
-			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-			response := <-responseChannel
-
-			if scenario.expectedError {
-				require.Equal(t, http.StatusBadRequest, response.Code)
-				errorResponse, _ := controllertest.GetErrorResponse(response)
-				assert.Equal(t, fmt.Sprintf("Error: %v", "invalid file name for radixconfig. See https://www.radix.equinor.com/references/reference-radix-config/ for more information"), errorResponse.Message)
-			} else {
-				require.Equal(t, http.StatusOK, response.Code)
-				registrationResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-				if err := json.NewDecoder(bytes.NewReader(response.Body.Bytes())).Decode(&registrationResponse); err != nil {
-					assert.Fail(t, err.Error())
-				} else {
-					assert.Equal(t, scenario.expectedRegisteredRadixConfigFullName, registrationResponse.ApplicationRegistration.RadixConfigFullName)
-				}
-			}
-		})
-	}
-}
-
+// Test warning, require acks
 func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
@@ -815,6 +618,7 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 	assert.Contains(t, applicationRegistrationUpsertResponse.Warnings, "Repository is used in other application(s)")
 }
 
+// TODO: Test succeed with warnings
 func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
@@ -1079,98 +883,6 @@ func TestGetApplication_WithEnvironments(t *testing.T) {
 	}
 }
 
-func TestUpdateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			Build(),
-		false,
-	)
-
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-responseChannel
-
-	parameters = buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-other-name").
-			WithRepository("https://github.com/Equinor/any-other-repo").
-			Build(),
-		false,
-	)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-responseChannel
-
-	// Test
-	parameters = buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-other-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			Build(),
-		false,
-	)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	err := controllertest.GetResponseBody(response, &registrationUpsertResponse)
-	require.NoError(t, err)
-	assert.NotEmpty(t, registrationUpsertResponse.Warnings)
-}
-
-func TestUpdateApplication_DuplicateRepoWithAcknowledgeWarnings_ShouldSuccess(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-
-	parameters := buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			Build(),
-		false,
-	)
-
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-responseChannel
-
-	parameters = buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-other-name").
-			WithRepository("https://github.com/Equinor/any-other-repo").
-			Build(),
-		false,
-	)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", parameters)
-	<-responseChannel
-
-	// Test
-	parameters = buildApplicationRegistrationRequest(
-		anApplicationRegistration().
-			WithName("any-other-name").
-			WithRepository("https://github.com/Equinor/any-repo").
-			Build(),
-		true,
-	)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-other-name"), parameters)
-	response := <-responseChannel
-
-	assert.Equal(t, http.StatusOK, response.Code)
-	registrationUpsertResponse := applicationModels.ApplicationRegistrationUpsertResponse{}
-	err := controllertest.GetResponseBody(response, &registrationUpsertResponse)
-	require.NoError(t, err)
-	assert.Empty(t, registrationUpsertResponse.Warnings)
-	assert.NotNil(t, registrationUpsertResponse.ApplicationRegistration)
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
 func TestUpdateApplication_MismatchingNameOrNotExists_ShouldFailAsIllegalOperation(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
@@ -1240,18 +952,6 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, newSharedSecret, applicationRegistrationUpsertResponse.ApplicationRegistration.SharedSecret)
 
-	// Test WBS
-	newWbs := "new.wbs.code"
-	builder = builder.
-		WithWBS(newWbs)
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PUT", fmt.Sprintf("/api/v1/applications/%s", "any-name"), buildApplicationRegistrationRequest(builder.Build(), false))
-	response = <-responseChannel
-	applicationRegistrationUpsertResponse = applicationModels.ApplicationRegistrationUpsertResponse{}
-	err = controllertest.GetResponseBody(response, &applicationRegistrationUpsertResponse)
-	require.NoError(t, err)
-	assert.Equal(t, newWbs, applicationRegistrationUpsertResponse.ApplicationRegistration.WBS)
-
 	// Test ConfigBranch
 	newConfigBranch := "newcfgbranch"
 	builder = builder.
@@ -1280,9 +980,11 @@ func TestUpdateApplication_AbleToSetAnySpecField(t *testing.T) {
 func TestModifyApplication_AbleToSetField(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
+	appId := uuid.New().String()
 
 	builder := anApplicationRegistration().
 		WithName("any-name").
+		WithAppID(appId).
 		WithRepository("https://github.com/Equinor/a-repo").
 		WithSharedSecret("").
 		WithAdGroups([]string{uuid.New().String()}).
@@ -1290,7 +992,6 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 		WithReaderAdGroups([]string{uuid.New().String()}).
 		WithReaderAdUsers([]string{uuid.New().String()}).
 		WithOwner("AN_OWNER@equinor.com").
-		WithWBS("T.O123A.AZ.45678").
 		WithConfigBranch("main1").
 		WithConfigurationItem("ci-initial")
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", buildApplicationRegistrationRequest(builder.Build(), false))
@@ -1319,9 +1020,10 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, anyNewAdUser, application.Registration.AdUsers)
 	assert.Equal(t, "AN_OWNER@equinor.com", application.Registration.Owner)
-	assert.Equal(t, "T.O123A.AZ.45678", application.Registration.WBS)
 	assert.Equal(t, "main1", application.Registration.ConfigBranch)
 	assert.Equal(t, "ci-initial", application.Registration.ConfigurationItem)
+	assert.NotEqual(t, appId, application.Registration.AppID, "AppID should be generated and not changeable")
+	assert.NotEqual(t, ulid.Zero.String(), application.Registration.AppID, "AppID should be generated and not zero")
 
 	// Test
 	anyNewReaderAdGroup := []string{uuid.New().String()}
@@ -1364,24 +1066,6 @@ func TestModifyApplication_AbleToSetField(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, anyNewAdGroup, application.Registration.AdGroups)
 	assert.Equal(t, anyNewOwner, application.Registration.Owner)
-
-	// Test
-	anyNewWBS := "A.BCD.00.999"
-	patchRequest = applicationModels.ApplicationRegistrationPatchRequest{
-		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
-			WBS: &anyNewWBS,
-		},
-	}
-
-	responseChannel = controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
-	<-responseChannel
-
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", "any-name"))
-	response = <-responseChannel
-
-	err = controllertest.GetResponseBody(response, &application)
-	require.NoError(t, err)
-	assert.Equal(t, anyNewWBS, application.Registration.WBS)
 
 	// Test ConfigBranch
 	anyNewConfigBranch := "main2"
@@ -1450,61 +1134,6 @@ func TestModifyApplication_AbleToUpdateRepository(t *testing.T) {
 	assert.Equal(t, anyNewRepo, application.Registration.Repository)
 }
 
-func TestModifyApplication_ConfigBranchSetToFallbackHack(t *testing.T) {
-	// Setup
-	appName := "any-name"
-	_, controllerTestUtils, _, radixClient, _, _, _, _, _ := setupTest(t, true, true)
-	rr := builders.ARadixRegistration().
-		WithName(appName).
-		WithConfigurationItem("any").
-		WithConfigBranch("")
-	_, err := radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr.BuildRR(), metav1.CreateOptions{})
-	require.NoError(t, err)
-
-	// Test
-	anyNewRepo := "https://github.com/repo/updated-version"
-	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
-		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
-			Repository: &anyNewRepo,
-		},
-	}
-
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", appName), patchRequest)
-	<-responseChannel
-
-	responseChannel = controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s", appName))
-	response := <-responseChannel
-
-	application := applicationModels.Application{}
-	err = controllertest.GetResponseBody(response, &application)
-	require.NoError(t, err)
-	assert.Equal(t, applicationconfig.ConfigBranchFallback, application.Registration.ConfigBranch)
-}
-
-func TestModifyApplication_IgnoreRequireCIValidationWhenRequiredButCurrentIsEmpty(t *testing.T) {
-	// Setup
-	_, controllerTestUtils, _, radixClient, _, _, _, _, _ := setupTest(t, true, true)
-
-	rr, err := anApplicationRegistration().
-		WithName("any-name").
-		WithConfigurationItem("").
-		BuildRR()
-	require.NoError(t, err)
-	_, err = radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr, metav1.CreateOptions{})
-	require.NoError(t, err)
-
-	// Test
-	patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
-		ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
-			ConfigBranch: radixutils.StringPtr("dummyupdate"),
-		},
-	}
-
-	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
-	response := <-responseChannel
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
 func TestModifyApplication_IgnoreRequireADGroupValidationWhenRequiredButCurrentIsEmpty(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, radixClient, _, _, _, _, _ := setupTest(t, true, true)
@@ -1527,104 +1156,6 @@ func TestModifyApplication_IgnoreRequireADGroupValidationWhenRequiredButCurrentI
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
 	response := <-responseChannel
 	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestModifyApplication_UpdateADGroupValidation(t *testing.T) {
-	type scenario struct {
-		requireAppADGroups   bool
-		name                 string
-		hasAccessToAdGroups  bool
-		expectedResponseCode int
-		adminAdGroups        []string
-	}
-	scenarios := []scenario{
-		{
-			name:                 "Require ADGroups, has groups and has access to them",
-			requireAppADGroups:   true,
-			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
-			hasAccessToAdGroups:  true,
-			expectedResponseCode: http.StatusOK,
-		},
-		{
-			name:                 "Require ADGroups, has no groups and has access to them",
-			requireAppADGroups:   true,
-			adminAdGroups:        []string{},
-			hasAccessToAdGroups:  true,
-			expectedResponseCode: http.StatusBadRequest,
-		},
-		{
-			name:                 "Require ADGroups, has groups and has no access to them",
-			requireAppADGroups:   true,
-			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
-			hasAccessToAdGroups:  false,
-			expectedResponseCode: http.StatusBadRequest,
-		},
-		{
-			name:                 "Require ADGroups, has no groups and has no access to them",
-			requireAppADGroups:   true,
-			adminAdGroups:        []string{},
-			hasAccessToAdGroups:  false,
-			expectedResponseCode: http.StatusBadRequest,
-		},
-		{
-			name:                 "Not require ADGroups, has groups and has access to them",
-			requireAppADGroups:   false,
-			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
-			hasAccessToAdGroups:  true,
-			expectedResponseCode: http.StatusOK,
-		},
-		{
-			name:                 "Not require ADGroups, has no groups and has access to them",
-			requireAppADGroups:   false,
-			adminAdGroups:        []string{},
-			hasAccessToAdGroups:  true,
-			expectedResponseCode: http.StatusOK,
-		},
-		{
-			name:                 "Not require ADGroups, has groups and has no access to them",
-			requireAppADGroups:   false,
-			adminAdGroups:        []string{"e654757d-c789-11e8-bbad-045000000001"},
-			hasAccessToAdGroups:  false,
-			expectedResponseCode: http.StatusBadRequest,
-		},
-		{
-			name:                 "Not require ADGroups, has no groups and has no access to them",
-			requireAppADGroups:   false,
-			adminAdGroups:        []string{},
-			hasAccessToAdGroups:  false,
-			expectedResponseCode: http.StatusOK,
-		},
-	}
-
-	for _, ts := range scenarios {
-		t.Run(ts.name, func(t *testing.T) {
-			_, controllerTestUtils, _, radixClient, _, _, _, _, _ := setupTestWithFactory(t, newTestApplicationHandlerFactory(
-				config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: ts.requireAppADGroups},
-				func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
-					return ts.hasAccessToAdGroups, nil
-				},
-			))
-
-			rr, err := anApplicationRegistration().
-				WithName("any-name").
-				WithAdGroups([]string{"e654757d-c789-11e8-bbad-045007777777"}).
-				BuildRR()
-			require.NoError(t, err)
-			_, err = radixClient.RadixV1().RadixRegistrations().Create(context.Background(), rr, metav1.CreateOptions{})
-			require.NoError(t, err)
-
-			// Test
-			patchRequest := applicationModels.ApplicationRegistrationPatchRequest{
-				ApplicationRegistrationPatch: &applicationModels.ApplicationRegistrationPatch{
-					AdGroups: pointers.Ptr(ts.adminAdGroups),
-				},
-			}
-
-			responseChannel := controllerTestUtils.ExecuteRequestWithParameters("PATCH", fmt.Sprintf("/api/v1/applications/%s", "any-name"), patchRequest)
-			response := <-responseChannel
-			assert.Equal(t, ts.expectedResponseCode, response.Code, fmt.Sprintf("Expected response code %d but got %d", ts.expectedResponseCode, response.Code))
-		})
-	}
 }
 
 func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_JobIsNotCreatedForUnmapped(t *testing.T) {
@@ -1916,10 +1447,7 @@ func TestListPipeline_ReturnsAvailablePipelines(t *testing.T) {
 
 	// Setup
 	commonTestUtils, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, true, true)
-	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().
-		WithName("some-app").
-		WithPublicKey("some-public-key").
-		WithPrivateKey("some-private-key"))
+	_, err := commonTestUtils.ApplyRegistration(builders.ARadixRegistration().WithName("some-app"))
 	require.NoError(t, err)
 
 	// Test
@@ -2172,7 +1700,7 @@ func Test_GetUsedResources(t *testing.T) {
 					return true, nil
 				},
 				newTestApplicationHandlerFactory(
-					config.Config{RequireAppConfigurationItem: true, RequireAppADGroups: true},
+					config.Config{RequireAppADGroups: true},
 					func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 						return true, nil
 					},
@@ -2241,7 +1769,6 @@ func anApplicationRegistration() applicationModels.ApplicationRegistrationBuilde
 func buildApplicationRegistrationRequest(applicationRegistration applicationModels.ApplicationRegistration, acknowledgeWarnings bool) *applicationModels.ApplicationRegistrationRequest {
 	return &applicationModels.ApplicationRegistrationRequest{
 		ApplicationRegistration: &applicationRegistration,
-		AcknowledgeWarnings:     acknowledgeWarnings,
 	}
 }
 
