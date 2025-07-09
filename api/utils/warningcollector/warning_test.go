@@ -2,6 +2,7 @@ package warningcollector_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/equinor/radix-api/api/utils/warningcollector"
@@ -21,7 +22,8 @@ func TestCollector(t *testing.T) {
 		warnings = warningcollector.GetWarningCollectionFromContext(r.Context())
 		next(w, r)
 	})
-	n.ServeHTTP(negroni.NewResponseWriter(nil), &http.Request{})
+	n.UseHandler(http.NotFoundHandler())
+	n.ServeHTTP(httptest.NewRecorder(), &http.Request{})
 
 	assert.NotEmpty(t, warnings, "Warnings should not be empty")
 	assert.Contains(t, warnings, "This is a test warning", "Warning should be collected")
