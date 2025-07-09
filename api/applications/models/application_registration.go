@@ -9,6 +9,12 @@ type ApplicationRegistration struct {
 	// example: radix-canary-golang
 	Name string `json:"name"`
 
+	// AppID the unique application ID, which is a ULID
+	//
+	// required: true
+	// example: 01JZ5GSH4B388RYMRYZPNR0104
+	AppID string `json:"appId"`
+
 	// Repository the github repository
 	//
 	// required: true
@@ -49,11 +55,6 @@ type ApplicationRegistration struct {
 	//
 	// required: true
 	Creator string `json:"creator"`
-
-	// WBS information
-	//
-	// required: false
-	WBS string `json:"wbs"`
 
 	// ConfigBranch information
 	//

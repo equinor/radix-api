@@ -7,6 +7,7 @@ import (
 	certclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/equinor/radix-api/api/metrics"
 	"github.com/equinor/radix-api/api/utils/logs"
+	"github.com/equinor/radix-api/api/utils/warningcollector"
 	radixmodels "github.com/equinor/radix-common/models"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
@@ -118,6 +119,8 @@ func addCommonConfigs(config *restclient.Config, options []RestClientConfigOptio
 	config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 		return promhttp.InstrumentRoundTripperDuration(nrRequests, rt)
 	})
+
+	config.WarningHandlerWithContext = warningcollector.NewKubernetesWarningHandler()
 
 	return config
 }
