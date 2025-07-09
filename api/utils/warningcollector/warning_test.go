@@ -28,3 +28,18 @@ func TestCollector(t *testing.T) {
 	assert.NotEmpty(t, warnings, "Warnings should not be empty")
 	assert.Contains(t, warnings, "This is a test warning", "Warning should be collected")
 }
+
+
+func TestEmptyCollector(t *testing.T) {
+	var warnings []string
+	n := negroni.New()
+	n.Use(warningcollector.NewWarningCollectorMiddleware())
+	n.UseFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		warnings = warningcollector.GetWarningCollectionFromContext(r.Context())
+		next(w, r)
+	})
+	n.UseHandler(http.NotFoundHandler())
+	n.ServeHTTP(httptest.NewRecorder(), &http.Request{})
+
+	assert.Empty(t, warnings, "Warnings should be empty")
+}

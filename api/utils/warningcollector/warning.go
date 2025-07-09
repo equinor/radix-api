@@ -29,17 +29,17 @@ func (h *KubernetesWarningHandler) HandleWarningHeaderWithContext(ctx context.Co
 	if text == "" {
 		return
 	}
-
 	log.Ctx(ctx).Warn().Str("warning", text).Int("code", code).Str("agent", agent).Msg("Warning header encountered")
 
 	ctxValue := ctx.Value(warningsContextKey)
-	if warnings, ok := ctxValue.(*warnings); ok {
+	if wrns, ok := ctxValue.(*warnings); ok {
 		h.Lock()
 		defer h.Unlock()
-		*warnings = append(*warnings, text)
+		*wrns = append(*wrns, text)
 	} else {
 		log.Ctx(ctx).Error().Msg("No warnings context found, unable to collect warning. Make sure NewWarningCollectorMiddleware is configured!")
 	}
+
 }
 
 // NewWarningCollectorMiddleware creates a middleware that collects warnings from requests
@@ -52,10 +52,10 @@ func NewWarningCollectorMiddleware() negroni.HandlerFunc {
 	}
 }
 
+// WithWarningCollectionToContext adds a new warnings collection to the context.
 func WithWarningCollectionToContext(ctx context.Context) context.Context {
-	var warnings warnings
-
-	return context.WithValue(ctx, warningsContextKey, &warnings)
+	var wrns warnings
+	return context.WithValue(ctx, warningsContextKey, &wrns)
 }
 
 // GetWarningCollectionFromContext retrieves the collection of warnings from the context.
