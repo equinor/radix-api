@@ -1,0 +1,69 @@
+package warningcollector
+
+import (
+	"context"
+	"net/http"
+	"sync"
+
+	"github.com/rs/zerolog/log"
+	"github.com/urfave/negroni/v3"
+	"k8s.io/client-go/rest"
+)
+
+type contextKey string
+type warnings []string
+
+var warningsContextKey = contextKey("warnings")
+
+type KubernetesWarningHandler struct {
+	sync.Mutex
+}
+
+var _ rest.WarningHandlerWithContext = &KubernetesWarningHandler{}
+
+func NewKubernetesWarningHandler() *KubernetesWarningHandler {
+	return &KubernetesWarningHandler{}
+}
+
+func (h *KubernetesWarningHandler) HandleWarningHeaderWithContext(ctx context.Context, code int, agent string, text string) {
+	if text == "" {
+		return
+	}
+
+	log.Ctx(ctx).Warn().Str("warning", text).Int("code", code).Str("agent", agent).Msg("Warning header encountered")
+
+	ctxValue := ctx.Value(warningsContextKey)
+	if warnings, ok := ctxValue.(*warnings); ok {
+		h.Lock()
+		defer h.Unlock()
+		*warnings = append(*warnings, text)
+	} else {
+		log.Ctx(ctx).Error().Msg("No warnings context found, unable to collect warning. Make sure NewWarningCollectorMiddleware is configured!")
+	}
+}
+
+// NewWarningCollectorMiddleware creates a middleware that collects warnings from requests
+// and stores them in the request context for later retrieval.
+func NewWarningCollectorMiddleware() negroni.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		r = r.WithContext(WithWarningCollectionToContext(r.Context()))
+
+		next(w, r)
+	}
+}
+
+func WithWarningCollectionToContext(ctx context.Context) context.Context {
+	var warnings warnings
+
+	return context.WithValue(ctx, warningsContextKey, &warnings)
+}
+
+// GetWarningCollectionFromContext retrieves the collection of warnings from the context.
+// If no warnings are found, it returns an empty slice.
+func GetWarningCollectionFromContext(ctx context.Context) []string {
+	ctxValue := ctx.Value(warningsContextKey)
+	if warnings, ok := ctxValue.(*warnings); ok {
+		return *warnings
+	}
+	return nil
+}

@@ -93,14 +93,6 @@ github.com/equinor/radix-common v1.11.0 h1:nieMCXBUZ+IwzHq1y3vplMbDOsEF+L8asY3vP
 github.com/equinor/radix-common v1.11.0/go.mod h1:Rj+X+B1AIXCBVXQ8kH4xnk1eoVAMgaSMTMOGiAcQACE=
 github.com/equinor/radix-job-scheduler v1.15.0 h1:IA16VcuAX7T2UOFqpMA5wEK40KyGsAIiRWVosc8ox34=
 github.com/equinor/radix-job-scheduler v1.15.0/go.mod h1:V6Un7h/Gi4c4NkkDgFbRcoINV59NBuKIOtTNJLxjX1U=
-github.com/equinor/radix-operator v1.82.1-0.20250702110032-c043e5929696 h1:q+578g+3O5/Ql0bx2y+kLfir8eoTTOnRItC9Xqm5Elw=
-github.com/equinor/radix-operator v1.82.1-0.20250702110032-c043e5929696/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
-github.com/equinor/radix-operator v1.83.2-0.20250702123209-d0be0d676638 h1:bW71XieLrrkpjwCTS0x0FOTPTwMEWcnn1Vtmrl7CGOo=
-github.com/equinor/radix-operator v1.83.2-0.20250702123209-d0be0d676638/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
-github.com/equinor/radix-operator v1.84.1-0.20250707110412-d9d0c52411b1 h1:j38ctY6M856O0QYtv2KhM5r++8W4qsqeCggd/STiUH8=
-github.com/equinor/radix-operator v1.84.1-0.20250707110412-d9d0c52411b1/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
-github.com/equinor/radix-operator v1.85.0 h1:o5xTJLFP5MtT6STSOXFWKB6uj73sG1SsqMPOr2xXgTk=
-github.com/equinor/radix-operator v1.85.0/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
 github.com/equinor/radix-operator v1.85.1 h1:zVt/Qen5Zo5bRpNdi8QpkUBhoTSGZDU7tMU4pFt6EW8=
 github.com/equinor/radix-operator v1.85.1/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
@@ -357,8 +349,6 @@ github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0leargg
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
 github.com/prometheus/statsd_exporter v0.22.7 h1:7Pji/i2GuhK6Lu7DHrtTkFmNBCudCPT1pX2CziuyQR0=
 github.com/prometheus/statsd_exporter v0.22.7/go.mod h1:N/TevpjkIh9ccs6nuzY3jQn9dFqnUakOjnEuMPJJJnI=
-github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
-github.com/robfig/cron/v3 v3.0.1/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=

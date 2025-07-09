@@ -16,7 +16,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/middleware/auth"
 	apimodels "github.com/equinor/radix-api/api/models"
-	"github.com/equinor/radix-api/api/utils/warnings"
+	"github.com/equinor/radix-api/api/utils/warningcollector"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -39,28 +39,43 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 )
 
 type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+type CollectContextWarningsFunc func(ctx context.Context) []string
+type ApplicationHandlerOption func(ah *ApplicationHandler)
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	environmentHandler      environments.EnvironmentHandler
-	accounts                models.Accounts
-	config                  config.Config
-	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
+	environmentHandler              environments.EnvironmentHandler
+	accounts                        models.Accounts
+	config                          config.Config
+	hasAccessToGetConfigMap         hasAccessToGetConfigMapFunc
+	GetWarningCollectionFromContext CollectContextWarningsFunc
+}
+
+func CustomWarningCollector(handler CollectContextWarningsFunc) ApplicationHandlerOption {
+	return func(ah *ApplicationHandler) {
+		ah.GetWarningCollectionFromContext = handler
+	}
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
-	return ApplicationHandler{
-		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
-		accounts:                accounts,
-		config:                  config,
-		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
+func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc, options ...ApplicationHandlerOption) ApplicationHandler {
+	ah := ApplicationHandler{
+		environmentHandler:              environments.Init(environments.WithAccounts(accounts)),
+		accounts:                        accounts,
+		config:                          config,
+		hasAccessToGetConfigMap:         hasAccessToGetConfigMap,
+		GetWarningCollectionFromContext: warningcollector.GetWarningCollectionFromContext,
 	}
+
+	for _, option := range options {
+		option(&ah)
+	}
+
+	return ah
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -126,22 +141,23 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 		WithAppID(ulid.Make().String()).
 		WithCreator(creator).
 		BuildRR()
-
 	if err != nil {
 		return nil, err
-	}
-
-	warnings, err := ah.ValidateRadixRegistration(ctx, radixRegistration, false)
-	if err != nil {
-		return nil, err
-	}
-	if len(warnings) > 0 && !applicationRegistrationRequest.AcknowledgeWarnings {
-		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
 	}
 
 	err = ah.validateUserIsMemberOfAdGroups(ctx, applicationRegistrationRequest.ApplicationRegistration.Name, applicationRegistrationRequest.ApplicationRegistration.AdGroups)
 	if err != nil {
 		return nil, err
+	}
+
+	if !applicationRegistrationRequest.AcknowledgeWarnings {
+		warnings, err := ah.ValidateRadixRegistration(ctx, radixRegistration, false)
+		if err != nil {
+			return nil, err
+		}
+		if len(warnings) > 0 {
+			return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
+		}
 	}
 
 	radixRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{})
@@ -297,10 +313,6 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 func (ah *ApplicationHandler) ValidateRadixRegistration(ctx context.Context, radixRegistration *v1.RadixRegistration, shouldUpdateExisting bool) ([]string, error) {
 	var err error
 
-	wc := warnings.New()
-	rest.SetDefaultWarningHandler(wc)
-	defer rest.SetDefaultWarningHandler(nil)
-
 	if shouldUpdateExisting {
 		// Make check that this is an existing application
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, radixRegistration, metav1.UpdateOptions{DryRun: []string{metav1.DryRunAll}})
@@ -309,7 +321,8 @@ func (ah *ApplicationHandler) ValidateRadixRegistration(ctx context.Context, rad
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 	}
 
-	return wc.Warnings, err
+	warnings := ah.GetWarningCollectionFromContext(ctx)
+	return warnings, err
 }
 
 // DeleteApplication handler for DeleteApplication
