@@ -26,6 +26,7 @@ const (
 	k8sKindPod          = "Pod"
 	k8sEventTypeNormal  = "Normal"
 	k8sEventTypeWarning = "Warning"
+	kedaScaledObject    = "ScaledObject"
 )
 
 // EventHandler defines methods for interacting with Kubernetes events
@@ -187,7 +188,8 @@ func (eh *eventHandler) buildEvent(ev corev1.Event, componentName string, podMap
 func eventIsRelatedToComponent(ev corev1.Event, componentName string, ingressMap map[string]*networkingv1.Ingress) bool {
 	if matchingToDeployment(ev, componentName) ||
 		matchingToReplicaSet(ev, componentName, "") ||
-		matchingToIngress(ev, componentName, ingressMap) {
+		matchingToIngress(ev, componentName, ingressMap) ||
+		matchingToScaledObject(ev, componentName) {
 		return true
 	}
 	podNameRegex, err := regexp.Compile(fmt.Sprintf("^%s-[a-z0-9]{9,10}-[a-z0-9]{5}$", componentName))
@@ -202,6 +204,10 @@ func eventIsRelatedToComponent(ev corev1.Event, componentName string, ingressMap
 
 func matchingToDeployment(ev corev1.Event, componentName string) bool {
 	return ev.InvolvedObject.Kind == k8sKindDeployment && ev.InvolvedObject.Name == componentName
+}
+
+func matchingToScaledObject(ev corev1.Event, componentName string) bool {
+	return ev.InvolvedObject.Kind == kedaScaledObject && ev.InvolvedObject.Name == componentName
 }
 
 func matchingToReplicaSet(ev corev1.Event, componentName, podName string) bool {
@@ -243,7 +249,7 @@ func eventIsRelatedToPod(ev corev1.Event, componentName, podName string, ingress
 	if ev.InvolvedObject.Kind == k8sKindPod && ev.InvolvedObject.Name == podName {
 		return true
 	}
-	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName) || matchingToIngress(ev, componentName, ingressMap)
+	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName) || matchingToScaledObject(ev, componentName) || matchingToIngress(ev, componentName, ingressMap)
 }
 
 func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress, componentName string) *eventModels.ObjectState {

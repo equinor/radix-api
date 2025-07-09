@@ -577,13 +577,15 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 		targetMemory          *int32
 		targetCron            *int32
 		targetAzureServiceBus *int32
+		targetAzureEventHub   *int32
 	}{
-		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, nil, nil},
-		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, pointers.Ptr[int32](75), nil, nil},
-		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, pointers.Ptr[int32](60), nil, nil, nil},
-		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, pointers.Ptr[int32](62), pointers.Ptr[int32](79), nil, nil},
-		{"Test CRON trigger is found", "dep5", 2, 6, nil, nil, pointers.Ptr[int32](5), nil},
-		{"Test Azure trigger is found", "dep6", 2, 6, nil, nil, nil, pointers.Ptr[int32](15)},
+		{"targetCpu and targetMemory are nil", "dep1", 2, 6, nil, nil, nil, nil, nil},
+		{"targetCpu is nil, targetMemory is non-nil", "dep2", 2, 6, nil, pointers.Ptr[int32](75), nil, nil, nil},
+		{"targetCpu is non-nil, targetMemory is nil", "dep3", 2, 6, pointers.Ptr[int32](60), nil, nil, nil, nil},
+		{"targetCpu and targetMemory are non-nil", "dep4", 2, 6, pointers.Ptr[int32](62), pointers.Ptr[int32](79), nil, nil, nil},
+		{"Test CRON trigger is found", "dep5", 2, 6, nil, nil, pointers.Ptr[int32](5), nil, nil},
+		{"Test Azure Service Bus trigger is found", "dep6", 2, 6, nil, nil, nil, pointers.Ptr[int32](15), nil},
+		{"Test Azure Event Hub trigger is found", "dep6", 2, 6, nil, nil, nil, nil, pointers.Ptr[int32](20)},
 	}
 
 	for _, scenario := range testScenarios {
@@ -602,7 +604,7 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 			require.NoError(t, err)
 
 			ns := operatorUtils.GetEnvironmentNamespace(anyAppName, "prod")
-			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory, scenario.targetCron, scenario.targetAzureServiceBus)
+			scaler, hpa := createHorizontalScalingObjects("frontend", numbers.Int32Ptr(scenario.minReplicas), scenario.maxReplicas, scenario.targetCpu, scenario.targetMemory, scenario.targetCron, scenario.targetAzureServiceBus, scenario.targetAzureEventHub)
 			_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(context.Background(), &scaler, metav1.CreateOptions{})
 			require.NoError(t, err)
 			_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.Background(), &hpa, metav1.CreateOptions{})
@@ -668,23 +670,36 @@ func TestGetComponents_WithHorizontalScaling(t *testing.T) {
 				assert.Equal(t, "cron", cronTrigger.Type)
 			}
 
-			azureTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+			azureServiceBusTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
 				return s.Name == "azure-servicebus"
 			})
 			if scenario.targetAzureServiceBus == nil {
 				assert.False(t, ok)
 			} else {
 				require.True(t, ok)
-				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.TargetUtilization)
-				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureTrigger.CurrentUtilization)
-				assert.Empty(t, azureTrigger.Error)
-				assert.Equal(t, "azure-servicebus", azureTrigger.Type)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureServiceBusTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureServiceBus), azureServiceBusTrigger.CurrentUtilization)
+				assert.Empty(t, azureServiceBusTrigger.Error)
+				assert.Equal(t, "azure-servicebus", azureServiceBusTrigger.Type)
+			}
+
+			azureEventHubTrigger, ok := slice.FindFirst(components[0].HorizontalScalingSummary.Triggers, func(s deploymentModels.HorizontalScalingSummaryTriggerStatus) bool {
+				return s.Name == "azure-eventhub"
+			})
+			if scenario.targetAzureEventHub == nil {
+				assert.False(t, ok)
+			} else {
+				require.True(t, ok)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureEventHub), azureEventHubTrigger.TargetUtilization)
+				assert.Equal(t, fmt.Sprintf("%d", *scenario.targetAzureEventHub), azureEventHubTrigger.CurrentUtilization)
+				assert.Empty(t, azureEventHubTrigger.Error)
+				assert.Equal(t, "azure-eventhub", azureEventHubTrigger.Type)
 			}
 		})
 	}
 }
 
-func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32, targetCron *int32, targetAzureServiceBus *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
+func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas int32, targetCpu *int32, targetMemory *int32, targetCron *int32, targetAzureServiceBus *int32, targetAzureEventHub *int32) (v1alpha1.ScaledObject, v2.HorizontalPodAutoscaler) {
 	var triggers []v1alpha1.ScaleTriggers
 	var metrics []v2.MetricSpec
 	resourceMetricNames := []string{}
@@ -784,6 +799,33 @@ func createHorizontalScalingObjects(name string, minReplicas *int32, maxReplicas
 			External: &v2.ExternalMetricStatus{
 				Current: v2.MetricValueStatus{
 					AverageValue: resource.NewQuantity(int64(*targetAzureServiceBus), resource.DecimalSI),
+				},
+				Metric: v2.MetricIdentifier{
+					Name: externalMetricName,
+				},
+			},
+		})
+	}
+
+	if targetAzureEventHub != nil {
+		externalMetricName := fmt.Sprintf("s%d-azure-eventhub-orders", len(triggers))
+		externalMetricNames = append(externalMetricNames, externalMetricName)
+		triggers = append(triggers, v1alpha1.ScaleTriggers{
+			Type: "azure-eventhub",
+			Name: "azure-eventhub",
+			Metadata: map[string]string{
+				"unprocessedEventThreshold": fmt.Sprintf("%d", *targetAzureEventHub),
+			},
+		})
+		health[externalMetricName] = v1alpha1.HealthStatus{
+			NumberOfFailures: pointers.Ptr[int32](0),
+			Status:           "Happy",
+		}
+		metricStatus = append(metricStatus, v2.MetricStatus{
+			Type: "External",
+			External: &v2.ExternalMetricStatus{
+				Current: v2.MetricValueStatus{
+					AverageValue: resource.NewQuantity(int64(*targetAzureEventHub), resource.DecimalSI),
 				},
 				Metric: v2.MetricIdentifier{
 					Name: externalMetricName,
