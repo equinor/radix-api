@@ -67,6 +67,12 @@ func setupTest(t *testing.T, options ...ApplicationHandlerOption) (*commontest.U
 	))
 }
 
+func customWarningCollector(handler CollectContextWarningsFunc) ApplicationHandlerOption {
+	return func(ah *ApplicationHandler) {
+		ah.getWarningCollectionFromContext = handler
+	}
+}
+
 func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset()
@@ -587,7 +593,7 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 // Test warning, require acks
 func TestCreateApplication_Warnings_ShouldWarn(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, CustomWarningCollector(func(_ context.Context) []string {
+	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, customWarningCollector(func(_ context.Context) []string {
 		return []string{"warning: some custom warning"}
 	}))
 
@@ -607,7 +613,7 @@ func TestCreateApplication_Warnings_ShouldWarn(t *testing.T) {
 // TODO: Test succeed with warnings
 func TestCreateApplication_WithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
 	// Setup
-	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, CustomWarningCollector(func(_ context.Context) []string {
+	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, customWarningCollector(func(_ context.Context) []string {
 		return []string{"warning: some custom warning"}
 	}))
 

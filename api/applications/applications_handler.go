@@ -52,13 +52,7 @@ type ApplicationHandler struct {
 	accounts                        models.Accounts
 	config                          config.Config
 	hasAccessToGetConfigMap         hasAccessToGetConfigMapFunc
-	GetWarningCollectionFromContext CollectContextWarningsFunc
-}
-
-func CustomWarningCollector(handler CollectContextWarningsFunc) ApplicationHandlerOption {
-	return func(ah *ApplicationHandler) {
-		ah.GetWarningCollectionFromContext = handler
-	}
+	getWarningCollectionFromContext CollectContextWarningsFunc
 }
 
 // NewApplicationHandler Constructor
@@ -68,7 +62,7 @@ func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAc
 		accounts:                        accounts,
 		config:                          config,
 		hasAccessToGetConfigMap:         hasAccessToGetConfigMap,
-		GetWarningCollectionFromContext: warningcollector.GetWarningCollectionFromContext,
+		getWarningCollectionFromContext: warningcollector.GetWarningCollectionFromContext,
 	}
 
 	for _, option := range options {
@@ -321,7 +315,7 @@ func (ah *ApplicationHandler) ValidateRadixRegistration(ctx context.Context, rad
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
 	}
 
-	warnings := ah.GetWarningCollectionFromContext(ctx)
+	warnings := ah.getWarningCollectionFromContext(ctx)
 	return warnings, err
 }
 
