@@ -652,9 +652,6 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 
 func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups []string) error {
 	if len(adGroups) == 0 {
-		if ah.config.RequireAppADGroups {
-			return userShouldBeMemberOfAdminAdGroupError()
-		}
 		return nil
 	}
 	radixApiAppNamespace := operatorUtils.GetEnvironmentNamespace(ah.config.AppName, ah.config.EnvironmentName)

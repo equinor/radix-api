@@ -13,7 +13,6 @@
             "env": {
                 "RADIX_CONTAINER_REGISTRY":"radixdev.azurecr.io",
                 "RADIX_DNS_ZONE":  "dev.radix.equinor.com",
-                "REQUIRE_APP_AD_GROUPS": "false",
                 "RADIX_ENVIRONMENT":"qa",
                 "PROMETHEUS_URL":"http://localhost:9091",
                 "RADIX_APP":"radix-api",

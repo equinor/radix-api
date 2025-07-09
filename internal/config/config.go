@@ -12,7 +12,6 @@ type Config struct {
 	MetricsPort        int    `envconfig:"METRICS_PORT" default:"9090"  desc:"Port where Metrics will be served"`
 	ProfilePort        int    `envconfig:"PROFILE_PORT" default:"7070"  desc:"Port where Profiler will be served"`
 	UseProfiler        bool   `envconfig:"USE_PROFILER" default:"false" desc:"Enable Profiler"`
-	RequireAppADGroups bool   `envconfig:"REQUIRE_APP_AD_GROUPS" default:"true"`
 	LogLevel           string `envconfig:"LOG_LEVEL" default:"info"`
 	LogPrettyPrint     bool   `envconfig:"LOG_PRETTY" default:"false"`
 

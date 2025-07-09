@@ -29,7 +29,6 @@ spec:
       monitoringConfig:
         portName: metrics
       variables:
-        REQUIRE_APP_AD_GROUPS: "true"
         USE_PROFILER: "false"
         LOG_LEVEL: info
         LOG_PRETTY: "false"
