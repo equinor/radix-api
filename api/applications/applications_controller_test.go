@@ -585,7 +585,7 @@ func TestSearchApplicationsGet_WithJobs_ShouldOnlyHaveLatest(t *testing.T) {
 }
 
 // Test warning, require acks
-func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
+func TestCreateApplication_Warnings_ShouldWarn(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, CustomWarningCollector(func(_ context.Context) []string {
 		return []string{"warning: some custom warning"}
@@ -605,7 +605,7 @@ func TestCreateApplication_DuplicateRepo_ShouldWarn(t *testing.T) {
 }
 
 // TODO: Test succeed with warnings
-func TestCreateApplication_DuplicateRepoWithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
+func TestCreateApplication_WithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, CustomWarningCollector(func(_ context.Context) []string {
 		return []string{"warning: some custom warning"}
