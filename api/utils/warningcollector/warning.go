@@ -15,12 +15,18 @@ type warnings []string
 
 var warningsContextKey = contextKey("warnings")
 
+// KubernetesWarningHandler is a custom warning handler for Kubernetes API responses.
+// It implements the rest.WarningHandlerWithContext interface to handle warning headers and log them.
+// This handler collects warnings in a thread-safe manner and allows retrieval of warnings from the request context
 type KubernetesWarningHandler struct {
 	sync.Mutex
 }
 
 var _ rest.WarningHandlerWithContext = &KubernetesWarningHandler{}
 
+// NewKubernetesWarningHandler creates a new instance of KubernetesWarningHandler
+// which implements the rest.WarningHandlerWithContext interface.
+// This handler is used to collect warnings from Kubernetes API responses.
 func NewKubernetesWarningHandler() *KubernetesWarningHandler {
 	return &KubernetesWarningHandler{}
 }
