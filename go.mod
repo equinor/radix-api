@@ -8,8 +8,8 @@ require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
 	github.com/cert-manager/cert-manager v1.15.4
 	github.com/equinor/radix-common v1.11.0
-	github.com/equinor/radix-job-scheduler v1.15.0
-	github.com/equinor/radix-operator v1.85.1
+	github.com/equinor/radix-job-scheduler v1.15.1-0.20250711112424-59b543480bcc
+	github.com/equinor/radix-operator v1.85.2-0.20250711104113-65104c3d7287
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/golang-jwt/jwt/v5 v5.2.2
