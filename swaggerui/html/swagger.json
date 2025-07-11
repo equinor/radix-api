@@ -5912,6 +5912,7 @@
       "type": "object",
       "required": [
         "name",
+        "appId",
         "repository",
         "sharedSecret",
         "adGroups",
@@ -5938,6 +5939,12 @@
             "type": "string"
           },
           "x-go-name": "AdUsers"
+        },
+        "appId": {
+          "description": "AppID the unique application ID, which is a ULID",
+          "type": "string",
+          "x-go-name": "AppID",
+          "example": "01JZ5GSH4B388RYMRYZPNR0104"
         },
         "configBranch": {
           "description": "ConfigBranch information",
@@ -5996,11 +6003,6 @@
           "description": "SharedSecret the shared secret of the webhook",
           "type": "string",
           "x-go-name": "SharedSecret"
-        },
-        "wbs": {
-          "description": "WBS information",
-          "type": "string",
-          "x-go-name": "WBS"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"

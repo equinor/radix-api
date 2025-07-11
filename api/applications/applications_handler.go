@@ -16,6 +16,7 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/middleware/auth"
 	apimodels "github.com/equinor/radix-api/api/models"
+	"github.com/equinor/radix-api/api/utils/warningcollector"
 	"github.com/equinor/radix-api/internal/config"
 	"github.com/equinor/radix-api/models"
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -27,45 +28,48 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	jobPipeline "github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	"github.com/equinor/radix-operator/pkg/apis/radixvalidators"
 	operatorUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
 	authorizationapi "k8s.io/api/authorization/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/util/retry"
 )
 
-type patch struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value"`
-}
-
 type hasAccessToGetConfigMapFunc func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error)
+type CollectContextWarningsFunc func(ctx context.Context) []string
+type ApplicationHandlerOption func(ah *ApplicationHandler)
 
 // ApplicationHandler Instance variables
 type ApplicationHandler struct {
-	environmentHandler      environments.EnvironmentHandler
-	accounts                models.Accounts
-	config                  config.Config
-	hasAccessToGetConfigMap hasAccessToGetConfigMapFunc
+	environmentHandler              environments.EnvironmentHandler
+	accounts                        models.Accounts
+	config                          config.Config
+	hasAccessToGetConfigMap         hasAccessToGetConfigMapFunc
+	getWarningCollectionFromContext CollectContextWarningsFunc
 }
 
 // NewApplicationHandler Constructor
-func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc) ApplicationHandler {
-	return ApplicationHandler{
-		environmentHandler:      environments.Init(environments.WithAccounts(accounts)),
-		accounts:                accounts,
-		config:                  config,
-		hasAccessToGetConfigMap: hasAccessToGetConfigMap,
+func NewApplicationHandler(accounts models.Accounts, config config.Config, hasAccessToGetConfigMap hasAccessToGetConfigMapFunc, options ...ApplicationHandlerOption) ApplicationHandler {
+	ah := ApplicationHandler{
+		environmentHandler:              environments.Init(environments.WithAccounts(accounts)),
+		accounts:                        accounts,
+		config:                          config,
+		hasAccessToGetConfigMap:         hasAccessToGetConfigMap,
+		getWarningCollectionFromContext: warningcollector.GetWarningCollectionFromContext,
 	}
+
+	for _, option := range options {
+		option(&ah)
+	}
+
+	return ah
 }
 
 func (ah *ApplicationHandler) getUserAccount() models.Account {
@@ -121,40 +125,33 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 	application := applicationRegistrationRequest.ApplicationRegistration
 	creator := auth.GetOriginator(ctx)
 
-	application.RadixConfigFullName = cleanFileFullName(application.RadixConfigFullName)
-	if len(application.RadixConfigFullName) > 0 {
-		err = radixvalidators.ValidateRadixConfigFullName(application.RadixConfigFullName)
-		if err != nil {
-			return nil, err
-		}
-	}
 	if len(application.SharedSecret) == 0 {
 		application.SharedSecret = radixutils.RandString(20)
-
 		log.Ctx(ctx).Debug().Msg("There is no Shared Secret specified for the registering application - a random Shared Secret has been generated")
 	}
 
 	radixRegistration, err := applicationModels.NewApplicationRegistrationBuilder().
 		WithAppRegistration(application).
+		WithAppID(ulid.Make().String()).
 		WithCreator(creator).
 		BuildRR()
 	if err != nil {
 		return nil, err
 	}
 
-	err = ah.isValidRegistrationInsert(ctx, radixRegistration)
+	err = ah.validateUserIsMemberOfAdGroups(ctx, applicationRegistrationRequest.ApplicationRegistration.Name, applicationRegistrationRequest.ApplicationRegistration.AdGroups)
 	if err != nil {
 		return nil, err
 	}
 
 	if !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResponse, err := ah.getRegistrationInsertResponseForWarnings(ctx, radixRegistration); upsertResponse != nil || err != nil {
-			return upsertResponse, err
+		warnings, err := ah.ValidateRadixRegistration(ctx, radixRegistration, false)
+		if err != nil {
+			return nil, err
 		}
-	}
-	err = ah.validateUserIsMemberOfAdGroups(ctx, applicationRegistrationRequest.ApplicationRegistration.Name, applicationRegistrationRequest.ApplicationRegistration.AdGroups)
-	if err != nil {
-		return nil, err
+		if len(warnings) > 0 {
+			return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
+		}
 	}
 
 	radixRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{})
@@ -166,32 +163,6 @@ func (ah *ApplicationHandler) RegisterApplication(ctx context.Context, applicati
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &newApplication,
 	}, nil
-}
-
-func (ah *ApplicationHandler) getRegistrationInsertResponseForWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	warnings, err := ah.getRegistrationInsertWarnings(ctx, radixRegistration)
-	if err != nil {
-		return nil, err
-	}
-	if len(warnings) != 0 {
-		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
-	}
-	return nil, nil
-}
-
-func (ah *ApplicationHandler) getRegistrationUpdateResponseForWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) (*applicationModels.ApplicationRegistrationUpsertResponse, error) {
-	warnings, err := ah.getRegistrationUpdateWarnings(ctx, radixRegistration)
-	if err != nil {
-		return nil, err
-	}
-	if len(warnings) != 0 {
-		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
-	}
-	return nil, nil
-}
-
-func cleanFileFullName(fileFullName string) string {
-	return strings.TrimPrefix(strings.ReplaceAll(strings.TrimSpace(fileFullName), "\\", "/"), "/")
 }
 
 // ChangeRegistrationDetails handler for ChangeRegistrationDetails
@@ -219,22 +190,18 @@ func (ah *ApplicationHandler) ChangeRegistrationDetails(ctx context.Context, app
 	updatedRegistration.Spec.AdGroups = radixRegistration.Spec.AdGroups
 	updatedRegistration.Spec.ReaderAdGroups = radixRegistration.Spec.ReaderAdGroups
 	updatedRegistration.Spec.Owner = radixRegistration.Spec.Owner
-	updatedRegistration.Spec.WBS = radixRegistration.Spec.WBS
 	updatedRegistration.Spec.ConfigurationItem = radixRegistration.Spec.ConfigurationItem
 	updatedRegistration.Spec.ConfigBranch = radixRegistration.Spec.ConfigBranch
 	updatedRegistration.Spec.RadixConfigFullName = radixRegistration.Spec.RadixConfigFullName
 
-	err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
+	warnings, err := ah.ValidateRadixRegistration(ctx, radixRegistration, true)
 	if err != nil {
 		return nil, err
 	}
-
-	needToRevalidateWarnings := updatedRegistration.Spec.CloneURL != currentRegistration.Spec.CloneURL
-	if needToRevalidateWarnings && !applicationRegistrationRequest.AcknowledgeWarnings {
-		if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(ctx, radixRegistration); upsertResponse != nil || err != nil {
-			return upsertResponse, err
-		}
+	if len(warnings) > 0 && !applicationRegistrationRequest.AcknowledgeWarnings {
+		return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
 	}
+
 	updatedRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
@@ -253,8 +220,6 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	if err != nil {
 		return nil, err
 	}
-
-	payload := make([]patch, 0)
 	runUpdate := false
 	updatedRegistration := currentRegistration.DeepCopy()
 
@@ -266,95 +231,68 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 			return nil, err
 		}
 		updatedRegistration.Spec.AdGroups = *patchRequest.AdGroups
-		payload = append(payload, patch{Op: "replace", Path: "/spec/adGroups", Value: *patchRequest.AdGroups})
 		runUpdate = true
 	}
 	if patchRequest.AdUsers != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.AdUsers, *patchRequest.AdUsers) {
 		updatedRegistration.Spec.AdUsers = *patchRequest.AdUsers
-		payload = append(payload, patch{Op: "replace", Path: "/spec/adUsers", Value: *patchRequest.AdUsers})
 		runUpdate = true
 	}
 	if patchRequest.ReaderAdGroups != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdGroups, *patchRequest.ReaderAdGroups) {
 		updatedRegistration.Spec.ReaderAdGroups = *patchRequest.ReaderAdGroups
-		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdGroups", Value: *patchRequest.ReaderAdGroups})
 		runUpdate = true
 	}
 	if patchRequest.ReaderAdUsers != nil && !radixutils.ArrayEqualElements(currentRegistration.Spec.ReaderAdUsers, *patchRequest.ReaderAdUsers) {
 		updatedRegistration.Spec.ReaderAdUsers = *patchRequest.ReaderAdUsers
-		payload = append(payload, patch{Op: "replace", Path: "/spec/readerAdUsers", Value: *patchRequest.ReaderAdUsers})
 		runUpdate = true
 	}
 
 	if patchRequest.Owner != nil && *patchRequest.Owner != "" {
 		updatedRegistration.Spec.Owner = *patchRequest.Owner
-		payload = append(payload, patch{Op: "replace", Path: "/spec/owner", Value: *patchRequest.Owner})
 		runUpdate = true
 	}
 
 	if patchRequest.Repository != nil && *patchRequest.Repository != "" {
 		cloneURL := operatorUtils.GetGithubCloneURLFromRepo(*patchRequest.Repository)
 		updatedRegistration.Spec.CloneURL = cloneURL
-		payload = append(payload, patch{Op: "replace", Path: "/spec/cloneURL", Value: cloneURL})
-		runUpdate = true
-	}
-
-	if patchRequest.WBS != nil && *patchRequest.WBS != "" {
-		updatedRegistration.Spec.WBS = *patchRequest.WBS
-		payload = append(payload, patch{Op: "replace", Path: "/spec/wbs", Value: *patchRequest.WBS})
 		runUpdate = true
 	}
 
 	if patchRequest.ConfigBranch != nil {
 		if trimmedBranch := strings.TrimSpace(*patchRequest.ConfigBranch); trimmedBranch != "" {
 			updatedRegistration.Spec.ConfigBranch = trimmedBranch
-			payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: trimmedBranch})
 			runUpdate = true
 		}
 	}
 
-	if setConfigBranchToFallbackWhenEmpty(updatedRegistration) {
-		payload = append(payload, patch{Op: "replace", Path: "/spec/configBranch", Value: applicationconfig.ConfigBranchFallback})
-		runUpdate = true
+	if patchRequest.ConfigBranch != nil {
+		if trimmedBranch := strings.TrimSpace(*patchRequest.ConfigBranch); trimmedBranch != "" {
+			updatedRegistration.Spec.ConfigBranch = trimmedBranch
+			runUpdate = true
+		}
 	}
 
-	radixConfigFullName := cleanFileFullName(patchRequest.RadixConfigFullName)
-	if len(radixConfigFullName) > 0 && !strings.EqualFold(radixConfigFullName, currentRegistration.Spec.RadixConfigFullName) {
-		err := radixvalidators.ValidateRadixConfigFullName(radixConfigFullName)
-		if err != nil {
-			return nil, err
-		}
-		updatedRegistration.Spec.RadixConfigFullName = radixConfigFullName
-		payload = append(payload, patch{Op: "replace", Path: "/spec/radixConfigFullName", Value: radixConfigFullName})
+	if trimmedConfigFulleName := strings.TrimSpace(patchRequest.RadixConfigFullName); trimmedConfigFulleName != "" {
+		updatedRegistration.Spec.RadixConfigFullName = trimmedConfigFulleName
 		runUpdate = true
 	}
 
 	if patchRequest.ConfigurationItem != nil {
 		if trimmedConfigurationItem := strings.TrimSpace(*patchRequest.ConfigurationItem); trimmedConfigurationItem != "" {
 			updatedRegistration.Spec.ConfigurationItem = trimmedConfigurationItem
-			payload = append(payload, patch{Op: "replace", Path: "/spec/configurationItem", Value: trimmedConfigurationItem})
 			runUpdate = true
 		}
 	}
 
 	if runUpdate {
-		err = ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration)
+		warnings, err := ah.ValidateRadixRegistration(ctx, updatedRegistration, true)
 		if err != nil {
 			return nil, err
 		}
-
-		needToRevalidateWarnings := currentRegistration.Spec.CloneURL != updatedRegistration.Spec.CloneURL
-		if needToRevalidateWarnings && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
-			if upsertResponse, err := ah.getRegistrationUpdateResponseForWarnings(ctx, updatedRegistration); upsertResponse != nil || err != nil {
-				return upsertResponse, err
-			}
+		if len(warnings) > 0 && !applicationRegistrationPatchRequest.AcknowledgeWarnings {
+			return &applicationModels.ApplicationRegistrationUpsertResponse{Warnings: warnings}, nil
 		}
 
-		payloadBytes, err := json.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-
-		updatedRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Patch(ctx, updatedRegistration.GetName(), types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
+		updatedRegistration, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -364,6 +302,21 @@ func (ah *ApplicationHandler) ModifyRegistrationDetails(ctx context.Context, app
 	return &applicationModels.ApplicationRegistrationUpsertResponse{
 		ApplicationRegistration: &updatedApplication,
 	}, nil
+}
+
+func (ah *ApplicationHandler) ValidateRadixRegistration(ctx context.Context, radixRegistration *v1.RadixRegistration, shouldUpdateExisting bool) ([]string, error) {
+	var err error
+
+	if shouldUpdateExisting {
+		// Make check that this is an existing application
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, radixRegistration, metav1.UpdateOptions{DryRun: []string{metav1.DryRunAll}})
+	} else {
+		// Make check that this is a new application
+		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Create(ctx, radixRegistration, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
+	}
+
+	warnings := ah.getWarningCollectionFromContext(ctx)
+	return warnings, err
 }
 
 // DeleteApplication handler for DeleteApplication
@@ -577,52 +530,6 @@ func (ah *ApplicationHandler) triggerPipelineBuildOrBuildDeploy(ctx context.Cont
 	return jobSummary, nil
 }
 
-func (ah *ApplicationHandler) getRegistrationInsertWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) ([]string, error) {
-	return radixvalidators.GetRadixRegistrationBeInsertedWarnings(ctx, ah.getServiceAccount().RadixClient, radixRegistration)
-}
-
-func (ah *ApplicationHandler) getRegistrationUpdateWarnings(ctx context.Context, radixRegistration *v1.RadixRegistration) ([]string, error) {
-	return radixvalidators.GetRadixRegistrationBeUpdatedWarnings(ctx, ah.getServiceAccount().RadixClient, radixRegistration)
-}
-
-func (ah *ApplicationHandler) isValidRegistrationInsert(ctx context.Context, radixRegistration *v1.RadixRegistration) error {
-	// Need to use in-cluster client of the API server, because the user might not have enough privileges
-	// to run a full validation
-	return radixvalidators.CanRadixRegistrationBeInserted(ctx, ah.getServiceAccount().RadixClient, radixRegistration, ah.getAdditionalRadixRegistrationInsertValidators()...)
-}
-
-func (ah *ApplicationHandler) isValidRegistrationUpdate(updatedRegistration, currentRegistration *v1.RadixRegistration) error {
-	return radixvalidators.CanRadixRegistrationBeUpdated(updatedRegistration, ah.getAdditionalRadixRegistrationUpdateValidators(currentRegistration)...)
-}
-
-func (ah *ApplicationHandler) getAdditionalRadixRegistrationInsertValidators() []radixvalidators.RadixRegistrationValidator {
-	var validators []radixvalidators.RadixRegistrationValidator
-
-	if ah.config.RequireAppConfigurationItem {
-		validators = append(validators, radixvalidators.RequireConfigurationItem)
-	}
-
-	if ah.config.RequireAppADGroups {
-		validators = append(validators, radixvalidators.RequireAdGroups)
-	}
-
-	return validators
-}
-
-func (ah *ApplicationHandler) getAdditionalRadixRegistrationUpdateValidators(currentRegistration *v1.RadixRegistration) []radixvalidators.RadixRegistrationValidator {
-	var validators []radixvalidators.RadixRegistrationValidator
-
-	if ah.config.RequireAppConfigurationItem && currentRegistration != nil && len(currentRegistration.Spec.ConfigurationItem) > 0 {
-		validators = append(validators, radixvalidators.RequireConfigurationItem)
-	}
-
-	if ah.config.RequireAppADGroups && currentRegistration != nil && len(currentRegistration.Spec.AdGroups) > 0 {
-		validators = append(validators, radixvalidators.RequireAdGroups)
-	}
-
-	return validators
-}
-
 // RegenerateDeployKey Regenerates deploy key and secret and returns the new key
 func (ah *ApplicationHandler) RegenerateDeployKey(ctx context.Context, appName string, regenerateDeployKeyAndSecretData applicationModels.RegenerateDeployKeyData) error {
 	if regenerateDeployKeyAndSecretData.PrivateKey == "" {
@@ -686,11 +593,11 @@ func (ah *ApplicationHandler) RegenerateSharedSecret(ctx context.Context, appNam
 			}
 			updatedRegistration.Spec.SharedSecret = newShareKey.String()
 		}
-		setConfigBranchToFallbackWhenEmpty(updatedRegistration)
+
 		if reflect.DeepEqual(updatedRegistration, currentRegistration) {
 			return nil
 		}
-		if err := ah.isValidRegistrationUpdate(updatedRegistration, currentRegistration); err != nil {
+		if _, err := ah.ValidateRadixRegistration(ctx, updatedRegistration, true); err != nil {
 			return err
 		}
 		_, err = ah.getUserAccount().RadixClient.RadixV1().RadixRegistrations().Update(ctx, updatedRegistration, metav1.UpdateOptions{})
@@ -739,9 +646,6 @@ func (ah *ApplicationHandler) userIsAppAdmin(ctx context.Context, appName string
 
 func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context, appName string, adGroups []string) error {
 	if len(adGroups) == 0 {
-		if ah.config.RequireAppADGroups {
-			return userShouldBeMemberOfAdminAdGroupError()
-		}
 		return nil
 	}
 	radixApiAppNamespace := operatorUtils.GetEnvironmentNamespace(ah.config.AppName, ah.config.EnvironmentName)
@@ -777,15 +681,6 @@ func (ah *ApplicationHandler) validateUserIsMemberOfAdGroups(ctx context.Context
 		return userShouldBeMemberOfAdminAdGroupError()
 	}
 	return nil
-}
-
-func setConfigBranchToFallbackWhenEmpty(existingRegistration *v1.RadixRegistration) bool {
-	// HACK ConfigBranch is required, so we set it to "master" if empty to support existing apps registered before ConfigBranch was introduced
-	if len(strings.TrimSpace(existingRegistration.Spec.ConfigBranch)) > 0 {
-		return false
-	}
-	existingRegistration.Spec.ConfigBranch = applicationconfig.ConfigBranchFallback
-	return true
 }
 
 func createRoleToGetConfigMap(ctx context.Context, kubeClient kubernetes.Interface, namespace, roleName string, labels map[string]string, configMapName string) (*rbacv1.Role, error) {

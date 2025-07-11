@@ -642,6 +642,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 			compositeMessage = append(compositeMessage, fmt.Sprintf("message: '%s'", terminated.Message))
 		}
 		replicaSummary.StatusMessage = strings.Join(compositeMessage, ", ")
+		replicaSummary.ExitCode = terminated.ExitCode
 	}
 	replicaSummary.RestartCount = containerStatus.RestartCount
 	replicaSummary.Image = containerStatus.Image
