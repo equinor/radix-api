@@ -97,6 +97,11 @@ type ScheduledJobSummary struct {
 	// Timestamp of the job restart, if applied.
 	// +optional
 	Restart string
+
+	// Variable names map to values specified for this job.
+	//
+	// required: false
+	Variables map[string]string `json:"variables,omitempty"`
 }
 
 // ScheduledBatchSummary holds information about scheduled batch
