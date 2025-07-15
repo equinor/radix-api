@@ -645,7 +645,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 		replicaSummary.ExitCode = terminated.ExitCode
 	}
 	replicaSummary.RestartCount = containerStatus.RestartCount
-	replicaSummary.Image = containerStatus.Image
+	replicaSummary.Image = pod.Spec.Containers[0].Image
 	replicaSummary.ImageId = containerStatus.ImageID
 	if len(pod.Spec.Containers) > 0 {
 		replicaSummary.Resources = pointers.Ptr(ConvertResourceRequirements(pod.Spec.Containers[0].Resources))
