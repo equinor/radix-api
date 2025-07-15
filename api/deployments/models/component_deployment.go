@@ -442,11 +442,6 @@ type ReplicaSummary struct {
 	// example: radixdev.azurecr.io/app-server:cdgkg
 	Image string `json:"image,omitempty"`
 
-	// The name of container image that is specified in PodSpec.
-	// More info: https://kubernetes.io/docs/concepts/containers/images.
-	// +optional
-	ImageInSpec string `json:"imageInSpec"`
-
 	// ImageID of the container's image.
 	//
 	// required: false
@@ -650,9 +645,7 @@ func GetReplicaSummary(pod corev1.Pod, lastEventWarning string) ReplicaSummary {
 		replicaSummary.ExitCode = terminated.ExitCode
 	}
 	replicaSummary.RestartCount = containerStatus.RestartCount
-	replicaSummary.Image = containerStatus.Image
-	replicaSummary.ImageInSpec = pod.Spec.Containers[0].Image
-	replicaSummary.ImageInSpec = containerStatus.Image
+	replicaSummary.Image = pod.Spec.Containers[0].Image
 	replicaSummary.ImageId = containerStatus.ImageID
 	if len(pod.Spec.Containers) > 0 {
 		replicaSummary.Resources = pointers.Ptr(ConvertResourceRequirements(pod.Spec.Containers[0].Resources))

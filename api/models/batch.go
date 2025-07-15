@@ -163,7 +163,6 @@ func GetReplicaSummaryByJobPodStatus(radixBatchJob radixv1.RadixBatchJob, jobPod
 		Created:       jobPodStatus.CreationTime.Time,
 		RestartCount:  jobPodStatus.RestartCount,
 		Image:         jobPodStatus.Image,
-		ImageInSpec:   jobPodStatus.ImageInSpec,
 		ImageId:       jobPodStatus.ImageID,
 		PodIndex:      jobPodStatus.PodIndex,
 		Reason:        jobPodStatus.Reason,
