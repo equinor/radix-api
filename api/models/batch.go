@@ -111,6 +111,8 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		Status:         radixv1.RadixBatchJobApiStatusWaiting,
 		Runtime:        deploymentModels.NewRuntime(radixBatchJob.Runtime),
 		Variables:      radixBatchJob.Variables,
+		Command:        radixBatchJob.Command,
+		Args:           radixBatchJob.Args,
 	}
 
 	if radixDeployJobComponent != nil {

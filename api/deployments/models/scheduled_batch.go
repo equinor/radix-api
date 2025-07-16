@@ -102,6 +102,16 @@ type ScheduledJobSummary struct {
 	//
 	// required: false
 	Variables map[string]string `json:"variables,omitempty"`
+
+	// Command is the entrypoint array specified for the job. Not executed within a shell.
+	//
+	// required: false
+	Command []string `json:"command,omitempty"`
+
+	// Args to the entrypoint specified for the job.
+	//
+	// required: false
+	Args []string `json:"args,omitempty"`
 }
 
 // ScheduledBatchSummary holds information about scheduled batch
