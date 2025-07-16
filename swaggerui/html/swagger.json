@@ -8946,6 +8946,14 @@
           "format": "int64",
           "x-go-name": "TimeLimitSeconds",
           "example": 3600
+        },
+        "variables": {
+          "description": "Variable names map to values specified for this job.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "Variables"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
