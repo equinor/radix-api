@@ -8845,6 +8845,14 @@
           "description": "Timestamp of the job restart, if applied.\n+optional",
           "type": "string"
         },
+        "args": {
+          "description": "Args to the entrypoint specified for the job.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Args"
+        },
         "backoffLimit": {
           "description": "BackoffLimit Amount of retries due to a logical error in configuration etc.",
           "type": "integer",
@@ -8857,6 +8865,14 @@
           "type": "string",
           "x-go-name": "BatchName",
           "example": "\"batch-abc\""
+        },
+        "command": {
+          "description": "Command is the entrypoint array specified for the job. Not executed within a shell.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Command"
         },
         "created": {
           "description": "Created timestamp",

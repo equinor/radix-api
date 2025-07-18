@@ -112,6 +112,12 @@ func GetScheduledJobSummary(radixBatch *radixv1.RadixBatch, radixBatchJob *radix
 		Runtime:        deploymentModels.NewRuntime(radixBatchJob.Runtime),
 		Variables:      radixBatchJob.Variables,
 	}
+	if radixBatchJob.Command != nil {
+		summary.Command = *radixBatchJob.Command
+	}
+	if radixBatchJob.Args != nil {
+		summary.Args = *radixBatchJob.Args
+	}
 
 	if radixDeployJobComponent != nil {
 		summary.TimeLimitSeconds = radixDeployJobComponent.TimeLimitSeconds
