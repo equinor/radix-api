@@ -91,12 +91,10 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/equinor/radix-common v1.11.0 h1:nieMCXBUZ+IwzHq1y3vplMbDOsEF+L8asY3vPIC6hEY=
 github.com/equinor/radix-common v1.11.0/go.mod h1:Rj+X+B1AIXCBVXQ8kH4xnk1eoVAMgaSMTMOGiAcQACE=
-github.com/equinor/radix-job-scheduler v1.16.0 h1:bdc2QmZ1A4Grz65HcrttkDxVyqAoUrJWqvmXH77bfpU=
-github.com/equinor/radix-job-scheduler v1.16.0/go.mod h1:YOp6uTjEau5yBGyIX73bYyiyFEYRbti6GBqVl6hxtVI=
-github.com/equinor/radix-operator v1.87.1-0.20250722114347-6add8c1b6a91 h1:V4oCtKvyP/7jD3vpEFdfGnXnlxa7S9ozP229SgQO0O4=
-github.com/equinor/radix-operator v1.87.1-0.20250722114347-6add8c1b6a91/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
-github.com/equinor/radix-operator v1.87.1-0.20250722135146-583c26a9b232 h1:htBMeSQbKki+7QgTgiwz7CuRlH5Sjv0hNIaCZgRDL54=
-github.com/equinor/radix-operator v1.87.1-0.20250722135146-583c26a9b232/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
+github.com/equinor/radix-job-scheduler v1.17.1 h1:2l0jspxezfEhgEMYvxDipM7XDhAe1i+DmySiS6sC9FE=
+github.com/equinor/radix-job-scheduler v1.17.1/go.mod h1:AufKQCW9ErOCFnCqEjeDLrjI8zmVgZ9sa0aKKwirvOg=
+github.com/equinor/radix-operator v1.87.0 h1:mPUYyTjrHVIJPDydUgk/QzYExFI5rnWTWNNyBzY8kx0=
+github.com/equinor/radix-operator v1.87.0/go.mod h1:ufdk8yv/zJHuZEkL2API3L0vPMlYyeTyYoewdFSWOAo=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
 github.com/evanphx/json-patch v5.9.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjTM0wiaDU=
