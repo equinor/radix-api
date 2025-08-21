@@ -6357,6 +6357,8 @@
         },
         "updated": {
           "description": "Updated when the secret was last changed",
+          "type": "string",
+          "format": "date-time",
           "x-go-name": "Updated"
         }
       },
@@ -7429,6 +7431,8 @@
         },
         "updated": {
           "description": "Updated when the secret was last changed",
+          "type": "string",
+          "format": "date-time",
           "x-go-name": "Updated"
         },
         "username": {

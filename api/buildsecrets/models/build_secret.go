@@ -21,5 +21,8 @@ type BuildSecret struct {
 	Status string `json:"status"`
 
 	// Updated when the secret was last changed
+	//
+	// required: false
+	// swagger:strfmt date-time
 	Updated *time.Time `json:"updated,omitempty"`
 }
