@@ -1373,6 +1373,12 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: previous
 	//   in: query
 	//   description: Get previous container log if true
@@ -1400,14 +1406,14 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	envName := mux.Vars(r)["envName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
+	since, asFile, asFollow, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetLogs(r.Context(), appName, envName, podName, &since, logLines, previousLog)
+	logs, err := eh.GetLogs(r.Context(), appName, envName, podName, &since, logLines, previousLog, asFollow)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
@@ -1419,6 +1425,8 @@ func (c *environmentController) GetPodLog(accounts models.Accounts, w http.Respo
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		c.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
+	} else if asFollow {
+		c.ReaderEventStreamResponse(w, r, logs)
 	} else {
 		c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}
@@ -1473,6 +1481,12 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -1495,14 +1509,14 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	scheduledJobName := mux.Vars(r)["scheduledJobName"]
 	replicaName := r.FormValue("replicaName")
 
-	since, asFile, logLines, err, _ := logs.GetLogParams(r)
+	since, asFile, asFollow, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, replicaName, &since, logLines)
+	logs, err := eh.GetScheduledJobLogs(r.Context(), appName, envName, scheduledJobName, replicaName, &since, logLines, asFollow)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
@@ -1512,7 +1526,8 @@ func (c *environmentController) GetScheduledJobLog(accounts models.Accounts, w h
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		c.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
-
+	} else if asFollow {
+		c.ReaderEventStreamResponse(w, r, logs)
 	} else {
 		c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}
@@ -2602,6 +2617,12 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -2631,14 +2652,14 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	componentName := mux.Vars(r)["componentName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err, _ := logs.GetLogParams(r)
+	since, asFile, asFollow, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
 	}
 
 	eh := c.environmentHandlerFactory(accounts)
-	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, auxType, podName, &since, logLines)
+	logs, err := eh.GetAuxiliaryResourcePodLog(r.Context(), appName, envName, componentName, auxType, podName, &since, logLines, asFollow)
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return
@@ -2648,6 +2669,8 @@ func (c *environmentController) GetOAuthAuxiliaryResourcePodLog(accounts models.
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		c.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
+	} else if asFollow {
+		c.ReaderEventStreamResponse(w, r, logs)
 	} else {
 		c.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}

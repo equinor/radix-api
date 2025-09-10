@@ -28,25 +28,25 @@ func Init(client kubernetes.Interface) PodHandler {
 }
 
 // HandleGetAppPodLog Get logs from pod in app namespace
-func (ph PodHandler) HandleGetAppPodLog(ctx context.Context, appName, podName, containerName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (ph PodHandler) HandleGetAppPodLog(ctx context.Context, appName, podName, containerName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	appNs := crdUtils.GetAppNamespace(appName)
-	return ph.getPodLog(ctx, appNs, podName, containerName, sinceTime, logLines, false)
+	return ph.getPodLog(ctx, appNs, podName, containerName, sinceTime, logLines, false, follow)
 }
 
 // HandleGetEnvironmentPodLog Get logs from pod in environment
-func (ph PodHandler) HandleGetEnvironmentPodLog(ctx context.Context, appName, envName, podName, containerName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
+func (ph PodHandler) HandleGetEnvironmentPodLog(ctx context.Context, appName, envName, podName, containerName string, sinceTime *time.Time, logLines *int64, previousLog, asStream bool) (io.ReadCloser, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	return ph.getPodLog(ctx, envNs, podName, containerName, sinceTime, logLines, previousLog)
+	return ph.getPodLog(ctx, envNs, podName, containerName, sinceTime, logLines, previousLog, asStream)
 }
 
 // HandleGetEnvironmentScheduledJobLog Get logs from scheduled job in environment
-func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(ctx context.Context, appName, envName, scheduledJobName, replicaName, containerName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (ph PodHandler) HandleGetEnvironmentScheduledJobLog(ctx context.Context, appName, envName, scheduledJobName, replicaName, containerName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
-	return ph.getScheduledJobLog(ctx, envNs, scheduledJobName, replicaName, containerName, sinceTime, logLines)
+	return ph.getScheduledJobLog(ctx, envNs, scheduledJobName, replicaName, containerName, sinceTime, logLines, follow)
 }
 
 // HandleGetEnvironmentAuxiliaryResourcePodLog Get logs from auxiliary resource pod in environment
-func (ph PodHandler) HandleGetEnvironmentAuxiliaryResourcePodLog(ctx context.Context, appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (ph PodHandler) HandleGetEnvironmentAuxiliaryResourcePodLog(ctx context.Context, appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	envNs := crdUtils.GetEnvironmentNamespace(appName, envName)
 	pods, err := ph.client.CoreV1().Pods(envNs).List(ctx, metav1.ListOptions{
 		LabelSelector: labelselector.ForAuxiliaryResource(appName, componentName, auxType).String(),
@@ -58,18 +58,18 @@ func (ph PodHandler) HandleGetEnvironmentAuxiliaryResourcePodLog(ctx context.Con
 	if len(pods.Items) == 0 {
 		return nil, PodNotFoundError(podName)
 	}
-	return ph.getPodLog(ctx, envNs, podName, "", sinceTime, logLines, false)
+	return ph.getPodLog(ctx, envNs, podName, "", sinceTime, logLines, false, follow)
 }
 
-func (ph PodHandler) getPodLog(ctx context.Context, namespace, podName, containerName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
+func (ph PodHandler) getPodLog(ctx context.Context, namespace, podName, containerName string, sinceTime *time.Time, logLines *int64, previousLog, follow bool) (io.ReadCloser, error) {
 	pod, err := ph.client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return ph.getPodLogFor(ctx, pod, containerName, sinceTime, logLines, previousLog)
+	return ph.getPodLogFor(ctx, pod, containerName, sinceTime, logLines, previousLog, follow)
 }
 
-func (ph PodHandler) getScheduledJobLog(ctx context.Context, namespace, scheduledJobName, replicaName, containerName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (ph PodHandler) getScheduledJobLog(ctx context.Context, namespace, scheduledJobName, replicaName, containerName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	pods, err := ph.client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", scheduledJobName),
 	})
@@ -80,7 +80,7 @@ func (ph PodHandler) getScheduledJobLog(ctx context.Context, namespace, schedule
 		return nil, PodNotFoundError(scheduledJobName)
 	}
 	if pod, ok := getPod(pods, replicaName); ok {
-		return ph.getPodLogFor(ctx, pod, containerName, sinceTime, logLines, false)
+		return ph.getPodLogFor(ctx, pod, containerName, sinceTime, logLines, false, follow)
 	}
 	podNameForError := scheduledJobName
 	if len(replicaName) > 0 {
@@ -103,8 +103,8 @@ func getPod(pods *corev1.PodList, replicaName string) (*corev1.Pod, bool) {
 	return &pod, ok
 }
 
-func (ph PodHandler) getPodLogFor(ctx context.Context, pod *corev1.Pod, containerName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
-	req := getPodLogRequest(ph.client, pod, containerName, false, sinceTime, logLines, previousLog)
+func (ph PodHandler) getPodLogFor(ctx context.Context, pod *corev1.Pod, containerName string, sinceTime *time.Time, logLines *int64, previousLog, follow bool) (io.ReadCloser, error) {
+	req := getPodLogRequest(ph.client, pod, containerName, follow, sinceTime, logLines, previousLog)
 	return req.Stream(ctx)
 }
 

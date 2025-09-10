@@ -1,8 +1,10 @@
 package models
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -66,7 +68,31 @@ func (c *DefaultController) ReaderResponse(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
+}
 
+func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *http.Request, reader io.ReadCloser) {
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Ctx(r.Context()).Err(errors.New("streaming unsupported")).Msg("failed to write response")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.WriteHeader(http.StatusOK)
+
+	// Loop over lines and send them with "data: " prefix
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintf(w, "data: %s\n\n", line)
+		flusher.Flush()
+	}
+
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
+	}
 }
 
 // ByteArrayResponse Used for response data. I.e. image
