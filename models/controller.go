@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/rs/zerolog/log"
@@ -82,6 +83,21 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.WriteHeader(http.StatusOK)
 
+	// send health checks every 15 seconds
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(w, ": healthcheck\n\n")
+				flusher.Flush()
+			case <-r.Context().Done():
+				return
+			}
+		}
+	}()
+
 	// Loop over lines and send them with "data: " prefix
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -90,7 +106,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 		flusher.Flush()
 	}
 
-	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
 }
