@@ -259,6 +259,12 @@ func (dc *deploymentController) GetPodLog(accounts models.Accounts, w http.Respo
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: previous
 	//   in: query
 	//   description: Get previous container log if true
@@ -285,23 +291,25 @@ func (dc *deploymentController) GetPodLog(accounts models.Accounts, w http.Respo
 	appName := mux.Vars(r)["appName"]
 	podName := mux.Vars(r)["podName"]
 
-	since, asFile, logLines, err, previousLog := logs.GetLogParams(r)
+	since, asFile, asStream, logLines, err, previousLog := logs.GetLogParams(r)
 	if err != nil {
 		dc.ErrorResponse(w, r, err)
 		return
 	}
 
 	deployHandler := Init(accounts)
-	logs, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog)
+	logs, err := deployHandler.GetLogs(r.Context(), appName, podName, &since, logLines, previousLog, asStream)
 	if err != nil {
 		dc.ErrorResponse(w, r, err)
 		return
 	}
-	defer func() {_ = logs.Close()}()
+	defer func() { _ = logs.Close() }()
 
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		dc.ReaderFileResponse(w, r, logs, fileName, "text/plain; charset=utf-8")
+	} else if asStream {
+		dc.ReaderEventStreamResponse(w, r, logs)
 	} else {
 		dc.ReaderResponse(w, r, logs, "text/plain; charset=utf-8")
 	}

@@ -128,16 +128,16 @@ func (mr *MockDeployHandlerMockRecorder) GetJobComponentDeployments(arg0, arg1, 
 }
 
 // GetLogs mocks base method.
-func (m *MockDeployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
+func (m *MockDeployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog, asStream bool) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLogs", ctx, appName, podName, sinceTime, logLines, previousLog)
+	ret := m.ctrl.Call(m, "GetLogs", ctx, appName, podName, sinceTime, logLines, previousLog, asStream)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLogs indicates an expected call of GetLogs.
-func (mr *MockDeployHandlerMockRecorder) GetLogs(ctx, appName, podName, sinceTime, logLines, previousLog interface{}) *gomock.Call {
+func (mr *MockDeployHandlerMockRecorder) GetLogs(ctx, appName, podName, sinceTime, logLines, previousLog, asStream interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockDeployHandler)(nil).GetLogs), ctx, appName, podName, sinceTime, logLines, previousLog)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockDeployHandler)(nil).GetLogs), ctx, appName, podName, sinceTime, logLines, previousLog, asStream)
 }

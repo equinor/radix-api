@@ -680,6 +680,12 @@ func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accoun
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -704,14 +710,14 @@ func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accoun
 	pipelineRunName := mux.Vars(r)["pipelineRunName"]
 	taskName := mux.Vars(r)["taskName"]
 	stepName := mux.Vars(r)["stepName"]
-	since, asFile, logLines, err, _ := logs.GetLogParams(r)
+	since, asFile, asFollow, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines)
+	log, err := handler.GetTektonPipelineRunTaskStepLogs(r.Context(), appName, jobName, pipelineRunName, taskName, stepName, &since, logLines, asFollow)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)
 		return
@@ -721,6 +727,8 @@ func (jc *jobController) GetTektonPipelineRunTaskStepLogs(accounts models.Accoun
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		jc.ReaderFileResponse(w, r, log, fileName, "text/plain; charset=utf-8")
+	} else if asFollow {
+		jc.ReaderEventStreamResponse(w, r, log)
 	} else {
 		jc.ReaderResponse(w, r, log, "text/plain; charset=utf-8")
 	}
@@ -765,6 +773,12 @@ func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http
 	//   type: string
 	//   format: boolean
 	//   required: false
+	// - name: follow
+	//   in: query
+	//   description: Get log as a server-sent event stream if true
+	//   type: string
+	//   format: boolean
+	//   required: false
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -787,14 +801,14 @@ func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http
 	appName := mux.Vars(r)["appName"]
 	jobName := mux.Vars(r)["jobName"]
 	stepName := mux.Vars(r)["stepName"]
-	since, asFile, logLines, err, _ := logs.GetLogParams(r)
+	since, asFile, asFollow, logLines, err, _ := logs.GetLogParams(r)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)
 		return
 	}
 
 	handler := Init(accounts, deployments.Init(accounts))
-	log, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines)
+	log, err := handler.GetPipelineJobStepLogs(r.Context(), appName, jobName, stepName, &since, logLines, asFollow)
 	if err != nil {
 		jc.ErrorResponse(w, r, err)
 		return
@@ -804,6 +818,8 @@ func (jc *jobController) GetPipelineJobStepLogs(accounts models.Accounts, w http
 	if asFile {
 		fileName := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 		jc.ReaderFileResponse(w, r, log, fileName, "text/plain; charset=utf-8")
+	} else if asFollow {
+		jc.ReaderEventStreamResponse(w, r, log)
 	} else {
 		jc.ReaderResponse(w, r, log, "text/plain; charset=utf-8")
 	}

@@ -266,21 +266,21 @@ func (eh EnvironmentHandler) getNotOrphanedEnvNames(ctx context.Context, appName
 }
 
 // GetLogs handler for GetLogs
-func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetLogs(ctx context.Context, appName, envName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool, follow bool) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.accounts.UserAccount.Client)
-	return podHandler.HandleGetEnvironmentPodLog(ctx, appName, envName, podName, "", sinceTime, logLines, previousLog)
+	return podHandler.HandleGetEnvironmentPodLog(ctx, appName, envName, podName, "", sinceTime, logLines, previousLog, follow)
 }
 
 // GetScheduledJobLogs handler for GetScheduledJobLogs
-func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName, replicaName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetScheduledJobLogs(ctx context.Context, appName, envName, scheduledJobName, replicaName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	handler := pods.Init(eh.accounts.UserAccount.Client)
-	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, replicaName, "", sinceTime, logLines)
+	return handler.HandleGetEnvironmentScheduledJobLog(ctx, appName, envName, scheduledJobName, replicaName, "", sinceTime, logLines, follow)
 }
 
 // GetAuxiliaryResourcePodLog handler for GetAuxiliaryResourcePodLog
-func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(ctx context.Context, appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (eh EnvironmentHandler) GetAuxiliaryResourcePodLog(ctx context.Context, appName, envName, componentName, auxType, podName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	podHandler := pods.Init(eh.accounts.UserAccount.Client)
-	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(ctx, appName, envName, componentName, auxType, podName, sinceTime, logLines)
+	return podHandler.HandleGetEnvironmentAuxiliaryResourcePodLog(ctx, appName, envName, componentName, auxType, podName, sinceTime, logLines, follow)
 }
 
 // StopEnvironment Stops all components in the environment

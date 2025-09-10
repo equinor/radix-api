@@ -23,7 +23,7 @@ import (
 )
 
 type DeployHandler interface {
-	GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error)
+	GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog, asStream bool) (io.ReadCloser, error)
 	GetDeploymentWithName(ctx context.Context, appName, deploymentName string) (*deploymentModels.Deployment, error)
 	GetDeploymentsForApplicationEnvironment(ctx context.Context, appName, environment string, latest bool) ([]*deploymentModels.DeploymentSummary, error)
 	GetComponentsForDeploymentName(ctx context.Context, appName, deploymentID string) ([]*deploymentModels.Component, error)
@@ -45,7 +45,7 @@ func Init(accounts models.Accounts) DeployHandler {
 }
 
 // GetLogs handler for GetLogs
-func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog bool) (io.ReadCloser, error) {
+func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog, follow bool) (io.ReadCloser, error) {
 	ns := operatorUtils.GetAppNamespace(appName)
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixApplications(ns).Get(ctx, appName, metav1.GetOptions{})
@@ -54,7 +54,7 @@ func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName strin
 	}
 	for _, env := range ra.Spec.Environments {
 		podHandler := pods.Init(deploy.accounts.UserAccount.Client)
-		log, err := podHandler.HandleGetEnvironmentPodLog(ctx, appName, env.Name, podName, "", sinceTime, logLines, previousLog)
+		log, err := podHandler.HandleGetEnvironmentPodLog(ctx, appName, env.Name, podName, "", sinceTime, logLines, previousLog, follow)
 		if errors.IsNotFound(err) {
 			continue
 		} else if err != nil {

@@ -1,10 +1,13 @@
 package models
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	radixhttp "github.com/equinor/radix-common/net/http"
 	"github.com/rs/zerolog/log"
@@ -66,7 +69,49 @@ func (c *DefaultController) ReaderResponse(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
 	}
+}
 
+// ReaderEventStreamResponse writes the content from the reader to the response, one line at a time as an event stream. Will stop at the end of stream, or when the client disconnects.
+// Every 15 seconds a healthcheck event is sent to keep the connection alive.
+func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *http.Request, reader io.Reader) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Ctx(r.Context()).Err(errors.New("streaming unsupported")).Msg("failed to write response")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.WriteHeader(http.StatusOK)
+
+	// send health checks every 15 seconds
+	tickerCtx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
+				flusher.Flush()
+			case <-tickerCtx.Done():
+				return
+			}
+		}
+	}()
+
+	// Loop over lines and send them with "data: " prefix
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintf(w, "data: %s\n\n", line)
+		flusher.Flush()
+	}
+
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
+		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
+	}
 }
 
 // ByteArrayResponse Used for response data. I.e. image

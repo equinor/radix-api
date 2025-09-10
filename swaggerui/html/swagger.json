@@ -1100,6 +1100,13 @@
           {
             "type": "string",
             "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "boolean",
             "description": "Get previous container log if true",
             "name": "previous",
             "in": "query"
@@ -1672,6 +1679,13 @@
           },
           {
             "type": "string",
+            "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
+            "in": "query"
+          },
+          {
+            "type": "string",
             "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
             "name": "Impersonate-User",
             "in": "header"
@@ -2049,6 +2063,13 @@
             "format": "boolean",
             "description": "Get log as a file if true",
             "name": "file",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
             "in": "query"
           },
           {
@@ -3950,6 +3971,13 @@
           },
           {
             "type": "string",
+            "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
+            "in": "query"
+          },
+          {
+            "type": "string",
             "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
             "name": "Impersonate-User",
             "in": "header"
@@ -4429,6 +4457,13 @@
           },
           {
             "type": "string",
+            "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
+            "in": "query"
+          },
+          {
+            "type": "string",
             "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
             "name": "Impersonate-User",
             "in": "header"
@@ -4756,6 +4791,13 @@
             "format": "boolean",
             "description": "Get log as a file if true",
             "name": "file",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "boolean",
+            "description": "Get log as a server-sent event stream if true",
+            "name": "follow",
             "in": "query"
           },
           {
