@@ -72,7 +72,6 @@ func (c *DefaultController) ReaderResponse(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *http.Request, reader io.ReadCloser) {
-
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Ctx(r.Context()).Err(errors.New("streaming unsupported")).Msg("failed to write response")
@@ -84,15 +83,17 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	w.WriteHeader(http.StatusOK)
 
 	// send health checks every 15 seconds
+	tickerCtx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Fprintf(w, ": healthcheck\n\n")
+				fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
 				flusher.Flush()
-			case <-r.Context().Done():
+			case <-tickerCtx.Done():
 				return
 			}
 		}
