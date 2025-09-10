@@ -110,7 +110,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	}
 
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
-		log.Ctx(r.Context()).Err(err).Msg("failed to write response")
+		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
 	}
 }
 
