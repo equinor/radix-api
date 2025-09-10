@@ -71,6 +71,8 @@ func (c *DefaultController) ReaderResponse(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// ReaderEventStreamResponse writes the content from the reader to the response, one line at a time as an event stream. Will stop at the end of stream, or when the client disconnects.
+// Every 15 seconds a healthcheck event is sent to keep the connection alive.
 func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *http.Request, reader io.ReadCloser) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
