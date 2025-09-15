@@ -121,6 +121,8 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	}
 
 	m.Lock()
+	defer m.Unlock() // good practice
+
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
 		fmt.Fprintf(w, "event: error\n\n")
