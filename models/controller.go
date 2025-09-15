@@ -87,8 +87,6 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	w.WriteHeader(http.StatusOK)
 	m := sync.Mutex{}
 
-	log.Ctx(r.Context()).Debug().Msg("starting event stream response")
-
 	// Make sure we send an initial message to the client
 	fmt.Fprintf(w, "event: started\n\n") // sends an event comment
 	flusher.Flush()
@@ -103,7 +101,6 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 			select {
 			case <-ticker.C:
 				m.Lock()
-				log.Ctx(r.Context()).Debug().Msg("sending healthcheck")
 				fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
 				flusher.Flush()
 				m.Unlock()
@@ -117,7 +114,6 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		log.Ctx(r.Context()).Debug().Msgf("sending line: %s", line)
 		m.Lock()
 		fmt.Fprintf(w, "data: %s\n\n", line)
 		flusher.Flush()
@@ -132,7 +128,6 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 		return
 	}
 
-	log.Ctx(r.Context()).Debug().Msg("closing event stream")
 	fmt.Fprintf(w, "event: completed\n\n")
 	flusher.Flush()
 }
