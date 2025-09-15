@@ -95,7 +95,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	tickerCtx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
