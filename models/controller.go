@@ -124,12 +124,10 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
 		fmt.Fprintf(w, "event: error\n\n")
-		flusher.Flush()
 		return
 	}
 
 	fmt.Fprintf(w, "event: completed\n\n")
-	flusher.Flush()
 }
 
 // ByteArrayResponse Used for response data. I.e. image
