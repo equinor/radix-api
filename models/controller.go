@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	radixhttp "github.com/equinor/radix-common/net/http"
@@ -82,9 +83,15 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("X-Accel-Buffering", "no") // Disable buffering for nginx
 	w.WriteHeader(http.StatusOK)
+	m := sync.Mutex{}
 
-	// send health checks every 15 seconds
+	// Make sure we send an initial message to the client
+	fmt.Fprintf(w, "event: started\n\n") // sends an event comment
+	flusher.Flush()
+
+	// send health checks every 5 seconds
 	tickerCtx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	go func() {
@@ -93,8 +100,10 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 		for {
 			select {
 			case <-ticker.C:
+				m.Lock()
 				fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
 				flusher.Flush()
+				m.Unlock()
 			case <-tickerCtx.Done():
 				return
 			}
@@ -105,13 +114,22 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
+		m.Lock()
 		fmt.Fprintf(w, "data: %s\n\n", line)
 		flusher.Flush()
+		m.Unlock()
 	}
+
+	m.Lock()
+	defer m.Unlock() // good practice
 
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
+		fmt.Fprintf(w, "event: error\n\n")
+		return
 	}
+
+	fmt.Fprintf(w, "event: completed\n\n")
 }
 
 // ByteArrayResponse Used for response data. I.e. image
