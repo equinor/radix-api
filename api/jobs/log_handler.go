@@ -3,10 +3,11 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/equinor/radix-api/api/jobs/internal"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-api/api/jobs/internal"
 
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/pods"
@@ -19,7 +20,7 @@ import (
 )
 
 // GetTektonPipelineRunTaskStepLogs Get logs of a pipeline run task for a pipeline job
-func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appName, jobName, pipelineRunName, taskName, stepName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	taskRunsMap, err := internal.GetTektonPipelineTaskRuns(ctx, jh.userAccount.TektonClient, appName, jobName, pipelineRunName)
 	if err != nil {
 		return nil, err
@@ -29,7 +30,7 @@ func (jh JobHandler) GetTektonPipelineRunTaskStepLogs(ctx context.Context, appNa
 		return nil, err
 	}
 	podHandler := pods.Init(jh.userAccount.Client)
-	return podHandler.HandleGetAppPodLog(ctx, appName, podName, containerName, sinceTime, logLines)
+	return podHandler.HandleGetAppPodLog(ctx, appName, podName, containerName, sinceTime, logLines, follow)
 }
 
 func (jh JobHandler) getTaskPodAndContainerName(taskRunsMap map[string]*pipelinev1.TaskRun, taskRealName, stepName string) (string, string, error) {
@@ -51,7 +52,7 @@ func (jh JobHandler) getTaskPodAndContainerName(taskRunsMap map[string]*pipeline
 }
 
 // GetPipelineJobStepLogs Get logs of a pipeline job step
-func (jh JobHandler) GetPipelineJobStepLogs(ctx context.Context, appName, jobName, stepName string, sinceTime *time.Time, logLines *int64) (io.ReadCloser, error) {
+func (jh JobHandler) GetPipelineJobStepLogs(ctx context.Context, appName, jobName, stepName string, sinceTime *time.Time, logLines *int64, follow bool) (io.ReadCloser, error) {
 	job, err := jh.userAccount.RadixClient.RadixV1().RadixJobs(crdUtils.GetAppNamespace(appName)).Get(ctx, jobName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -65,7 +66,7 @@ func (jh JobHandler) GetPipelineJobStepLogs(ctx context.Context, appName, jobNam
 	}
 
 	podHandler := pods.Init(jh.userAccount.Client)
-	logReader, err := podHandler.HandleGetAppPodLog(ctx, appName, stepPodName, stepName, sinceTime, logLines)
+	logReader, err := podHandler.HandleGetAppPodLog(ctx, appName, stepPodName, stepName, sinceTime, logLines, follow)
 	if err != nil {
 		log.Ctx(ctx).Warn().Msgf("Failed to get build logs. %v", err)
 		return nil, err
