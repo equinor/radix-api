@@ -5,6 +5,7 @@ metadata:
   annotations:
     github.com/project-slug: equinor/radix-api
 spec:
-  type: service
+  type: api
   lifecycle: production
-  owner: omnia-radix-adm
+  owner: omnia-radix
+  system: Radix
