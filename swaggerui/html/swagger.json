@@ -5780,6 +5780,26 @@
           }
         }
       }
+    },
+    "/configuration/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Show the cluster environment settings",
+        "operationId": "getConfigurationSettings",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "$ref": "#/definitions/ConfigurationSettings"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -6639,6 +6659,40 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
+    },
+    "ConfigurationSettings": {
+      "description": "Environment holds detail information about environment",
+      "type": "object",
+      "properties": {
+        "clusterBaseDomain": {
+          "type": "string",
+          "x-go-name": "ClusterBaseDomain"
+        },
+        "clusterEgressIps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ClusterEgressIps"
+        },
+        "clusterName": {
+          "type": "string",
+          "x-go-name": "ClusterName"
+        },
+        "clusterOidcIssuers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ClusterOidcIssuers"
+        },
+        "clusterType": {
+          "type": "string",
+          "x-go-name": "ClusterType"
+        }
+      },
+      "x-go-name": "Settings",
+      "x-go-package": "github.com/equinor/radix-api/api/configuration/models"
     },
     "DNSAlias": {
       "description": "DNSAlias holds public DNS alias information",
