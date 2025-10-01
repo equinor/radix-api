@@ -45,10 +45,12 @@ func (c *configurationController) GetSettings(accounts models.Accounts, w http.R
 	//     description: "Successful operation"
 	//     schema:
 	//        "$ref": "#/definitions/ConfigurationSettings"
-	//   "500":
-	//     description: "Internal Server Error"
+	//   "401":
+	//     description: "Unauthorized"
 	//   "403":
 	//     description: "Forbidden"
+	//   "500":
+	//     description: "Internal Server Error"
 
 	s, err := c.handler.GetSettings(r.Context())
 	if err != nil {
