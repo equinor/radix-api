@@ -38,7 +38,6 @@ spec:
         OIDC_KUBERNETES_ISSUER: ""
         OIDC_KUBERNETES_AUDIENCE: ""
         RADIX_CLUSTER_NAME: ""
-        RADIX_CLUSTER_TYPE: ""
         RADIX_CLUSTER_EGRESS_IPS: ""
         RADIX_CLUSTER_OIDC_ISSUERS: ""
       environmentConfig:
