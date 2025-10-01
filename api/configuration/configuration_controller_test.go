@@ -27,7 +27,7 @@ func TestGetSettings_Authenticated(t *testing.T) {
 	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/configuration/settings")
 	response := <-responseChannel
 
-	settings := configurationModels.Settings{}
+	settings := configurationModels.ClusterConfiguration{}
 	err := controllertest.GetResponseBody(response, &settings)
 	require.NoError(t, err)
 

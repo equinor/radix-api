@@ -25,9 +25,9 @@ func NewConfigurationController(handler ConfigurationHandler) models.Controller 
 func (c *configurationController) GetRoutes() models.Routes {
 	routes := models.Routes{
 		models.Route{
-			Path:                      rootPath + "/settings",
+			Path:                      rootPath,
 			Method:                    "GET",
-			HandlerFunc:               c.GetSettings,
+			HandlerFunc:               c.GetClusterConfiguration,
 			AllowUnauthenticatedUsers: false,
 		},
 	}
@@ -35,16 +35,16 @@ func (c *configurationController) GetRoutes() models.Routes {
 	return routes
 }
 
-// GetSettings reveals the settings for the selected cluster environment
-func (c *configurationController) GetSettings(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /configuration/settings settings getConfigurationSettings
+// GetClusterConfiguration reveals the settings for the selected cluster environment
+func (c *configurationController) GetClusterConfiguration(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /configuration Configuration getConfiguration
 	// ---
-	// summary: Show the cluster environment settings
+	// summary: Show the cluster environment
 	// responses:
 	//   "200":
 	//     description: "Successful operation"
 	//     schema:
-	//        "$ref": "#/definitions/ConfigurationSettings"
+	//        "$ref": "#/definitions/ClusterConfiguration"
 	//   "401":
 	//     description: "Unauthorized"
 	//   "403":
@@ -52,7 +52,7 @@ func (c *configurationController) GetSettings(accounts models.Accounts, w http.R
 	//   "500":
 	//     description: "Internal Server Error"
 
-	s, err := c.handler.GetSettings(r.Context())
+	s, err := c.handler.GetClusterConfiguration(r.Context())
 	if err != nil {
 		c.ErrorResponse(w, r, err)
 		return

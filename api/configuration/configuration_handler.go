@@ -13,7 +13,7 @@ type configurationHandler struct {
 
 type ConfigurationHandler interface {
 	// Init Constructor
-	GetSettings(ctx context.Context) (configurationModels.Settings, error)
+	GetClusterConfiguration(ctx context.Context) (configurationModels.ClusterConfiguration, error)
 }
 
 // Init Constructor
@@ -23,8 +23,8 @@ func Init(config config.Config) ConfigurationHandler {
 	}
 }
 
-func (h *configurationHandler) GetSettings(ctx context.Context) (configurationModels.Settings, error) {
-	return configurationModels.Settings{
+func (h *configurationHandler) GetClusterConfiguration(ctx context.Context) (configurationModels.ClusterConfiguration, error) {
+	return configurationModels.ClusterConfiguration{
 		ClusterEgressIps:   h.config.ClusterEgressIps,
 		ClusterOidcIssuers: h.config.ClusterOidcIssuers,
 		DNSZone:            h.config.DNSZone,

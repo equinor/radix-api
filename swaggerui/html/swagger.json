@@ -5781,19 +5781,25 @@
         }
       }
     },
-    "/configuration/settings": {
+    "/configuration": {
       "get": {
         "tags": [
-          "settings"
+          "Configuration"
         ],
-        "summary": "Show the cluster environment settings",
-        "operationId": "getConfigurationSettings",
+        "summary": "Show the cluster environment",
+        "operationId": "getConfiguration",
         "responses": {
           "200": {
             "description": "Successful operation",
             "schema": {
-              "$ref": "#/definitions/ConfigurationSettings"
+              "$ref": "#/definitions/ClusterConfiguration"
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "500": {
             "description": "Internal Server Error"
@@ -6426,6 +6432,41 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/buildsecrets/models"
     },
+    "ClusterConfiguration": {
+      "type": "object",
+      "title": "ClusterConfiguration holds cluster configuration environment.",
+      "properties": {
+        "clusterEgressIps": {
+          "description": "ClusterEgressIps List of egress IPs for the cluster. Can be used for whitelisting in external services.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ClusterEgressIps"
+        },
+        "clusterName": {
+          "description": "ClusterName The name of the cluster",
+          "type": "string",
+          "x-go-name": "ClusterName",
+          "example": "weekly-40"
+        },
+        "clusterOidcIssuers": {
+          "description": "ClusterOidcIssuers List of OIDC issuers for the cluster. Can be used for configuring OIDC clients and setting up Federated Credentials.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "ClusterOidcIssuers"
+        },
+        "dnsZone": {
+          "description": "DNSZone The DNS zone configured for the cluster environment",
+          "type": "string",
+          "x-go-name": "DNSZone",
+          "example": "qa.radix.equinor.com"
+        }
+      },
+      "x-go-package": "github.com/equinor/radix-api/api/configuration/models"
+    },
     "Component": {
       "description": "Component describe an component part of an deployment",
       "type": "object",
@@ -6659,42 +6700,6 @@
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
-    "ConfigurationSettings": {
-      "type": "object",
-      "title": "Settings holds cluster configuration settings.",
-      "properties": {
-        "clusterEgressIps": {
-          "description": "ClusterEgressIps List of egress IPs for the cluster. Can be used for whitelisting in external services.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "ClusterEgressIps"
-        },
-        "clusterName": {
-          "description": "ClusterName The name of the cluster",
-          "type": "string",
-          "x-go-name": "ClusterName",
-          "example": "weekly-40"
-        },
-        "clusterOidcIssuers": {
-          "description": "ClusterOidcIssuers List of OIDC issuers for the cluster. Can be used for configuring OIDC clients and setting up Federated Credentials.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "ClusterOidcIssuers"
-        },
-        "dnsZone": {
-          "description": "DNSZone The DNS zone configured for the cluster environment",
-          "type": "string",
-          "x-go-name": "DNSZone",
-          "example": "qa.radix.equinor.com"
-        }
-      },
-      "x-go-name": "Settings",
-      "x-go-package": "github.com/equinor/radix-api/api/configuration/models"
     },
     "DNSAlias": {
       "description": "DNSAlias holds public DNS alias information",
