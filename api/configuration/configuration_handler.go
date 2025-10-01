@@ -4,11 +4,11 @@ import (
 	"context"
 
 	configurationModels "github.com/equinor/radix-api/api/configuration/models"
-	"github.com/equinor/radix-api/models"
+	"github.com/equinor/radix-api/internal/config"
 )
 
 type configurationHandler struct {
-	accounts models.Accounts
+	config config.Config
 }
 
 type ConfigurationHandler interface {
@@ -17,18 +17,18 @@ type ConfigurationHandler interface {
 }
 
 // Init Constructor
-func Init(accounts models.Accounts) ConfigurationHandler {
+func Init(config config.Config) ConfigurationHandler {
 	return &configurationHandler{
-		accounts: accounts,
+		config: config,
 	}
 }
 
 func (h *configurationHandler) GetSettings(ctx context.Context) (configurationModels.Settings, error) {
 	return configurationModels.Settings{
-		ClusterEgressIps:   []string{"104.45.84.0/30"},
-		ClusterOidcIssuers: []string{"https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0"},
-		ClusterBaseDomain:  "dev.radix.equinor.com",
-		ClusterType:        "development",
-		ClusterName:        "weekly-40",
+		ClusterEgressIps:   h.config.ClusterEgressIps,
+		ClusterOidcIssuers: h.config.ClusterOidcIssuers,
+		DNSZone:            h.config.DNSZone,
+		ClusterType:        h.config.ClusterType,
+		ClusterName:        h.config.ClusterName,
 	}, nil
 }

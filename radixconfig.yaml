@@ -37,6 +37,10 @@ spec:
         OIDC_AZURE_ISSUER: https://sts.windows.net/3aa4a235-b6e2-48d5-9195-7fcf05b459b0/
         OIDC_KUBERNETES_ISSUER: ""
         OIDC_KUBERNETES_AUDIENCE: ""
+        RADIX_CLUSTER_NAME: ""
+        RADIX_CLUSTER_TYPE: ""
+        RADIX_CLUSTER_EGRESS_IPS: ""
+        RADIX_CLUSTER_OIDC_ISSUERS: ""
       environmentConfig:
         - environment: qa
           horizontalScaling:

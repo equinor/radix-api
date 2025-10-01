@@ -28,7 +28,7 @@ func (c *configurationController) GetRoutes() models.Routes {
 			Path:                      rootPath + "/settings",
 			Method:                    "GET",
 			HandlerFunc:               c.GetSettings,
-			AllowUnauthenticatedUsers: true,
+			AllowUnauthenticatedUsers: false,
 		},
 	}
 

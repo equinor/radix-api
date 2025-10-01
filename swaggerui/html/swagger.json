@@ -6664,11 +6664,8 @@
       "description": "Environment holds detail information about environment",
       "type": "object",
       "properties": {
-        "clusterBaseDomain": {
-          "type": "string",
-          "x-go-name": "ClusterBaseDomain"
-        },
         "clusterEgressIps": {
+          "description": "ClusterEgressIps List of egress IPs for the cluster. Can be used for whitelisting in external services.",
           "type": "array",
           "items": {
             "type": "string"
@@ -6676,10 +6673,13 @@
           "x-go-name": "ClusterEgressIps"
         },
         "clusterName": {
+          "description": "ClusterName The name of the cluster",
           "type": "string",
-          "x-go-name": "ClusterName"
+          "x-go-name": "ClusterName",
+          "example": "weekly-40"
         },
         "clusterOidcIssuers": {
+          "description": "ClusterOidcIssuers List of OIDC issuers for the cluster. Can be used for configuring OIDC clients and setting up Federated Credentials.",
           "type": "array",
           "items": {
             "type": "string"
@@ -6689,6 +6689,12 @@
         "clusterType": {
           "type": "string",
           "x-go-name": "ClusterType"
+        },
+        "dnsZone": {
+          "description": "DNSZone The DNS zone configured for the cluster environment",
+          "type": "string",
+          "x-go-name": "DNSZone",
+          "example": "qa.radix.equinor.com"
         }
       },
       "x-go-name": "Settings",
