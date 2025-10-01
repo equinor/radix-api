@@ -47,6 +47,8 @@ func (c *configurationController) GetSettings(accounts models.Accounts, w http.R
 	//        "$ref": "#/definitions/ConfigurationSettings"
 	//   "500":
 	//     description: "Internal Server Error"
+	//   "403":
+	//     description: "Forbidden"
 
 	s, err := c.handler.GetSettings(r.Context())
 	if err != nil {
