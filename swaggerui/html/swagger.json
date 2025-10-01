@@ -6661,8 +6661,8 @@
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "ConfigurationSettings": {
-      "description": "Environment holds detail information about environment",
       "type": "object",
+      "title": "Settings holds cluster configuration settings.",
       "properties": {
         "clusterEgressIps": {
           "description": "ClusterEgressIps List of egress IPs for the cluster. Can be used for whitelisting in external services.",
