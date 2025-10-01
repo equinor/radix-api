@@ -1,6 +1,6 @@
 package models
 
-// Environment holds detail information about environment
+// Settings holds cluster configuration settings.
 // swagger:model ConfigurationSettings
 type Settings struct {
 	// ClusterEgressIps List of egress IPs for the cluster. Can be used for whitelisting in external services.
