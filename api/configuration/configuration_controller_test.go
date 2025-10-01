@@ -24,7 +24,7 @@ func TestGetSettings_Authenticated(t *testing.T) {
 
 	// Setup
 	controllerTestUtils := setupTest(t, cfg, true)
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/configuration/settings")
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/configuration")
 	response := <-responseChannel
 
 	settings := configurationModels.ClusterConfiguration{}
@@ -43,7 +43,7 @@ func TestGetSettings_NotAuthenticated(t *testing.T) {
 
 	// Setup
 	controllerTestUtils := setupTest(t, cfg, false)
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/configuration/settings")
+	responseChannel := controllerTestUtils.ExecuteRequest("GET", "/api/v1/configuration")
 	response := <-responseChannel
 
 	assert.Equal(t, 403, response.Code)
