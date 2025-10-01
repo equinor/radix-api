@@ -28,7 +28,6 @@ func (h *configurationHandler) GetSettings(ctx context.Context) (configurationMo
 		ClusterEgressIps:   h.config.ClusterEgressIps,
 		ClusterOidcIssuers: h.config.ClusterOidcIssuers,
 		DNSZone:            h.config.DNSZone,
-		ClusterType:        h.config.ClusterType,
 		ClusterName:        h.config.ClusterName,
 	}, nil
 }

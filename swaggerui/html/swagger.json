@@ -6686,10 +6686,6 @@
           },
           "x-go-name": "ClusterOidcIssuers"
         },
-        "clusterType": {
-          "type": "string",
-          "x-go-name": "ClusterType"
-        },
         "dnsZone": {
           "description": "DNSZone The DNS zone configured for the cluster environment",
           "type": "string",

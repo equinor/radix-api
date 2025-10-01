@@ -14,12 +14,6 @@ type Settings struct {
 	// example: qa.radix.equinor.com
 	DNSZone string `json:"dnsZone"`
 
-	// ClusterType The type of the cluster
-	//
-	// example: production
-
-	ClusterType string `json:"clusterType"`
-
 	// ClusterName The name of the cluster
 	//
 	// example: weekly-40
