@@ -18,9 +18,9 @@ type Config struct {
 	AppName            string   `envconfig:"RADIX_APP" required:"true" desc:"Should be radix-api"`
 	EnvironmentName    string   `envconfig:"RADIX_ENVIRONMENT" required:"true" desc:"Should be qa or prod"`
 	DNSZone            string   `envconfig:"RADIX_DNS_ZONE" required:"true" desc:"should be <env>.radix.equinor.com"`
-	ClusterName        string   `envconfig:"RADIX_CLUSTER_NAME" required:"true" desc:"Name of the cluster, e.g. weekly-40"`
-	ClusterEgressIps   []string `envconfig:"RADIX_CLUSTER_EGRESS_IPS" required:"true" desc:"Comma separated list of Egress IPs of the cluster, e.g. 192.168.84.0/30,10.0.0.0/30"`
-	ClusterOidcIssuers []string `envconfig:"RADIX_CLUSTER_OIDC_ISSUERS" required:"true" desc:"Comma separated list of OIDC issuers of the cluster, e.g. https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0,http://localhost:5000"`
+	ClusterName        string   `envconfig:"CLUSTER_NAME" required:"true" desc:"Name of the cluster, e.g. weekly-40"`
+	ClusterEgressIps   []string `envconfig:"CLUSTER_EGRESS_IPS" required:"true" desc:"Comma separated list of Egress IPs of the cluster, e.g. 192.168.84.0/30,10.0.0.0/30"`
+	ClusterOidcIssuers []string `envconfig:"CLUSTER_OIDC_ISSUERS" required:"true" desc:"Comma separated list of OIDC issuers of the cluster, e.g. https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47/v2.0,http://localhost:5000"`
 
 	AzureOidc      Oidc   `envconfig:"OIDC_AZURE" required:"true"`
 	KubernetesOidc Oidc   `envconfig:"OIDC_KUBERNETES" required:"true"`
