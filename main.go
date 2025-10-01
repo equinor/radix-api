@@ -18,6 +18,7 @@ import (
 	"github.com/equinor/radix-api/api/buildsecrets"
 	"github.com/equinor/radix-api/api/buildstatus"
 	buildModels "github.com/equinor/radix-api/api/buildstatus/models"
+	"github.com/equinor/radix-api/api/configuration"
 	"github.com/equinor/radix-api/api/deployments"
 	"github.com/equinor/radix-api/api/environments"
 	"github.com/equinor/radix-api/api/environmentvariables"
@@ -41,6 +42,7 @@ import (
 func main() {
 	c := config.MustParse()
 	setupLogger(c.LogLevel, c.LogPrettyPrint)
+	log.Info().Any("config", c).Msgf("Starting radix-api %s in %s environment", c.AppName, c.EnvironmentName)
 
 	servers := []*http.Server{
 		initializeServer(c),
@@ -173,5 +175,6 @@ func getControllers(config config.Config) ([]models.Controller, error) {
 		buildstatus.NewBuildStatusController(buildStatus),
 		alerting.NewAlertingController(),
 		secrets.NewSecretController(tlsvalidation.DefaultValidator()),
+		configuration.NewConfigurationController(configuration.Init(config)),
 	}, nil
 }
