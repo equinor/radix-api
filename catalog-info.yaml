@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: radix-api
+  annotations:
+    github.com/project-slug: equinor/radix-api
+spec:
+  type: api
+  lifecycle: production
+  owner: omnia-radix
+  system: Radix
