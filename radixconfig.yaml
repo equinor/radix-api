@@ -38,6 +38,7 @@ spec:
         OIDC_KUBERNETES_ISSUER: ""
         OIDC_KUBERNETES_AUDIENCE: ""
         CLUSTER_OIDC_ISSUERS: ""
+        CLUSTER_EGRESS_IPS: ""
       environmentConfig:
         - environment: qa
           horizontalScaling:
