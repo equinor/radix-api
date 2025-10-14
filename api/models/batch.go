@@ -9,7 +9,7 @@ import (
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
-	jobSchedulerModels "github.com/equinor/radix-job-scheduler/models/v1"
+	jobSchedulerModels "github.com/equinor/radix-operator/job-scheduler/models/v1"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
