@@ -53,7 +53,6 @@ import (
 const (
 	clusterName     = "AnyClusterName"
 	appAliasDNSZone = "app.dev.radix.equinor.com"
-	egressIps       = "0.0.0.0"
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
@@ -85,7 +84,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
-	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, subscriptionId)
 	require.NoError(t, err)
 	prometheusHandlerMock := createPrometheusHandlerMock(t, nil)
 

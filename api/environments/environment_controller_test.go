@@ -56,7 +56,6 @@ const (
 	anyDeployment    = "deployment1"
 	anyEnvironment   = "dev1"
 	anySecretName    = "TEST_SECRET"
-	egressIps        = "0.0.0.0"
 	subscriptionId   = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 	nodeType1        = "some-node-type1"
 )
@@ -72,7 +71,7 @@ func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commo
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient)
-	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, subscriptionId)
 	require.NoError(t, err)
 
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
