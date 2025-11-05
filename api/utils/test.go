@@ -29,7 +29,6 @@ import (
 
 const (
 	clusterName    = "AnyClusterName"
-	egressIps      = "0.0.0.0"
 	subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 )
 
@@ -43,7 +42,7 @@ func SetupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *radixfake
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient)
-	err := commonTestUtils.CreateClusterPrerequisites(clusterName, egressIps, subscriptionId)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, subscriptionId)
 	require.NoError(t, err)
 	return &commonTestUtils, kubeClient, radixClient, kedaClient, prometheusClient, secretProviderClient, certClient
 }
