@@ -99,8 +99,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/equinor/radix-common v1.11.0 h1:nieMCXBUZ+IwzHq1y3vplMbDOsEF+L8asY3vPIC6hEY=
 github.com/equinor/radix-common v1.11.0/go.mod h1:Rj+X+B1AIXCBVXQ8kH4xnk1eoVAMgaSMTMOGiAcQACE=
-github.com/equinor/radix-operator v1.102.0 h1:gr8pujsgLjclPbxXF4J3OvR4TwoS3ElC22sAUDrYURA=
-github.com/equinor/radix-operator v1.102.0/go.mod h1:a2xjN9Xu5b2eSMBL/wZ8caBG+BhhR9mLuSc7R71Ju+I=
+github.com/equinor/radix-operator v1.103.0 h1:kVvLMH/Hmh3Y8tqQ9vpkHj8St0x+M14qUd5oEFRjGN0=
+github.com/equinor/radix-operator v1.103.0/go.mod h1:a2xjN9Xu5b2eSMBL/wZ8caBG+BhhR9mLuSc7R71Ju+I=
 github.com/evanphx/json-patch v5.9.0+incompatible h1:fBXyNpNMuTTDdquAq/uisOr2lShz4oaXpDTX2bLe7ls=
 github.com/evanphx/json-patch v5.9.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjTM0wiaDU=
