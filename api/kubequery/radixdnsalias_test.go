@@ -19,16 +19,16 @@ func Test_GetRadixDNSAliases(t *testing.T) {
 			AppName: "app1", Environment: "env1", Component: "comp1",
 		},
 		Status: radixv1.RadixDNSAliasStatus{
-			Condition: "Success",
-			Message:   "",
+			ReconcileStatus: radixv1.RadixDNSAliasReconcileSucceeded,
+			Message:         "",
 		},
 	}
 	matched2 := radixv1.RadixDNSAlias{ObjectMeta: metav1.ObjectMeta{Name: "matched2"}, Spec: radixv1.RadixDNSAliasSpec{
 		AppName: "app1", Environment: "env1", Component: "comp1",
 	},
 		Status: radixv1.RadixDNSAliasStatus{
-			Condition: "Failed",
-			Message:   "Some error",
+			ReconcileStatus: radixv1.RadixDNSAliasReconcileFailed,
+			Message:         "Some error",
 		},
 	}
 	unmatched := radixv1.RadixDNSAlias{ObjectMeta: metav1.ObjectMeta{Name: "unmatched"}, Spec: radixv1.RadixDNSAliasSpec{
@@ -41,7 +41,7 @@ func Test_GetRadixDNSAliases(t *testing.T) {
 			EnvironmentName: "env1",
 			ComponentName:   "comp1",
 			Status: applicationModels.DNSAliasStatus{
-				Condition: "Success",
+				Condition: "Succeeded",
 				Message:   "",
 			},
 		}, {

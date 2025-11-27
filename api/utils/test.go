@@ -55,7 +55,7 @@ func ApplyRegistrationWithSync(client kubernetes.Interface, radixclient radixcli
 		return err
 	}
 
-	registration, _ := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
+	registration := application.NewApplication(client, kubeUtils, radixclient, registrationBuilder.BuildRR())
 	return registration.OnSync(context.Background())
 }
 

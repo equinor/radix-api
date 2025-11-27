@@ -121,4 +121,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.54.0
+replace (
+	github.com/equinor/radix-operator => /home/nilsstrabo/src/github.com/equinor/radix-operator
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.54.0
+)
