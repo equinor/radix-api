@@ -6,7 +6,7 @@ metadata:
   annotations:
     github.com/project-slug: equinor/radix-api
   links:
-    - url: "https://server-radix-api-prod.radix.equinor.com/swaggerui/"
+    - url: "https://api.radix.equinor.com/swaggerui/"
       title: Swagger UI
 spec:
   type: openapi
@@ -14,4 +14,4 @@ spec:
   owner: omnia-radix
   system: Radix
   definition:
-    $text: "https://server-radix-api-prod.radix.equinor.com/swaggerui/swagger.json"
+    $text: "https://api.radix.equinor.com/swaggerui/swagger.json"
