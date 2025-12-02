@@ -228,10 +228,11 @@ func (h *handler) waitForRadixAlertReconciled(ctx context.Context, source *radix
 		if err != nil {
 			return false, err
 		}
-		if radixAlert.Status.Reconciled != nil {
+		reconciled := radixAlert.Status.ReconcileStatus == radixv1.RadixAlertReconcileSucceeded && radixAlert.Status.ObservedGeneration == radixAlert.Generation
+		if reconciled {
 			reconciledAlert = radixAlert
 		}
-		return radixAlert.Status.Reconciled != nil, nil
+		return reconciled, nil
 	}
 
 	if err := wait.PollUntilContextTimeout(ctx, h.reconcilePollInterval, h.reconcilePollTimeout, true, hasReconciled); err != nil {
@@ -320,7 +321,7 @@ func (h *handler) getAlertingConfigFromRadixAlert(ctx context.Context, ral *radi
 		Alerts:               h.getAlertConfigFromRadixAlert(ral),
 		AlertNames:           h.validAlertNames,
 		Enabled:              true,
-		Ready:                ral.Status.Reconciled != nil,
+		Ready:                ral.Status.ReconcileStatus == radixv1.RadixAlertReconcileSucceeded && ral.Status.ObservedGeneration == ral.Generation,
 	}
 
 	return &alertsConfig, nil
