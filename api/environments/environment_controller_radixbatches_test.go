@@ -17,7 +17,7 @@ import (
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/labels"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
@@ -1836,8 +1836,8 @@ func Test_StopAllJobComponentBatchesAndJobs(t *testing.T) {
 	require.NoError(t, err)
 	_, err = commonTestUtils.ApplyDeployment(context.Background(), utils.NewDeploymentBuilder().
 		WithAppName(anyAppName).WithEnvironment(envName1).
-		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(pointers.Ptr[int32](8001))).
-		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(pointers.Ptr[int32](8002))))
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(8001)).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(8002)))
 	require.NoError(t, err)
 
 	envNamespace1 := utils.GetEnvironmentNamespace(anyAppName, envName1)
@@ -1952,8 +1952,8 @@ func Test_StopAllEnvironmentBatchesAndJobs(t *testing.T) {
 	require.NoError(t, err)
 	_, err = commonTestUtils.ApplyDeployment(context.Background(), utils.NewDeploymentBuilder().
 		WithAppName(anyAppName).WithEnvironment(envName1).
-		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(pointers.Ptr[int32](8001))).
-		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(pointers.Ptr[int32](8002))))
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent1).WithSchedulerPort(8001)).
+		WithJobComponent(utils.NewDeployJobComponentBuilder().WithName(jobComponent2).WithSchedulerPort(8002)))
 	require.NoError(t, err)
 
 	envNamespace1 := utils.GetEnvironmentNamespace(anyAppName, envName1)
