@@ -31,7 +31,7 @@ func GetDNSAliases(ctx context.Context, client radixclient.Interface, radixAppli
 			ComponentName:   dnsAlias.Component,
 			EnvironmentName: dnsAlias.Environment,
 			Status: applicationModels.DNSAliasStatus{
-				Condition: string(radixDNSAlias.Status.Condition),
+				Condition: string(radixDNSAlias.Status.ReconcileStatus),
 				Message:   radixDNSAlias.Status.Message,
 			},
 		}
