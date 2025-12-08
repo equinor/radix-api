@@ -73,16 +73,6 @@ type PipelineParametersBuild struct {
 	// example: a_user@equinor.com
 	TriggeredBy string `json:"triggeredBy,omitempty"`
 
-	// ImageRepository of the component, without image name and image-tag
-	//
-	// example: ghcr.io/test
-	ImageRepository string `json:"imageRepository,omitempty"`
-
-	// ImageName of the component, without repository name and image-tag
-	//
-	// example: radix-component
-	ImageName string `json:"imageName,omitempty"`
-
 	// ImageTag of the image - if empty will use default logic
 	//
 	// example: master-latest
@@ -102,13 +92,6 @@ type PipelineParametersBuild struct {
 	// x-nullable: true
 	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
 
-	// DeployExternalDNS deploy external DNS
-	//
-	// required: false
-	// Extensions:
-	// x-nullable: true
-	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
-
 	// GitRef Branch or tag to build from
 	// REQUIRED for "build" and "build-deploy" pipelines
 	//
@@ -121,9 +104,9 @@ type PipelineParametersBuild struct {
 	// - tag
 	// - <empty> - either branch or tag
 	//
-	// required false
+	// required: false
 	// enum: branch,tag,""
-	// example: "branch"
+	// example: branch
 	GitRefType string `json:"gitRefType,omitempty"`
 }
 
@@ -141,8 +124,6 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 		PushImage:             buildParam.PushImageToContainerRegistry(),
 		TriggeredBy:           buildParam.TriggeredBy,
 		ToEnvironment:         buildParam.ToEnvironment,
-		ImageRepository:       buildParam.ImageRepository,
-		ImageName:             buildParam.ImageName,
 		ImageTag:              buildParam.ImageTag,
 		OverrideUseBuildCache: buildParam.OverrideUseBuildCache,
 		RefreshBuildCache:     buildParam.RefreshBuildCache,
@@ -167,7 +148,7 @@ type PipelineParametersDeploy struct {
 
 	// Image tags names for components
 	//
-	// example: component1=tag1,component2=tag2
+	// example: {"component1":"tag1", "component2":"tag2"}
 	ImageTagNames map[string]string `json:"imageTagNames"`
 
 	// TriggeredBy of the job - if empty will use user token upn (user principle name)

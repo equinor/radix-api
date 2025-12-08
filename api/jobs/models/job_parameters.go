@@ -25,61 +25,29 @@ type JobParameters struct {
 	// For build or promote pipeline: Target environment for building and promotion
 	ToEnvironment string `json:"toEnvironment"`
 
-	// ImageRepository of the component, without image name and image-tag
-	ImageRepository string
-
-	// ImageName of the component, without repository name and image-tag
-	ImageName string
-
 	// ImageTag of the image - if empty will use default logic
 	ImageTag string
 
 	// ImageTagNames tags for components - if empty will use default logic
-	//
-	// example: component1=tag1,component2=tag2
 	ImageTagNames map[string]string
 
 	// ComponentsToDeploy List of components to deploy
 	// OPTIONAL If specified, only these components are deployed
-	//
-	// required: false
 	ComponentsToDeploy []string `json:"componentsToDeploy"`
 
 	// OverrideUseBuildCache override default or configured build cache option
-	//
-	// required: false
-	// Extensions:
-	// x-nullable: true
 	OverrideUseBuildCache *bool `json:"overrideUseBuildCache,omitempty"`
 
 	// RefreshBuildCache forces to rebuild cache when UseBuildCache is true in the RadixApplication or OverrideUseBuildCache is true
-	//
-	// required: false
-	// Extensions:
-	// x-nullable: true
 	RefreshBuildCache *bool `json:"refreshBuildCache,omitempty"`
 
 	// DeployExternalDNS deploy external DNS
-	//
-	// required: false
-	// Extensions:
-	// x-nullable: true
 	DeployExternalDNS *bool `json:"deployExternalDNS,omitempty"`
 
 	// GitRef Branch or tag to build from
-	//
-	// required: false
-	// example: master
 	GitRef string `json:"gitRef,omitempty"`
 
 	// GitRefType When the pipeline job should be built from branch or tag specified in GitRef:
-	// - branch
-	// - tag
-	// - <empty> - either branch or tag
-	//
-	// required false
-	// enum: branch,tag,""
-	// example: "branch"
 	GitRefType string `json:"gitRefType,omitempty"`
 }
 

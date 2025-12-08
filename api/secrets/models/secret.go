@@ -23,7 +23,7 @@ type Secret struct {
 	// Type of the secret
 	//
 	// required: false
-	// example: client-cert
+	// example: generic
 	Type SecretType `json:"type,omitempty"`
 
 	// Resource of the secrets

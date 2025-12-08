@@ -101,9 +101,9 @@ type Deployment struct {
 	// - tag
 	// - <empty> - either branch or tag
 	//
-	// required false
+	// required: false
 	// enum: branch,tag,""
-	// example: "branch"
+	// example: branch
 	GitRefType string `json:"gitRefType,omitempty"`
 }
 
