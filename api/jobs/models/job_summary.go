@@ -38,7 +38,7 @@ type JobSummary struct {
 	// Image tags names for components - if empty will use default logic
 	//
 	// required: false
-	// example: component1: tag1,component2: tag2
+	// example: {"component1":"tag1", "component2":"tag2"}
 	ImageTagNames map[string]string `json:"imageTagNames,omitempty"`
 
 	// Created timestamp
@@ -151,9 +151,9 @@ type JobSummary struct {
 	// - tag
 	// - <empty> - either branch or tag
 	//
-	// required false
+	// required: false
 	// enum: branch,tag,""
-	// example: "branch"
+	// example: branch
 	GitRefType string `json:"gitRefType,omitempty"`
 }
 

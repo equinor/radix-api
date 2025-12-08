@@ -2,12 +2,13 @@ package models
 
 import (
 	"fmt"
-	"github.com/equinor/radix-operator/pkg/apis/defaults"
-	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	runtimeUtils "github.com/equinor/radix-operator/pkg/apis/runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/equinor/radix-operator/pkg/apis/defaults"
+	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	runtimeUtils "github.com/equinor/radix-operator/pkg/apis/runtime"
 
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
@@ -227,6 +228,7 @@ type AzureIdentity struct {
 }
 
 // AuxiliaryResource describes an auxiliary resources for a component
+// swagger:ignore
 type AuxiliaryResource struct {
 	// OAuth2 describes the oauth2 resource
 	//
@@ -506,7 +508,6 @@ type HorizontalScalingSummary struct {
 
 	// Triggers lists status of all triggers found in radixconfig.yaml
 	//
-	// example: 30
 	// required: true
 	Triggers []HorizontalScalingSummaryTriggerStatus `json:"triggers"`
 

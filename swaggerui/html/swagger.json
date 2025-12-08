@@ -6269,14 +6269,7 @@
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
     "AuxiliaryResource": {
-      "description": "AuxiliaryResource describes an auxiliary resources for a component",
-      "type": "object",
-      "properties": {
-        "oauth2": {
-          "$ref": "#/definitions/OAuth2AuxiliaryResource"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
+      "description": "AuxiliaryResource describes an auxiliary resources for a component"
     },
     "AuxiliaryResourceDeployment": {
       "description": "AuxiliaryResourceDeployment describes the state of the auxiliary resource's deployment",
@@ -6861,7 +6854,7 @@
           "example": "master"
         },
         "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag",
           "type": "string",
           "enum": [
             "branch",
@@ -6869,7 +6862,7 @@
             "\"\""
           ],
           "x-go-name": "GitRefType",
-          "example": "\"branch\""
+          "example": "branch"
         },
         "gitTags": {
           "description": "GitTags the git tags that the git commit hash points to",
@@ -7016,7 +7009,7 @@
           "example": "master"
         },
         "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag",
           "type": "string",
           "enum": [
             "branch",
@@ -7024,7 +7017,7 @@
             "\"\""
           ],
           "x-go-name": "GitRefType",
-          "example": "\"branch\""
+          "example": "branch"
         },
         "gitTags": {
           "description": "GitTags the git tags that the git commit hash points to",
@@ -7078,65 +7071,7 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
     },
-    "DeploymentSummaryPipelineJobInfo": {
-      "type": "object",
-      "properties": {
-        "builtFromBranch": {
-          "description": "Name of the branch used to build the deployment",
-          "type": "string",
-          "x-go-name": "BuiltFromBranch",
-          "example": "main"
-        },
-        "commitID": {
-          "description": "CommitID the commit ID of the branch to build",
-          "type": "string",
-          "x-go-name": "CommitID",
-          "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
-        },
-        "createdByJob": {
-          "description": "Name of job creating deployment",
-          "type": "string",
-          "x-go-name": "CreatedByJob"
-        },
-        "gitRef": {
-          "description": "GitRef Branch or tag to build from",
-          "type": "string",
-          "x-go-name": "GitRef",
-          "example": "master"
-        },
-        "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
-          "type": "string",
-          "enum": [
-            "branch",
-            "tag",
-            "\"\""
-          ],
-          "x-go-name": "GitRefType",
-          "example": "\"branch\""
-        },
-        "pipelineJobType": {
-          "description": "Type of pipeline job",
-          "type": "string",
-          "enum": [
-            "build",
-            "build-deploy",
-            "promote",
-            "deploy",
-            "apply-config"
-          ],
-          "x-go-name": "PipelineJobType",
-          "example": "build-deploy"
-        },
-        "promotedFromEnvironment": {
-          "description": "Name of the environment the deployment was promoted from\nApplies only for pipeline jobs of type 'promote'",
-          "type": "string",
-          "x-go-name": "PromotedFromEnvironment",
-          "example": "qa"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
-    },
+    "DeploymentSummaryPipelineJobInfo": {},
     "EnvVar": {
       "description": "EnvVar environment variable with metadata",
       "type": "object",
@@ -7455,8 +7390,7 @@
           "items": {
             "$ref": "#/definitions/HorizontalScalingSummaryTriggerStatus"
           },
-          "x-go-name": "Triggers",
-          "example": "30"
+          "x-go-name": "Triggers"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -7669,7 +7603,7 @@
           "example": "master"
         },
         "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag",
           "type": "string",
           "enum": [
             "branch",
@@ -7677,7 +7611,7 @@
             "\"\""
           ],
           "x-go-name": "GitRefType",
-          "example": "\"branch\""
+          "example": "branch"
         },
         "imageTagNames": {
           "description": "Image tags names for components - if empty will use default logic",
@@ -7686,7 +7620,10 @@
             "type": "string"
           },
           "x-go-name": "ImageTagNames",
-          "example": "component1: tag1,component2: tag2"
+          "example": {
+            "component1": "tag1",
+            "component2": "tag2"
+          }
         },
         "name": {
           "description": "Name of the job",
@@ -7862,7 +7799,7 @@
           "example": "master"
         },
         "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag",
           "type": "string",
           "enum": [
             "branch",
@@ -7870,7 +7807,7 @@
             "\"\""
           ],
           "x-go-name": "GitRefType",
-          "example": "\"branch\""
+          "example": "branch"
         },
         "imageTagNames": {
           "description": "Image tags names for components - if empty will use default logic",
@@ -7879,7 +7816,10 @@
             "type": "string"
           },
           "x-go-name": "ImageTagNames",
-          "example": "component1: tag1,component2: tag2"
+          "example": {
+            "component1": "tag1",
+            "component2": "tag2"
+          }
         },
         "name": {
           "description": "Name of the job",
@@ -8101,12 +8041,6 @@
           "x-go-name": "CommitID",
           "example": "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
         },
-        "deployExternalDNS": {
-          "description": "DeployExternalDNS deploy external DNS",
-          "type": "boolean",
-          "x-go-name": "DeployExternalDNS",
-          "x-nullable": true
-        },
         "gitRef": {
           "description": "GitRef Branch or tag to build from\nREQUIRED for \"build\" and \"build-deploy\" pipelines",
           "type": "string",
@@ -8114,7 +8048,7 @@
           "example": "master"
         },
         "gitRefType": {
-          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag\n\nrequired false",
+          "description": "GitRefType When the pipeline job should be built from branch or tag specified in GitRef:\nbranch\ntag\n\u003cempty\u003e - either branch or tag",
           "type": "string",
           "enum": [
             "branch",
@@ -8122,19 +8056,7 @@
             "\"\""
           ],
           "x-go-name": "GitRefType",
-          "example": "\"branch\""
-        },
-        "imageName": {
-          "description": "ImageName of the component, without repository name and image-tag",
-          "type": "string",
-          "x-go-name": "ImageName",
-          "example": "radix-component"
-        },
-        "imageRepository": {
-          "description": "ImageRepository of the component, without image name and image-tag",
-          "type": "string",
-          "x-go-name": "ImageRepository",
-          "example": "ghcr.io/test"
+          "example": "branch"
         },
         "imageTag": {
           "description": "ImageTag of the image - if empty will use default logic",
@@ -8200,7 +8122,10 @@
             "type": "string"
           },
           "x-go-name": "ImageTagNames",
-          "example": "component1=tag1,component2=tag2"
+          "example": {
+            "component1": "tag1",
+            "component2": "tag2"
+          }
         },
         "toEnvironment": {
           "description": "Name of environment to deploy\nREQUIRED for \"deploy\" pipeline",
@@ -8525,29 +8450,6 @@
           "format": "int32",
           "x-go-name": "Port",
           "example": 8080
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
-    },
-    "PromotionParameters": {
-      "description": "PromotionParameters describe environment to promote from and to",
-      "type": "object",
-      "required": [
-        "fromEnvironment",
-        "toEnvironment"
-      ],
-      "properties": {
-        "fromEnvironment": {
-          "description": "FromEnvironment the environment to promote from",
-          "type": "string",
-          "x-go-name": "FromEnvironment",
-          "example": "dev"
-        },
-        "toEnvironment": {
-          "description": "ToEnvironment the environment to promote to",
-          "type": "string",
-          "x-go-name": "ToEnvironment",
-          "example": "prod"
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/deployments/models"
@@ -9143,7 +9045,7 @@
           ],
           "x-go-enum-desc": "generic SecretTypeGeneric\nazure-blob-fuse-volume SecretTypeAzureBlobFuseVolume\ncsi-azure-blob-volume SecretTypeCsiAzureBlobVolume\ncsi-azure-key-vault-creds SecretTypeCsiAzureKeyVaultCreds\ncsi-azure-key-vault-item SecretTypeCsiAzureKeyVaultItem\nclient-cert-auth SecretTypeClientCertificateAuth\noauth2-proxy SecretTypeOAuth2Proxy",
           "x-go-name": "Type",
-          "example": "client-cert"
+          "example": "generic"
         },
         "updated": {
           "description": "Updated timestamp of the last change",
