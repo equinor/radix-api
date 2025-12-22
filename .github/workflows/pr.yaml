@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Run Tests
-        run: go test -cover `go list ./...`
+        run: go test `go list ./...`
 
   verify-code-generation:
     name: Verify Code Generation
