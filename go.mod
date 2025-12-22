@@ -1,8 +1,6 @@
 module github.com/equinor/radix-api
 
-go 1.25.0
-
-toolchain go1.25.5
+go 1.25.5
 
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.2.2
