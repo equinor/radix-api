@@ -38,7 +38,7 @@ mocks: bootstrap
 
 .PHONY: test
 test:
-	go test -cover `go list ./...`
+	go test `go list ./...`
 
 .PHONY: lint
 lint: bootstrap
