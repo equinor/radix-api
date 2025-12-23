@@ -2,16 +2,30 @@ apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
   name: radix-api
-  description: "The Radix API is an HTTP server for accessing functionality on the Radix platform"
+  title: Radix API
+  description: "Radix API"  
   annotations:
     github.com/project-slug: equinor/radix-api
-  links:
-    - url: "https://api.radix.equinor.com/swaggerui/"
-      title: Swagger UI
 spec:
   type: openapi
   lifecycle: production
   owner: omnia-radix
   system: Radix
   definition:
-    $text: "https://api.radix.equinor.com/swaggerui/swagger.json"
+    $text: "./swaggerui/html/swagger.json"
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: radix-api
+  title: Radix API backend
+  description: FastAPI backend Radix
+  annotations:
+    github.com/project-slug: equinor/radix-api
+spec:
+  type: service
+  lifecycle: production
+  owner: omnia-radix
+  system: Radix
+  providesApis:
+    - radix-api
