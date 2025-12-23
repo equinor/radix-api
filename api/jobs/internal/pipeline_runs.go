@@ -30,7 +30,7 @@ func GetPipelineRun(ctx context.Context, tektonClient tektonclient.Interface, ap
 	if err != nil {
 		return nil, err
 	}
-	if pipelineRun.ObjectMeta.Labels[kube.RadixJobNameLabel] != jobName { //nolint:staticcheck
+	if pipelineRun.Labels[kube.RadixJobNameLabel] != jobName {
 		return nil, fmt.Errorf("pipeline run %s belongs to different pipeline job than requested %s", pipelineRunName, jobName)
 	}
 	return pipelineRun, nil
