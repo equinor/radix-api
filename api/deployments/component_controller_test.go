@@ -256,7 +256,7 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c3", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
+	assert.Nil(t, actualComponent.OAuth2)
 	assert.Empty(t, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c4", components)
