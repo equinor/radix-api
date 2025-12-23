@@ -134,7 +134,7 @@ func (buildParam PipelineParametersBuild) MapPipelineParametersBuildToJobParamet
 
 // PushImageToContainerRegistry Normalises the "PushImage" param from a string
 func (buildParam PipelineParametersBuild) PushImageToContainerRegistry() bool {
-	return !(buildParam.PushImage == "0" || buildParam.PushImage == "false")
+	return buildParam.PushImage != "0" && buildParam.PushImage != "false"
 }
 
 // PipelineParametersDeploy describes environment to deploy

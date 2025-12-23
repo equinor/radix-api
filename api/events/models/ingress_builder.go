@@ -50,10 +50,10 @@ func (b *ingressStateBuilder) Build() []IngressRule {
 					}
 					ingressRule.Port = path.Backend.Service.Port.Number
 				}
-				ingressRules = append(ingressRules , ingressRule)
+				ingressRules = append(ingressRules, ingressRule)
 			}
 		}
 	}
 
-	return ingressRules 
+	return ingressRules
 }

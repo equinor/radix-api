@@ -1028,7 +1028,7 @@ func TestRestartAuxiliaryResource(t *testing.T) {
 
 	// Setup
 	commonTestUtils, environmentControllerTestUtils, _, kubeClient, _, _, _, _, _ := setupTest(t, nil)
-	kubeClient.Fake.PrependReactor("create", "*", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
+	kubeClient.Fake.PrependReactor("create", "*", func(action testing2.Action) (handled bool, ret runtime.Object, err error) { //nolint:staticcheck
 		createAction, ok := action.DeepCopy().(testing2.CreateAction)
 		if !ok {
 			return false, nil, nil

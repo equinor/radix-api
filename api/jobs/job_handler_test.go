@@ -82,7 +82,7 @@ func (s *JobHandlerTestSuite) setupTest() {
 }
 
 func (s *JobHandlerTestSuite) getUtils() (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *secretproviderfake.Clientset, *certclientfake.Clientset, *tektonclientfake.Clientset) {
-	kubeClient := kubefake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	tektonClient := tektonclientfake.NewSimpleClientset()

@@ -84,7 +84,7 @@ func (dc *buildSecretsController) GetBuildSecrets(accounts models.Accounts, w ht
 }
 
 // ChangeBuildSecret Modifies an application build secret
-func (dc *buildSecretsController)  ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (dc *buildSecretsController) ChangeBuildSecret(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/buildsecrets/{secretName} application updateBuildSecretsSecretValue
 	// ---
 	// summary: Update an application build secret

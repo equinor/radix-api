@@ -248,19 +248,19 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	require.NoError(t, err)
 
 	actualComponent := getComponentByName("c1", components)
-	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
 	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c2", components)
-	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
 	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c3", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
 	assert.Empty(t, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c4", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
+	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
 	assert.Empty(t, actualComponent.Secrets)
 }
 
