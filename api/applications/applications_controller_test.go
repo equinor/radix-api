@@ -74,7 +74,7 @@ func customWarningCollector(handler CollectContextWarningsFunc) ApplicationHandl
 
 func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
+	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixclient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()
@@ -610,6 +610,8 @@ func TestCreateApplication_Warnings_ShouldWarn(t *testing.T) {
 }
 
 // TODO: Test succeed with warnings
+//
+//nolint:godox
 func TestCreateApplication_WithAcknowledgeWarning_ShouldSuccess(t *testing.T) {
 	// Setup
 	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t, customWarningCollector(func(_ context.Context) []string {

@@ -49,7 +49,7 @@ const (
 
 func setupTest(t *testing.T, tlsValidator tlsvalidation.Validator) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, secretsstorevclient.Interface) {
 	// Setup
-	kubeclient := kubefake.NewSimpleClientset()
+	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixclient := fake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusclient := prometheusfake.NewSimpleClientset()

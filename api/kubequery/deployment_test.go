@@ -18,7 +18,7 @@ func Test_GetDeploymentsForEnvironment(t *testing.T) {
 	unmatched1 := appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Namespace: "app1-env1"}}
 	unmatched2 := appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "unmatched2", Namespace: "app1-env1", Labels: labels.ForApplicationName("app2")}}
 	unmatched3 := appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env2", Labels: labels.ForApplicationName("app1")}}
-	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3)
+	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3) //nolint:staticcheck
 	expected := []appsv1.Deployment{matched1, matched2}
 	actual, err := GetDeploymentsForEnvironment(context.Background(), client, "app1", "env1")
 	require.NoError(t, err)

@@ -36,7 +36,7 @@ func (s *HandlerTestSuite) SetupSubTest() {
 }
 
 func (s *HandlerTestSuite) setupTest() {
-	kubeClient := kubefake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()

@@ -27,9 +27,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v1.64.3
+          version: v2.7.2
 
   test:
     name: Unit Test
@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - name: Run Tests
-        run: go test -cover `go list ./...`
+        run: go test `go list ./...`
 
   verify-code-generation:
     name: Verify Code Generation

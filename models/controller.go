@@ -88,7 +88,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	m := sync.Mutex{}
 
 	// Make sure we send an initial message to the client
-	fmt.Fprintf(w, "event: started\n\n") // sends an event comment
+	_, _ = fmt.Fprintf(w, "event: started\n\n") // sends an event comment
 	flusher.Flush()
 
 	// send health checks every 5 seconds
@@ -101,7 +101,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 			select {
 			case <-ticker.C:
 				m.Lock()
-				fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
+				_, _ = fmt.Fprintf(w, ": healthcheck\n\n") // sends an event comment
 				flusher.Flush()
 				m.Unlock()
 			case <-tickerCtx.Done():
@@ -115,7 +115,7 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 	for scanner.Scan() {
 		line := scanner.Text()
 		m.Lock()
-		fmt.Fprintf(w, "data: %s\n\n", line)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
 		flusher.Flush()
 		m.Unlock()
 	}
@@ -125,11 +125,11 @@ func (c *DefaultController) ReaderEventStreamResponse(w http.ResponseWriter, r *
 
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
 		log.Ctx(r.Context()).Err(err).Msg("failed to read stream")
-		fmt.Fprintf(w, "event: error\n\n")
+		_, _ = fmt.Fprintf(w, "event: error\n\n")
 		return
 	}
 
-	fmt.Fprintf(w, "event: completed\n\n")
+	_, _ = fmt.Fprintf(w, "event: completed\n\n")
 }
 
 // ByteArrayResponse Used for response data. I.e. image

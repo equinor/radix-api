@@ -89,7 +89,7 @@ func applyRadixAppWithPrivateImageHub(privateImageHubs radixv1.PrivateImageHubEn
 }
 
 func setupTest() (*test.Utils, kubernetes.Interface, *kube.Kube, radixclient.Interface, error) {
-	kubeClient := kubefake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixClient := radixfake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()

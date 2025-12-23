@@ -32,7 +32,7 @@ const (
 )
 
 func SetupTest(t *testing.T) (*commontest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset) {
-	kubeClient := kubefake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
 	prometheusClient := prometheusfake.NewSimpleClientset()

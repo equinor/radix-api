@@ -89,7 +89,7 @@ func (ec *alertingController) EnvironmentRouteAccessCheck(handler models.RadixHa
 }
 
 // UpdateEnvironmentAlertingConfig Configures alert settings
-func (ec *alertingController)  UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) UpdateEnvironmentAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/environments/{envName}/alerting environment updateEnvironmentAlertingConfig
 	// ---
 	// summary: Update alerts configuration for an environment
@@ -319,7 +319,7 @@ func (ec *alertingController) DisableEnvironmentAlerting(accounts models.Account
 }
 
 // UpdateApplicationAlertingConfig Configures alert settings
-func(ec *alertingController) UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) UpdateApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation PUT /applications/{appName}/alerting application updateApplicationAlertingConfig
 	// ---
 	// summary: Update alerts configuration for application namespace
@@ -381,7 +381,7 @@ func(ec *alertingController) UpdateApplicationAlertingConfig(accounts models.Acc
 }
 
 // GetApplicationAlertingConfig returns alerts configuration
-func(ec *alertingController) GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) GetApplicationAlertingConfig(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /applications/{appName}/alerting application getApplicationAlertingConfig
 	// ---
 	// summary: Get alerts configuration for application namespace
@@ -428,7 +428,7 @@ func(ec *alertingController) GetApplicationAlertingConfig(accounts models.Accoun
 }
 
 // EnableApplicationAlerting enables alerting for application
-func(ec *alertingController) EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) EnableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/alerting/enable application enableApplicationAlerting
 	// ---
 	// summary: Enable alerting for application namespace
@@ -477,7 +477,7 @@ func(ec *alertingController) EnableApplicationAlerting(accounts models.Accounts,
 }
 
 // DisableApplicationAlerting disables alerting for application
-func(ec *alertingController) DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
+func (ec *alertingController) DisableApplicationAlerting(accounts models.Accounts, w http.ResponseWriter, r *http.Request) {
 	// swagger:operation POST /applications/{appName}/alerting/disable application disableApplicationAlerting
 	// ---
 	// summary: Disable alerting for application namespace

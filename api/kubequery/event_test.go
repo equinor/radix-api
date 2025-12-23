@@ -14,7 +14,7 @@ import (
 func Test_GetEvents(t *testing.T) {
 	matched := corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "event1", Namespace: "app1-dev"}}
 	unmatched := corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: "event2", Namespace: "app2-dev"}}
-	client := kubefake.NewSimpleClientset(&matched, &unmatched)
+	client := kubefake.NewSimpleClientset(&matched, &unmatched) //nolint:staticcheck
 
 	// Get existing events
 	actual, err := GetEventsForEnvironment(context.Background(), client, "app1", "dev")
