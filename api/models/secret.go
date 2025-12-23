@@ -388,8 +388,8 @@ func getAzureKeyVaultSecretStatus(componentName, azureKeyVaultName string, secre
 
 func getComponentSecretProviderClassMapForAzureKeyVault(componentName string, componentSecretProviderClassMap map[string]secretsstorev1.SecretProviderClass, azureKeyVaultName string) *secretsstorev1.SecretProviderClass {
 	for _, secretProviderClass := range componentSecretProviderClassMap {
-		if strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixComponentLabel], componentName) && //nolint:staticcheck
-			strings.EqualFold(secretProviderClass.ObjectMeta.Labels[kube.RadixSecretRefNameLabel], azureKeyVaultName) { //nolint:staticcheck
+		if strings.EqualFold(secretProviderClass.Labels[kube.RadixComponentLabel], componentName) &&
+			strings.EqualFold(secretProviderClass.Labels[kube.RadixSecretRefNameLabel], azureKeyVaultName) {
 			return &secretProviderClass
 		}
 	}

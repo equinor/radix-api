@@ -183,7 +183,7 @@ func (jh JobHandler) GetTektonPipelineRunTaskStep(ctx context.Context, appName, 
 	if err != nil {
 		return nil, err
 	}
-	taskStep, ok := slice.FindFirst(taskRun.Status.TaskRunStatusFields.Steps, func(step pipelinev1.StepState) bool { return step.Name == stepName }) //nolint:staticcheck
+	taskStep, ok := slice.FindFirst(taskRun.Status.Steps, func(step pipelinev1.StepState) bool { return step.Name == stepName })
 	if !ok {
 		return nil, fmt.Errorf("step %s not found in the task %s", stepName, taskName)
 	}
@@ -208,8 +208,8 @@ func (jh JobHandler) getPipelineRunAndTaskRun(ctx context.Context, appName strin
 
 func getPipelineRunModel(pipelineRun *pipelinev1.PipelineRun) *jobModels.PipelineRun {
 	pipelineRunModel := jobModels.PipelineRun{
-		Name:     pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation], //nolint:staticcheck
-		Env:      pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],                           //nolint:staticcheck
+		Name:     pipelineRun.Annotations[operatorDefaults.PipelineNameAnnotation],
+		Env:      pipelineRun.Labels[kube.RadixEnvLabel],
 		KubeName: pipelineRun.GetName(),
 		Started:  radixutils.FormatTime(pipelineRun.Status.StartTime),
 		Ended:    radixutils.FormatTime(pipelineRun.Status.CompletionTime),
@@ -234,10 +234,10 @@ func getPipelineRunTaskModels(pipelineRun *pipelinev1.PipelineRun, taskNameToTas
 
 func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, taskRun *pipelinev1.TaskRun) *jobModels.PipelineRunTask {
 	pipelineTaskModel := jobModels.PipelineRunTask{
-		Name:           taskRun.ObjectMeta.Labels[defaults.TektonTaskName], //nolint:staticcheck
+		Name:           taskRun.Labels[defaults.TektonTaskName],
 		KubeName:       taskRun.Spec.TaskRef.Name,
-		PipelineRunEnv: pipelineRun.ObjectMeta.Labels[kube.RadixEnvLabel],                           //nolint:staticcheck
-		PipelineName:   pipelineRun.ObjectMeta.Annotations[operatorDefaults.PipelineNameAnnotation], //nolint:staticcheck
+		PipelineRunEnv: pipelineRun.Labels[kube.RadixEnvLabel],
+		PipelineName:   pipelineRun.Annotations[operatorDefaults.PipelineNameAnnotation],
 	}
 	pipelineTaskModel.Started = radixutils.FormatTime(taskRun.Status.StartTime)
 	pipelineTaskModel.Ended = radixutils.FormatTime(taskRun.Status.CompletionTime)
@@ -255,7 +255,7 @@ func getPipelineRunTaskModelByTaskSpec(pipelineRun *pipelinev1.PipelineRun, task
 
 func buildPipelineRunTaskStepModels(taskRun *pipelinev1.TaskRun) []jobModels.PipelineRunTaskStep {
 	var stepsModels []jobModels.PipelineRunTaskStep
-	for _, step := range taskRun.Status.TaskRunStatusFields.Steps { //nolint:staticcheck
+	for _, step := range taskRun.Status.Steps {
 		stepsModels = append(stepsModels, buildPipelineRunTaskStepModel(step))
 	}
 	return stepsModels
@@ -429,7 +429,7 @@ func (jh JobHandler) getSubPipelineTasksSteps(ctx context.Context, appName, jobN
 		taskName := taskRun.GetLabels()[defaults.TektonTaskName]
 		taskKubeName := taskRun.GetLabels()[defaults.TektonTaskKubeName]
 		pipelineName := taskRun.GetAnnotations()[operatorDefaults.PipelineNameAnnotation]
-		for _, taskStep := range taskRun.Status.TaskRunStatusFields.Steps { //nolint:staticcheck
+		for _, taskStep := range taskRun.Status.Steps {
 			stepModel := jh.getTaskRunStepModel(envName, pipelineName, pipelineRunName, taskName, taskKubeName, taskStep)
 			steps = append(steps, stepModel)
 		}

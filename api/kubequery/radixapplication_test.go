@@ -34,7 +34,7 @@ func Test_GetRadixApplication(t *testing.T) {
 func Test_IsRadixApplicationAdmin(t *testing.T) {
 	called := 0
 	client := fake.NewClientset()
-	client.Fake.PrependReactor("create", "*", func(action testing2.Action) (handled bool, ret runtime.Object, err error) { //nolint:staticcheck
+	client.PrependReactor("create", "*", func(action testing2.Action) (handled bool, ret runtime.Object, err error) {
 		createAction, ok := action.DeepCopy().(testing2.CreateAction)
 		if !ok {
 			return false, nil, nil

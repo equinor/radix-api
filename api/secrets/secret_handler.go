@@ -332,16 +332,16 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 			ReplicaCreated: commonutils.FormatTime(&podCreated),
 			Version:        secretVersion,
 		}
-		if _, ok := pod.ObjectMeta.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok { //nolint:staticcheck
+		if _, ok := pod.Labels[kube.RadixPodIsJobAuxObjectLabel]; ok {
 			azureKeyVaultSecretVersion.ReplicaName = "New jobs"
 			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 			continue
 		}
-		if !strings.EqualFold(pod.ObjectMeta.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) { //nolint:staticcheck
+		if !strings.EqualFold(pod.Labels[kube.RadixJobTypeLabel], kube.RadixJobTypeJobSchedule) {
 			azKeyVaultSecretVersions = append(azKeyVaultSecretVersions, azureKeyVaultSecretVersion)
 			continue
 		}
-		jobName := pod.ObjectMeta.Labels[k8sJobNameLabel] //nolint:staticcheck
+		jobName := pod.Labels[k8sJobNameLabel]
 		job, ok := jobMap[jobName]
 		if !ok {
 			continue
@@ -349,7 +349,7 @@ func (eh *SecretHandler) getAzKeyVaultSecretVersions(appName string, envNamespac
 		azureKeyVaultSecretVersion.JobName = jobName
 		jobCreated := job.GetCreationTimestamp()
 		azureKeyVaultSecretVersion.JobCreated = commonutils.FormatTime(&jobCreated)
-		if batchName, ok := pod.ObjectMeta.Labels[kube.RadixBatchNameLabel]; ok { //nolint:staticcheck
+		if batchName, ok := pod.Labels[kube.RadixBatchNameLabel]; ok {
 			if batch, ok := jobMap[batchName]; ok {
 				azureKeyVaultSecretVersion.BatchName = batchName
 				batchCreated := batch.GetCreationTimestamp()

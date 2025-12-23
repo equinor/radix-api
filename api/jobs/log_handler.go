@@ -37,7 +37,7 @@ func (jh JobHandler) getTaskPodAndContainerName(taskRunsMap map[string]*pipeline
 	var podName, containerName string
 	if taskRun, ok := taskRunsMap[taskRealName]; ok {
 		podName = taskRun.Status.PodName
-		for _, step := range taskRun.Status.TaskRunStatusFields.Steps { //nolint:staticcheck
+		for _, step := range taskRun.Status.Steps {
 			if !strings.EqualFold(step.Name, stepName) {
 				continue
 			}
