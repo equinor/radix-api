@@ -248,7 +248,7 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	require.NoError(t, err)
 
 	actualComponent := getComponentByName("c1", components)
-	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
+	assert.NotNil(t, actualComponent.OAuth2)
 	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c2", components)
