@@ -260,7 +260,7 @@ func TestGetComponents_OAuth2(t *testing.T) {
 	assert.Empty(t, actualComponent.Secrets)
 
 	actualComponent = getComponentByName("c4", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2) //nolint:staticcheck
+	assert.Nil(t, actualComponent.OAuth2)
 	assert.Empty(t, actualComponent.Secrets)
 }
 
