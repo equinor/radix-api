@@ -19,7 +19,7 @@ func Test_GetIngressesForEnvironments(t *testing.T) {
 	unmatched1 := networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Namespace: "app1-env1", Labels: labels.ForApplicationName("app2")}}
 	unmatched2 := networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "unmatched2", Namespace: "app1-env3", Labels: labels.ForApplicationName("app1")}}
 	unmatched3 := networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env1"}}
-	client := kubefake.NewSimpleClientset(&matched1, &matched2, &matched3, &unmatched1, &unmatched2, &unmatched3)
+	client := kubefake.NewSimpleClientset(&matched1, &matched2, &matched3, &unmatched1, &unmatched2, &unmatched3) //nolint:staticcheck
 	expected := []networkingv1.Ingress{matched1, matched2, matched3}
 	actual, err := GetIngressesForEnvironments(context.Background(), client, "app1", []string{"env1", "env2"}, 10)
 	require.NoError(t, err)

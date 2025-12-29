@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/equinor/radix-api/api/deployments/models"
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/deployments/models"                  //nolint:staticcheck
+	deploymentModels "github.com/equinor/radix-api/api/deployments/models" //nolint:staticcheck
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"

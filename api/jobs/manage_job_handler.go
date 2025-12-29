@@ -87,10 +87,10 @@ func (jh JobHandler) buildPipelineJobToRerunFrom(ctx context.Context, radixJob *
 		},
 		Spec: radixJob.Spec,
 	}
-	if rerunRadixJob.ObjectMeta.Annotations == nil {
-		rerunRadixJob.ObjectMeta.Annotations = make(map[string]string)
+	if rerunRadixJob.Annotations == nil {
+		rerunRadixJob.Annotations = make(map[string]string)
 	}
-	rerunRadixJob.ObjectMeta.Annotations[jobModels.RadixPipelineJobRerunAnnotation] = radixJob.GetName()
+	rerunRadixJob.Annotations[jobModels.RadixPipelineJobRerunAnnotation] = radixJob.GetName()
 	if len(rerunRadixJob.Spec.Build.ImageTag) > 0 {
 		rerunRadixJob.Spec.Build.ImageTag = imageTag
 	}

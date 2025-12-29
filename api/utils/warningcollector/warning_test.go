@@ -29,7 +29,6 @@ func TestCollector(t *testing.T) {
 	assert.Contains(t, warnings, "This is a test warning", "Warning should be collected")
 }
 
-
 func TestEmptyCollector(t *testing.T) {
 	var warnings []string
 	n := negroni.New()

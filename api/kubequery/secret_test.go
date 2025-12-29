@@ -19,7 +19,7 @@ func Test_GetSecretsForEnvironment(t *testing.T) {
 	matched2 := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Namespace: "app1-env1"}}
 	unmatched := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "unmatched", Namespace: "app2-env1"}}
 	jobPayload := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "payload", Namespace: "app1-env1", Labels: map[string]string{kube.RadixSecretTypeLabel: string(kube.RadixSecretJobPayload)}}}
-	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched, &jobPayload)
+	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched, &jobPayload) //nolint:staticcheck
 
 	expected := []corev1.Secret{matched1, matched2}
 	noJobPayloadReq, err := labels.NewRequirement(kube.RadixSecretTypeLabel, selection.NotEquals, []string{string(kube.RadixSecretJobPayload)})

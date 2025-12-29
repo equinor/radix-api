@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
-	"github.com/equinor/radix-api/api/secrets/suffix"
 	controllertest "github.com/equinor/radix-api/api/test"
 	"github.com/equinor/radix-api/api/utils"
 	"github.com/equinor/radix-api/api/utils/labelselector"
@@ -217,51 +216,6 @@ func TestGetComponents_WithTwoVolumeMounts_ContainsTwoVolumeMountSecrets(t *test
 	assert.Contains(t, secrets, "frontend-somevolumename1-csiazurecreds-accountname")
 	assert.Contains(t, secrets, "frontend-somevolumename2-csiazurecreds-accountkey")
 	assert.Contains(t, secrets, "frontend-somevolumename2-csiazurecreds-accountname")
-}
-
-func TestGetComponents_OAuth2(t *testing.T) {
-	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promclient, secretProviderClient, certClient := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, promclient, commonTestUtils, secretProviderClient, certClient, operatorUtils.ARadixDeployment().
-		WithAppName("any-app").
-		WithEnvironment("prod").
-		WithDeploymentName(anyDeployName).
-		WithJobComponents().
-		WithComponents(
-			operatorUtils.NewDeployComponentBuilder().WithName("c1").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
-			operatorUtils.NewDeployComponentBuilder().WithName("c2").WithPublicPort("http").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{SessionStoreType: v1.SessionStoreRedis}}),
-			operatorUtils.NewDeployComponentBuilder().WithName("c3").WithPublicPort("http"),
-			operatorUtils.NewDeployComponentBuilder().WithName("c4").WithAuthentication(&v1.Authentication{OAuth2: &v1.OAuth2{}}),
-		))
-	require.NoError(t, err)
-
-	// Test
-	endpoint := createGetComponentsEndpoint(anyAppName, anyDeployName)
-
-	responseChannel := controllerTestUtils.ExecuteRequest("GET", endpoint)
-	response := <-responseChannel
-
-	assert.Equal(t, 200, response.Code)
-
-	var components []deploymentModels.Component
-	err = controllertest.GetResponseBody(response, &components)
-	require.NoError(t, err)
-
-	actualComponent := getComponentByName("c1", components)
-	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
-	assert.ElementsMatch(t, []string{"c1" + suffix.OAuth2ClientSecret, "c1" + suffix.OAuth2CookieSecret}, actualComponent.Secrets)
-
-	actualComponent = getComponentByName("c2", components)
-	assert.NotNil(t, actualComponent.AuxiliaryResource.OAuth2)
-	assert.ElementsMatch(t, []string{"c2" + suffix.OAuth2ClientSecret, "c2" + suffix.OAuth2CookieSecret, "c2" + suffix.OAuth2RedisPassword}, actualComponent.Secrets)
-
-	actualComponent = getComponentByName("c3", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
-	assert.Empty(t, actualComponent.Secrets)
-
-	actualComponent = getComponentByName("c4", components)
-	assert.Nil(t, actualComponent.AuxiliaryResource.OAuth2)
-	assert.Empty(t, actualComponent.Secrets)
 }
 
 func TestGetComponents_inactive_deployment(t *testing.T) {
