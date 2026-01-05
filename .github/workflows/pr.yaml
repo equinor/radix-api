@@ -78,8 +78,8 @@ jobs:
         id: breaking
         continue-on-error: true
         run: |
-          main_swagger=$(git show main:swaggerui/html/swagger.json)
-          breaking_changes=$(swagger diff --break <$main_swagger swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
+          master_swagger=$(git show master:swaggerui/html/swagger.json)
+          breaking_changes=$(swagger diff --break <$master_swagger swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
       - name: Add comment
         if: failure() && steps.breaking.outcome == 'failure'
         uses: actions/github-script@v7
