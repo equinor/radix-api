@@ -72,7 +72,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Install Swagger
-        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
+        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.33.1
       - name: Check breaking changes
         if: always()
         id: breaking
