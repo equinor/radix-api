@@ -2,7 +2,7 @@ package models
 
 import radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 
-//AlertConfigList list of AlertConfig
+// AlertConfigList list of AlertConfig
 type AlertConfigList []AlertConfig
 
 // AsRadixAlertAlerts converts list of AlertConfigs to list of alerts to be used in RadixAlert spec

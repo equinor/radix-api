@@ -1,15 +1,16 @@
-run:
-  timeout: 30m
+version: "2"
 
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
     - zerologlint
+    - godox # find todos, fixmes and other markers
 
 issues:
   max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - docs/docs.go

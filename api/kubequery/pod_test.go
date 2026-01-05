@@ -21,7 +21,7 @@ func Test_GetPodsForEnvironmentComponents(t *testing.T) {
 	unmatched3 := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env1"}}
 	unmatched4 := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "unmatched4", Namespace: "app1-env1", Labels: labels.Merge(labels.ForApplicationName("app1"), map[string]string{kube.RadixBatchNameLabel: "any"})}}
 	unmatched5 := corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "unmatched5", Namespace: "app1-env1", Labels: labels.Merge(labels.ForApplicationName("app1"), map[string]string{kube.RadixJobTypeLabel: "any"})}}
-	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3, &unmatched4, &unmatched5)
+	client := kubefake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3, &unmatched4, &unmatched5) //nolint:staticcheck
 	expected := []corev1.Pod{matched1, matched2}
 	actual, err := GetPodsForEnvironmentComponents(context.Background(), client, "app1", "env1")
 	require.NoError(t, err)

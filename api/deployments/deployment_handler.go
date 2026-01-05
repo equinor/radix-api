@@ -47,6 +47,7 @@ func Init(accounts models.Accounts) DeployHandler {
 // GetLogs handler for GetLogs
 func (deploy *deployHandler) GetLogs(ctx context.Context, appName, podName string, sinceTime *time.Time, logLines *int64, previousLog, follow bool) (io.ReadCloser, error) {
 	ns := operatorUtils.GetAppNamespace(appName)
+	//nolint:godox
 	// TODO! rewrite to use deploymentId to find pod (rd.Env -> namespace -> pod)
 	ra, err := deploy.accounts.UserAccount.RadixClient.RadixV1().RadixApplications(ns).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {

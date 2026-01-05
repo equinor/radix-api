@@ -2,6 +2,7 @@ package models
 
 import "time"
 
+// swagger:ignore
 type DeploymentSummaryPipelineJobInfo struct {
 	// Name of job creating deployment
 	//
@@ -45,9 +46,9 @@ type DeploymentSummaryPipelineJobInfo struct {
 	// - tag
 	// - <empty> - either branch or tag
 	//
-	// required false
+	// required: false
 	// enum: branch,tag,""
-	// example: "branch"
+	// example: branch
 	GitRefType string `json:"gitRefType,omitempty"`
 }
 
