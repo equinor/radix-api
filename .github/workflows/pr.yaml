@@ -72,14 +72,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Install Swagger
-        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.31.0
+        run: go install github.com/go-swagger/go-swagger/cmd/swagger@v0.33.1
       - name: Check breaking changes
         if: always()
         id: breaking
         continue-on-error: true
         run: |
-          main_swagger=$(git show main:swaggerui/html/swagger.json)
-          breaking_changes=$(swagger diff --break <$main_swagger swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
+          breaking_changes=$(swagger diff --break <(git show origin/master:swaggerui/html/swagger.json) swaggerui/html/swagger.json) >> $GITHUB_OUTPUT
       - name: Add comment
         if: failure() && steps.breaking.outcome == 'failure'
         uses: actions/github-script@v7
