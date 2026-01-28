@@ -10,7 +10,7 @@ import (
 	certfake "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/fake"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"

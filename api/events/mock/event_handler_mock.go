@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/equinor/radix-api/api/events/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEventHandler is a mock of EventHandler interface.

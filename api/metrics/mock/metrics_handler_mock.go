@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	metrics "github.com/equinor/radix-api/api/metrics"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockClient is a mock of Client interface.

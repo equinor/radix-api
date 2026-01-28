@@ -11,7 +11,7 @@ import (
 	time "time"
 
 	models "github.com/equinor/radix-api/api/deployments/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockDeployHandler is a mock of DeployHandler interface.

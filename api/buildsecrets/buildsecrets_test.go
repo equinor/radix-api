@@ -9,7 +9,7 @@ import (
 	environmentModels "github.com/equinor/radix-api/api/secrets/models"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	"github.com/equinor/radix-common/utils/pointers"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"

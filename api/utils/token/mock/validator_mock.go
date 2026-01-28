@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	token "github.com/equinor/radix-api/api/utils/token"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockTokenPrincipal is a mock of TokenPrincipal interface.

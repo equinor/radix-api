@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/equinor/radix-api/api/environmentvariables/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEnvVarsHandler is a mock of EnvVarsHandler interface.

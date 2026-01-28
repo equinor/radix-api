@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/equinor/radix-api/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockenvVarsHandlerFactory is a mock of envVarsHandlerFactory interface.

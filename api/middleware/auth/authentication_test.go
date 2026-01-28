@@ -10,7 +10,7 @@ import (
 	"github.com/equinor/radix-api/api/middleware/auth"
 	controllertest "github.com/equinor/radix-api/api/test"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
