@@ -7,10 +7,10 @@ import (
 
 	"github.com/equinor/radix-api/api/metrics/prometheus"
 	mock2 "github.com/equinor/radix-api/api/metrics/prometheus/mock"
-	"go.uber.org/mock/gomock"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestArguemtsExistsInQuery(t *testing.T) {

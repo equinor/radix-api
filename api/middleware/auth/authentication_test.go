@@ -10,8 +10,8 @@ import (
 	"github.com/equinor/radix-api/api/middleware/auth"
 	controllertest "github.com/equinor/radix-api/api/test"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestAuthenticatedRequest(t *testing.T) {
