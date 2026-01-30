@@ -1,6 +1,6 @@
 # Swagger UI
 
-The Swagger UI in from [https://github.com/swagger-api/swagger-ui](https://github.com/swagger-api/swagger-ui).
+The Swagger UI comes from [https://github.com/swagger-api/swagger-ui](https://github.com/swagger-api/swagger-ui).
 
 Update Swagger UI version:
 
