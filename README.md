@@ -20,7 +20,7 @@ Also needed:
 
 - [`go-swagger`](https://github.com/go-swagger/go-swagger) (install with `make bootstrap`.)
 - [`golangci-lint`](https://golangci-lint.run/) (install with `make bootstrap`)
-- [`gomock`](https://github.com/golang/mock) (install with `make bootstrap`)
+- [`gomock`](https://github.com/uber-go/mock) (install with `make bootstrap`)
 
 Clone the repo into your `GOPATH` and run `go mod download`.
 
