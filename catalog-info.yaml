@@ -10,7 +10,7 @@ spec:
   type: openapi
   lifecycle: production
   owner: team-radix
-  system: Radix
+  system: system:default/Radix
   definition:
     $text: "./swaggerui/html/swagger.json"
 ---
@@ -26,6 +26,6 @@ spec:
   type: service
   lifecycle: production
   owner: team-radix
-  system: Radix
+  system: system:default/Radix
   providesApis:
     - radix-api
