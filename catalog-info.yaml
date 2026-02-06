@@ -9,8 +9,8 @@ metadata:
 spec:
   type: openapi
   lifecycle: production
-  owner: omnia-radix
-  system: Radix
+  owner: team-radix
+  system: system:default/Radix
   definition:
     $text: "./swaggerui/html/swagger.json"
 ---
@@ -25,7 +25,7 @@ metadata:
 spec:
   type: service
   lifecycle: production
-  owner: omnia-radix
-  system: Radix
+  owner: team-radix
+  system: system:default/Radix
   providesApis:
     - radix-api

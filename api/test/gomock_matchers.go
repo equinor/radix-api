@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	event "github.com/equinor/radix-api/api/events"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 )
 
 type namespaceFuncMatcher struct {
