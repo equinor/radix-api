@@ -57,6 +57,7 @@ type Secret struct {
 	// Updated timestamp of the last change
 	//
 	// required: false
+	// swagger:strfmt date-time
 	Updated *time.Time `json:"updated,omitempty"`
 }
 
