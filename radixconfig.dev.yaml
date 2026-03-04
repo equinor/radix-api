@@ -71,3 +71,7 @@ spec:
               memory: "500M"
           variables:
             GOMAXPROCS: "2"
+  dnsAlias:
+    - alias: api
+      environment: "qa"
+      component: server
