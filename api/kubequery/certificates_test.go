@@ -15,10 +15,10 @@ import (
 
 func Test_GetCertificatesForEnvironment(t *testing.T) {
 	anyExternalDNS := v1.RadixDeployExternalDNS{FQDN: "any.domain.com"}
-	matched1 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
-	matched2 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
-	unmatched1 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSCertificate("app2", anyExternalDNS)}}
-	unmatched2 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched2", Namespace: "app1-env2", Labels: labels.ForExternalDNSCertificate("app1", anyExternalDNS)}}
+	matched1 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSResource("app1", anyExternalDNS)}}
+	matched2 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Namespace: "app1-env1", Labels: labels.ForExternalDNSResource("app1", anyExternalDNS)}}
+	unmatched1 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Namespace: "app1-env1", Labels: labels.ForExternalDNSResource("app2", anyExternalDNS)}}
+	unmatched2 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched2", Namespace: "app1-env2", Labels: labels.ForExternalDNSResource("app1", anyExternalDNS)}}
 	unmatched3 := cmv1.Certificate{ObjectMeta: metav1.ObjectMeta{Name: "unmatched3", Namespace: "app1-env1"}}
 	client := certclientfake.NewSimpleClientset(&matched1, &matched2, &unmatched1, &unmatched2, &unmatched3)
 	expected := []cmv1.Certificate{matched1, matched2}

@@ -57,7 +57,8 @@ func Init(opts ...EnvVarsHandlerOptions) EnvVarsHandler {
 // GetComponentEnvVars Get environment variables with metadata for the component
 func (eh *envVarsHandler) GetComponentEnvVars(ctx context.Context, appName string, envName string, componentName string) ([]envvarsmodels.EnvVar, error) {
 	namespace := crdUtils.GetEnvironmentNamespace(appName, envName)
-	rd, err := eh.kubeUtil.GetActiveDeployment(ctx, namespace)
+
+	rd, err := kube.GetActiveDeployment(ctx, eh.kubeUtil.RadixClient(), namespace)
 	if err != nil {
 		return nil, err
 	}

@@ -17,16 +17,19 @@ import (
 
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	controllertest "github.com/equinor/radix-api/api/test"
-	apiUtils "github.com/equinor/radix-api/api/utils"
 	radixhttp "github.com/equinor/radix-common/net/http"
 	radixutils "github.com/equinor/radix-common/utils"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
+	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
+	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -39,13 +42,27 @@ func createGetLogEndpoint(appName, podName string) string {
 	return fmt.Sprintf("/api/v1/applications/%s/deployments/any/components/any/replicas/%s/logs", appName, podName)
 }
 
-func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certfake.Clientset) {
-	commonTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient := apiUtils.SetupTest(t)
+func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, client.Client, secretsstorevclient.Interface, *certfake.Clientset) {
+	const (
+		clusterName    = "AnyClusterName"
+		subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
+	)
+	kubeClient := kubefake.NewClientset() //nolint:staticcheck
+	radixClient := radixfake.NewSimpleClientset()
+	kedaClient := kedafake.NewSimpleClientset()
+	secretProviderClient := secretproviderfake.NewSimpleClientset()
+	certClient := certfake.NewSimpleClientset()
+	dynamicClient := commontest.CreateClient()
+	// commonTestUtils is used for creating CRDs
+	commonTestUtils := commontest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient)
+	err := commonTestUtils.CreateClusterPrerequisites(clusterName, subscriptionId)
+	require.NoError(t, err)
+
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	mockValidator := authnmock.NewMockValidatorInterface(gomock.NewController(t))
 	mockValidator.EXPECT().ValidateToken(gomock.Any(), gomock.Any()).AnyTimes().Return(controllertest.NewTestPrincipal(true), nil)
-	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewDeploymentController())
-	return commonTestUtils, &controllerTestUtils, kubeclient, radixClient, kedaClient, prometheusClient, secretproviderclient, certClient
+	controllerTestUtils := controllertest.NewTestUtils(kubeClient, radixClient, kedaClient, secretProviderClient, certClient, nil, mockValidator, NewDeploymentController())
+	return &commonTestUtils, &controllerTestUtils, kubeClient, radixClient, kedaClient, dynamicClient, secretProviderClient, certClient
 }
 func TestGetPodLog_no_radixconfig(t *testing.T) {
 	// Setup
