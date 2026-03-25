@@ -193,7 +193,7 @@ func getExternalDNSAutomationCondition(appName string, externalAlias radixv1.Rad
 }
 
 func certificateForExternalAliasPredicate(appName string, externalAlias radixv1.RadixDeployExternalDNS) func(cr cmv1.Certificate) bool {
-	selector := radixlabels.ForExternalDNSCertificate(appName, externalAlias).AsSelector()
+	selector := radixlabels.ForExternalDNSResource(appName, externalAlias).AsSelector()
 	return func(cr cmv1.Certificate) bool {
 		return selector.Matches(labels.Set(cr.Labels))
 	}

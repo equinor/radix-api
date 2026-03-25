@@ -30,8 +30,6 @@ import (
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	kedav2 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -42,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	testing2 "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	secretsstorevclient "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
@@ -60,12 +59,12 @@ const (
 	nodeType1        = "some-node-type1"
 )
 
-func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, *kubefake.Clientset, radixclient.Interface, kedav2.Interface, prometheusclient.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
+func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, *kubefake.Clientset, radixclient.Interface, kedav2.Interface, client.Client, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewClientset()
 	radixClient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
-	prometheusclient := prometheusfake.NewSimpleClientset()
+	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 
@@ -81,7 +80,7 @@ func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commo
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	environmentControllerTestUtils := controllertest.NewTestUtils(kubeclient, radixClient, kedaClient, secretproviderclient, certClient, nil, mockValidator, NewEnvironmentController(NewEnvironmentHandlerFactory(envHandlerOpts...)))
 
-	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixClient, kedaClient, prometheusclient, secretproviderclient, certClient
+	return &commonTestUtils, &environmentControllerTestUtils, &secretControllerTestUtils, kubeclient, radixClient, kedaClient, dynamicClient, secretproviderclient, certClient
 }
 
 func TestGetEnvironmentDeployments_SortedWithFromTo(t *testing.T) {

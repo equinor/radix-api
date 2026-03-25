@@ -18,14 +18,13 @@ import (
 	radixclient "github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
-	prometheusclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	dynamicclient "sigs.k8s.io/controller-runtime/pkg/client"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
@@ -38,8 +37,8 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, prometheusclient.Interface, certclient.Interface, *MockEnvVarsHandler) {
-	kubeclient, radixclient, kedaClient, prometheusclient, commonTestUtils, _, secretproviderclient, certClient := setupTest(t)
+func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, dynamicclient.Client, certclient.Interface, *MockEnvVarsHandler) {
+	kubeclient, radixclient, kedaClient, dynamicClient, commonTestUtils, _, secretproviderclient, certClient := setupTest(t)
 
 	handler := NewMockEnvVarsHandler(mockCtrl)
 	handlerFactory := NewMockenvVarsHandlerFactory(mockCtrl)
@@ -50,15 +49,15 @@ func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commo
 	// controllerTestUtils is used for issuing HTTP request and processing responses
 	controllerTestUtils := controllertest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient, certClient, nil, mockValidator, controller)
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, prometheusclient, certClient, handler
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, dynamicClient, certClient, handler
 }
 
-func setupTest(t *testing.T) (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
+func setupTest(t *testing.T) (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixclient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
-	prometheusclient := prometheusfake.NewSimpleClientset()
+	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
 
@@ -66,7 +65,7 @@ func setupTest(t *testing.T) (*kubefake.Clientset, *radixfake.Clientset, *kedafa
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
 	err := commonTestUtils.CreateClusterPrerequisites(clusterName, subscriptionId)
 	require.NoError(t, err)
-	return kubeclient, radixclient, kedaClient, prometheusclient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient, certClient
+	return kubeclient, radixclient, kedaClient, dynamicClient, commonTestUtils, commonTestUtils.GetKubeUtil(), secretproviderclient, certClient
 }
 
 func Test_GetComponentEnvVars(t *testing.T) {
@@ -196,7 +195,7 @@ func Test_ChangeEnvVar(t *testing.T) {
 	})
 }
 
-func setupDeployment(commonTestUtils *commontest.Utils, kubeClient kubernetes.Interface, radixClient radixclient.Interface, promClient prometheusclient.Interface, certClient certclient.Interface, appName, environmentName, componentName string, modifyComponentBuilder func(builders.DeployComponentBuilder)) error {
+func setupDeployment(commonTestUtils *commontest.Utils, kubeClient kubernetes.Interface, radixClient radixclient.Interface, dynamicClient dynamicclient.Client, certClient certclient.Interface, appName, environmentName, componentName string, modifyComponentBuilder func(builders.DeployComponentBuilder)) error {
 	componentBuilder := builders.NewDeployComponentBuilder().WithName(componentName)
 	if modifyComponentBuilder != nil {
 		modifyComponentBuilder(componentBuilder)
@@ -219,7 +218,7 @@ func setupDeployment(commonTestUtils *commontest.Utils, kubeClient kubernetes.In
 		return err
 	}
 
-	deploymentSyncer := deployment.NewDeploymentSyncer(kubeClient, commonTestUtils.GetKubeUtil(), radixClient, promClient, certClient, radixRegistration, rd, nil, nil, &config.Config{})
+	deploymentSyncer := deployment.NewDeploymentSyncer(kubeClient, commonTestUtils.GetKubeUtil(), radixClient, dynamicClient, certClient, radixRegistration, rd, nil, nil, &config.Config{})
 
 	return deploymentSyncer.OnSync(context.Background())
 }
