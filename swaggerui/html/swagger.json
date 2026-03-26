@@ -6894,6 +6894,23 @@
           "x-go-name": "Repository",
           "example": "https://github.com/equinor/radix-canary-golang"
         },
+        "status": {
+          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "type": "string",
+          "enum": [
+            "Reconciling",
+            "Ready",
+            "Failed",
+            "Inactive"
+          ],
+          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "x-go-name": "Status"
+        },
+        "statusReason": {
+          "description": "StatusReason contains details when deployment status is Failed",
+          "type": "string",
+          "x-go-name": "StatusReason"
+        },
         "useBuildCache": {
           "description": "Defaults to true and requires useBuildKit to have an effect.",
           "type": "boolean",
@@ -7055,6 +7072,23 @@
           "type": "boolean",
           "x-go-name": "RefreshBuildCache",
           "x-nullable": true
+        },
+        "status": {
+          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "type": "string",
+          "enum": [
+            "Reconciling",
+            "Ready",
+            "Failed",
+            "Inactive"
+          ],
+          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "x-go-name": "Status"
+        },
+        "statusReason": {
+          "description": "StatusReason contains details when deployment status is Failed",
+          "type": "string",
+          "x-go-name": "StatusReason"
         },
         "useBuildCache": {
           "description": "Defaults to true and requires useBuildKit to have an effect.",
