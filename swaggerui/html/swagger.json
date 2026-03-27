@@ -6231,6 +6231,14 @@
           },
           "x-go-name": "EnvironmentActiveComponents"
         },
+        "environments": {
+          "description": "Environments List of environments for this application",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Environment"
+          },
+          "x-go-name": "Environments"
+        },
         "latestJob": {
           "$ref": "#/definitions/JobSummary"
         },

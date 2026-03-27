@@ -2,6 +2,7 @@ package models
 
 import (
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 )
 
@@ -23,4 +24,9 @@ type ApplicationSummary struct {
 	//
 	// required: false
 	EnvironmentActiveComponents map[string][]*deploymentModels.Component `json:"environmentActiveComponents,omitempty"`
+
+	// Environments List of environments for this application
+	//
+	// required: false
+	Environments []environmentmodels.Environment `json:"environments,omitempty"`
 }

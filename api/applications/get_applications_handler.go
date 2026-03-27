@@ -7,12 +7,13 @@ import (
 	"sync"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	deployment "github.com/equinor/radix-api/api/deployments"
 	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	"github.com/equinor/radix-api/api/environments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/access"
+	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
 	"golang.org/x/sync/errgroup"
 
@@ -56,10 +57,23 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 		}
 	}
 
-	var environmentActiveComponents map[string]map[string][]*deploymentModels.Component
+	var environmentActiveComponents = map[string]map[string][]*deploymentModels.Component{}
+	var appEnvironmentsMap map[string][]environmentModels.Environment
 	if options.IncludeEnvironmentActiveComponents {
-		if environmentActiveComponents, err = ah.getEnvironmentActiveComponentsForApplications(ctx, radixRegistrations); err != nil {
+		if appEnvironmentsMap, err = ah.getEnvironmentsForApplications(ctx, radixRegistrations); err != nil {
 			return nil, err
+		}
+
+		for appName, environments := range appEnvironmentsMap {
+			environmentActiveComponents[appName] = map[string][]*deploymentModels.Component{}
+
+			for _, environment := range environments {
+				if environment.ActiveDeployment == nil {
+					continue
+				}
+
+				environmentActiveComponents[appName][environment.Name] = environment.ActiveDeployment.Components
+			}
 		}
 	}
 
@@ -72,34 +86,36 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 				Name:                        appName,
 				LatestJob:                   latestApplicationJobs[appName],
 				EnvironmentActiveComponents: environmentActiveComponents[appName],
+				Environments:                appEnvironmentsMap[appName],
 			},
 		)
 	}
 	return applications, nil
 }
 
-func (ah *ApplicationHandler) getEnvironmentActiveComponentsForApplications(ctx context.Context, radixRegistrations []v1.RadixRegistration) (map[string]map[string][]*deploymentModels.Component, error) {
+func (ah *ApplicationHandler) getEnvironmentsForApplications(ctx context.Context, radixRegistrations []v1.RadixRegistration) (map[string][]environmentModels.Environment, error) {
 	type ChannelData struct {
-		key           string
-		envComponents map[string][]*deploymentModels.Component
+		key          string
+		environments []environmentModels.Environment
 	}
 
 	var g errgroup.Group
 	g.SetLimit(10)
 
-	deploy := deployment.Init(ah.accounts)
 	chanData := make(chan *ChannelData, len(radixRegistrations))
 	for _, rr := range radixRegistrations {
 		appName := rr.GetName()
 		g.Go(func() error {
-			environments, err := ah.environmentHandler.GetEnvironmentSummary(ctx, appName)
+			reList, err := kubequery.GetRadixEnvironments(ctx, ah.accounts.ServiceAccount.RadixClient, appName)
 			if err != nil {
 				return err
 			}
 
-			envComponents, err := getComponentsForActiveDeploymentsInEnvironments(ctx, deploy, appName, environments)
+			envNames := slice.Map(reList, func(re v1.RadixEnvironment) string { return re.Spec.EnvName })
+
+			environments, err := getComponentsForActiveDeploymentsInEnvironments(ctx, ah.environmentHandler, appName, envNames)
 			if err == nil {
-				chanData <- &ChannelData{key: appName, envComponents: envComponents}
+				chanData <- &ChannelData{key: appName, environments: environments}
 			}
 			return err
 		})
@@ -111,34 +127,24 @@ func (ah *ApplicationHandler) getEnvironmentActiveComponentsForApplications(ctx 
 		return nil, err
 	}
 
-	envComponents := make(map[string]map[string][]*deploymentModels.Component)
+	appEnvironments := make(map[string][]environmentModels.Environment)
 	for data := range chanData {
-		envComponents[data.key] = data.envComponents
+		appEnvironments[data.key] = data.environments
 	}
-	return envComponents, nil
+	return appEnvironments, nil
 }
 
-func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, deploy deployment.DeployHandler, appName string, environments []*environmentModels.EnvironmentSummary) (map[string][]*deploymentModels.Component, error) {
-	type ChannelData struct {
-		key        string
-		components []*deploymentModels.Component
-	}
-
+func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, handler environments.EnvironmentHandler, appName string, envNames []string) ([]environmentModels.Environment, error) {
 	var g errgroup.Group
 	g.SetLimit(5)
 
-	chanData := make(chan *ChannelData, len(environments))
-	for _, env := range environments {
-		deployment := env.ActiveDeployment
-		if deployment == nil || deployment.ActiveTo != nil {
-			continue
-		}
+	chanData := make(chan environmentModels.Environment, len(envNames))
+	for _, envName := range envNames {
 
-		envName := env.Name
 		g.Go(func() error {
-			componentModels, err := deploy.GetComponentsForDeployment(ctx, appName, deployment.Name, deployment.Environment)
+			environmentModel, err := handler.GetEnvironment(ctx, appName, envName)
 			if err == nil {
-				chanData <- &ChannelData{key: envName, components: componentModels}
+				chanData <- *environmentModel
 			}
 			return err
 		})
@@ -150,11 +156,11 @@ func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, deploy
 		return nil, err
 	}
 
-	components := make(map[string][]*deploymentModels.Component)
+	environments := make([]environmentModels.Environment, 0, len(envNames))
 	for data := range chanData {
-		components[data.key] = data.components
+		environments = append(environments, data)
 	}
-	return components, nil
+	return environments, nil
 }
 
 func (ah *ApplicationHandler) filterRadixRegByAccess(ctx context.Context, radixregs []v1.RadixRegistration, hasAccess hasAccessToRR) ([]v1.RadixRegistration, error) {
