@@ -6800,6 +6800,7 @@
         "name",
         "namespace",
         "environment",
+        "status",
         "activeFrom",
         "repository"
       ],
@@ -6967,6 +6968,7 @@
       "required": [
         "name",
         "environment",
+        "status",
         "activeFrom"
       ],
       "properties": {

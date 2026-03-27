@@ -35,8 +35,8 @@ type Deployment struct {
 
 	// Status of deployment reconciliation
 	//
-	// required: false
-	Status DeploymentStatus `json:"status,omitempty"`
+	// required: true
+	Status DeploymentStatus `json:"status"`
 
 	// StatusReason contains details when deployment status is Failed
 	//
