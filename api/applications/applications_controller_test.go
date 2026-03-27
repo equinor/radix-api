@@ -38,7 +38,6 @@ import (
 	"github.com/google/uuid"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/oklog/ulid/v2"
-	prometheusfake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,6 +46,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	dynamicclient "sigs.k8s.io/controller-runtime/pkg/client"
 	secretproviderfake "sigs.k8s.io/secrets-store-csi-driver/pkg/client/clientset/versioned/fake"
 )
 
@@ -56,7 +56,7 @@ const (
 	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
-func setupTest(t *testing.T, options ...ApplicationHandlerOption) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
+func setupTest(t *testing.T, options ...ApplicationHandlerOption) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
 		config.Config{},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
@@ -72,12 +72,12 @@ func customWarningCollector(handler CollectContextWarningsFunc) ApplicationHandl
 	}
 }
 
-func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, *prometheusfake.Clientset, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
+func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
 	radixclient := radixfake.NewSimpleClientset()
 	kedaClient := kedafake.NewSimpleClientset()
-	prometheusclient := prometheusfake.NewSimpleClientset()
+	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certfake.NewSimpleClientset()
 	tektonClient := tektonclientfake.NewSimpleClientset()
@@ -105,7 +105,7 @@ func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory
 			}, handlerFactory, prometheusHandlerMock),
 	)
 
-	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, prometheusclient, secretproviderclient, certClient, tektonClient
+	return &commonTestUtils, &controllerTestUtils, kubeclient, radixclient, kedaClient, dynamicClient, secretproviderclient, certClient, tektonClient
 }
 
 func createPrometheusHandlerMock(t *testing.T, mockHandler *func(handler *mock.MockQueryAPI)) *metrics.Handler {
@@ -1393,8 +1393,8 @@ func TestDeleteApplication_ApplicationIsDeleted(t *testing.T) {
 
 func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, promClient, secretproviderclient, certClient, _ := setupTest(t)
-	err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, promClient, commonTestUtils, secretproviderclient, certClient, builders.ARadixDeployment().
+	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, dynamicClient, secretproviderclient, certClient, _ := setupTest(t)
+	err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, dynamicClient, commonTestUtils, secretproviderclient, certClient, builders.ARadixDeployment().
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithComponents(
