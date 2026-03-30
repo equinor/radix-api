@@ -24,8 +24,9 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		b := NewDeploymentBuilder().WithRadixDeployment(
 			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   deploymentName,
-					Labels: map[string]string{kube.RadixJobNameLabel: jobName},
+					Name:       deploymentName,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 2,
 				},
 				Spec: radixv1.RadixDeploymentSpec{
 					Environment: envName,
@@ -41,8 +42,11 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 					},
 				},
 				Status: radixv1.RadixDeployStatus{
-					ActiveFrom: metav1.NewTime(activeFrom),
-					ActiveTo:   metav1.NewTime(activeTo),
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					ActiveTo:           metav1.NewTime(activeTo),
+					Condition:          radixv1.DeploymentActive,
+					ObservedGeneration: 2,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileSucceeded,
 				},
 			},
 		)
@@ -52,6 +56,7 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 		expected := &DeploymentSummary{
 			Name:        deploymentName,
 			Environment: envName,
+			Status:      DeploymentStatusReady,
 			ActiveFrom:  activeFrom,
 			ActiveTo:    &activeTo,
 			DeploymentSummaryPipelineJobInfo: DeploymentSummaryPipelineJobInfo{
@@ -67,6 +72,122 @@ func Test_DeploymentBuilder_BuildDeploymentSummary(t *testing.T) {
 			},
 		}
 		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("build with deployment failed status", func(t *testing.T) {
+		t.Parallel()
+
+		failureMessage := "reconciliation failed"
+		b := NewDeploymentBuilder().WithRadixDeployment(
+			&radixv1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       deploymentName,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 3,
+				},
+				Spec: radixv1.RadixDeploymentSpec{
+					Environment: envName,
+				},
+				Status: radixv1.RadixDeployStatus{
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					Condition:          radixv1.DeploymentActive,
+					ObservedGeneration: 3,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileFailed,
+					Message:            failureMessage,
+				},
+			},
+		)
+
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
+		assert.Equal(t, DeploymentStatusFailed, actual.Status)
+		assert.Equal(t, failureMessage, actual.StatusReason)
+	})
+
+	t.Run("build with deployment reconciling status", func(t *testing.T) {
+		t.Parallel()
+
+		b := NewDeploymentBuilder().WithRadixDeployment(
+			&radixv1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       deploymentName,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 5,
+				},
+				Spec: radixv1.RadixDeploymentSpec{
+					Environment: envName,
+				},
+				Status: radixv1.RadixDeployStatus{
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					Condition:          radixv1.DeploymentActive,
+					ObservedGeneration: 4,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileFailed,
+					Message:            "should not be exposed while reconciling",
+				},
+			},
+		)
+
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
+		assert.Equal(t, DeploymentStatusReconciling, actual.Status)
+		assert.Empty(t, actual.StatusReason)
+	})
+
+	t.Run("build with deployment ready status when observed generation is newer", func(t *testing.T) {
+		t.Parallel()
+
+		b := NewDeploymentBuilder().WithRadixDeployment(
+			&radixv1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       deploymentName,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 5,
+				},
+				Spec: radixv1.RadixDeploymentSpec{
+					Environment: envName,
+				},
+				Status: radixv1.RadixDeployStatus{
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					Condition:          radixv1.DeploymentActive,
+					ObservedGeneration: 6,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileSucceeded,
+				},
+			},
+		)
+
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
+		assert.Equal(t, DeploymentStatusReady, actual.Status)
+		assert.Empty(t, actual.StatusReason)
+	})
+
+	t.Run("build with deployment no status when condition is not active", func(t *testing.T) {
+		t.Parallel()
+
+		b := NewDeploymentBuilder().WithRadixDeployment(
+			&radixv1.RadixDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       deploymentName,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 3,
+				},
+				Spec: radixv1.RadixDeploymentSpec{
+					Environment: envName,
+				},
+				Status: radixv1.RadixDeployStatus{
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					Condition:          radixv1.DeploymentInactive,
+					ObservedGeneration: 3,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileFailed,
+					Message:            "should not be exposed while inactive",
+				},
+			},
+		)
+
+		actual, err := b.BuildDeploymentSummary()
+		assert.NoError(t, err)
+		assert.Equal(t, DeploymentStatusInactive, actual.Status)
+		assert.Empty(t, actual.StatusReason)
 	})
 
 	t.Run("build with pipeline job info", func(t *testing.T) {
@@ -165,16 +286,20 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 		b := NewDeploymentBuilder().WithRadixDeployment(
 			&radixv1.RadixDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      deploymentName,
-					Namespace: deploymentNamespace,
-					Labels:    map[string]string{kube.RadixJobNameLabel: jobName},
+					Name:       deploymentName,
+					Namespace:  deploymentNamespace,
+					Labels:     map[string]string{kube.RadixJobNameLabel: jobName},
+					Generation: 1,
 				},
 				Spec: radixv1.RadixDeploymentSpec{
 					Environment: envName,
 				},
 				Status: radixv1.RadixDeployStatus{
-					ActiveFrom: metav1.NewTime(activeFrom),
-					ActiveTo:   metav1.NewTime(activeTo),
+					ActiveFrom:         metav1.NewTime(activeFrom),
+					ActiveTo:           metav1.NewTime(activeTo),
+					Condition:          radixv1.DeploymentActive,
+					ObservedGeneration: 1,
+					ReconcileStatus:    radixv1.RadixDeploymentReconcileSucceeded,
 				},
 			},
 		).WithRadixRegistration(rr)
@@ -186,6 +311,7 @@ func Test_DeploymentBuilder_BuildDeployment(t *testing.T) {
 			Namespace:    deploymentNamespace,
 			CreatedByJob: jobName,
 			Environment:  envName,
+			Status:       DeploymentStatusReady,
 			ActiveFrom:   activeFrom,
 			ActiveTo:     &activeTo,
 			Repository:   repoUrl,

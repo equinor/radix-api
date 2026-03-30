@@ -117,7 +117,7 @@ func (ec *alertingController) UpdateEnvironmentAlertingConfig(accounts models.Ac
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -179,7 +179,7 @@ func (ec *alertingController) GetEnvironmentAlertingConfig(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -232,7 +232,7 @@ func (ec *alertingController) EnableEnvironmentAlerting(accounts models.Accounts
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -287,7 +287,7 @@ func (ec *alertingController) DisableEnvironmentAlerting(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -342,7 +342,7 @@ func (ec *alertingController) UpdateApplicationAlertingConfig(accounts models.Ac
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -398,7 +398,7 @@ func (ec *alertingController) GetApplicationAlertingConfig(accounts models.Accou
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -445,7 +445,7 @@ func (ec *alertingController) EnableApplicationAlerting(accounts models.Accounts
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -494,7 +494,7 @@ func (ec *alertingController) DisableApplicationAlerting(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:

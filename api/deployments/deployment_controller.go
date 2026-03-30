@@ -79,7 +79,7 @@ func (dc *deploymentController) GetDeployments(accounts models.Accounts, w http.
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -141,7 +141,7 @@ func (dc *deploymentController) GetDeployment(accounts models.Accounts, w http.R
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -190,7 +190,7 @@ func (dc *deploymentController) GetComponents(accounts models.Accounts, w http.R
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -278,7 +278,7 @@ func (dc *deploymentController) GetPodLog(accounts models.Accounts, w http.Respo
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:

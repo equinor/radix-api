@@ -56,7 +56,7 @@ func (dc *buildSecretsController) GetBuildSecrets(accounts models.Accounts, w ht
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -112,7 +112,7 @@ func (dc *buildSecretsController) ChangeBuildSecret(accounts models.Accounts, w 
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
