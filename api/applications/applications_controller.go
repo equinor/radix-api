@@ -65,15 +65,6 @@ func (ac *applicationController) GetRoutes() models.Routes {
 		},
 		models.Route{
 			Path:        rootPath + "/applications/_search",
-			Method:      "POST",
-			HandlerFunc: ac.SearchApplications,
-			KubeApiConfig: models.KubeApiConfig{
-				QPS:   100,
-				Burst: 100,
-			},
-		},
-		models.Route{
-			Path:        rootPath + "/applications/_search",
 			Method:      "GET",
 			HandlerFunc: ac.SearchApplications,
 			KubeApiConfig: models.KubeApiConfig{
