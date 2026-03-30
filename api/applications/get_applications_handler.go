@@ -2,6 +2,7 @@ package applications
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -145,6 +146,11 @@ func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, handle
 	for data := range chanData {
 		environments = append(environments, data)
 	}
+
+	slices.SortFunc(environments, func(a environmentModels.Environment, b environmentModels.Environment) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
 	return environments, nil
 }
 
