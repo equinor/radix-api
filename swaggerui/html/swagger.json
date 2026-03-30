@@ -6796,7 +6796,7 @@
           "example": "https://github.com/equinor/radix-canary-golang"
         },
         "status": {
-          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusInactive deployment is inactive",
           "type": "string",
           "enum": [
             "Reconciling",
@@ -6804,7 +6804,7 @@
             "Failed",
             "Inactive"
           ],
-          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusInactive deployment is inactive",
           "x-go-name": "Status"
         },
         "statusReason": {
@@ -6976,7 +6976,7 @@
           "x-nullable": true
         },
         "status": {
-          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "description": "Status of deployment reconciliation\nReconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusInactive deployment is inactive",
           "type": "string",
           "enum": [
             "Reconciling",
@@ -6984,7 +6984,7 @@
             "Failed",
             "Inactive"
           ],
-          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusFailed deployment is inactive",
+          "x-go-enum-desc": "Reconciling DeploymentStatusReconciling  DeploymentStatusReconciling deployment is not fully reconciled\nReady DeploymentStatusReady  DeploymentStatusReady deployment is reconciled successfully\nFailed DeploymentStatusFailed  DeploymentStatusFailed deployment reconciliation failed\nInactive DeploymentStatusInactive  DeploymentStatusInactive deployment is inactive",
           "x-go-name": "Status"
         },
         "statusReason": {

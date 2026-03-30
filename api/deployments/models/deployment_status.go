@@ -14,6 +14,6 @@ const (
 	// DeploymentStatusFailed deployment reconciliation failed
 	DeploymentStatusFailed DeploymentStatus = "Failed"
 
-	// DeploymentStatusFailed deployment is inactive
+	// DeploymentStatusInactive deployment is inactive
 	DeploymentStatusInactive DeploymentStatus = "Inactive"
 )
