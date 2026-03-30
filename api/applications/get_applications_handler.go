@@ -99,7 +99,7 @@ func (ah *ApplicationHandler) getEnvironmentsForApplications(ctx context.Context
 
 			envNames := slice.Map(reList, func(re v1.RadixEnvironment) string { return re.Spec.EnvName })
 
-			environments, err := getComponentsForActiveDeploymentsInEnvironments(ctx, ah.environmentHandler, appName, envNames)
+			environments, err := getEnvironmentsForApplication(ctx, ah.environmentHandler, appName, envNames)
 			if err == nil {
 				chanData <- &ChannelData{key: appName, environments: environments}
 			}
@@ -120,7 +120,7 @@ func (ah *ApplicationHandler) getEnvironmentsForApplications(ctx context.Context
 	return appEnvironments, nil
 }
 
-func getComponentsForActiveDeploymentsInEnvironments(ctx context.Context, handler environments.EnvironmentHandler, appName string, envNames []string) ([]environmentModels.Environment, error) {
+func getEnvironmentsForApplication(ctx context.Context, handler environments.EnvironmentHandler, appName string, envNames []string) ([]environmentModels.Environment, error) {
 	var g errgroup.Group
 	g.SetLimit(5)
 
