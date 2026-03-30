@@ -227,54 +227,14 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//   type: string
 	// - name: includeLatestJobSummary
 	//   in: query
-	//   description: true to include LatestJobSummary
+	//   description: true to include latest job summary
 	//   required: false
-	//   type: string
-	// - name: includeEnvironmentActiveComponents
+	//   type: boolean
+	// - name: includeEnvironments
 	//   in: query
-	//   description: true to include ActiveComponents in Environments
+	//   description: true to include environments
 	//   required: false
-	//   type: string
-	// - name: Impersonate-User
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
-	//   type: string
-	//   required: false
-	// - name: Impersonate-Group
-	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
-	//   type: string
-	//   required: false
-	// responses:
-	//   "200":
-	//     description: "Successful operation"
-	//     schema:
-	//        type: "array"
-	//        items:
-	//           "$ref": "#/definitions/ApplicationSummary"
-	//   "401":
-	//     description: "Unauthorized"
-	//   "403":
-	//     description: "Forbidden"
-	//   "404":
-	//     description: "Not found"
-	//   "409":
-	//     description: "Conflict"
-	//   "500":
-	//     description: "Internal server error"
-
-	// swagger:operation POST /applications/_search platform searchApplications
-	//
-	// ---
-	// summary: Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments
-	// deprecated: true
-	// parameters:
-	// - name: applicationSearch
-	//   in: body
-	//   description: List of application names to search for
-	//   required: true
-	//   schema:
-	//       "$ref": "#/definitions/ApplicationsSearchRequest"
+	//   type: boolean
 	// - name: Impersonate-User
 	//   in: header
 	//   description: Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)
@@ -304,14 +264,16 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 	//     description: "Internal server error"
 
 	var appNamesRequest applicationModels.ApplicationsSearchRequest
+
 	switch r.Method {
 	case http.MethodGet:
 		appNamesRequest.Names = strings.Split(r.FormValue("apps"), ",")
+
 		if includeLatestJobSummary, _ := strconv.ParseBool(r.FormValue("includeLatestJobSummary")); includeLatestJobSummary {
 			appNamesRequest.IncludeFields.LatestJobSummary = true
 		}
-		if includeEnvActiveComponents, _ := strconv.ParseBool(r.FormValue("includeEnvironmentActiveComponents")); includeEnvActiveComponents {
-			appNamesRequest.IncludeFields.EnvironmentActiveComponents = true
+		if includeEnvActiveComponents, _ := strconv.ParseBool(r.FormValue("includeEnvironments")); includeEnvActiveComponents {
+			appNamesRequest.IncludeFields.Environments = true
 		}
 	case http.MethodPost:
 		if err := json.NewDecoder(r.Body).Decode(&appNamesRequest); err != nil {
@@ -337,8 +299,8 @@ func (ac *applicationController) SearchApplications(accounts models.Accounts, w 
 		matcher,
 		ac.hasAccessToRR,
 		GetApplicationsOptions{
-			IncludeLatestJobSummary:            appNamesRequest.IncludeFields.LatestJobSummary,
-			IncludeEnvironmentActiveComponents: appNamesRequest.IncludeFields.EnvironmentActiveComponents,
+			IncludeLatestJobSummary: appNamesRequest.IncludeFields.LatestJobSummary,
+			IncludeEnvironments:     appNamesRequest.IncludeFields.Environments,
 		},
 	)
 	if err != nil {

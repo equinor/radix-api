@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	applicationModels "github.com/equinor/radix-api/api/applications/models"
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
 	"github.com/equinor/radix-api/api/environments"
 	environmentModels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
@@ -27,8 +26,8 @@ import (
 type hasAccessToRR func(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) (bool, error)
 
 type GetApplicationsOptions struct {
-	IncludeLatestJobSummary            bool // include LatestJobSummary
-	IncludeEnvironmentActiveComponents bool // include Environment ActiveDeployment components
+	IncludeLatestJobSummary bool
+	IncludeEnvironments     bool
 }
 
 // GetApplications handler for ShowApplications - NOTE: does not get latestJob.Environments
@@ -57,23 +56,10 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 		}
 	}
 
-	var environmentActiveComponents = map[string]map[string][]*deploymentModels.Component{}
 	var appEnvironmentsMap map[string][]environmentModels.Environment
-	if options.IncludeEnvironmentActiveComponents {
+	if options.IncludeEnvironments {
 		if appEnvironmentsMap, err = ah.getEnvironmentsForApplications(ctx, radixRegistrations); err != nil {
 			return nil, err
-		}
-
-		for appName, environments := range appEnvironmentsMap {
-			environmentActiveComponents[appName] = map[string][]*deploymentModels.Component{}
-
-			for _, environment := range environments {
-				if environment.ActiveDeployment == nil {
-					continue
-				}
-
-				environmentActiveComponents[appName][environment.Name] = environment.ActiveDeployment.Components
-			}
 		}
 	}
 
@@ -83,10 +69,9 @@ func (ah *ApplicationHandler) GetApplications(ctx context.Context, matcher appli
 		applications = append(
 			applications,
 			&applicationModels.ApplicationSummary{
-				Name:                        appName,
-				LatestJob:                   latestApplicationJobs[appName],
-				EnvironmentActiveComponents: environmentActiveComponents[appName],
-				Environments:                appEnvironmentsMap[appName],
+				Name:         appName,
+				LatestJob:    latestApplicationJobs[appName],
+				Environments: appEnvironmentsMap[appName],
 			},
 		)
 	}

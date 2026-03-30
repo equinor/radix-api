@@ -138,73 +138,16 @@
             "required": true
           },
           {
-            "type": "string",
-            "description": "true to include LatestJobSummary",
+            "type": "boolean",
+            "description": "true to include latest job summary",
             "name": "includeLatestJobSummary",
             "in": "query"
           },
           {
-            "type": "string",
-            "description": "true to include ActiveComponents in Environments",
-            "name": "includeEnvironmentActiveComponents",
+            "type": "boolean",
+            "description": "true to include environments",
+            "name": "includeEnvironments",
             "in": "query"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of test users (Required if Impersonate-Group is set)",
-            "name": "Impersonate-User",
-            "in": "header"
-          },
-          {
-            "type": "string",
-            "description": "Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)",
-            "name": "Impersonate-Group",
-            "in": "header"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful operation",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/ApplicationSummary"
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "platform"
-        ],
-        "summary": "Get applications by name. NOTE - doesn't get applicationSummary.latestJob.Environments",
-        "operationId": "searchApplications",
-        "deprecated": true,
-        "parameters": [
-          {
-            "description": "List of application names to search for",
-            "name": "applicationSearch",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ApplicationsSearchRequest"
-            }
           },
           {
             "type": "string",
@@ -6198,21 +6141,6 @@
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
     },
-    "ApplicationSearchIncludeFields": {
-      "description": "ApplicationSearchIncludeFields specifies additional fields to include in the response of an ApplicationsSearchRequest",
-      "type": "object",
-      "properties": {
-        "environmentActiveComponents": {
-          "type": "boolean",
-          "x-go-name": "EnvironmentActiveComponents"
-        },
-        "latestJobSummary": {
-          "type": "boolean",
-          "x-go-name": "LatestJobSummary"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
     "ApplicationSummary": {
       "description": "ApplicationSummary describe an application",
       "type": "object",
@@ -6220,17 +6148,6 @@
         "name"
       ],
       "properties": {
-        "environmentActiveComponents": {
-          "description": "EnvironmentActiveComponents All component summaries of the active deployments in the environments",
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Component"
-            }
-          },
-          "x-go-name": "EnvironmentActiveComponents"
-        },
         "environments": {
           "description": "Environments List of environments for this application",
           "type": "array",
@@ -6247,31 +6164,6 @@
           "type": "string",
           "x-go-name": "Name",
           "example": "radix-canary-golang"
-        }
-      },
-      "x-go-package": "github.com/equinor/radix-api/api/applications/models"
-    },
-    "ApplicationsSearchRequest": {
-      "description": "ApplicationsSearchRequest contains the list of application names to be queried",
-      "type": "object",
-      "required": [
-        "names"
-      ],
-      "properties": {
-        "includeFields": {
-          "$ref": "#/definitions/ApplicationSearchIncludeFields"
-        },
-        "names": {
-          "description": "List of application names to be returned",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "x-go-name": "Names",
-          "example": [
-            "app1",
-            "app2"
-          ]
         }
       },
       "x-go-package": "github.com/equinor/radix-api/api/applications/models"
