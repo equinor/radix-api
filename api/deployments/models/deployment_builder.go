@@ -2,8 +2,9 @@ package models
 
 import (
 	"errors"
-	"github.com/equinor/radix-common/utils/pointers"
 	"time"
+
+	"github.com/equinor/radix-common/utils/pointers"
 
 	"github.com/equinor/radix-common/utils/slice"
 	"github.com/equinor/radix-operator/pkg/apis/kube"
@@ -27,6 +28,8 @@ type deploymentBuilder struct {
 	name               string
 	namespace          string
 	environment        string
+	status             DeploymentStatus
+	statusReason       string
 	activeFrom         time.Time
 	activeTo           *time.Time
 	jobName            string
@@ -49,6 +52,7 @@ func NewDeploymentBuilder() DeploymentBuilder {
 
 func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) DeploymentBuilder {
 	jobName := rd.Labels[kube.RadixJobNameLabel]
+	status, statusReason := getDeploymentStatusFromRadixDeployment(rd)
 	var activeTo *time.Time
 	if !rd.Status.ActiveTo.IsZero() {
 		activeTo = &rd.Status.ActiveTo.Time
@@ -58,6 +62,8 @@ func (b *deploymentBuilder) WithRadixDeployment(rd *v1.RadixDeployment) Deployme
 		withEnvironment(rd.Spec.Environment).
 		withNamespace(rd.GetNamespace()).
 		withName(rd.GetName()).
+		withStatus(status).
+		withStatusReason(statusReason).
 		withActiveFrom(rd.Status.ActiveFrom.Time).
 		withJobName(jobName).
 		withActiveTo(activeTo).
@@ -112,6 +118,16 @@ func (b *deploymentBuilder) withJobName(jobName string) *deploymentBuilder {
 
 func (b *deploymentBuilder) withActiveFrom(activeFrom time.Time) *deploymentBuilder {
 	b.activeFrom = activeFrom
+	return b
+}
+
+func (b *deploymentBuilder) withStatus(status DeploymentStatus) *deploymentBuilder {
+	b.status = status
+	return b
+}
+
+func (b *deploymentBuilder) withStatusReason(statusReason string) *deploymentBuilder {
+	b.statusReason = statusReason
 	return b
 }
 
@@ -187,6 +203,8 @@ func (b *deploymentBuilder) BuildDeploymentSummary() (*DeploymentSummary, error)
 		Name:                             b.name,
 		Components:                       b.componentSummaries,
 		Environment:                      b.environment,
+		Status:                           b.status,
+		StatusReason:                     b.statusReason,
 		ActiveFrom:                       b.activeFrom,
 		ActiveTo:                         b.activeTo,
 		DeploymentSummaryPipelineJobInfo: b.buildDeploySummaryPipelineJobInfo(),
@@ -241,6 +259,8 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		Name:              b.name,
 		Namespace:         b.namespace,
 		Environment:       b.environment,
+		Status:            b.status,
+		StatusReason:      b.statusReason,
 		ActiveFrom:        b.activeFrom,
 		ActiveTo:          b.activeTo,
 		Components:        b.components,
@@ -258,4 +278,23 @@ func (b *deploymentBuilder) BuildDeployment() (*Deployment, error) {
 		deployment.GitRefType = string(b.pipelineJob.Spec.Build.GitRefType)
 	}
 	return &deployment, b.buildError()
+}
+
+func getDeploymentStatusFromRadixDeployment(rd *v1.RadixDeployment) (DeploymentStatus, string) {
+	if rd.Status.Condition != v1.DeploymentActive {
+		return DeploymentStatusInactive, ""
+	}
+
+	if rd.Status.ObservedGeneration < rd.Generation {
+		return DeploymentStatusReconciling, ""
+	}
+
+	switch rd.Status.ReconcileStatus {
+	case v1.RadixDeploymentReconcileSucceeded:
+		return DeploymentStatusReady, ""
+	case v1.RadixDeploymentReconcileFailed:
+		return DeploymentStatusFailed, rd.Status.Message
+	}
+
+	return DeploymentStatusReconciling, ""
 }

@@ -74,6 +74,16 @@ type DeploymentSummary struct {
 	// example: prod
 	Environment string `json:"environment"`
 
+	// Status of deployment reconciliation
+	//
+	// required: true
+	Status DeploymentStatus `json:"status"`
+
+	// StatusReason contains details when deployment status is Failed
+	//
+	// required: false
+	StatusReason string `json:"statusReason,omitempty"`
+
 	// ActiveFrom Timestamp when the deployment starts (or created)
 	//
 	// required: true

@@ -85,7 +85,7 @@ func (c *secretController) ChangeComponentSecret(accounts models.Accounts, w htt
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -163,7 +163,7 @@ func (c *secretController) GetAzureKeyVaultSecretVersions(accounts models.Accoun
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:
@@ -242,7 +242,7 @@ func (c *secretController) UpdateComponentExternalDNSTLS(accounts models.Account
 	//   required: false
 	// - name: Impersonate-Group
 	//   in: header
-	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-seperated list of test groups (Required if Impersonate-User is set)
+	//   description: Works only with custom setup of cluster. Allow impersonation of a comma-separated list of test groups (Required if Impersonate-User is set)
 	//   type: string
 	//   required: false
 	// responses:

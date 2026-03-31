@@ -1,7 +1,7 @@
 package models
 
 import (
-	deploymentModels "github.com/equinor/radix-api/api/deployments/models"
+	environmentmodels "github.com/equinor/radix-api/api/environments/models"
 	jobModels "github.com/equinor/radix-api/api/jobs/models"
 )
 
@@ -19,8 +19,8 @@ type ApplicationSummary struct {
 	// required: false
 	LatestJob *jobModels.JobSummary `json:"latestJob,omitempty"`
 
-	// EnvironmentActiveComponents All component summaries of the active deployments in the environments
+	// Environments List of environments for this application
 	//
 	// required: false
-	EnvironmentActiveComponents map[string][]*deploymentModels.Component `json:"environmentActiveComponents,omitempty"`
+	Environments []environmentmodels.Environment `json:"environments,omitempty"`
 }
