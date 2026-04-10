@@ -13,6 +13,7 @@ spec:
   system: system:default/Radix
   definition:
     $text: "./swaggerui/html/swagger.json"
+  
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
