@@ -66,106 +66,60 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 
 func TestGetApplicationJob(t *testing.T) {
 	scenarios := map[string]struct {
-		useBuildKit        *bool
-		useBuildCache      *bool
-		overrideBuildCache *bool
-		refreshBuildCache  *bool
+		useBuildKit         *bool
+		useBuildCache       *bool
+		overrideBuildCache  *bool
+		refreshBuildCache   *bool
+		expectedUseBuildKit bool
 	}{
-		"UseBuildKitEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(false),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
+		"BuildKitEnabled": {
+			useBuildKit:         pointers.Ptr(true),
+			useBuildCache:       pointers.Ptr(false),
+			overrideBuildCache:  pointers.Ptr(false),
+			refreshBuildCache:   pointers.Ptr(false),
+			expectedUseBuildKit: true,
 		},
-		"UseBuildKitDisabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
+		"BuildKitDisabled": {
+			useBuildKit:         pointers.Ptr(false),
+			useBuildCache:       pointers.Ptr(true),
+			overrideBuildCache:  pointers.Ptr(false),
+			refreshBuildCache:   pointers.Ptr(false),
+			expectedUseBuildKit: false,
 		},
-		"OverrideBuildCacheEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(true),
-			refreshBuildCache:  pointers.Ptr(false),
+		"BuildKitNotSet": {
+			useBuildKit:         nil,
+			useBuildCache:       pointers.Ptr(true),
+			overrideBuildCache:  pointers.Ptr(false),
+			refreshBuildCache:   pointers.Ptr(false),
+			expectedUseBuildKit: true, // Defaults to true when not set and no build secrets
 		},
-		"OverrideBuildCacheDisabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
+		"OverrideCacheEnabled": {
+			useBuildKit:         pointers.Ptr(true),
+			useBuildCache:       pointers.Ptr(true),
+			overrideBuildCache:  pointers.Ptr(true),
+			refreshBuildCache:   pointers.Ptr(false),
+			expectedUseBuildKit: true,
 		},
-		"RefreshBuildCacheEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(true),
-		},
-		"RefreshBuildCacheDisabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
+		"RefreshCacheEnabled": {
+			useBuildKit:         pointers.Ptr(true),
+			useBuildCache:       pointers.Ptr(true),
+			overrideBuildCache:  pointers.Ptr(false),
+			refreshBuildCache:   pointers.Ptr(true),
+			expectedUseBuildKit: true,
 		},
 		"AllEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(true),
-			refreshBuildCache:  pointers.Ptr(true),
+			useBuildKit:         pointers.Ptr(true),
+			useBuildCache:       pointers.Ptr(true),
+			overrideBuildCache:  pointers.Ptr(true),
+			refreshBuildCache:   pointers.Ptr(true),
+			expectedUseBuildKit: true,
 		},
 		"AllDisabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(false),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"BuildKitEnabledCacheDisabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(false),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"BuildKitDisabledCacheEnabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"BuildKitEnabledOverrideEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(true),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"BuildKitDisabledOverrideEnabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(true),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"BuildKitEnabledRefreshEnabled": {
-			useBuildKit:        pointers.Ptr(true),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(true),
-		},
-		"BuildKitDisabledRefreshEnabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(true),
-		},
-		"CacheEnabledOverrideDisabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(true),
-			overrideBuildCache: pointers.Ptr(false),
-			refreshBuildCache:  pointers.Ptr(false),
-		},
-		"CacheDisabledOverrideEnabled": {
-			useBuildKit:        pointers.Ptr(false),
-			useBuildCache:      pointers.Ptr(false),
-			overrideBuildCache: pointers.Ptr(true),
-			refreshBuildCache:  pointers.Ptr(false),
+			useBuildKit:         pointers.Ptr(false),
+			useBuildCache:       pointers.Ptr(false),
+			overrideBuildCache:  pointers.Ptr(false),
+			refreshBuildCache:   pointers.Ptr(false),
+			expectedUseBuildKit: false,
 		},
 	}
 
@@ -240,7 +194,7 @@ func TestGetApplicationJob(t *testing.T) {
 			assert.Equal(t, anyUser, job.TriggeredBy)
 			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
 			// UseBuildKit is derived from RadixApplication build settings
-			assert.Equal(t, *ts.useBuildKit, jobSummary.UseBuildKit, "Invalid UseBuildKit")
+			assert.Equal(t, ts.expectedUseBuildKit, jobSummary.UseBuildKit, "Invalid UseBuildKit")
 			assertNillableBool(t, ts.useBuildCache, jobSummary.UseBuildCache, "Invalid UseBuildCache")
 			assertNillableBool(t, ts.overrideBuildCache, jobSummary.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
 			assertNillableBool(t, ts.refreshBuildCache, jobSummary.RefreshBuildCache, "Invalid RefreshBuildCache")
