@@ -239,7 +239,8 @@ func TestGetApplicationJob(t *testing.T) {
 			assert.Equal(t, anyPushCommitID, job.CommitID)
 			assert.Equal(t, anyUser, job.TriggeredBy)
 			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
-			assert.Equal(t, ts.useBuildKit != nil && *ts.useBuildKit, jobSummary.UseBuildKit, "Invalid UseBuildKit")
+			// UseBuildKit always defaults to true now that RadixApplication build settings are deprecated
+			assert.Equal(t, true, jobSummary.UseBuildKit, "Invalid UseBuildKit")
 			assertNillableBool(t, ts.useBuildCache, jobSummary.UseBuildCache, "Invalid UseBuildCache")
 			assertNillableBool(t, ts.overrideBuildCache, jobSummary.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
 			assertNillableBool(t, ts.refreshBuildCache, jobSummary.RefreshBuildCache, "Invalid RefreshBuildCache")

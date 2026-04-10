@@ -38,9 +38,13 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	if err != nil {
 		return nil, err
 	}
+	ra, err := radixClient.RadixV1().RadixApplications(appNamespace).Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	log.Ctx(ctx).Info().Msgf("Started jobController: %s, %s", job.GetName(), jobController.WorkerImage)
-	return jobModels.GetSummaryFromRadixJob(job), nil
+	return jobModels.GetSummaryFromRadixJob(ra, job), nil
 }
 
 func buildPipelineJob(ctx context.Context, appName string, pipeline *pipelineJob.Definition, jobSpec *jobModels.JobParameters) (*v1.RadixJob, error) {
