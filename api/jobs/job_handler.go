@@ -21,6 +21,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/rs/zerolog/log"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -373,7 +374,8 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 		// Fetch RadixApplication to accurately determine UseBuildKit
 		ra, err := jh.userAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			log.Ctx(ctx).Error().Err(err).Str("radixapplication", appName).Msg("Unable to fetch RadixApplication")
+			ra = nil
 		}
 		jobModel.UseBuildKit = jobModels.IsUsingBuildKit(ra)
 		jobModel.UseBuildCache = job.Spec.Build.UseBuildCache
