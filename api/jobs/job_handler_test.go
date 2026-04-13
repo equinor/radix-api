@@ -13,7 +13,6 @@ import (
 	radixutils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-common/utils/pointers"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
-	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
@@ -98,12 +97,6 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 	step1Name, step1Pod, step1Condition, step1Started, step1Ended, step1Components := "step1_name", "step1_pod", radixv1.JobRunning, metav1.Now(), metav1.NewTime(time.Now().Add(1*time.Hour)), []string{"step1_comp1", "step1_comp2"}
 	step2Name := "step2_name"
 
-	// Create RadixApplication
-	commontest.CreateAppNamespace(s.kubeClient, appName)
-	ra := utils.ARadixApplication().WithAppName(appName).BuildRA()
-	_, err := s.radixClient.RadixV1().RadixApplications(utils.GetAppNamespace(appName)).Create(context.Background(), ra, metav1.CreateOptions{})
-	s.NoError(err)
-
 	rj := &radixv1.RadixJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -129,7 +122,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 			},
 		},
 	}
-	_, err = s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
+	_, err := s.radixClient.RadixV1().RadixJobs(rj.Namespace).Create(context.Background(), rj, metav1.CreateOptions{})
 	s.NoError(err)
 
 	deploymentName := "a_deployment"
@@ -296,12 +289,6 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			jh := s.getJobHandler(dh)
 
-			// Create RadixApplication
-			commontest.CreateAppNamespace(s.kubeClient, appName)
-			ra := utils.ARadixApplication().WithAppName(appName).BuildRA()
-			_, err := s.radixClient.RadixV1().RadixApplications(namespace).Create(context.Background(), ra, metav1.CreateOptions{})
-			s.NoError(err)
-
 			if tt.existingJob != nil {
 				_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
@@ -311,7 +298,7 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 				s.NoError(err)
 			}
 
-			err = jh.RerunJob(context.Background(), appName, tt.jobNameToRerun)
+			err := jh.RerunJob(context.Background(), appName, tt.jobNameToRerun)
 			s.Equal(tt.expectedError, err)
 		})
 	}

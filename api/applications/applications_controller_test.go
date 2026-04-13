@@ -998,7 +998,7 @@ func TestHandleTriggerPipeline_ForNonMappedAndMappedAndMagicBranchEnvironment_Jo
 
 func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedForExisting(t *testing.T) {
 	// Setup
-	commonTestUtils, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t)
+	_, controllerTestUtils, _, _, _, _, _, _, _ := setupTest(t)
 
 	registerAppParam := buildApplicationRegistrationRequest(
 		anApplicationRegistration().
@@ -1009,12 +1009,6 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	)
 	responseChannel := controllerTestUtils.ExecuteRequestWithParameters("POST", "/api/v1/applications", registerAppParam)
 	<-responseChannel
-
-	// Create RadixApplication
-	_, err := commonTestUtils.ApplyApplication(builders.ARadixApplication().
-		WithAppName("any-app").
-		WithEnvironment("dev", "maincfg"))
-	require.NoError(t, err)
 
 	// Test
 	const pushCommitID = "4faca8595c5283a9d0f17a623b9255a0d9866a2e"
@@ -1042,7 +1036,7 @@ func TestHandleTriggerPipeline_ExistingAndNonExistingApplication_JobIsCreatedFor
 	assert.Equal(t, http.StatusOK, response.Code)
 
 	jobSummary := jobModels.JobSummary{}
-	err = controllertest.GetResponseBody(response, &jobSummary)
+	err := controllertest.GetResponseBody(response, &jobSummary)
 	require.NoError(t, err)
 	assert.Equal(t, "any-app", jobSummary.AppName)
 	assert.Equal(t, "maincfg", jobSummary.GitRef)
