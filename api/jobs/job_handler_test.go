@@ -295,6 +295,13 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 			defer ctrl.Finish()
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			jh := s.getJobHandler(dh)
+			
+			// Create RadixApplication
+			commontest.CreateAppNamespace(s.kubeClient, appName)
+			ra := utils.ARadixApplication().WithAppName(appName).BuildRA()
+			_, err := s.radixClient.RadixV1().RadixApplications(namespace).Create(context.Background(), ra, metav1.CreateOptions{})
+			s.NoError(err)
+			
 			if tt.existingJob != nil {
 				_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},
@@ -304,7 +311,7 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 				s.NoError(err)
 			}
 
-			err := jh.RerunJob(context.Background(), appName, tt.jobNameToRerun)
+			err = jh.RerunJob(context.Background(), appName, tt.jobNameToRerun)
 			s.Equal(tt.expectedError, err)
 		})
 	}
