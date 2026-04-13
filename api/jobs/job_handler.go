@@ -320,8 +320,14 @@ func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.
 		return nil, err
 	}
 
+	ra, err := kubequery.GetRadixApplication(ctx, jh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+
 	return slice.Map(jobs, func(j v1.RadixJob) *jobModels.JobSummary {
-		return jobModels.GetSummaryFromRadixJob(&j)
+		// Pass nil for RadixApplication - will fetch if needed by individual job handlers
+		return jobModels.GetSummaryFromRadixJob(ra, &j)
 	}), nil
 }
 
@@ -364,7 +370,12 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 		jobModel.GitRefType = string(job.Spec.Build.GitRefType)
 		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
 		jobModel.CommitID = job.Spec.Build.CommitID
-		jobModel.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
+		// Fetch RadixApplication to accurately determine UseBuildKit
+		ra, err := jh.userAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		jobModel.UseBuildKit = jobModels.IsUsingBuildKit(ra)
 		jobModel.UseBuildCache = job.Spec.Build.UseBuildCache
 		jobModel.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 		jobModel.RefreshBuildCache = job.Spec.Build.RefreshBuildCache

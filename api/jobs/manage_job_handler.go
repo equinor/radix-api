@@ -73,8 +73,13 @@ func (jh JobHandler) createPipelineJob(ctx context.Context, appName string, job 
 		return nil, err
 	}
 
+	ra, err := jh.userAccount.RadixClient.RadixV1().RadixApplications(appNamespace).Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	log.Ctx(ctx).Info().Msgf("Started job: %s, %s", job.GetName(), WorkerImage)
-	return jobModels.GetSummaryFromRadixJob(job), nil
+	return jobModels.GetSummaryFromRadixJob(ra, job), nil
 }
 
 func (jh JobHandler) buildPipelineJobToRerunFrom(ctx context.Context, radixJob *radixv1.RadixJob) *radixv1.RadixJob {

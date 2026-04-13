@@ -14,14 +14,15 @@ import (
 	"github.com/equinor/radix-api/api/kubequery"
 	"github.com/equinor/radix-api/api/utils/access"
 	"github.com/equinor/radix-common/utils/slice"
+	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
+	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/client/clientset/versioned"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	authorizationapi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-
-	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 )
 
 type hasAccessToRR func(ctx context.Context, client kubernetes.Interface, rr v1.RadixRegistration) (bool, error)
@@ -233,7 +234,14 @@ func getLatestJobPerApplication(ctx context.Context, radixClient versioned.Inter
 			}
 
 			if latestJob != nil {
-				jobSummaries.Store(rr.GetName(), jobModels.GetSummaryFromRadixJob(latestJob))
+				// Fetch RadixApplication to accurately determine UseBuildKit
+				ra, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(rr.GetName())).Get(ctx, rr.GetName(), metav1.GetOptions{})
+				if err != nil {
+					// Log error but continue - ResolveUseBuildKit will use default when ra is nil
+					log.Ctx(ctx).Warn().Err(err).Msgf("Failed to get RadixApplication %s for UseBuildKit determination", rr.GetName())
+					ra = nil
+				}
+				jobSummaries.Store(rr.GetName(), jobModels.GetSummaryFromRadixJob(ra, latestJob))
 			}
 			return nil
 		})
