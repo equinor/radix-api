@@ -15,7 +15,6 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	commontest "github.com/equinor/radix-operator/pkg/apis/test"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
-	builders "github.com/equinor/radix-operator/pkg/apis/utils"
 	"github.com/equinor/radix-operator/pkg/apis/utils/slice"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	kedafake "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
@@ -101,7 +100,7 @@ func (s *JobHandlerTestSuite) Test_GetApplicationJob() {
 
 	// Create RadixApplication
 	commontest.CreateAppNamespace(s.kubeClient, appName)
-	ra := builders.ARadixApplication().WithAppName(appName).BuildRA()
+	ra := utils.ARadixApplication().WithAppName(appName).BuildRA()
 	_, err := s.radixClient.RadixV1().RadixApplications(utils.GetAppNamespace(appName)).Create(context.Background(), ra, metav1.CreateOptions{})
 	s.NoError(err)
 
