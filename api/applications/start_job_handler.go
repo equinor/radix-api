@@ -40,7 +40,8 @@ func createPipelineJob(ctx context.Context, radixClient versioned.Interface, app
 	}
 	ra, err := radixClient.RadixV1().RadixApplications(appNamespace).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		log.Ctx(ctx).Warn().Err(err).Str("radixapplication", appName).Msg("Failed to get RadixApplication")
+		ra = nil
 	}
 
 	log.Ctx(ctx).Info().Msgf("Started jobController: %s, %s", job.GetName(), jobController.WorkerImage)

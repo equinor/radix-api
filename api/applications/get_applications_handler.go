@@ -238,7 +238,7 @@ func getLatestJobPerApplication(ctx context.Context, radixClient versioned.Inter
 				ra, err := radixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(rr.GetName())).Get(ctx, rr.GetName(), metav1.GetOptions{})
 				if err != nil {
 					// Log error but continue - ResolveUseBuildKit will use default when ra is nil
-					log.Ctx(ctx).Warn().Err(err).Msgf("Failed to get RadixApplication %s for UseBuildKit determination", rr.GetName())
+					log.Ctx(ctx).Warn().Err(err).Str("radixapplication", rr.GetName()).Msg("Failed to get RadixApplication")
 					ra = nil
 				}
 				jobSummaries.Store(rr.GetName(), jobModels.GetSummaryFromRadixJob(ra, latestJob))
