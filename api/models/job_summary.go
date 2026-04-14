@@ -10,8 +10,8 @@ import (
 )
 
 // BuildJobSummaryList builds a list of JobSummary models.
-func BuildJobSummaryList(rjList []radixv1.RadixJob) []*jobModels.JobSummary {
-	jobs := slice.Map(rjList, func(rj radixv1.RadixJob) *jobModels.JobSummary { return BuildJobSummary(rj) })
+func BuildJobSummaryList(ra *radixv1.RadixApplication, rjList []radixv1.RadixJob) []*jobModels.JobSummary {
+	jobs := slice.Map(rjList, func(rj radixv1.RadixJob) *jobModels.JobSummary { return BuildJobSummary(ra, rj) })
 	sort.Slice(jobs, func(i, j int) bool {
 		return utils.IsBefore(jobs[j], jobs[i])
 	})
@@ -19,6 +19,6 @@ func BuildJobSummaryList(rjList []radixv1.RadixJob) []*jobModels.JobSummary {
 }
 
 // BuildJobSummary builds a JobSummary model.
-func BuildJobSummary(rj radixv1.RadixJob) *jobModels.JobSummary {
-	return jobModels.GetSummaryFromRadixJob(&rj)
+func BuildJobSummary(ra *radixv1.RadixApplication, rj radixv1.RadixJob) *jobModels.JobSummary {
+	return jobModels.GetSummaryFromRadixJob(ra, &rj)
 }

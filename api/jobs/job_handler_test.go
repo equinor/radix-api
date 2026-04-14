@@ -288,6 +288,7 @@ func (s *JobHandlerTestSuite) TestJobHandler_RerunJob() {
 			defer ctrl.Finish()
 			dh := deployMock.NewMockDeployHandler(ctrl)
 			jh := s.getJobHandler(dh)
+
 			if tt.existingJob != nil {
 				_, err := s.accounts.UserAccount.RadixClient.RadixV1().RadixJobs(namespace).Create(context.Background(), &radixv1.RadixJob{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: tt.existingJob.name},

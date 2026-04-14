@@ -21,6 +21,7 @@ import (
 	"github.com/equinor/radix-operator/pkg/apis/kube"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	crdUtils "github.com/equinor/radix-operator/pkg/apis/utils"
+	"github.com/rs/zerolog/log"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -320,8 +321,14 @@ func (jh JobHandler) getJobs(ctx context.Context, appName string) ([]*jobModels.
 		return nil, err
 	}
 
+	ra, err := kubequery.GetRadixApplication(ctx, jh.accounts.UserAccount.RadixClient, appName)
+	if err != nil {
+		return nil, err
+	}
+
 	return slice.Map(jobs, func(j v1.RadixJob) *jobModels.JobSummary {
-		return jobModels.GetSummaryFromRadixJob(&j)
+		// Pass nil for RadixApplication - will fetch if needed by individual job handlers
+		return jobModels.GetSummaryFromRadixJob(ra, &j)
 	}), nil
 }
 
@@ -364,7 +371,13 @@ func (jh JobHandler) getJobFromRadixJob(ctx context.Context, job *v1.RadixJob, j
 		jobModel.GitRefType = string(job.Spec.Build.GitRefType)
 		jobModel.DeployedToEnvironment = job.Spec.Build.ToEnvironment
 		jobModel.CommitID = job.Spec.Build.CommitID
-		jobModel.UseBuildKit = job.Spec.Build.UseBuildKit != nil && *job.Spec.Build.UseBuildKit
+		// Fetch RadixApplication to accurately determine UseBuildKit
+		ra, err := jh.userAccount.RadixClient.RadixV1().RadixApplications(crdUtils.GetAppNamespace(appName)).Get(ctx, appName, metav1.GetOptions{})
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Str("radixapplication", appName).Msg("Unable to fetch RadixApplication")
+			ra = nil
+		}
+		jobModel.UseBuildKit = jobModels.IsUsingBuildKit(ra)
 		jobModel.UseBuildCache = job.Spec.Build.UseBuildCache
 		jobModel.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 		jobModel.RefreshBuildCache = job.Spec.Build.RefreshBuildCache
