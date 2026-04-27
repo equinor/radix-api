@@ -12,7 +12,6 @@ import (
 	jobmodels "github.com/equinor/radix-api/api/jobs/models"
 	controllertest "github.com/equinor/radix-api/api/test"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
-	commonUtils "github.com/equinor/radix-common/utils"
 	"github.com/equinor/radix-operator/pkg/apis/git"
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -195,24 +194,14 @@ func TestGetApplicationJob(t *testing.T) {
 			assert.Equal(t, anyPushCommitID, job.CommitID)
 			assert.Equal(t, anyUser, job.TriggeredBy)
 			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
+
 			// UseBuildKit and UseBuildCache are derived from PipelineRunStatus, nil when pipeline has not reported status
-			assertNillableBool(t, ts.expectedUseBuildKit, job.UseBuildKit, "Invalid UseBuildKit")
-			assertNillableBool(t, ts.expectedUseBuildCache, job.UseBuildCache, "Invalid UseBuildCache")
-			assertNillableBool(t, ts.overrideBuildCache, job.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
-			assertNillableBool(t, ts.refreshBuildCache, job.RefreshBuildCache, "Invalid RefreshBuildCache")
+			assert.Equal(t, ts.expectedUseBuildKit, job.UseBuildKit, "Invalid UseBuildKit")
+			assert.Equal(t, ts.expectedUseBuildCache, job.UseBuildCache, "Invalid UseBuildCache")
+			assert.Equal(t, ts.overrideBuildCache, job.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
+			assert.Equal(t, ts.refreshBuildCache, job.RefreshBuildCache, "Invalid RefreshBuildCache")
 		})
 	}
-}
-
-func assertNillableBool(t *testing.T, expected *bool, actual *bool, message string) bool {
-	t.Helper()
-	if !assert.Equal(t, commonUtils.IsNil(expected), commonUtils.IsNil(actual), message+" (nil mismatch)") {
-		return false
-	}
-	if commonUtils.IsNil(actual) {
-		return true
-	}
-	return assert.Equal(t, *expected, *actual, message)
 }
 
 func TestGetApplicationJob_RadixJobSpecExists(t *testing.T) {
