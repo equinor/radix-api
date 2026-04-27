@@ -870,8 +870,8 @@ func testGetRadixJobComponents(jobComponents []v1.RadixDeployJobComponent, envNa
 }
 
 func (s *secretHandlerTestSuite) getUtils() (*models.Account, *models.Account, *kubefake.Clientset, *radixfake.Clientset) {
-	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
-	radixClient := radixfake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset()   //nolint:staticcheck
+	radixClient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	userAccount := models.Account{
 		Client:               kubeClient,

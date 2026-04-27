@@ -84,8 +84,8 @@ type ingressRuleProps struct {
 }
 
 func setupTest() (*kubefake.Clientset, *radixfake.Clientset) {
-	kubeClient := kubefake.NewSimpleClientset() //nolint:staticcheck
-	radixClient := radixfake.NewSimpleClientset()
+	kubeClient := kubefake.NewSimpleClientset()   //nolint:staticcheck
+	radixClient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	return kubeClient, radixClient
 }
 

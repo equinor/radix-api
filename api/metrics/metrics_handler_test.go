@@ -19,7 +19,7 @@ const (
 )
 
 func Test_handler_GetReplicaResourcesUtilization(t *testing.T) {
-	radixclient := radixfake.NewSimpleClientset()
+	radixclient := radixfake.NewSimpleClientset() //nolint:staticcheck
 
 	ra := utils.ARadixApplication().BuildRA()
 	_, err := radixclient.RadixV1().RadixApplications(utils.GetAppNamespace(appName1)).Create(context.Background(), ra, v1.CreateOptions{})
