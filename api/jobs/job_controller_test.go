@@ -13,7 +13,6 @@ import (
 	controllertest "github.com/equinor/radix-api/api/test"
 	authnmock "github.com/equinor/radix-api/api/utils/token/mock"
 	commonUtils "github.com/equinor/radix-common/utils"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-operator/pkg/apis/git"
 	"github.com/equinor/radix-operator/pkg/apis/pipeline"
 	v1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
@@ -66,60 +65,55 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 
 func TestGetApplicationJob(t *testing.T) {
 	scenarios := map[string]struct {
-		useBuildKit         *bool
-		useBuildCache       *bool
-		overrideBuildCache  *bool
-		refreshBuildCache   *bool
-		expectedUseBuildKit bool
+		useBuildKit           *bool
+		useBuildCache         *bool
+		overrideBuildCache    *bool
+		refreshBuildCache     *bool
+		pipelineRunStatus     *v1.RadixJobPipelineRunStatus
+		expectedUseBuildKit   *bool
+		expectedUseBuildCache *bool
 	}{
-		"BuildKitEnabled": {
-			useBuildKit:         pointers.Ptr(true),
-			useBuildCache:       pointers.Ptr(false),
-			overrideBuildCache:  pointers.Ptr(false),
-			refreshBuildCache:   pointers.Ptr(false),
-			expectedUseBuildKit: true,
-		},
-		"BuildKitDisabled": {
-			useBuildKit:         pointers.Ptr(false),
-			useBuildCache:       pointers.Ptr(true),
-			overrideBuildCache:  pointers.Ptr(false),
-			refreshBuildCache:   pointers.Ptr(false),
-			expectedUseBuildKit: false,
-		},
-		"BuildKitNotSet": {
-			useBuildKit:         nil,
-			useBuildCache:       pointers.Ptr(true),
-			overrideBuildCache:  pointers.Ptr(false),
-			refreshBuildCache:   pointers.Ptr(false),
-			expectedUseBuildKit: true, // Defaults to true when not set and no build secrets
+		"NoPipelineRunStatus": {
+			useBuildKit:           new(true),
+			useBuildCache:         new(true),
+			overrideBuildCache:    new(false),
+			refreshBuildCache:     new(false),
+			expectedUseBuildKit:   nil,
+			expectedUseBuildCache: nil,
 		},
 		"OverrideCacheEnabled": {
-			useBuildKit:         pointers.Ptr(true),
-			useBuildCache:       pointers.Ptr(true),
-			overrideBuildCache:  pointers.Ptr(true),
-			refreshBuildCache:   pointers.Ptr(false),
-			expectedUseBuildKit: true,
+			useBuildKit:           new(true),
+			useBuildCache:         new(true),
+			overrideBuildCache:    new(true),
+			refreshBuildCache:     new(false),
+			expectedUseBuildKit:   nil,
+			expectedUseBuildCache: nil,
 		},
 		"RefreshCacheEnabled": {
-			useBuildKit:         pointers.Ptr(true),
-			useBuildCache:       pointers.Ptr(true),
-			overrideBuildCache:  pointers.Ptr(false),
-			refreshBuildCache:   pointers.Ptr(true),
-			expectedUseBuildKit: true,
+			useBuildKit:           new(true),
+			useBuildCache:         new(true),
+			overrideBuildCache:    new(false),
+			refreshBuildCache:     new(true),
+			expectedUseBuildKit:   nil,
+			expectedUseBuildCache: nil,
 		},
-		"AllEnabled": {
-			useBuildKit:         pointers.Ptr(true),
-			useBuildCache:       pointers.Ptr(true),
-			overrideBuildCache:  pointers.Ptr(true),
-			refreshBuildCache:   pointers.Ptr(true),
-			expectedUseBuildKit: true,
+		"PipelineRunUsedBuildKit": {
+			useBuildKit:           new(true),
+			useBuildCache:         new(true),
+			overrideBuildCache:    new(false),
+			refreshBuildCache:     new(false),
+			pipelineRunStatus:     &v1.RadixJobPipelineRunStatus{UsedBuildKit: true, UsedBuildCache: true},
+			expectedUseBuildKit:   new(true),
+			expectedUseBuildCache: new(true),
 		},
-		"AllDisabled": {
-			useBuildKit:         pointers.Ptr(false),
-			useBuildCache:       pointers.Ptr(false),
-			overrideBuildCache:  pointers.Ptr(false),
-			refreshBuildCache:   pointers.Ptr(false),
-			expectedUseBuildKit: false,
+		"PipelineRunNotUsedBuildKit": {
+			useBuildKit:           new(true),
+			useBuildCache:         new(true),
+			overrideBuildCache:    new(false),
+			refreshBuildCache:     new(false),
+			pipelineRunStatus:     &v1.RadixJobPipelineRunStatus{UsedBuildKit: false, UsedBuildCache: false},
+			expectedUseBuildKit:   new(false),
+			expectedUseBuildCache: new(false),
 		},
 	}
 
@@ -157,6 +151,14 @@ func TestGetApplicationJob(t *testing.T) {
 			_, err = createPipelinePod(client, builders.GetAppNamespace(anyAppName), jobSummary.Name)
 			require.NoError(t, err, "failed to create a pipeline pod")
 
+			if ts.pipelineRunStatus != nil {
+				rj, err := radixclient.RadixV1().RadixJobs(builders.GetAppNamespace(anyAppName)).Get(context.Background(), jobSummary.Name, metav1.GetOptions{})
+				require.NoError(t, err)
+				rj.Status.PipelineRunStatus = ts.pipelineRunStatus
+				_, err = radixclient.RadixV1().RadixJobs(builders.GetAppNamespace(anyAppName)).UpdateStatus(context.Background(), rj, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+
 			// Test
 			responseChannel := controllerTestUtils.ExecuteRequest("GET", fmt.Sprintf("/api/v1/applications/%s/jobs/%s", anyAppName, jobSummary.Name))
 			response := <-responseChannel
@@ -193,17 +195,18 @@ func TestGetApplicationJob(t *testing.T) {
 			assert.Equal(t, anyPushCommitID, job.CommitID)
 			assert.Equal(t, anyUser, job.TriggeredBy)
 			assert.Equal(t, string(anyPipeline.Type), job.Pipeline)
-			// UseBuildKit is derived from RadixApplication build settings
-			assert.Equal(t, ts.expectedUseBuildKit, jobSummary.UseBuildKit, "Invalid UseBuildKit")
-			assertNillableBool(t, ts.useBuildCache, jobSummary.UseBuildCache, "Invalid UseBuildCache")
-			assertNillableBool(t, ts.overrideBuildCache, jobSummary.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
-			assertNillableBool(t, ts.refreshBuildCache, jobSummary.RefreshBuildCache, "Invalid RefreshBuildCache")
+			// UseBuildKit and UseBuildCache are derived from PipelineRunStatus, nil when pipeline has not reported status
+			assertNillableBool(t, ts.expectedUseBuildKit, job.UseBuildKit, "Invalid UseBuildKit")
+			assertNillableBool(t, ts.expectedUseBuildCache, job.UseBuildCache, "Invalid UseBuildCache")
+			assertNillableBool(t, ts.overrideBuildCache, job.OverrideUseBuildCache, "Invalid OverrideUseBuildCache")
+			assertNillableBool(t, ts.refreshBuildCache, job.RefreshBuildCache, "Invalid RefreshBuildCache")
 		})
 	}
 }
 
 func assertNillableBool(t *testing.T, expected *bool, actual *bool, message string) bool {
-	if commonUtils.IsNil(actual) != commonUtils.IsNil(expected) {
+	t.Helper()
+	if !assert.Equal(t, commonUtils.IsNil(expected), commonUtils.IsNil(actual), message+" (nil mismatch)") {
 		return false
 	}
 	if commonUtils.IsNil(actual) {
