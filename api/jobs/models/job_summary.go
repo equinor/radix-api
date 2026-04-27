@@ -105,7 +105,7 @@ type JobSummary struct {
 	// required: false
 	// Extensions:
 	// x-nullable: true
-	UseBuildKit bool `json:"useBuildKit,omitempty"`
+	UseBuildKit *bool `json:"useBuildKit,omitempty"`
 
 	// Defaults to true and requires useBuildKit to have an effect.
 	//
@@ -158,7 +158,7 @@ type JobSummary struct {
 }
 
 // GetSummaryFromRadixJob Used to get job summary from a radix job
-func GetSummaryFromRadixJob(ra *radixv1.RadixApplication, job *radixv1.RadixJob) *JobSummary {
+func GetSummaryFromRadixJob(job *radixv1.RadixJob) *JobSummary {
 	created := job.CreationTimestamp.Time
 	if job.Status.Created != nil {
 		// Use this instead, because in a migration this may be more correct
@@ -192,8 +192,8 @@ func GetSummaryFromRadixJob(ra *radixv1.RadixApplication, job *radixv1.RadixJob)
 		pipelineJob.GitRef = job.Spec.Build.GitRef
 		pipelineJob.GitRefType = string(job.Spec.Build.GitRefType)
 		pipelineJob.CommitID = job.Spec.Build.CommitID
-		pipelineJob.UseBuildKit = IsUsingBuildKit(ra)
-		pipelineJob.UseBuildCache = job.Spec.Build.UseBuildCache
+		pipelineJob.UseBuildKit = IsUsingBuildKit(job)
+		pipelineJob.UseBuildCache = IsUsingBuildCache(job)
 		pipelineJob.OverrideUseBuildCache = job.Spec.Build.OverrideUseBuildCache
 		pipelineJob.RefreshBuildCache = job.Spec.Build.RefreshBuildCache
 	case radixv1.Deploy:
@@ -211,17 +211,20 @@ func GetSummaryFromRadixJob(ra *radixv1.RadixApplication, job *radixv1.RadixJob)
 	return pipelineJob
 }
 
-// IsUsingBuildKit Check if buildkit should be used. Defaults to true if no build secrets is set.
-func IsUsingBuildKit(ra *radixv1.RadixApplication) bool {
-	if ra == nil || ra.Spec.Build == nil {
-		return true
+func IsUsingBuildKit(job *radixv1.RadixJob) *bool {
+	if job != nil && job.Status.PipelineRunStatus != nil {
+		return &job.Status.PipelineRunStatus.UsedBuildKit
 	}
 
-	if ra.Spec.Build.UseBuildKit != nil {
-		return *ra.Spec.Build.UseBuildKit
+	return nil
+}
+
+func IsUsingBuildCache(job *radixv1.RadixJob) *bool {
+	if job != nil && job.Status.PipelineRunStatus != nil {
+		return &job.Status.PipelineRunStatus.UsedBuildCache
 	}
 
-	return len(ra.Spec.Build.Secrets) == 0
+	return nil
 }
 
 func (job *JobSummary) GetCreated() *time.Time {

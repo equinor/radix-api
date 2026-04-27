@@ -34,7 +34,7 @@ func Test_GetRadixDNSAliases(t *testing.T) {
 	unmatched := radixv1.RadixDNSAlias{ObjectMeta: metav1.ObjectMeta{Name: "unmatched"}, Spec: radixv1.RadixDNSAliasSpec{
 		AppName: "app2", Environment: "env1", Component: "comp1",
 	}}
-	client := radixfake.NewSimpleClientset(&matched1, &matched2, &unmatched)
+	client := radixfake.NewSimpleClientset(&matched1, &matched2, &unmatched) //nolint:staticcheck
 	expected := []applicationModels.DNSAlias{
 		{
 			URL:             "matched1.test.radix.equinor.com",

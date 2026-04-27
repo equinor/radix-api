@@ -14,7 +14,7 @@ import (
 
 func Test_GetRadixRegistration(t *testing.T) {
 	matched := radixv1.RadixRegistration{ObjectMeta: metav1.ObjectMeta{Name: "app1"}}
-	client := radixfake.NewSimpleClientset(&matched)
+	client := radixfake.NewSimpleClientset(&matched) //nolint:staticcheck
 
 	// Get existing RR
 	actual, err := GetRadixRegistration(context.Background(), client, "app1")

@@ -74,13 +74,13 @@ func customWarningCollector(handler CollectContextWarningsFunc) ApplicationHandl
 
 func setupTestWithFactory(t *testing.T, handlerFactory ApplicationHandlerFactory) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	// Setup
-	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
-	radixclient := radixfake.NewSimpleClientset()
+	kubeclient := kubefake.NewSimpleClientset()   //nolint:staticcheck
+	radixclient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	kedaClient := kedafake.NewSimpleClientset()
 	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certfake.NewSimpleClientset()
-	tektonClient := tektonclientfake.NewSimpleClientset()
+	tektonClient := tektonclientfake.NewSimpleClientset() //nolint:staticcheck
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
