@@ -19,7 +19,7 @@ import (
 func Test_GetRadixApplication(t *testing.T) {
 	matched := radixv1.RadixApplication{ObjectMeta: metav1.ObjectMeta{Name: "app1", Namespace: "app1-app"}}
 	unmatched := radixv1.RadixApplication{ObjectMeta: metav1.ObjectMeta{Name: "app2", Namespace: "app2-any"}}
-	client := radixfake.NewSimpleClientset(&matched, &unmatched)
+	client := radixfake.NewSimpleClientset(&matched, &unmatched) //nolint:staticcheck
 
 	// Get existing RA
 	actual, err := GetRadixApplication(context.Background(), client, "app1")

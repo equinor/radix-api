@@ -47,8 +47,8 @@ func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernet
 		clusterName    = "AnyClusterName"
 		subscriptionId = "bd9f9eaa-2703-47c6-b5e0-faf4e058df73"
 	)
-	kubeClient := kubefake.NewClientset() //nolint:staticcheck
-	radixClient := radixfake.NewSimpleClientset()
+	kubeClient := kubefake.NewClientset()         //nolint:staticcheck
+	radixClient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	kedaClient := kedafake.NewSimpleClientset()
 	secretProviderClient := secretproviderfake.NewSimpleClientset()
 	certClient := certfake.NewSimpleClientset()

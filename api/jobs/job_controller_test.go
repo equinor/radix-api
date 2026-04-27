@@ -45,11 +45,11 @@ const (
 func setupTest(t *testing.T) (*commontest.Utils, *controllertest.Utils, kubernetes.Interface, radixclient.Interface, kedav2.Interface, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
-	radixclient := fake.NewSimpleClientset()
+	radixclient := fake.NewSimpleClientset()    //nolint:staticcheck
 	kedaClient := kedafake.NewSimpleClientset()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
 	certClient := certclientfake.NewSimpleClientset()
-	tektonClient := tektonclientfake.NewSimpleClientset()
+	tektonClient := tektonclientfake.NewSimpleClientset() //nolint:staticcheck
 
 	// commonTestUtils is used for creating CRDs
 	commonTestUtils := commontest.NewTestUtils(kubeclient, radixclient, kedaClient, secretproviderclient)
