@@ -77,11 +77,11 @@ deploy: $(addsuffix -image,$(IMAGES)) $(addsuffix -push,$(IMAGES))
 
 .PHONY: radixconfigs
 radixconfigs:
-	ENV=qa envsubst < radixconfig.tpl.yaml > radixconfig.dev.yaml
-	ENV=prod envsubst < radixconfig.tpl.yaml > radixconfig.c2.yaml
-	ENV=prod envsubst < radixconfig.tpl.yaml > radixconfig.c3.yaml
-	ENV=prod envsubst < radixconfig.tpl.yaml > radixconfig.platform.yaml
-	ENV=prod envsubst < radixconfig.tpl.yaml > radixconfig.playground.yaml
+	ENV=qa APP_ALIAS_BASE_URL=".app.dev.radix.equinor.com" envsubst < radixconfig.tpl.yaml > radixconfig.dev.yaml
+	ENV=prod APP_ALIAS_BASE_URL=".app.c2.radix.equinor.com" envsubst < radixconfig.tpl.yaml > radixconfig.c2.yaml
+	ENV=prod APP_ALIAS_BASE_URL=".app.c3.radix.equinor.com" envsubst < radixconfig.tpl.yaml > radixconfig.c3.yaml
+	ENV=prod APP_ALIAS_BASE_URL=".app.radix.equinor.com" envsubst < radixconfig.tpl.yaml > radixconfig.platform.yaml
+	ENV=prod APP_ALIAS_BASE_URL=".app.playground.radix.equinor.com" envsubst < radixconfig.tpl.yaml > radixconfig.playground.yaml
 
 .PHONY: generate
 generate: tidy mocks swagger radixconfigs

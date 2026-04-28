@@ -39,6 +39,7 @@ spec:
         OIDC_KUBERNETES_AUDIENCE: ""
         CLUSTER_OIDC_ISSUERS: ""
         CLUSTER_EGRESS_IPS: ""
+        APP_ALIAS_BASE_URL: "${APP_ALIAS_BASE_URL}"
       environmentConfig:
         - environment: qa
           horizontalScaling:
