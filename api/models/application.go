@@ -40,7 +40,7 @@ func useBuildCache(ra *radixv1.RadixApplication) bool {
 	return ra.Spec.Build.UseBuildCache == nil || *ra.Spec.Build.UseBuildCache
 }
 
-// buildApplicationAlias builds an ApplicationAlias model for the first Ingress
+// buildApplicationAlias builds an ApplicationAlias model for the applications app alias
 func buildApplicationAlias(ra *radixv1.RadixApplication, appAliasBaseURL string) *applicationModels.ApplicationAlias {
 	if ra == nil || (ra.Spec.DNSAppAlias.Component == "" && ra.Spec.DNSAppAlias.Environment == "") {
 		return nil

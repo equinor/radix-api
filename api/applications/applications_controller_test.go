@@ -58,7 +58,7 @@ const (
 
 func setupTest(t *testing.T, options ...ApplicationHandlerOption) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
-		config.Config{},
+		config.Config{AppAliasBaseURL: appAliasDNSZone},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 			return true, nil
 		},
@@ -1211,6 +1211,9 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	// Setup
 	commonTestUtils, controllerTestUtils, client, radixclient, kedaClient, dynamicClient, secretproviderclient, certClient, _ := setupTest(t)
 	err := utils.ApplyDeploymentWithSync(client, radixclient, kedaClient, dynamicClient, commonTestUtils, secretproviderclient, certClient, builders.ARadixDeployment().
+		WithRadixApplication(builders.ARadixApplication().
+			WithAppName("any-app").
+			WithDNSAppAlias("prod", "frontend")).
 		WithAppName("any-app").
 		WithEnvironment("prod").
 		WithComponents(
@@ -1231,7 +1234,7 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	err = controllertest.GetResponseBody(response, &application)
 	require.NoError(t, err)
 
-	assert.NotNil(t, application.AppAlias)
+	require.NotNil(t, application.AppAlias)
 	assert.Equal(t, "frontend", application.AppAlias.ComponentName)
 	assert.Equal(t, "prod", application.AppAlias.EnvironmentName)
 	assert.Equal(t, fmt.Sprintf("%s.%s", "any-app", appAliasDNSZone), application.AppAlias.URL)
