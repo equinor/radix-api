@@ -62,7 +62,7 @@ const (
 func setupTest(t *testing.T, envHandlerOpts []EnvironmentHandlerOptions) (*commontest.Utils, *controllertest.Utils, *controllertest.Utils, *kubefake.Clientset, radixclient.Interface, kedav2.Interface, client.Client, secretsstorevclient.Interface, *certclientfake.Clientset) {
 	// Setup
 	kubeclient := kubefake.NewClientset()
-	radixClient := radixfake.NewSimpleClientset()
+	radixClient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	kedaClient := kedafake.NewSimpleClientset()
 	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()

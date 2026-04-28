@@ -11,7 +11,7 @@ func BuildApplication(rr *radixv1.RadixRegistration, ra *radixv1.RadixApplicatio
 	application := applicationModels.Application{
 		Name:               rr.Name,
 		Registration:       *BuildApplicationRegistration(rr),
-		Jobs:               BuildJobSummaryList(ra, rjList),
+		Jobs:               BuildJobSummaryList(rjList),
 		AppAlias:           BuildApplicationAlias(ingressList, reList),
 		UserIsAdmin:        userIsAdmin,
 		DNSAliases:         dnsAliases,

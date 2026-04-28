@@ -16,7 +16,7 @@ import (
 func Test_GetRadixEnvironment(t *testing.T) {
 	matched := radixv1.RadixEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "app1-env1"}}
 	unmatched := radixv1.RadixEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "app1-any"}}
-	client := radixfake.NewSimpleClientset(&matched, &unmatched)
+	client := radixfake.NewSimpleClientset(&matched, &unmatched) //nolint:staticcheck
 
 	// Get existing RE
 	actual, err := GetRadixEnvironment(context.Background(), client, "app1", "env1")
@@ -33,7 +33,7 @@ func Test_GetRadixEnvironments(t *testing.T) {
 	matched1 := radixv1.RadixEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "matched1", Labels: labels.ForApplicationName("app1")}}
 	matched2 := radixv1.RadixEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "matched2", Labels: labels.ForApplicationName("app1")}}
 	unmatched1 := radixv1.RadixEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "unmatched1", Labels: labels.ForApplicationName("app2")}}
-	client := radixfake.NewSimpleClientset(&matched1, &matched2, &unmatched1)
+	client := radixfake.NewSimpleClientset(&matched1, &matched2, &unmatched1) //nolint:staticcheck
 	expected := []radixv1.RadixEnvironment{matched1, matched2}
 	actual, err := GetRadixEnvironments(context.Background(), client, "app1")
 	require.NoError(t, err)

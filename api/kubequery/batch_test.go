@@ -60,7 +60,7 @@ func Test_GetRadixBatchesForJobComponent(t *testing.T) {
 		Labels:    radixlabels.Merge(radixlabels.ForApplicationName(app), radixlabels.ForComponentName(comp)),
 	}}
 
-	client := radixfake.NewSimpleClientset()
+	client := radixfake.NewSimpleClientset() //nolint:staticcheck
 	applyRb := func(rb *radixv1.RadixBatch) error {
 		_, err := client.RadixV1().RadixBatches(rb.Namespace).Create(context.Background(), rb, metav1.CreateOptions{})
 		return err

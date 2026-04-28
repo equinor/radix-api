@@ -54,8 +54,8 @@ func setupTestWithMockHandler(t *testing.T, mockCtrl *gomock.Controller) (*commo
 
 func setupTest(t *testing.T) (*kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, commontest.Utils, *kube.Kube, *secretproviderfake.Clientset, *certclientfake.Clientset) {
 	// Setup
-	kubeclient := kubefake.NewSimpleClientset() //nolint:staticcheck
-	radixclient := radixfake.NewSimpleClientset()
+	kubeclient := kubefake.NewSimpleClientset()   //nolint:staticcheck
+	radixclient := radixfake.NewSimpleClientset() //nolint:staticcheck
 	kedaClient := kedafake.NewSimpleClientset()
 	dynamicClient := commontest.CreateClient()
 	secretproviderclient := secretproviderfake.NewSimpleClientset()
