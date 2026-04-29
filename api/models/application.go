@@ -42,7 +42,7 @@ func useBuildCache(ra *radixv1.RadixApplication) bool {
 
 // buildApplicationAlias builds an ApplicationAlias model for the applications app alias
 func buildApplicationAlias(ra *radixv1.RadixApplication, appAliasBaseURL string) *applicationModels.ApplicationAlias {
-	if ra == nil || (ra.Spec.DNSAppAlias.Component == "" && ra.Spec.DNSAppAlias.Environment == "") {
+	if ra == nil || ra.Spec.DNSAppAlias.Component == "" || ra.Spec.DNSAppAlias.Environment == "" {
 		return nil
 	}
 
