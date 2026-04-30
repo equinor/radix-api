@@ -109,8 +109,8 @@ func (ah *ApplicationHandler) GetApplication(ctx context.Context, appName string
 		return nil, err
 	}
 
-	dnsAliases := kubequery.GetDNSAliases(ctx, ah.accounts.UserAccount.RadixClient, ra, ah.config.DNSZone)
-	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, userIsAdmin, dnsAliases, ah.config.AppAliasBaseURL)
+	dnsAliases := kubequery.GetDNSAliases(ctx, ah.accounts.UserAccount.RadixClient, ra)
+	application := apimodels.BuildApplication(rr, ra, reList, rdList, rjList, userIsAdmin, dnsAliases, ah.config.DNSZone)
 	return application, nil
 }
 
