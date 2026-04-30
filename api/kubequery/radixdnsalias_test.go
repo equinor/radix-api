@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	applicationModels "github.com/equinor/radix-api/api/applications/models"
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	radixfake "github.com/equinor/radix-operator/pkg/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
@@ -35,24 +34,6 @@ func Test_GetRadixDNSAliases(t *testing.T) {
 		AppName: "app2", Environment: "env1", Component: "comp1",
 	}}
 	client := radixfake.NewSimpleClientset(&matched1, &matched2, &unmatched) //nolint:staticcheck
-	expected := []applicationModels.DNSAlias{
-		{
-			URL:             "matched1.test.radix.equinor.com",
-			EnvironmentName: "env1",
-			ComponentName:   "comp1",
-			Status: applicationModels.DNSAliasStatus{
-				Condition: "Succeeded",
-				Message:   "",
-			},
-		}, {
-			URL:             "matched2.test.radix.equinor.com",
-			EnvironmentName: "env1",
-			ComponentName:   "comp2",
-			Status: applicationModels.DNSAliasStatus{
-				Condition: "Failed",
-				Message:   "Some error",
-			},
-		}}
 	ra := &radixv1.RadixApplication{ObjectMeta: metav1.ObjectMeta{Name: "app1"},
 		Spec: radixv1.RadixApplicationSpec{
 			DNSAlias: []radixv1.DNSAlias{
@@ -60,7 +41,7 @@ func Test_GetRadixDNSAliases(t *testing.T) {
 				{Alias: "matched2", Environment: "env1", Component: "comp2"},
 			}},
 	}
-	actual := GetDNSAliases(context.Background(), client, ra, "test.radix.equinor.com")
+	actual := GetDNSAliases(context.Background(), client, ra)
 	require.Len(t, actual, 2, "unexpected amount of actual DNS aliases")
-	assert.ElementsMatch(t, expected, actual)
+	assert.ElementsMatch(t, []radixv1.RadixDNSAlias{matched1, matched2}, actual)
 }

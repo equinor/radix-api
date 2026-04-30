@@ -51,14 +51,14 @@ import (
 )
 
 const (
-	clusterName     = "AnyClusterName"
-	appAliasDNSZone = "app.dev.radix.equinor.com"
-	subscriptionId  = "12347718-c8f8-4995-bfbb-02655ff1f89c"
+	clusterName    = "AnyClusterName"
+	dnsZone        = "some-dns-zone.com"
+	subscriptionId = "12347718-c8f8-4995-bfbb-02655ff1f89c"
 )
 
 func setupTest(t *testing.T, options ...ApplicationHandlerOption) (*commontest.Utils, *controllertest.Utils, *kubefake.Clientset, *radixfake.Clientset, *kedafake.Clientset, dynamicclient.Client, *secretproviderfake.Clientset, *certfake.Clientset, *tektonclientfake.Clientset) {
 	return setupTestWithFactory(t, newTestApplicationHandlerFactory(
-		config.Config{AppAliasBaseURL: appAliasDNSZone},
+		config.Config{DNSZone: dnsZone},
 		func(ctx context.Context, kubeClient kubernetes.Interface, namespace string, configMapName string) (bool, error) {
 			return true, nil
 		},
@@ -1237,7 +1237,7 @@ func TestGetApplication_WithAppAlias_ContainsAppAlias(t *testing.T) {
 	require.NotNil(t, application.AppAlias)
 	assert.Equal(t, "frontend", application.AppAlias.ComponentName)
 	assert.Equal(t, "prod", application.AppAlias.EnvironmentName)
-	assert.Equal(t, fmt.Sprintf("%s.%s", "any-app", appAliasDNSZone), application.AppAlias.URL)
+	assert.Equal(t, fmt.Sprintf("%s.app.%s", "any-app", dnsZone), application.AppAlias.URL)
 }
 
 func TestListPipeline_ReturnsAvailablePipelines(t *testing.T) {
