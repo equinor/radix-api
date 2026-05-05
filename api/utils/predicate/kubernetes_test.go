@@ -9,14 +9,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func Test_IsAppAliasIngress(t *testing.T) {
-	assert.True(t, IsAppAliasIngress(networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Labels: labelselector.ForIsAppAlias()}}))
-	assert.False(t, IsAppAliasIngress(networkingv1.Ingress{}))
-}
 
 func Test_IsPodForComponent(t *testing.T) {
 	sut := IsPodForComponent("app1", "comp1")

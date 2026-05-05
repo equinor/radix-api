@@ -7,17 +7,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
 	secretStoreCsiManagedLabel = "secrets-store.csi.k8s.io/managed"
 )
-
-func IsAppAliasIngress(ingress networkingv1.Ingress) bool {
-	return labelselector.ForIsAppAlias().AsSelector().Matches(labels.Set(ingress.Labels))
-}
 
 func IsPodForComponent(appName, componentName string) func(corev1.Pod) bool {
 	selector := labelselector.ForComponent(appName, componentName).AsSelector()
