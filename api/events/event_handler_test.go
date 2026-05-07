@@ -8,7 +8,6 @@ import (
 
 	eventModels "github.com/equinor/radix-api/api/events/models"
 	"github.com/equinor/radix-api/models"
-	"github.com/equinor/radix-common/utils/pointers"
 	"github.com/equinor/radix-common/utils/slice"
 	operatorutils "github.com/equinor/radix-operator/pkg/apis/utils"
 	radixlabels "github.com/equinor/radix-operator/pkg/apis/utils/labels"
@@ -16,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -44,22 +42,12 @@ const (
 	podServer1        = replicaSetServer1 + "-9v333"
 	podServer2        = replicaSetServer2 + "-m2sw8"
 	podServer3        = replicaSetServer3 + "-6x4cg"
-	ingressName1      = "ingress1"
-	ingressHost1      = "ingress1.example.com"
-	ingressName2      = "ingress2"
-	ingressHost2      = "ingress2.example.com"
-	ingressName3      = "ingress3"
-	ingressHost3      = "ingress3.example.com"
-	port8080          = int32(8080)
-	port8090          = int32(8090)
-	port9090          = int32(9090)
 )
 
 type scenario struct {
-	name                     string
-	existingEventProps       []eventProps
-	expectedEvents           []eventModels.Event
-	existingIngressRuleProps []ingressRuleProps
+	name               string
+	existingEventProps []eventProps
+	expectedEvents     []eventModels.Event
 }
 
 type eventProps struct {
@@ -72,15 +60,6 @@ type eventProps struct {
 	objectName    string
 	objectUid     string
 	objectKind    string
-}
-
-type ingressRuleProps struct {
-	name    string
-	host    string
-	service string
-	port    int32
-	appName string
-	envName string
 }
 
 func setupTest() (*kubefake.Clientset, *radixfake.Clientset) {
@@ -226,35 +205,6 @@ func Test_EventHandler_GetEnvironmentEvents(t *testing.T) {
 				{InvolvedObjectName: replicaSetServer2, InvolvedObjectKind: k8sKindReplicaSet, InvolvedObjectNamespace: envNamespace},
 			},
 		},
-		{
-			name: "Ingress events",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-				{InvolvedObjectName: ingressName2, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-			},
-		},
-		{
-			name: "Ingress events with rules",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			existingIngressRuleProps: []ingressRuleProps{
-				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
-				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
-				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-				{InvolvedObjectName: ingressName2, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-			},
-		},
 	}
 	for _, ts := range scenarios {
 		t.Run(ts.name, func(t *testing.T) {
@@ -301,38 +251,6 @@ func Test_EventHandler_GetComponentEvents(t *testing.T) {
 			},
 			expectedEvents: []eventModels.Event{
 				{InvolvedObjectName: replicaSetServer1, InvolvedObjectKind: k8sKindReplicaSet, InvolvedObjectNamespace: envNamespace},
-			},
-		},
-		{
-			name: "Ingress events",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, componentName: component1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, componentName: component2, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, componentName: component1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			existingIngressRuleProps: []ingressRuleProps{
-				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
-				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
-				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-			},
-		},
-		{
-			name: "Ingress events with rules",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, componentName: component1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, componentName: component2, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, componentName: component1, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			existingIngressRuleProps: []ingressRuleProps{
-				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
-				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
-				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
 			},
 		},
 	}
@@ -383,38 +301,6 @@ func Test_EventHandler_GetPodEvents(t *testing.T) {
 			},
 			expectedEvents: []eventModels.Event{
 				{InvolvedObjectName: replicaSetServer1, InvolvedObjectKind: k8sKindReplicaSet, InvolvedObjectNamespace: envNamespace},
-			},
-		},
-		{
-			name: "Ingress events",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer2, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer3, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			existingIngressRuleProps: []ingressRuleProps{
-				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
-				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
-				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
-			},
-		},
-		{
-			name: "Ingress events with rules",
-			existingEventProps: []eventProps{
-				{name: ev1, appName: appName1, envName: envName1, componentName: component1, podName: podServer1, eventType: k8sEventTypeNormal, objectName: ingressName1, objectKind: k8sKindIngress, objectUid: uid1},
-				{name: ev2, appName: appName1, envName: envName1, componentName: component2, podName: podServer2, eventType: k8sEventTypeNormal, objectName: ingressName2, objectKind: k8sKindIngress, objectUid: uid2},
-				{name: ev3, appName: appName2, envName: envName1, componentName: component1, podName: podServer3, eventType: k8sEventTypeNormal, objectName: ingressName3, objectKind: k8sKindIngress, objectUid: uid3},
-			},
-			existingIngressRuleProps: []ingressRuleProps{
-				{name: ingressName1, appName: appName1, envName: envName1, host: ingressHost1, service: deploy1, port: port8080},
-				{name: ingressName2, appName: appName1, envName: envName1, host: ingressHost2, service: deploy2, port: port8090},
-				{name: ingressName3, appName: "app2", envName: envName1, host: ingressHost3, service: deploy3, port: port9090},
-			},
-			expectedEvents: []eventModels.Event{
-				{InvolvedObjectName: ingressName1, InvolvedObjectKind: k8sKindIngress, InvolvedObjectNamespace: envNamespace},
 			},
 		},
 	}
@@ -523,40 +409,8 @@ func setupTestEnvForHandler(t *testing.T, ts scenario) (EventHandler, *radixfake
 		}
 	}
 
-	for _, ingressRuleProp := range ts.existingIngressRuleProps {
-		createIngress(t, kubeClient, ingressRuleProp)
-	}
 	eventHandler := Init(accounts)
 	return eventHandler, radixClient
-}
-
-func createIngress(t *testing.T, kubeClient *kubefake.Clientset, props ingressRuleProps) {
-	_, err := kubeClient.NetworkingV1().Ingresses(operatorutils.GetEnvironmentNamespace(props.appName, props.envName)).Create(context.Background(), &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{Name: props.name,
-			Labels: radixlabels.ForApplicationName(props.appName)},
-		Spec: networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{
-				{Host: props.host,
-					IngressRuleValue: networkingv1.IngressRuleValue{
-						HTTP: &networkingv1.HTTPIngressRuleValue{
-							Paths: []networkingv1.HTTPIngressPath{
-								{
-									Path:     "/",
-									PathType: pointers.Ptr(networkingv1.PathTypeImplementationSpecific),
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: props.service,
-											Port: networkingv1.ServiceBackendPort{Number: props.port},
-										},
-									},
-								},
-							},
-						},
-					}},
-			},
-		},
-	}, metav1.CreateOptions{})
-	require.NoError(t, err)
 }
 
 func createKubernetesEvent(t *testing.T, client *kubefake.Clientset, namespace, name, eventType, involvedObjectName, involvedObjectKind, uid string) {

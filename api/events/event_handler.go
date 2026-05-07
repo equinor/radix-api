@@ -13,7 +13,6 @@ import (
 	radixv1 "github.com/equinor/radix-operator/pkg/apis/radix/v1"
 	"github.com/equinor/radix-operator/pkg/apis/utils"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
@@ -22,7 +21,6 @@ import (
 const (
 	k8sKindDeployment   = "Deployment"
 	k8sKindReplicaSet   = "ReplicaSet"
-	k8sKindIngress      = "Ingress"
 	k8sKindPod          = "Pod"
 	k8sEventTypeNormal  = "Normal"
 	k8sEventTypeWarning = "Warning"
@@ -132,20 +130,15 @@ func (eh *eventHandler) getEvents(ctx context.Context, appName, envName, compone
 		return nil, err
 	}
 
-	environmentComponentsIngressMap, err := eh.getEnvironmentComponentsIngressMap(ctx, appName, envName)
-	if err != nil {
-		return nil, err
-	}
-
 	events := make([]*eventModels.Event, 0)
 	for _, ev := range k8sEvents.Items {
-		if len(podName) > 0 && !eventIsRelatedToPod(ev, componentName, podName, environmentComponentsIngressMap) {
+		if len(podName) > 0 && !eventIsRelatedToPod(ev, componentName, podName) {
 			continue
 		}
-		if len(componentName) > 0 && !eventIsRelatedToComponent(ev, componentName, environmentComponentsIngressMap) {
+		if len(componentName) > 0 && !eventIsRelatedToComponent(ev, componentName) {
 			continue
 		}
-		event := eh.buildEvent(ev, componentName, environmentComponentsPodMap, environmentComponentsIngressMap)
+		event := eh.buildEvent(ev, componentName, environmentComponentsPodMap)
 		events = append(events, event)
 	}
 	return events, nil
@@ -163,32 +156,19 @@ func (eh *eventHandler) getEnvironmentComponentsPodMap(ctx context.Context, appN
 	return podMap, nil
 }
 
-func (eh *eventHandler) getEnvironmentComponentsIngressMap(ctx context.Context, appName string, envName string) (map[string]*networkingv1.Ingress, error) {
-	ingresses, err := kubequery.GetIngressesForEnvironments(ctx, eh.accounts.UserAccount.Client, appName, []string{envName}, 1)
-	if err != nil {
-		return nil, err
-	}
-	ingressMap := slice.Reduce(ingresses, make(map[string]*networkingv1.Ingress), func(acc map[string]*networkingv1.Ingress, ingress networkingv1.Ingress) map[string]*networkingv1.Ingress {
-		acc[ingress.GetName()] = &ingress
-		return acc
-	})
-	return ingressMap, nil
-}
-
-func (eh *eventHandler) buildEvent(ev corev1.Event, componentName string, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress) *eventModels.Event {
+func (eh *eventHandler) buildEvent(ev corev1.Event, componentName string, podMap map[k8sTypes.UID]*corev1.Pod) *eventModels.Event {
 	builder := eventModels.NewEventBuilder().WithKubernetesEvent(ev)
-	if ev.Type != k8sEventTypeNormal || ev.InvolvedObject.Kind == k8sKindIngress {
-		if objectState := getObjectState(ev, podMap, ingressMap, componentName); objectState != nil {
+	if ev.Type != k8sEventTypeNormal {
+		if objectState := getObjectState(ev, podMap, componentName); objectState != nil {
 			builder.WithInvolvedObjectState(objectState)
 		}
 	}
 	return builder.Build()
 }
 
-func eventIsRelatedToComponent(ev corev1.Event, componentName string, ingressMap map[string]*networkingv1.Ingress) bool {
+func eventIsRelatedToComponent(ev corev1.Event, componentName string) bool {
 	if matchingToDeployment(ev, componentName) ||
 		matchingToReplicaSet(ev, componentName, "") ||
-		matchingToIngress(ev, componentName, ingressMap) ||
 		matchingToScaledObject(ev, componentName) {
 		return true
 	}
@@ -227,32 +207,14 @@ func matchingToReplicaSet(ev corev1.Event, componentName, podName string) bool {
 	return podNameRegex.MatchString(ev.Message)
 }
 
-func matchingToIngress(ev corev1.Event, componentName string, ingressMap map[string]*networkingv1.Ingress) bool {
-	if ev.InvolvedObject.Kind != k8sKindIngress {
-		return false
-	}
-	ingress, ok := ingressMap[ev.InvolvedObject.Name]
-	if !ok {
-		return false
-	}
-	for _, ingressRule := range ingress.Spec.Rules {
-		for _, ingressPath := range ingressRule.HTTP.Paths {
-			if ingressPath.Backend.Service != nil && ingressPath.Backend.Service.Name == componentName {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func eventIsRelatedToPod(ev corev1.Event, componentName, podName string, ingressMap map[string]*networkingv1.Ingress) bool {
+func eventIsRelatedToPod(ev corev1.Event, componentName, podName string) bool {
 	if ev.InvolvedObject.Kind == k8sKindPod && ev.InvolvedObject.Name == podName {
 		return true
 	}
-	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName) || matchingToScaledObject(ev, componentName) || matchingToIngress(ev, componentName, ingressMap)
+	return matchingToDeployment(ev, componentName) || matchingToReplicaSet(ev, componentName, podName) || matchingToScaledObject(ev, componentName)
 }
 
-func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod, ingressMap map[string]*networkingv1.Ingress, componentName string) *eventModels.ObjectState {
+func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod, componentName string) *eventModels.ObjectState {
 	builder := eventModels.NewObjectStateBuilder()
 	obj := ev.InvolvedObject
 
@@ -263,17 +225,8 @@ func getObjectState(ev corev1.Event, podMap map[k8sTypes.UID]*corev1.Pod, ingres
 			builder.WithPodState(state)
 			return builder.Build()
 		}
-	case k8sKindIngress:
-		if ingress, ok := ingressMap[ev.InvolvedObject.Name]; ok {
-			builder.WithIngress(getIngress(ingress, componentName))
-			return builder.Build()
-		}
 	}
 	return nil
-}
-
-func getIngress(ingress *networkingv1.Ingress, componentName string) []eventModels.IngressRule {
-	return eventModels.NewIngressBuilder().WithIngress(ingress).WithComponent(componentName).Build()
 }
 
 func getPodState(pod *corev1.Pod) *eventModels.PodState {
