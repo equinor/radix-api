@@ -3,7 +3,7 @@
 # Radix API
 
 > [!IMPORTANT]  
-> **Update , October 2025:** This repository is no longer maintained. Code is moved into [radix-operator](https://github.com/equinor/radix-operator).
+> **Update , May 2026:** This repository is no longer maintained. Code is moved into [radix-operator](https://github.com/equinor/radix-operator).
 
 The Radix API is an HTTP server for accessing functionality on the [Radix](https://www.radix.equinor.com) platform. This document is for Radix developers, or anyone interested in poking around. 
 
